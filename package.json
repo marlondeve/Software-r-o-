@@ -1,0 +1,15 @@
+{
+  "name": "bital",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "dev:front": "pnpm --filter frontend dev",
+    "dev:back": "pnpm --filter backend dev",
+    "build": "pnpm --filter frontend build",
+    "build:front": "pnpm --filter frontend build",
+    "build:back": "pnpm --filter backend build",
+    "lint": "pnpm --filter frontend lint",
+    "preview": "pnpm --filter frontend preview"
+  }
+}

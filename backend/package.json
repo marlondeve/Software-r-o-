@@ -1,0 +1,11 @@
+{
+  "name": "backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "build": "node -e \"console.log('Backend: configurar build cuando se defina el stack.')\"",
+    "start": "node src/index.js"
+  }
+}
