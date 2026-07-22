@@ -12,9 +12,9 @@ export type RutaEncuestas =
   | "encuestas-realizadas"
   | "cuestionarios"
   | "indicadores"
-  | "reglas-visualizacion"
   | "analisis-brechas"
   | "parametros"
+  | "usuarios"
   | "auditoria"
 
 export type RutaDietasConfig =
@@ -67,9 +67,9 @@ export const RUTAS_ENCUESTAS: { id: RutaEncuestas; label: string }[] = [
   { id: "encuestas-realizadas", label: "Encuestas realizadas" },
   { id: "cuestionarios", label: "Cuestionarios" },
   { id: "indicadores", label: "Indicadores" },
-  { id: "reglas-visualizacion", label: "Reglas de visualización" },
   { id: "analisis-brechas", label: "Análisis de brechas" },
   { id: "parametros", label: "Parámetros" },
+  { id: "usuarios", label: "Usuarios y roles" },
   { id: "auditoria", label: "Auditoría" },
 ]
 
