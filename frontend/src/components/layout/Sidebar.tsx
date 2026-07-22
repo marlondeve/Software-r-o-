@@ -19,9 +19,12 @@ import {
 import { NavLink, useNavigate } from "react-router-dom"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
+import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
-import { usuarioEsAdministrador } from "@/lib/modulos"
+import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
+import { rutaDietasPermitida } from "@/modules/dietas-cocina/lib/permisos"
+import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { cn } from "@/lib/utils"
 import type { ModuloId } from "@/tipos/modulo"
 import type { Usuario } from "@/tipos/usuario"
@@ -105,28 +108,56 @@ const mainNavItems: Record<ModuleType, NavItem[]> = {
   ],
 }
 
+function filtrarNavDietas(items: NavItem[], rol: ReturnType<typeof obtenerRolDietas>) {
+  return items.filter((item) => {
+    const segmento = item.to.replace("/dietas-cocina/", "")
+    return rutaDietasPermitida(rol, segmento)
+  })
+}
+
 function bottomNavItems(module: ModuleType, usuario: Usuario | null): NavItem[] {
-  const items: NavItem[] = [
-    {
+  const items: NavItem[] = []
+
+  if (module === "dietas-cocina") {
+    const rol = obtenerRolDietas(usuario)
+    if (rutaDietasPermitida(rol, "parametros")) {
+      items.push({
+        label: "Parámetros",
+        to: `/${module}/parametros`,
+        icon: Settings,
+      })
+    }
+    if (rutaDietasPermitida(rol, "usuarios")) {
+      items.push({
+        label: "Usuarios y roles",
+        to: `/${module}/usuarios`,
+        icon: Users,
+      })
+    }
+  } else {
+    items.push({
       label: "Parámetros",
       to: `/${module}/parametros`,
       icon: Settings,
-    },
-  ]
-
-  if (usuarioEsAdministrador(usuario)) {
-    items.push({
-      label: "Usuarios y roles",
-      to: "/administracion/usuarios",
-      icon: Users,
     })
   }
 
-  items.push({
-    label: "Auditoría",
-    to: `/${module}/auditoria`,
-    icon: FileSearch,
-  })
+  if (module === "dietas-cocina") {
+    const rol = obtenerRolDietas(usuario)
+    if (rutaDietasPermitida(rol, "auditoria")) {
+      items.push({
+        label: "Auditoría",
+        to: `/${module}/auditoria`,
+        icon: FileSearch,
+      })
+    }
+  } else {
+    items.push({
+      label: "Auditoría",
+      to: `/${module}/auditoria`,
+      icon: FileSearch,
+    })
+  }
 
   return items
 }
@@ -164,7 +195,13 @@ export function SidebarContent({
 }: SidebarContentProps) {
   const navigate = useNavigate()
   const { usuario, cerrarSesion } = useAuth()
+  useConfigAccesoModulos()
   const branding = moduleBranding[module]
+  const rolDietas = module === "dietas-cocina" ? obtenerRolDietas(usuario) : null
+  const navItems =
+    module === "dietas-cocina"
+      ? filtrarNavDietas(mainNavItems[module], rolDietas)
+      : mainNavItems[module]
 
   function handleLogout() {
     cerrarSesion()
@@ -175,7 +212,7 @@ export function SidebarContent({
   return (
     <div
       className={cn(
-        "flex h-full flex-col bg-sidebar px-3 py-4",
+        "flex h-full min-h-0 flex-col bg-sidebar px-3 py-4",
         className,
       )}
     >
@@ -193,17 +230,17 @@ export function SidebarContent({
 
       <Separator className="mb-3" />
 
-      <nav className="flex flex-col gap-0.5 overflow-y-auto">
-        {mainNavItems[module].map((item) => (
-          <SidebarNavItem
-            key={item.to}
-            item={item}
-            onNavigate={onNavigate}
-          />
-        ))}
-      </nav>
-
-      <div className="flex-1" />
+      <ScrollAreaFlex>
+        <nav className="flex flex-col gap-0.5 pr-2">
+          {navItems.map((item) => (
+            <SidebarNavItem
+              key={item.to}
+              item={item}
+              onNavigate={onNavigate}
+            />
+          ))}
+        </nav>
+      </ScrollAreaFlex>
 
       <Separator className="mb-3" />
 
