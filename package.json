@@ -2,6 +2,11 @@
   "name": "bital",
   "private": true,
   "version": "0.0.0",
+  "packageManager": "pnpm@11.15.1",
+  "engines": {
+    "node": ">=24.18.0",
+    "pnpm": ">=11.15.1"
+  },
   "scripts": {
     "dev": "pnpm --filter frontend dev",
     "dev:front": "pnpm --filter frontend dev",

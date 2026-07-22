@@ -1,0 +1,12 @@
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\bin\Debug\net8.0\Bital.Domain.deps.json
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\bin\Debug\net8.0\Bital.Domain.dll
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\bin\Debug\net8.0\Bital.Domain.pdb
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\Bital.Domain.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\Bital.Domain.AssemblyInfoInputs.cache
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\Bital.Domain.AssemblyInfo.cs
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\Bital.Domain.csproj.CoreCompileInputs.cache
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\Bital.Domain.sourcelink.json
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\Bital.Domain.dll
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\refint\Bital.Domain.dll
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\Bital.Domain.pdb
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\obj\Debug\net8.0\ref\Bital.Domain.dll
