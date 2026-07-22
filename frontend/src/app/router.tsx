@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom"
+import { createBrowserRouter, Navigate } from "react-router-dom"
 
 import { AdminLayout } from "@/components/layout/AdminLayout"
 import { NotFoundPage } from "@/components/shared/NotFoundPage"
@@ -8,6 +8,7 @@ import { MainLayout } from "@/components/layout/MainLayout"
 import { GuestRoute } from "@/features/autenticacion/components/GuestRoute"
 import { RequireAdmin } from "@/features/autenticacion/components/RequireAdmin"
 import { RequireAuth } from "@/features/autenticacion/components/RequireAuth"
+import { RequireDietasRuta } from "@/features/autenticacion/components/RequireDietasRuta"
 import { RequireModuleAccess } from "@/features/autenticacion/components/RequireModuleAccess"
 import { SeleccionModuloPage } from "@/features/autenticacion/components/SeleccionModuloPage"
 import { PermisosPage } from "@/features/administracion/permisos/PermisosPage"
@@ -19,8 +20,11 @@ import { ConciliacionPage } from "@/modules/dietas-cocina/conciliacion/Conciliac
 import { DietasPage } from "@/modules/dietas-cocina/dietas/DietasPage"
 import { EtiquetasPage } from "@/modules/dietas-cocina/etiquetas/EtiquetasPage"
 import { InicioPage as InicioDietasPage } from "@/modules/dietas-cocina/inicio/InicioPage"
-import { ParametrosPage as ParametrosDietasPage } from "@/modules/dietas-cocina/parametros/ParametrosPage"
+import { ParametrosLayout } from "@/modules/dietas-cocina/parametros/ParametrosLayout"
+import { TiemposRestriccionesView } from "@/modules/dietas-cocina/parametros/views/TiemposRestriccionesView"
+import { TiposPacienteView } from "@/modules/dietas-cocina/parametros/views/TiposPacienteView"
 import { ReportesPage } from "@/modules/dietas-cocina/reportes/ReportesPage"
+import { UsuariosRolesPage } from "@/modules/dietas-cocina/usuarios/UsuariosRolesPage"
 import { AnalisisBrechasPage } from "@/modules/encuestas/analisis-brechas/AnalisisBrechasPage"
 import { AuditoriaPage as AuditoriaEncuestasPage } from "@/modules/encuestas/auditoria/AuditoriaPage"
 import { CapturaPresencialPage } from "@/modules/encuestas/captura-presencial/CapturaPresencialPage"
@@ -63,15 +67,29 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <InicioDietasPage /> },
-      { path: "inicio", element: <InicioDietasPage /> },
-      { path: "dietas", element: <DietasPage /> },
-      { path: "cocina", element: <CocinaPage /> },
-      { path: "etiquetas", element: <EtiquetasPage /> },
-      { path: "reportes", element: <ReportesPage /> },
-      { path: "conciliacion", element: <ConciliacionPage /> },
-      { path: "parametros", element: <ParametrosDietasPage /> },
-      { path: "auditoria", element: <AuditoriaDietasPage /> },
+      {
+        element: <RequireDietasRuta />,
+        children: [
+          { index: true, element: <InicioDietasPage /> },
+          { path: "inicio", element: <InicioDietasPage /> },
+          { path: "dietas", element: <DietasPage /> },
+          { path: "cocina", element: <CocinaPage /> },
+          { path: "etiquetas", element: <EtiquetasPage /> },
+          { path: "reportes", element: <ReportesPage /> },
+          { path: "conciliacion", element: <ConciliacionPage /> },
+          {
+            path: "parametros",
+            element: <ParametrosLayout />,
+            children: [
+              { index: true, element: <Navigate to="tiempos" replace /> },
+              { path: "tiempos", element: <TiemposRestriccionesView /> },
+              { path: "tipos-paciente", element: <TiposPacienteView /> },
+            ],
+          },
+          { path: "auditoria", element: <AuditoriaDietasPage /> },
+          { path: "usuarios", element: <UsuariosRolesPage /> },
+        ],
+      },
     ],
   },
   {

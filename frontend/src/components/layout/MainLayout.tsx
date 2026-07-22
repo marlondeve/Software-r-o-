@@ -7,6 +7,7 @@ import {
   type ModuleType,
 } from "@/components/layout/Sidebar"
 import { TopBar } from "@/components/layout/TopBar"
+import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
 
 interface MainLayoutProps {
@@ -24,7 +25,7 @@ export function MainLayout({ module }: MainLayoutProps) {
         <SheetContent
           side="left"
           showCloseButton={false}
-          className="gap-0 border-r p-0"
+          className="flex h-full flex-col gap-0 overflow-hidden border-r p-0"
           style={{ width: "min(100vw, var(--sidebar-width))", maxWidth: "var(--sidebar-width)" }}
         >
           <SidebarContent
@@ -35,11 +36,13 @@ export function MainLayout({ module }: MainLayoutProps) {
         </SheetContent>
       </Sheet>
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar module={module} onMenuClick={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-auto p-3 md:p-4 lg:p-5">
-          <Outlet />
-        </main>
+        <ScrollAreaFlex>
+          <main className="p-3 md:p-4 lg:p-5">
+            <Outlet />
+          </main>
+        </ScrollAreaFlex>
       </div>
     </div>
   )
