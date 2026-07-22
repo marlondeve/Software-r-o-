@@ -1,0 +1,12 @@
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\bin\Debug\net8.0\Bital.Shared.deps.json
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\bin\Debug\net8.0\Bital.Shared.dll
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\bin\Debug\net8.0\Bital.Shared.pdb
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\Bital.Shared.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\Bital.Shared.AssemblyInfoInputs.cache
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\Bital.Shared.AssemblyInfo.cs
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\Bital.Shared.csproj.CoreCompileInputs.cache
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\Bital.Shared.sourcelink.json
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\Bital.Shared.dll
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\refint\Bital.Shared.dll
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\Bital.Shared.pdb
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\obj\Debug\net8.0\ref\Bital.Shared.dll

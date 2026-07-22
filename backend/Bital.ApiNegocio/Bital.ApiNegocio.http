@@ -1,0 +1,6 @@
+@Bital.ApiNegocio_HostAddress = http://localhost:5042
+
+GET {{Bital.ApiNegocio_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
