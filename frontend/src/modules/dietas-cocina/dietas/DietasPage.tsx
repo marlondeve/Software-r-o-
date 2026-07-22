@@ -5,9 +5,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DietasBarraSeleccion } from "@/modules/dietas-cocina/dietas/components/DietasBarraSeleccion"
+import { DietasCancelarDialog } from "@/modules/dietas-cocina/dietas/components/DietasCancelarDialog"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
+import { DietasDetalleSheet } from "@/modules/dietas-cocina/dietas/components/DietasDetalleSheet"
 import { DietasFiltros } from "@/modules/dietas-cocina/dietas/components/DietasFiltros"
 import { DietasKpiGrid } from "@/modules/dietas-cocina/dietas/components/DietasKpiGrid"
+import { DietasNovedadSheet } from "@/modules/dietas-cocina/dietas/components/DietasNovedadSheet"
 import { DietasSolicitudSheet } from "@/modules/dietas-cocina/dietas/components/DietasSolicitudSheet"
 import { DietasTabla } from "@/modules/dietas-cocina/dietas/components/DietasTabla"
 import { mockDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
@@ -17,6 +20,13 @@ import {
   filaCoincideBusqueda,
 } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
 import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+
+type TipoSheetDieta = "solicitud" | "detalle" | "novedad"
+
+interface SheetDietaState {
+  tipo: TipoSheetDieta
+  fila: FilaDieta
+}
 
 export function DietasPage() {
   const data = mockDietas
@@ -28,8 +38,9 @@ export function DietasPage() {
   const [estado, setEstado] = useState("todos")
   const [soloPendientes, setSoloPendientes] = useState(false)
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
-  const [sheetAbierto, setSheetAbierto] = useState(false)
-  const [filaSolicitud, setFilaSolicitud] = useState<FilaDieta | null>(null)
+  const [sheet, setSheet] = useState<SheetDietaState | null>(null)
+  const [cancelarAbierto, setCancelarAbierto] = useState(false)
+  const [filaCancelar, setFilaCancelar] = useState<FilaDieta | null>(null)
 
   const filasFiltradas = useMemo(() => {
     return data.filas.filter((fila) => {
@@ -54,6 +65,8 @@ export function DietasPage() {
       [...seleccionados].filter((id) => idsVisibles.has(id)).length,
     [seleccionados, idsVisibles],
   )
+
+  const filaActiva = sheet?.fila ?? null
 
   function limpiarFiltros() {
     setBusqueda("")
@@ -88,9 +101,21 @@ export function DietasPage() {
     }
   }
 
-  function abrirSolicitud(fila: FilaDieta) {
-    setFilaSolicitud(fila)
-    setSheetAbierto(true)
+  function abrirSheet(tipo: TipoSheetDieta, fila: FilaDieta) {
+    setSheet({ tipo, fila })
+  }
+
+  function cerrarSheet(open: boolean) {
+    if (!open) setSheet(null)
+  }
+
+  function cambiarSheetDesdeDetalle(tipo: TipoSheetDieta, fila: FilaDieta) {
+    setSheet({ tipo, fila })
+  }
+
+  function abrirCancelar(fila: FilaDieta) {
+    setFilaCancelar(fila)
+    setCancelarAbierto(true)
   }
 
   return (
@@ -143,14 +168,43 @@ export function DietasPage() {
         seleccionados={seleccionados}
         onToggleFila={toggleFila}
         onToggleTodas={toggleTodas}
-        onAbrirSolicitud={abrirSolicitud}
+        onAbrirSolicitud={(fila) => abrirSheet("solicitud", fila)}
+        onAbrirDetalle={(fila) => abrirSheet("detalle", fila)}
+        onRegistrarNovedad={(fila) => abrirSheet("novedad", fila)}
+        onCancelarDieta={abrirCancelar}
+      />
+
+      <DietasCancelarDialog
+        open={cancelarAbierto}
+        onOpenChange={setCancelarAbierto}
+        fila={filaCancelar}
+        comidaActiva={comidaActiva}
+        comidas={data.comidas}
       />
 
       <DietasSolicitudSheet
-        open={sheetAbierto}
-        onOpenChange={setSheetAbierto}
-        fila={filaSolicitud}
+        open={sheet?.tipo === "solicitud"}
+        onOpenChange={cerrarSheet}
+        fila={filaActiva}
         comidaInicial={comidaActiva}
+        comidas={data.comidas}
+        tiposDieta={data.tiposDieta}
+        consistencias={data.consistencias}
+        cierreVentanaMinutos={data.cierreVentanaMinutos}
+      />
+
+      <DietasDetalleSheet
+        open={sheet?.tipo === "detalle"}
+        onOpenChange={cerrarSheet}
+        fila={filaActiva}
+        onEditar={(fila) => cambiarSheetDesdeDetalle("solicitud", fila)}
+      />
+
+      <DietasNovedadSheet
+        open={sheet?.tipo === "novedad"}
+        onOpenChange={cerrarSheet}
+        fila={filaActiva}
+        comidaActiva={comidaActiva}
         comidas={data.comidas}
         tiposDieta={data.tiposDieta}
         consistencias={data.consistencias}

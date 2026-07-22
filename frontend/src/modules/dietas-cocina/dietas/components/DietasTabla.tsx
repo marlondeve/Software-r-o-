@@ -17,6 +17,11 @@ import {
   cnFilaTabla,
   formatearUbicacion,
 } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
+import {
+  esSolicitudEditable,
+  puedeCancelarDieta,
+  puedeRegistrarNovedad,
+} from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 
 interface DietasTablaProps {
   filas: FilaDieta[]
@@ -24,6 +29,9 @@ interface DietasTablaProps {
   onToggleFila: (id: string, checked: boolean) => void
   onToggleTodas: (checked: boolean) => void
   onAbrirSolicitud: (fila: FilaDieta) => void
+  onAbrirDetalle: (fila: FilaDieta) => void
+  onRegistrarNovedad: (fila: FilaDieta) => void
+  onCancelarDieta: (fila: FilaDieta) => void
 }
 
 export function DietasTabla({
@@ -32,6 +40,9 @@ export function DietasTabla({
   onToggleFila,
   onToggleTodas,
   onAbrirSolicitud,
+  onAbrirDetalle,
+  onRegistrarNovedad,
+  onCancelarDieta,
 }: DietasTablaProps) {
   const todasSeleccionadas =
     filas.length > 0 && filas.every((fila) => seleccionados.has(fila.id))
@@ -118,8 +129,32 @@ export function DietasTabla({
         header: () => <span className="float-right">Acciones</span>,
         cell: ({ row }) => {
           const fila = row.original
-          const puedeEditar =
-            fila.estado === "no-solicitada" || fila.estado === "guardado"
+          const puedeEditar = esSolicitudEditable(fila)
+          const puedeNovedad = puedeRegistrarNovedad(fila)
+
+          const accionesSecundarias = [
+            fila.estado === "guardado" && {
+              key: "detalle",
+              label: "Ver detalle",
+              onClick: () => onAbrirDetalle(fila),
+            },
+            puedeNovedad && {
+              key: "novedad",
+              label: "Registrar novedad",
+              onClick: () => onRegistrarNovedad(fila),
+            },
+            puedeCancelarDieta(fila) && {
+              key: "cancelar",
+              label: "Cancelar dieta",
+              destructive: true,
+              onClick: () => onCancelarDieta(fila),
+            },
+          ].filter(Boolean) as Array<{
+            key: string
+            label: string
+            destructive?: boolean
+            onClick?: () => void
+          }>
 
           return (
             <div className="flex items-center justify-end gap-0.5">
@@ -139,45 +174,41 @@ export function DietasTabla({
                   variant="ghost"
                   size="icon-sm"
                   aria-label="Ver detalle"
-                  onClick={() => onAbrirSolicitud(fila)}
+                  onClick={() => onAbrirDetalle(fila)}
                 >
                   <Eye className="size-4" />
                 </Button>
               )}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Más acciones"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-44 p-1">
-                  <button
-                    type="button"
-                    className="flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
-                  >
-                    Ver historial
-                  </button>
-                  <button
-                    type="button"
-                    className="flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
-                  >
-                    Imprimir etiqueta
-                  </button>
-                  {puedeEditar && (
-                    <button
+              {accionesSecundarias.length > 0 && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
                       type="button"
-                      className="flex w-full rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label="Más acciones"
                     >
-                      Cancelar solicitud
-                    </button>
-                  )}
-                </PopoverContent>
-              </Popover>
+                      <MoreHorizontal className="size-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent align="end" className="w-48 p-1">
+                    {accionesSecundarias.map((accion) => (
+                      <button
+                        key={accion.key}
+                        type="button"
+                        className={
+                          accion.destructive
+                            ? "flex w-full rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                            : "flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                        }
+                        onClick={accion.onClick}
+                      >
+                        {accion.label}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
           )
         },
@@ -185,7 +216,10 @@ export function DietasTabla({
     ],
     [
       algunasSeleccionadas,
+      onAbrirDetalle,
       onAbrirSolicitud,
+      onCancelarDieta,
+      onRegistrarNovedad,
       onToggleFila,
       onToggleTodas,
       seleccionados,

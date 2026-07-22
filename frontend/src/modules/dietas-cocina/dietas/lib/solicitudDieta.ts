@@ -13,6 +13,19 @@ export function esSolicitudEditable(fila: FilaDieta): boolean {
   return fila.estado === "no-solicitada" || fila.estado === "guardado"
 }
 
+export function puedeRegistrarNovedad(fila: FilaDieta): boolean {
+  return fila.estado === "confirmada" || fila.estado === "devuelta"
+}
+
+export function puedeCancelarDieta(fila: FilaDieta): boolean {
+  return fila.estado === "confirmada"
+}
+
+/** Fuera del horario de novedades (p. ej. después del límite de cambios). */
+export function esCancelacionTardia(fila: FilaDieta): boolean {
+  return fila.cancelacionTardia ?? false
+}
+
 export function formatearContextoPaciente(fila: FilaDieta): string {
   return `${fila.servicio} | ${fila.pabellon} - Hab ${fila.habitacion}`
 }

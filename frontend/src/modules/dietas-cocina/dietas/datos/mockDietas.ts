@@ -29,6 +29,11 @@ export interface FilaDieta {
   alergias: string
   observacionAislamiento: string
   observaciones: string
+  descripcionDieta?: string
+  solicitadoPor?: string
+  solicitadoEn?: string
+  /** true cuando la cancelación ocurre fuera del horario de novedades */
+  cancelacionTardia?: boolean
   estado: EstadoDieta
   comida: TiempoComida
 }
@@ -78,6 +83,9 @@ const filasAlmuerzo: FilaDieta[] = [
     habitacion: "301-A",
     consistencia: "Sólida",
     tipoDieta: "Blanda",
+    descripcionDieta: "Sin restricciones adicionales de sodio o azúcar.",
+    solicitadoPor: "Nutricionista A. Pérez",
+    solicitadoEn: "Hoy, 09:15 AM",
     estado: "guardado",
     comida: "almuerzo",
   },
@@ -92,6 +100,9 @@ const filasAlmuerzo: FilaDieta[] = [
     habitacion: "312-A",
     consistencia: "Líquida",
     tipoDieta: "Líquida clara",
+    descripcionDieta: "Solo líquidos transparentes. Ayuno parcial.",
+    solicitadoPor: "Enfermera J. López",
+    solicitadoEn: "Hoy, 08:00 AM",
     aislado: true,
     aislamiento: "Contacto",
     observacionAislamiento: "Precauciones de contacto. Uso de EPP en habitación.",
@@ -109,7 +120,11 @@ const filasAlmuerzo: FilaDieta[] = [
     habitacion: "308-B",
     consistencia: "Sólida",
     tipoDieta: "General",
+    descripcionDieta: "Dieta estándar hospitalaria sin modificaciones especiales.",
+    solicitadoPor: "Enfermera M. Ruiz",
+    solicitadoEn: "Hoy, 07:45 AM",
     estado: "confirmada",
+    cancelacionTardia: true,
     comida: "almuerzo",
   },
   {
@@ -123,6 +138,9 @@ const filasAlmuerzo: FilaDieta[] = [
     habitacion: "210-C",
     consistencia: "Sólida",
     tipoDieta: "Hipocalórica",
+    descripcionDieta: "Control calórico para manejo de peso.",
+    solicitadoPor: "Nutricionista A. Pérez",
+    solicitadoEn: "Hoy, 11:00 AM",
     estado: "recibida",
     comida: "almuerzo",
   },
@@ -193,6 +211,8 @@ const filasAlmuerzo: FilaDieta[] = [
     habitacion: "302-C",
     consistencia: "Blanda",
     tipoDieta: "Blanda",
+    solicitadoPor: "Enfermera M. Ruiz",
+    solicitadoEn: "Hoy, 12:45 PM",
     estado: "recibida",
     comida: "almuerzo",
   },
