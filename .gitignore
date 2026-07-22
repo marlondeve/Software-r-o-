@@ -34,3 +34,8 @@ backend/dist
 
 # Local
 *.local
+
+
+## Claude
+/frontend/.claude
+/frontend/CLAUDE.md
