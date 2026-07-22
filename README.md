@@ -20,8 +20,15 @@ bital/
 
 ## Requisitos
 
-- **Node.js** 20+
-- **pnpm** 9+
+- **Node.js** 24.18+ (LTS activa, ver `.nvmrc`)
+- **pnpm** 11.15+ (fijado en `packageManager` del `package.json` raíz)
+
+Con [Corepack](https://nodejs.org/api/corepack.html) habilitado, la versión de pnpm se activa sola:
+
+```bash
+corepack enable
+corepack prepare pnpm@11.15.1 --activate
+```
 
 ## Inicio rápido
 

@@ -34,7 +34,3 @@ backend/dist
 
 # Local
 *.local
-
-
-# pmpm
-pnpm-lock.yaml
