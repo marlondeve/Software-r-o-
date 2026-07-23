@@ -7,21 +7,48 @@ import { TiemposComidaPanel } from "@/modules/dietas-cocina/parametros/component
 import { VistaPreviaEnfermeria } from "@/modules/dietas-cocina/parametros/components/tiempos/VistaPreviaEnfermeria"
 import {
   mockParametrosTiempos,
-  type ModoCargaAnticipada,
   type TiempoComida,
 } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import {
+  cargarConfigTiempos,
+  guardarConfigTiempos,
+  type ConfigTiempos,
+} from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
 
 export function TiemposRestriccionesView() {
   const data = mockParametrosTiempos
   const [comidaActiva, setComidaActiva] = useState<TiempoComida>("desayuno")
-  const [activos, setActivos] = useState<Record<TiempoComida, boolean>>(() =>
-    Object.fromEntries(
-      data.comidas.map((comida) => [comida.id, comida.activo]),
-    ) as Record<TiempoComida, boolean>,
-  )
-  const [modoCarga, setModoCarga] = useState<ModoCargaAnticipada>(
-    data.cargaAnticipada.modo,
-  )
+  const [config, setConfig] = useState<ConfigTiempos>(cargarConfigTiempos)
+  const [configGuardada, setConfigGuardada] = useState<ConfigTiempos>(config)
+
+  function actualizarHora(
+    comidaId: TiempoComida,
+    hitoId: string,
+    hora: string,
+  ) {
+    setConfig((prev) => ({
+      ...prev,
+      horasPorComida: {
+        ...prev.horasPorComida,
+        [comidaId]: {
+          ...prev.horasPorComida[comidaId],
+          [hitoId]: hora,
+        },
+      },
+    }))
+  }
+
+  function guardar() {
+    guardarConfigTiempos(config)
+    setConfigGuardada(config)
+    demoToast("Configuración de tiempos guardada correctamente (demo).")
+  }
+
+  function cancelar() {
+    setConfig(configGuardada)
+    demoToast("Cambios descartados. Se restauró la última configuración guardada.")
+  }
 
   return (
     <>
@@ -33,19 +60,26 @@ export function TiemposRestriccionesView() {
                 comidas={data.comidas}
                 comidaActiva={comidaActiva}
                 onComidaChange={setComidaActiva}
-                activos={activos}
+                activos={config.activos}
                 onActivoChange={(id, activo) =>
-                  setActivos((prev) => ({ ...prev, [id]: activo }))
+                  setConfig((prev) => ({
+                    ...prev,
+                    activos: { ...prev.activos, [id]: activo },
+                  }))
                 }
+                horasPorComida={config.horasPorComida}
+                onHoraChange={actualizarHora}
               />
             </CardContent>
           </Card>
 
           <CargaAnticipadaCard
-            modo={modoCarga}
+            modo={config.modoCarga}
             opciones={data.cargaAnticipada.opciones}
             notaInformativa={data.cargaAnticipada.notaInformativa}
-            onModoChange={setModoCarga}
+            onModoChange={(modo) =>
+              setConfig((prev) => ({ ...prev, modoCarga: modo }))
+            }
           />
         </div>
 
@@ -55,10 +89,12 @@ export function TiemposRestriccionesView() {
       <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-xs text-muted-foreground">{data.zonaHoraria}</p>
         <div className="flex gap-2">
-          <Button type="button" variant="outline">
+          <Button type="button" variant="outline" onClick={cancelar}>
             Cancelar
           </Button>
-          <Button type="button">Guardar Configuración</Button>
+          <Button type="button" onClick={guardar}>
+            Guardar Configuración
+          </Button>
         </div>
       </div>
     </>

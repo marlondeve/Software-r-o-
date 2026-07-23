@@ -10,9 +10,15 @@ import { cn } from "@/lib/utils"
 
 interface CategoriasEdadTablaProps {
   categorias: CategoriaEdad[]
+  onEditar: (id: string) => void
+  onEliminar: (id: string) => void
 }
 
-export function CategoriasEdadTabla({ categorias }: CategoriasEdadTablaProps) {
+export function CategoriasEdadTabla({
+  categorias,
+  onEditar,
+  onEliminar,
+}: CategoriasEdadTablaProps) {
   const columnas = useMemo<ColumnDef<CategoriaEdad>[]>(
     () => [
       {
@@ -58,6 +64,7 @@ export function CategoriasEdadTabla({ categorias }: CategoriasEdadTablaProps) {
               variant="ghost"
               size="icon-sm"
               aria-label={`Editar ${row.original.nombre}`}
+              onClick={() => onEditar(row.original.id)}
             >
               <PencilLine className="size-4" />
             </Button>
@@ -66,6 +73,7 @@ export function CategoriasEdadTabla({ categorias }: CategoriasEdadTablaProps) {
               variant="ghost"
               size="icon-sm"
               aria-label={`Eliminar ${row.original.nombre}`}
+              onClick={() => onEliminar(row.original.id)}
             >
               <Trash2 className="size-4" />
             </Button>
@@ -73,7 +81,7 @@ export function CategoriasEdadTabla({ categorias }: CategoriasEdadTablaProps) {
         ),
       },
     ],
-    [],
+    [onEditar, onEliminar],
   )
 
   return (
@@ -89,6 +97,7 @@ export function CategoriasEdadTabla({ categorias }: CategoriasEdadTablaProps) {
           columns={columnas}
           data={categorias}
           className="rounded-none border-0"
+          emptyMessage="No hay categorías de edad configuradas."
         />
       </CardContent>
     </Card>

@@ -9,17 +9,30 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
+import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/DashboardCard"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { KpiCardSimple } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
-import { mockEnfermera } from "@/modules/dietas-cocina/inicio/datos/mockEnfermera"
+import { construirDashboardEnfermeraDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardEnfermera"
 
-type DietaReciente = (typeof mockEnfermera.dietasRecientes)[number]
+type DietaReciente = {
+  habitacion: string
+  paciente: string
+  tipo: string
+  estado: EstadoDieta
+}
 
 export function EnfermeraDashboard() {
-  const data = mockEnfermera
+  const { ordenes, etiquetas } = useCicloBandejas()
+  const { filas } = useDietasOperativas()
+
+  const data = useMemo(
+    () => construirDashboardEnfermeraDesdeCiclo(filas, ordenes, etiquetas),
+    [filas, ordenes, etiquetas],
+  )
 
   const columnasDietas = useMemo<ColumnDef<DietaReciente>[]>(
     () => [
@@ -99,7 +112,7 @@ export function EnfermeraDashboard() {
             <div className="space-y-3">
               {data.alertas.map((alerta) => (
                 <div
-                  key={alerta.habitacion}
+                  key={`${alerta.habitacion}-${alerta.titulo}`}
                   className="rounded-lg bg-card p-3 ring-1 ring-border"
                 >
                   <p className="text-sm font-medium text-foreground">

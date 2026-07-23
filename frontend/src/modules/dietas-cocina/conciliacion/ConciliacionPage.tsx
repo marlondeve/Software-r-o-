@@ -5,20 +5,32 @@ import { ConciliacionDetalleSheet } from "@/modules/dietas-cocina/conciliacion/c
 import { ConciliacionFiltros } from "@/modules/dietas-cocina/conciliacion/components/ConciliacionFiltros"
 import { ConciliacionKpiGrid } from "@/modules/dietas-cocina/conciliacion/components/ConciliacionKpiGrid"
 import { ConciliacionTabla } from "@/modules/dietas-cocina/conciliacion/components/ConciliacionTabla"
-import { mockConciliacion } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
+import { useConciliacionFiltrada } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionFiltros"
 import { obtenerDetalleConciliacion } from "@/modules/dietas-cocina/conciliacion/lib/detalleConciliacion"
 
 export function ConciliacionPage() {
-  const data = mockConciliacion
+  const {
+    filas,
+    filasFiltradas,
+    kpis,
+    busqueda,
+    setBusqueda,
+    numeroFactura,
+    setNumeroFactura,
+    periodo,
+    setPeriodo,
+    proveedor,
+    setProveedor,
+    actualizarEstadoFila,
+    filtros,
+    detalles,
+  } = useConciliacionFiltrada()
+
   const [sheetAbierto, setSheetAbierto] = useState(false)
   const [filaSeleccionada, setFilaSeleccionada] = useState<string | null>(null)
 
   const detalle = filaSeleccionada
-    ? obtenerDetalleConciliacion(
-        filaSeleccionada,
-        data.filas,
-        data.detalles,
-      )
+    ? obtenerDetalleConciliacion(filaSeleccionada, filas, detalles)
     : null
 
   function abrirDetalle(id: string) {
@@ -30,16 +42,38 @@ export function ConciliacionPage() {
     <div className="space-y-5">
       <DashboardPageHeader title="Conciliación" />
 
-      <ConciliacionFiltros {...data.filtros} />
+      <ConciliacionFiltros
+        {...filtros}
+        periodoSeleccionado={periodo}
+        proveedorSeleccionado={proveedor}
+        numeroFactura={numeroFactura}
+        onPeriodoChange={setPeriodo}
+        onProveedorChange={setProveedor}
+        onNumeroFacturaChange={setNumeroFactura}
+      />
 
-      <ConciliacionKpiGrid kpis={data.kpis} />
+      <ConciliacionKpiGrid kpis={kpis} />
 
-      <ConciliacionTabla filas={data.filas} onVerDetalle={abrirDetalle} />
+      <ConciliacionTabla
+        filas={filasFiltradas}
+        busqueda={busqueda}
+        onBusquedaChange={setBusqueda}
+        onVerDetalle={abrirDetalle}
+      />
 
       <ConciliacionDetalleSheet
         open={sheetAbierto}
         onOpenChange={setSheetAbierto}
         detalle={detalle}
+        filaId={filaSeleccionada}
+        onMarcarConciliado={(id) => {
+          actualizarEstadoFila(id, "conciliado-manual")
+          setSheetAbierto(false)
+        }}
+        onPendienteRevision={(id) => {
+          actualizarEstadoFila(id, "pendiente")
+          setSheetAbierto(false)
+        }}
       />
     </div>
   )

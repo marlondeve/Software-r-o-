@@ -12,6 +12,7 @@ export type EstadoDieta =
   | "recibida"
   | "devuelta"
   | "cancelada"
+  | "despachada"
 
 const ESTADO_CONFIG: Record<
   EstadoDieta,
@@ -56,6 +57,10 @@ const ESTADO_CONFIG: Record<
   cancelada: {
     label: "Cancelada",
     className: "bg-muted/80 text-muted-foreground border-border",
+  },
+  despachada: {
+    label: "Despachada",
+    className: "bg-sky-500/10 text-sky-700 border-sky-500/25 dark:text-sky-400",
   },
 }
 

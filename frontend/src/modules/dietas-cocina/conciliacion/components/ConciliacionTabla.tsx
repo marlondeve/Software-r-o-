@@ -17,10 +17,17 @@ import { cn } from "@/lib/utils"
 
 interface ConciliacionTablaProps {
   filas: FilaConciliacion[]
+  busqueda: string
+  onBusquedaChange: (value: string) => void
   onVerDetalle: (id: string) => void
 }
 
-export function ConciliacionTabla({ filas, onVerDetalle }: ConciliacionTablaProps) {
+export function ConciliacionTabla({
+  filas,
+  busqueda,
+  onBusquedaChange,
+  onVerDetalle,
+}: ConciliacionTablaProps) {
   const columnas = useMemo<ColumnDef<FilaConciliacion>[]>(
     () => [
       {
@@ -156,6 +163,8 @@ export function ConciliacionTabla({ filas, onVerDetalle }: ConciliacionTablaProp
             type="search"
             placeholder="Buscar dieta..."
             className="h-8 bg-muted/50 pl-9 shadow-none"
+            value={busqueda}
+            onChange={(e) => onBusquedaChange(e.target.value)}
           />
         </div>
       </CardHeader>
@@ -164,6 +173,7 @@ export function ConciliacionTabla({ filas, onVerDetalle }: ConciliacionTablaProp
           columns={columnas}
           data={filas}
           className="rounded-none border-0"
+          emptyMessage="No hay registros de conciliación para los filtros aplicados."
           getRowClassName={(fila) =>
             filaRequiereAtencion(fila) ? conciliacionColores.alertaFila : undefined
           }

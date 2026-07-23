@@ -5,26 +5,43 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DatePickerFromString } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
-
-interface ResultadoSimulador {
-  edadCalculada: string
-  categoria: string
-  regla: string
-}
+import type { CategoriaEdad } from "@/modules/dietas-cocina/parametros/datos/mockTiposPaciente"
+import {
+  clasificarEdadPaciente,
+  type ResultadoClasificacion,
+} from "@/modules/dietas-cocina/parametros/lib/clasificarEdadPaciente"
 
 interface SimuladorClasificacionProps {
   fechaNacimiento: string
   fechaReferencia: string
-  resultado: ResultadoSimulador
+  resultadoInicial: ResultadoClasificacion
+  categorias: CategoriaEdad[]
 }
 
 export function SimuladorClasificacion({
   fechaNacimiento,
   fechaReferencia,
-  resultado,
+  resultadoInicial,
+  categorias,
 }: SimuladorClasificacionProps) {
   const [nacimiento, setNacimiento] = useState(fechaNacimiento)
   const [referencia, setReferencia] = useState(fechaReferencia)
+  const [resultado, setResultado] = useState<ResultadoClasificacion>(
+    resultadoInicial,
+  )
+
+  function simular() {
+    const calculado = clasificarEdadPaciente(nacimiento, referencia, categorias)
+    if (calculado) {
+      setResultado(calculado)
+      return
+    }
+    setResultado({
+      edadCalculada: "—",
+      categoria: "Sin categoría",
+      regla: "Fechas inválidas o referencia anterior al nacimiento",
+    })
+  }
 
   return (
     <Card className="gap-0 py-0 shadow-none">
@@ -55,7 +72,7 @@ export function SimuladorClasificacion({
           />
         </div>
 
-        <Button type="button" variant="outline" className="w-full">
+        <Button type="button" variant="outline" className="w-full" onClick={simular}>
           Simular
         </Button>
 

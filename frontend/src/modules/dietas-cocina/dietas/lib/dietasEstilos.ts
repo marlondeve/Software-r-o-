@@ -1,5 +1,6 @@
 import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import type { FilaDieta, KpiDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 import { cn } from "@/lib/utils"
 
 export const ESTADO_FILTRO_LABEL: Record<string, string> = {
@@ -71,4 +72,51 @@ export function cnFilaTabla(
   className?: string,
 ): string | undefined {
   return cn(claseFilaSeleccionada(seleccionada), className)
+}
+
+export function calcularKpisDietas(
+  filas: FilaDieta[],
+  comida: TiempoComida,
+): KpiDieta[] {
+  const filtradas = filas.filter((fila) => fila.comida === comida)
+
+  return [
+    { id: "total", label: "Total", value: filtradas.length, variant: "default" },
+    {
+      id: "sin-solicitud",
+      label: "Sin solicitud",
+      value: filtradas.filter((fila) => fila.estado === "no-solicitada").length,
+      variant: "destructive",
+    },
+    {
+      id: "guardado",
+      label: "Guardado",
+      value: filtradas.filter((fila) => fila.estado === "guardado").length,
+      variant: "warning",
+    },
+    {
+      id: "confirmadas",
+      label: "Confirmadas",
+      value: filtradas.filter((fila) => fila.estado === "confirmada").length,
+      variant: "success",
+    },
+    {
+      id: "recibidas",
+      label: "Recibidas",
+      value: filtradas.filter((fila) => fila.estado === "recibida").length,
+      variant: "info",
+    },
+    {
+      id: "devueltas",
+      label: "Devueltas",
+      value: filtradas.filter((fila) => fila.estado === "devuelta").length,
+      variant: "muted",
+    },
+    {
+      id: "canceladas",
+      label: "Canceladas",
+      value: filtradas.filter((fila) => fila.estado === "cancelada").length,
+      variant: "muted",
+    },
+  ]
 }

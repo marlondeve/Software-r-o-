@@ -2,4 +2,7 @@ packages:
   - "frontend"
   - "backend"
 
+allowBuilds:
+  core-js: true
+
 minimumReleaseAge: 0

@@ -36,6 +36,7 @@ export interface FilaDieta {
   cancelacionTardia?: boolean
   estado: EstadoDieta
   comida: TiempoComida
+  ordenCocinaId?: string
 }
 
 export const COMIDAS_TABS: ComidaTab[] = [

@@ -6,9 +6,9 @@ import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
 import {
-  PermisosRolPopover,
-  PermisosRolResumen,
-} from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
+  EditarPermisosRolDialog,
+} from "@/modules/dietas-cocina/usuarios/components/EditarPermisosRolDialog"
+import { PermisosRolResumen } from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
 import { UsuarioRolBadge } from "@/modules/dietas-cocina/usuarios/components/UsuarioRolBadge"
 import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
 
@@ -18,7 +18,11 @@ interface RolPermisoFila {
   total: number
 }
 
-export function RolesPermisosPanel() {
+interface RolesPermisosPanelProps {
+  puedeGestionar: boolean
+}
+
+export function RolesPermisosPanel({ puedeGestionar }: RolesPermisosPanelProps) {
   const { config } = useConfigAccesoModulos()
 
   const filasRoles = useMemo<RolPermisoFila[]>(
@@ -57,12 +61,15 @@ export function RolesPermisosPanel() {
         header: () => <span className="float-right">Acciones</span>,
         cell: ({ row }) => (
           <div className="text-right">
-            <PermisosRolPopover rol={row.original.rol} />
+            <EditarPermisosRolDialog
+              rol={row.original.rol}
+              puedeGestionar={puedeGestionar}
+            />
           </div>
         ),
       },
     ],
-    [],
+    [puedeGestionar],
   )
 
   return (

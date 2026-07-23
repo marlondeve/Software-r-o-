@@ -49,9 +49,10 @@ export function construirDetalleDesdeFila(
       valor: formatMoney(valorProveedor),
     },
     diferencia,
-    totalRegistros: fila.cantSist,
+    totalRegistros: fila.registros?.length ?? fila.cantSist,
     registros:
-      fila.cantSist > 0
+      fila.registros ??
+      (fila.cantSist > 0
         ? [
             {
               fecha: "12 oct, 07:30 a. m.",
@@ -72,7 +73,7 @@ export function construirDetalleDesdeFila(
               estado: "Confirmada",
             },
           ]
-        : [],
+        : []),
   }
 }
 

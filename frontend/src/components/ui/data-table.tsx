@@ -26,6 +26,7 @@ interface DataTableProps<TData, TValue> {
   className?: string
   emptyMessage?: string
   getRowClassName?: (row: TData) => string | undefined
+  onRowClick?: (row: TData) => void
 }
 
 export function DataTable<TData, TValue>({
@@ -34,6 +35,7 @@ export function DataTable<TData, TValue>({
   className,
   emptyMessage = "Sin resultados.",
   getRowClassName,
+  onRowClick,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
 
@@ -70,7 +72,8 @@ export function DataTable<TData, TValue>({
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                className={getRowClassName?.(row.original)}
+                className={cn(onRowClick && "cursor-pointer", getRowClassName?.(row.original))}
+                onClick={onRowClick ? () => onRowClick(row.original) : undefined}
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>

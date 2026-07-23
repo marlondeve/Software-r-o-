@@ -8,6 +8,7 @@ import { cargarConfigAccesoModulos } from "@/lib/configAccesoModulos"
 export type RutaDietas =
   | "inicio"
   | "dietas"
+  | "dietas-tarifas"
   | "cocina"
   | "etiquetas"
   | "reportes"
@@ -19,7 +20,7 @@ export type RutaDietas =
 const RUTAS_CLINICAS: RutaDietas[] = [
   "inicio",
   "dietas",
-  "etiquetas",
+  "dietas-tarifas",
   "reportes",
   "conciliacion",
   "parametros",
@@ -30,6 +31,7 @@ const PERMISOS_POR_ROL_DEFAULT: Record<RolDietas, RutaDietas[]> = {
   Administrador: [
     "inicio",
     "dietas",
+    "dietas-tarifas",
     "cocina",
     "etiquetas",
     "reportes",
@@ -67,6 +69,7 @@ function extraerRutaDietas(pathname: string): RutaDietas | null {
   const rutasValidas: RutaDietas[] = [
     "inicio",
     "dietas",
+    "dietas-tarifas",
     "cocina",
     "etiquetas",
     "reportes",

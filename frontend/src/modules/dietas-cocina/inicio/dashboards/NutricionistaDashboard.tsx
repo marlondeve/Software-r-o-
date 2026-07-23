@@ -1,4 +1,5 @@
 import { useMemo } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   AlertTriangle,
   CheckCircle2,
@@ -14,6 +15,8 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
+import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { AlertaItem } from "@/modules/dietas-cocina/inicio/components/AlertaItem"
 import { CountdownCard } from "@/modules/dietas-cocina/inicio/components/CountdownCard"
 import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/DashboardCard"
@@ -22,7 +25,8 @@ import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { KpiCard } from "@/modules/dietas-cocina/inicio/components/KpiCard"
-import { mockNutricionista } from "@/modules/dietas-cocina/inicio/datos/mockNutricionista"
+import { construirDashboardNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardNutricionista"
+import { descargarArchivoDemo } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 
 const KPI_ICONS = [
@@ -34,11 +38,23 @@ const KPI_ICONS = [
   Clock,
 ] as const
 
-type ActividadReciente = (typeof mockNutricionista.actividadReciente)[number]
+type ActividadReciente = {
+  paciente: string
+  accion: string
+  hora: string
+  estado: EstadoDieta
+}
 
 export function NutricionistaDashboard() {
+  const navigate = useNavigate()
   const { usuario } = useAuth()
-  const data = mockNutricionista
+  const { ordenes, etiquetas } = useCicloBandejas()
+  const { filas } = useDietasOperativas()
+
+  const data = useMemo(
+    () => construirDashboardNutricionistaDesdeCiclo(filas, ordenes, etiquetas),
+    [filas, ordenes, etiquetas],
+  )
 
   const columnasActividad = useMemo<ColumnDef<ActividadReciente>[]>(
     () => [
@@ -80,11 +96,25 @@ export function NutricionistaDashboard() {
         }
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                descargarArchivoDemo(
+                  "Dashboard nutricionista — exportación demo\n",
+                  "dashboard-nutricionista.txt",
+                )
+              }
+            >
               <Download data-icon="inline-start" />
               Exportar
             </Button>
-            <Button size="sm">
+            <Button
+              size="sm"
+              onClick={() =>
+                navigate("/dietas-cocina/dietas-tarifas?crear=1")
+              }
+            >
               <Plus data-icon="inline-start" />
               Nueva Dieta
             </Button>

@@ -26,6 +26,11 @@ interface DietasCancelarDialogProps {
   fila: FilaDieta | null
   comidaActiva: TiempoComida
   comidas: ComidaTab[]
+  onConfirmar?: (
+    fila: FilaDieta,
+    motivo: MotivoCancelacionId,
+    justificacion: string,
+  ) => void
 }
 
 export function DietasCancelarDialog({
@@ -34,6 +39,7 @@ export function DietasCancelarDialog({
   fila,
   comidaActiva,
   comidas,
+  onConfirmar,
 }: DietasCancelarDialogProps) {
   const [motivo, setMotivo] = useState<MotivoCancelacionId>("otro")
   const [justificacion, setJustificacion] = useState("")
@@ -244,6 +250,7 @@ export function DietasCancelarDialog({
               "disabled:bg-destructive/50 disabled:text-destructive-foreground disabled:opacity-100",
             )}
             disabled={!puedeConfirmar}
+            onClick={() => onConfirmar?.(fila, motivo, justificacion.trim())}
           >
             <X data-icon="inline-start" />
             Confirmar cancelación

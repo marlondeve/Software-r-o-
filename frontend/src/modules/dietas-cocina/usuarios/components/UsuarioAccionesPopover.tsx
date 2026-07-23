@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 
 interface UsuarioAccionesPopoverProps {
   usuario: UsuarioModulo
+  puedeGestionar: boolean
   onEditar: (usuario: UsuarioModulo) => void
   onCambiarRol: (usuario: UsuarioModulo) => void
   onToggleEstado: (usuario: UsuarioModulo) => void
@@ -31,6 +32,7 @@ const opcionClassName =
 
 export function UsuarioAccionesPopover({
   usuario,
+  puedeGestionar,
   onEditar,
   onCambiarRol,
   onToggleEstado,
@@ -64,6 +66,7 @@ export function UsuarioAccionesPopover({
         <button
           type="button"
           className={opcionClassName}
+          disabled={!puedeGestionar}
           onClick={() => ejecutar(() => onCambiarRol(usuario))}
         >
           <Shield className="size-4 text-muted-foreground" />
@@ -72,6 +75,7 @@ export function UsuarioAccionesPopover({
         <button
           type="button"
           className={opcionClassName}
+          disabled={!puedeGestionar}
           onClick={() => ejecutar(() => onToggleEstado(usuario))}
         >
           <UserX className="size-4 text-muted-foreground" />
@@ -92,6 +96,7 @@ export function UsuarioAccionesPopover({
             opcionClassName,
             "text-destructive hover:bg-destructive/10",
           )}
+          disabled={!puedeGestionar}
           onClick={() => ejecutar(() => onEliminar(usuario))}
         >
           <Trash2 className="size-4" />

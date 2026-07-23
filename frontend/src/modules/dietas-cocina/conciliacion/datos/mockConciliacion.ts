@@ -17,6 +17,8 @@ export interface FilaConciliacion {
   difCant: number
   difEconomica: string
   estado: EstadoConciliacion
+  /** Registros del sistema usados en el detalle (generados desde el ciclo). */
+  registros?: RegistroSistema[]
 }
 
 export interface RegistroSistema {

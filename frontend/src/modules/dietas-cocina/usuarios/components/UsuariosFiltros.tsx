@@ -16,10 +16,13 @@ interface UsuariosFiltrosProps {
   paginaDesde: number
   paginaHasta: number
   total: number
+  paginaActual: number
+  totalPaginas: number
   rolSeleccionado: string
   estadoSeleccionado: string
   onRolChange: (value: string) => void
   onEstadoChange: (value: string) => void
+  onCambiarPagina: (pagina: number) => void
 }
 
 export function UsuariosFiltros({
@@ -28,10 +31,13 @@ export function UsuariosFiltros({
   paginaDesde,
   paginaHasta,
   total,
+  paginaActual,
+  totalPaginas,
   rolSeleccionado,
   estadoSeleccionado,
   onRolChange,
   onEstadoChange,
+  onCambiarPagina,
 }: UsuariosFiltrosProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
@@ -71,11 +77,23 @@ export function UsuariosFiltros({
           de{" "}
           <span className="font-medium text-foreground">{total}</span>
         </p>
-        <Button type="button" variant="outline" size="icon-sm" disabled>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          disabled={paginaActual <= 1}
+          onClick={() => onCambiarPagina(paginaActual - 1)}
+        >
           <ChevronLeft className="size-4" />
           <span className="sr-only">Página anterior</span>
         </Button>
-        <Button type="button" variant="outline" size="icon-sm" disabled>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          disabled={paginaActual >= totalPaginas}
+          onClick={() => onCambiarPagina(paginaActual + 1)}
+        >
           <ChevronRight className="size-4" />
           <span className="sr-only">Página siguiente</span>
         </Button>
