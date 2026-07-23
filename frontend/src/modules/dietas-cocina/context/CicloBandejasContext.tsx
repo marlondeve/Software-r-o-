@@ -368,10 +368,6 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
     }
     setOrdenes((prev) => [...prev, nuevaOrden])
     return id
-  }, [])
-
-    setOrdenes((prev) => [...prev, nuevaOrden])
-    return id
   }, [ordenes])
 
   const cancelarOrdenCocina = useCallback((ordenId: string) => {

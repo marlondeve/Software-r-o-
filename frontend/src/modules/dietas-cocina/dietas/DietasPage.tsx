@@ -110,12 +110,6 @@ export function DietasPage() {
     return [...seleccionados].filter((id) => idsVisibles.has(id))
   }
 
-  function actualizarFila(id: string, cambios: Partial<FilaDieta>) {
-    setFilas((prev) =>
-      prev.map((fila) => (fila.id === id ? { ...fila, ...cambios } : fila)),
-    )
-  }
-
   function limpiarFiltros() {
     setBusqueda("")
     setServicio("todos")
