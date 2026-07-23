@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Bookmark, CalendarDays, Download } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,14 @@ import { AuditoriaFiltros } from "@/modules/dietas-cocina/auditoria/components/A
 import { AuditoriaTabla } from "@/modules/dietas-cocina/auditoria/components/AuditoriaTabla"
 import { mockAuditoria } from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
 import { obtenerDetalleAuditoria } from "@/modules/dietas-cocina/auditoria/lib/detalleAuditoria"
+import {
+  exportarAuditoriaCsv,
+  TAMANO_PAGINA_AUDITORIA,
+} from "@/modules/dietas-cocina/auditoria/lib/exportarAuditoriaCsv"
+import {
+  demoToast,
+  descargarArchivoDemo,
+} from "@/modules/dietas-cocina/lib/demoFeedback"
 
 export function AuditoriaPage() {
   const data = mockAuditoria
@@ -18,6 +26,7 @@ export function AuditoriaPage() {
   const [accion, setAccion] = useState("todas")
   const [rol, setRol] = useState("todos")
   const [resultado, setResultado] = useState("todos")
+  const [paginaActual, setPaginaActual] = useState(1)
 
   const filasFiltradas = useMemo(() => {
     return data.filas.filter((fila) => {
@@ -53,6 +62,34 @@ export function AuditoriaPage() {
     })
   }, [data.filas, busqueda, modulo, accion, rol, resultado])
 
+  const totalFiltradas = filasFiltradas.length
+  const totalPaginas = Math.max(
+    1,
+    Math.ceil(totalFiltradas / TAMANO_PAGINA_AUDITORIA),
+  )
+
+  const filasPagina = useMemo(() => {
+    const inicio = (paginaActual - 1) * TAMANO_PAGINA_AUDITORIA
+    return filasFiltradas.slice(inicio, inicio + TAMANO_PAGINA_AUDITORIA)
+  }, [filasFiltradas, paginaActual])
+
+  const paginaDesde =
+    totalFiltradas === 0 ? 0 : (paginaActual - 1) * TAMANO_PAGINA_AUDITORIA + 1
+  const paginaHasta = Math.min(
+    paginaActual * TAMANO_PAGINA_AUDITORIA,
+    totalFiltradas,
+  )
+
+  useEffect(() => {
+    setPaginaActual(1)
+  }, [busqueda, modulo, accion, rol, resultado])
+
+  useEffect(() => {
+    if (paginaActual > totalPaginas) {
+      setPaginaActual(totalPaginas)
+    }
+  }, [paginaActual, totalPaginas])
+
   const detalle = filaSeleccionada
     ? obtenerDetalleAuditoria(
         filaSeleccionada,
@@ -74,6 +111,12 @@ export function AuditoriaPage() {
     setResultado("todos")
   }
 
+  function exportarCsv() {
+    const contenido = exportarAuditoriaCsv(filasFiltradas)
+    descargarArchivoDemo(contenido, "auditoria-dietas-cocina.csv", "text/csv")
+    demoToast(`Exportados ${filasFiltradas.length} registros filtrados (demo).`)
+  }
+
   return (
     <div className="space-y-5">
       <DashboardPageHeader
@@ -81,15 +124,23 @@ export function AuditoriaPage() {
         subtitle="Registro forense de actividad del sistema y modificaciones clínicas."
         actions={
           <>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => demoToast(`Periodo: ${data.periodo} (demo).`)}
+            >
               <CalendarDays data-icon="inline-start" />
               {data.periodo}
             </Button>
-            <Button variant="outline" size="sm">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => demoToast("Filtros guardados (demo).")}
+            >
               <Bookmark data-icon="inline-start" />
               Filtros guardados
             </Button>
-            <Button size="sm">
+            <Button size="sm" onClick={exportarCsv}>
               <Download data-icon="inline-start" />
               Exportar CSV
             </Button>
@@ -116,13 +167,13 @@ export function AuditoriaPage() {
       />
 
       <AuditoriaTabla
-        filas={filasFiltradas}
-        paginaDesde={data.pagina.desde}
-        paginaHasta={Math.min(
-          data.pagina.hasta,
-          filasFiltradas.length || data.pagina.hasta,
-        )}
-        total={data.total}
+        filas={filasPagina}
+        paginaDesde={paginaDesde}
+        paginaHasta={paginaHasta}
+        total={totalFiltradas}
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        onCambiarPagina={setPaginaActual}
         onVerDetalle={abrirDetalle}
       />
 

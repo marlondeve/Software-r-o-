@@ -44,6 +44,8 @@ interface FormularioNovedad {
   observaciones: string
 }
 
+export type DatosNovedadDieta = FormularioNovedad
+
 interface DietasNovedadSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -53,6 +55,7 @@ interface DietasNovedadSheetProps {
   tiposDieta: string[]
   consistencias: string[]
   cierreVentanaMinutos: number
+  onConfirmar?: (fila: FilaDieta, datos: DatosNovedadDieta) => void
 }
 
 function crearFormularioNovedad(
@@ -102,6 +105,7 @@ export function DietasNovedadSheet({
   tiposDieta,
   consistencias,
   cierreVentanaMinutos,
+  onConfirmar,
 }: DietasNovedadSheetProps) {
   const [formulario, setFormulario] = useState<FormularioNovedad | null>(null)
 
@@ -132,6 +136,11 @@ export function DietasNovedadSheet({
 
   const ventana = obtenerVentanaComida(formulario.comida)
   const hayCambios = cambios.some((c) => c.anterior !== c.nuevo)
+  const formularioValido =
+    formulario.motivo.trim().length > 0 &&
+    formulario.tipoDieta.trim().length > 0 &&
+    formulario.consistencia.trim().length > 0 &&
+    hayCambios
 
   function actualizarFormulario(cambios: Partial<FormularioNovedad>) {
     setFormulario((prev) => (prev ? { ...prev, ...cambios } : prev))
@@ -330,12 +339,23 @@ export function DietasNovedadSheet({
         </ScrollAreaFlex>
 
         <SheetFooter className="mt-0 shrink-0 flex-col gap-2 border-t bg-muted/30 px-5 py-4">
-          <Button type="button" className="w-full">
+          <Button
+            type="button"
+            className="w-full"
+            disabled={!formularioValido}
+            onClick={() => onConfirmar?.(fila, formulario)}
+          >
             <Check data-icon="inline-start" />
             Confirmar cambio
           </Button>
           <div className="flex w-full gap-2">
-            <Button type="button" variant="outline" className="flex-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={!formularioValido}
+              onClick={() => onConfirmar?.(fila, formulario)}
+            >
               <Save data-icon="inline-start" />
               Guardar
             </Button>

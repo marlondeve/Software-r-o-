@@ -20,6 +20,7 @@ export type RutaEncuestas =
 export type RutaDietasConfig =
   | "inicio"
   | "dietas"
+  | "dietas-tarifas"
   | "cocina"
   | "etiquetas"
   | "reportes"
@@ -51,6 +52,7 @@ export const ROLES_ENCUESTAS: RolEncuestas[] = [
 export const RUTAS_DIETAS: { id: RutaDietasConfig; label: string }[] = [
   { id: "inicio", label: "Inicio" },
   { id: "dietas", label: "Gestión de dietas" },
+  { id: "dietas-tarifas", label: "Dietas y tarifas" },
   { id: "cocina", label: "Cocina y seguimiento" },
   { id: "etiquetas", label: "Etiquetas" },
   { id: "reportes", label: "Reportes" },
@@ -73,7 +75,9 @@ export const RUTAS_ENCUESTAS: { id: RutaEncuestas; label: string }[] = [
   { id: "auditoria", label: "Auditoría" },
 ]
 
-const RUTAS_CLINICAS = RUTAS_DIETAS.map((r) => r.id).filter((id) => id !== "cocina")
+const RUTAS_CLINICAS = RUTAS_DIETAS.map((r) => r.id).filter(
+  (id) => id !== "cocina" && id !== "etiquetas",
+)
 
 const CONFIG_DEFAULT: ConfigAccesoModulos = {
   rolesConAcceso: {

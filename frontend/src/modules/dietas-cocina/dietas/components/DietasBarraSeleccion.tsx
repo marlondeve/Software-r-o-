@@ -6,11 +6,17 @@ import { cn } from "@/lib/utils"
 interface DietasBarraSeleccionProps {
   cantidad: number
   visible: boolean
+  onExportar?: () => void
+  onAsignarConsistencia?: () => void
+  onConfirmarSeleccionados?: () => void
 }
 
 export function DietasBarraSeleccion({
   cantidad,
   visible,
+  onExportar,
+  onAsignarConsistencia,
+  onConfirmarSeleccionados,
 }: DietasBarraSeleccionProps) {
   const etiqueta =
     cantidad === 1
@@ -27,15 +33,20 @@ export function DietasBarraSeleccion({
       <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm font-medium text-foreground">{etiqueta}</p>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm">
+          <Button type="button" variant="outline" size="sm" onClick={onExportar}>
             <Download data-icon="inline-start" />
             Exportar
           </Button>
-          <Button type="button" variant="outline" size="sm">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onAsignarConsistencia}
+          >
             <UtensilsCrossed data-icon="inline-start" />
             Asignar consistencia
           </Button>
-          <Button type="button" size="sm">
+          <Button type="button" size="sm" onClick={onConfirmarSeleccionados}>
             <ClipboardCheck data-icon="inline-start" />
             Confirmar seleccionados
           </Button>

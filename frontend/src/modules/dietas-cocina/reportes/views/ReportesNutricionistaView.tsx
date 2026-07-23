@@ -1,4 +1,7 @@
+import { useMemo, useState } from "react"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart"
 import { HallazgosPanel } from "@/modules/dietas-cocina/reportes/components/HallazgosPanel"
@@ -10,15 +13,37 @@ import {
 import { ReportesFiltros } from "@/modules/dietas-cocina/reportes/components/ReportesFiltros"
 import { ReportesKpiGrid } from "@/modules/dietas-cocina/reportes/components/ReportesKpiGrid"
 import { mockReportesNutricionista } from "@/modules/dietas-cocina/reportes/datos/mockReportesNutricionista"
+import {
+  type FiltrosReportes,
+} from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
+import { construirReportesNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
+
+const FILTROS_INICIALES: FiltrosReportes = {
+  desde: "2023-10-01",
+  hasta: "2023-10-24",
+  servicio: "todos",
+  horario: "todos",
+}
 
 export function ReportesNutricionistaView() {
-  const data = mockReportesNutricionista
+  const base = mockReportesNutricionista
+  const { ordenes, etiquetas } = useCicloBandejas()
+  const [filtros, setFiltros] = useState<FiltrosReportes>(FILTROS_INICIALES)
+
+  const data = useMemo(
+    () => construirReportesNutricionistaDesdeCiclo(ordenes, etiquetas, filtros),
+    [ordenes, etiquetas, filtros],
+  )
 
   return (
     <div className="space-y-5">
       <DashboardPageHeader title="Reportes y analítica" />
 
-      <ReportesFiltros {...data.filtros} />
+      <ReportesFiltros
+        {...base.filtros}
+        filtros={filtros}
+        onFiltrosChange={setFiltros}
+      />
 
       <ReportesKpiGrid kpis={data.kpis} />
 

@@ -18,7 +18,16 @@ import { AuditoriaPage as AuditoriaDietasPage } from "@/modules/dietas-cocina/au
 import { CocinaPage } from "@/modules/dietas-cocina/cocina/CocinaPage"
 import { ConciliacionPage } from "@/modules/dietas-cocina/conciliacion/ConciliacionPage"
 import { DietasPage } from "@/modules/dietas-cocina/dietas/DietasPage"
+import { DietasTarifasPage } from "@/modules/dietas-cocina/dietas-tarifas/DietasTarifasPage"
+import { DietasCocinaLayout } from "@/modules/dietas-cocina/DietasCocinaLayout"
 import { EtiquetasPage } from "@/modules/dietas-cocina/etiquetas/EtiquetasPage"
+import { CicloFinalizadoPage } from "@/modules/dietas-cocina/etiquetas/views/CicloFinalizadoPage"
+import { DevolucionFlowPage } from "@/modules/dietas-cocina/etiquetas/views/DevolucionFlowPage"
+import { EntregaFlowPage } from "@/modules/dietas-cocina/etiquetas/views/EntregaFlowPage"
+import { EtiquetasEnfermeraIndex } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraIndex"
+import { PreEntregaFlowPage } from "@/modules/dietas-cocina/etiquetas/views/PreEntregaFlowPage"
+import { EtiquetaConsultaPage } from "@/modules/dietas-cocina/etiquetas/views/EtiquetaConsultaPage"
+import { RequireEnfermeraEtiquetas } from "@/modules/dietas-cocina/etiquetas/views/RequireEnfermeraEtiquetas"
 import { InicioPage as InicioDietasPage } from "@/modules/dietas-cocina/inicio/InicioPage"
 import { ParametrosLayout } from "@/modules/dietas-cocina/parametros/ParametrosLayout"
 import { TiemposRestriccionesView } from "@/modules/dietas-cocina/parametros/views/TiemposRestriccionesView"
@@ -72,13 +81,63 @@ export const router = createBrowserRouter([
     ),
     children: [
       {
-        element: <RequireDietasRuta />,
+        element: <DietasCocinaLayout />,
         children: [
+          {
+            element: <RequireDietasRuta />,
+            children: [
           { index: true, element: <InicioDietasPage /> },
           { path: "inicio", element: <InicioDietasPage /> },
           { path: "dietas", element: <DietasPage /> },
+          { path: "dietas-tarifas", element: <DietasTarifasPage /> },
           { path: "cocina", element: <CocinaPage /> },
-          { path: "etiquetas", element: <EtiquetasPage /> },
+          {
+            path: "etiquetas",
+            element: <EtiquetasPage />,
+            children: [
+              { index: true, element: <EtiquetasEnfermeraIndex /> },
+              {
+                path: "consulta/:codigo",
+                element: (
+                  <RequireEnfermeraEtiquetas>
+                    <EtiquetaConsultaPage />
+                  </RequireEnfermeraEtiquetas>
+                ),
+              },
+              {
+                path: "pre-entrega",
+                element: (
+                  <RequireEnfermeraEtiquetas>
+                    <PreEntregaFlowPage />
+                  </RequireEnfermeraEtiquetas>
+                ),
+              },
+              {
+                path: "entrega",
+                element: (
+                  <RequireEnfermeraEtiquetas>
+                    <EntregaFlowPage />
+                  </RequireEnfermeraEtiquetas>
+                ),
+              },
+              {
+                path: "devolucion",
+                element: (
+                  <RequireEnfermeraEtiquetas>
+                    <DevolucionFlowPage />
+                  </RequireEnfermeraEtiquetas>
+                ),
+              },
+              {
+                path: "exito",
+                element: (
+                  <RequireEnfermeraEtiquetas>
+                    <CicloFinalizadoPage />
+                  </RequireEnfermeraEtiquetas>
+                ),
+              },
+            ],
+          },
           { path: "reportes", element: <ReportesPage /> },
           { path: "conciliacion", element: <ConciliacionPage /> },
           {
@@ -92,6 +151,8 @@ export const router = createBrowserRouter([
           },
           { path: "auditoria", element: <AuditoriaDietasPage /> },
           { path: "usuarios", element: <UsuariosRolesPage /> },
+            ],
+          },
         ],
       },
     ],

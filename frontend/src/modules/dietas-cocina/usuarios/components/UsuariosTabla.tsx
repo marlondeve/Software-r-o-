@@ -8,6 +8,7 @@ import type { UsuarioModulo } from "@/modules/dietas-cocina/usuarios/datos/mockU
 
 interface UsuariosTablaProps {
   usuarios: UsuarioModulo[]
+  puedeGestionar: boolean
   onEditar: (usuario: UsuarioModulo) => void
   onCambiarRol: (usuario: UsuarioModulo) => void
   onToggleEstado: (usuario: UsuarioModulo) => void
@@ -17,6 +18,7 @@ interface UsuariosTablaProps {
 
 export function UsuariosTabla({
   usuarios,
+  puedeGestionar,
   onEditar,
   onCambiarRol,
   onToggleEstado,
@@ -141,6 +143,7 @@ export function UsuariosTabla({
         cell: ({ row }) => (
           <UsuarioAccionesPopover
             usuario={row.original}
+            puedeGestionar={puedeGestionar}
             onEditar={onEditar}
             onCambiarRol={onCambiarRol}
             onToggleEstado={onToggleEstado}
@@ -151,6 +154,7 @@ export function UsuariosTabla({
       },
     ],
     [
+      puedeGestionar,
       onEditar,
       onCambiarRol,
       onToggleEstado,
@@ -164,6 +168,7 @@ export function UsuariosTabla({
       columns={columnas}
       data={usuarios}
       className="rounded-none border-0"
+      emptyMessage="No hay usuarios para los filtros seleccionados."
     />
   )
 }

@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowRight, CheckCircle2, Database } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -29,12 +30,16 @@ import type {
   RegistroSistema,
 } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
 import { conciliacionColores } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionEstilos"
+import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { cn } from "@/lib/utils"
 
 interface ConciliacionDetalleSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   detalle: DetalleConciliacion | null
+  filaId: string | null
+  onMarcarConciliado: (id: string) => void
+  onPendienteRevision: (id: string) => void
 }
 
 const columnasRegistros: ColumnDef<RegistroSistema>[] = [
@@ -70,8 +75,33 @@ export function ConciliacionDetalleSheet({
   open,
   onOpenChange,
   detalle,
+  filaId,
+  onMarcarConciliado,
+  onPendienteRevision,
 }: ConciliacionDetalleSheetProps) {
-  if (!detalle) return null
+  const [motivo, setMotivo] = useState("")
+  const [observaciones, setObservaciones] = useState("")
+
+  useEffect(() => {
+    if (!open) {
+      setMotivo("")
+      setObservaciones("")
+    }
+  }, [open, filaId])
+
+  if (!detalle || !filaId) return null
+
+  function validarResolucion(): boolean {
+    if (!motivo) {
+      demoToast("Selecciona un motivo de ajuste.")
+      return false
+    }
+    if (observaciones.trim().length < 10) {
+      demoToast("Las observaciones deben tener al menos 10 caracteres.")
+      return false
+    }
+    return true
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -152,6 +182,9 @@ export function ConciliacionDetalleSheet({
               <button
                 type="button"
                 className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                onClick={() =>
+                  demoToast(`Mostrando ${detalle.totalRegistros} registros (demo).`)
+                }
               >
                 Ver los {detalle.totalRegistros} registros
                 <ArrowRight className="size-3" />
@@ -164,7 +197,7 @@ export function ConciliacionDetalleSheet({
               </h3>
               <div className="space-y-1.5">
                 <Label htmlFor="motivo-ajuste">Motivo de ajuste</Label>
-                <Select>
+                <Select value={motivo} onValueChange={setMotivo}>
                   <SelectTrigger id="motivo-ajuste" className="w-full bg-card">
                     <SelectValue placeholder="Seleccionar motivo..." />
                   </SelectTrigger>
@@ -185,6 +218,8 @@ export function ConciliacionDetalleSheet({
                 <Label htmlFor="observaciones">Observaciones obligatorias</Label>
                 <Textarea
                   id="observaciones"
+                  value={observaciones}
+                  onChange={(e) => setObservaciones(e.target.value)}
                   placeholder="Explique la discrepancia..."
                   className="min-h-24 bg-card"
                 />
@@ -194,10 +229,27 @@ export function ConciliacionDetalleSheet({
         </ScrollAreaFlex>
 
         <SheetFooter className="mt-0 shrink-0 flex-row gap-2 border-t bg-muted/30 px-5 py-4">
-          <Button variant="outline" className="flex-1">
+          <Button
+            variant="outline"
+            className="flex-1"
+            onClick={() => {
+              onPendienteRevision(filaId)
+              demoToast("Fila marcada como pendiente de revisión (demo).")
+            }}
+          >
             Pendiente de revisión
           </Button>
-          <Button className="flex-1">Marcar como Conciliado</Button>
+          <Button
+            className="flex-1"
+            onClick={() => {
+              if (!validarResolucion()) return
+              onMarcarConciliado(filaId)
+              demoToast("Fila marcada como conciliada manualmente.")
+              onOpenChange(false)
+            }}
+          >
+            Marcar como Conciliado
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

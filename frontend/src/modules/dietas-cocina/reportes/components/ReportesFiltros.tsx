@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { Download } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,12 +9,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { descargarArchivoDemo } from "@/modules/dietas-cocina/lib/demoFeedback"
+import type { FiltrosReportes } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
 
 interface ReportesFiltrosProps {
   rangoFechas: string
   servicio: string
   horario: string
   ultimaActualizacion: string
+  filtros: FiltrosReportes
+  onFiltrosChange: (filtros: FiltrosReportes) => void
 }
 
 export function ReportesFiltros({
@@ -23,37 +26,62 @@ export function ReportesFiltros({
   servicio,
   horario,
   ultimaActualizacion,
+  filtros,
+  onFiltrosChange,
 }: ReportesFiltrosProps) {
-  const [desde, setDesde] = useState("2023-10-01")
-  const [hasta, setHasta] = useState("2023-10-24")
+  function exportar() {
+    descargarArchivoDemo(
+      "Reporte demo — módulo Dietas y Cocina\n",
+      "reportes-dietas-cocina.txt",
+    )
+  }
 
   return (
     <div className="flex items-center justify-between gap-3 border-b border-border pb-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
         <DateRangePickerFromString
-          from={desde}
-          to={hasta}
+          from={filtros.desde}
+          to={filtros.hasta}
           onChange={({ from, to }) => {
-            if (from) setDesde(from)
-            if (to) setHasta(to)
+            onFiltrosChange({
+              ...filtros,
+              ...(from ? { desde: from } : {}),
+              ...(to ? { hasta: to } : {}),
+            })
           }}
           placeholder={rangoFechas}
           className="h-8 shrink-0 bg-card"
         />
-        <Select defaultValue="servicio">
+        <Select
+          value={filtros.servicio}
+          onValueChange={(servicio) =>
+            onFiltrosChange({ ...filtros, servicio })
+          }
+        >
           <SelectTrigger className="h-8 w-auto shrink-0 bg-card">
             <SelectValue placeholder={servicio} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="servicio">{servicio}</SelectItem>
+            <SelectItem value="todos">{servicio}</SelectItem>
+            <SelectItem value="cardiologia">Cardiología</SelectItem>
+            <SelectItem value="pediatria">Pediatría</SelectItem>
+            <SelectItem value="urgencias">Urgencias</SelectItem>
           </SelectContent>
         </Select>
-        <Select defaultValue="horario">
+        <Select
+          value={filtros.horario}
+          onValueChange={(horario) =>
+            onFiltrosChange({ ...filtros, horario })
+          }
+        >
           <SelectTrigger className="h-8 w-auto shrink-0 bg-card">
             <SelectValue placeholder={horario} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="horario">{horario}</SelectItem>
+            <SelectItem value="todos">{horario}</SelectItem>
+            <SelectItem value="desayuno">Desayuno</SelectItem>
+            <SelectItem value="almuerzo">Almuerzo</SelectItem>
+            <SelectItem value="cena">Cena</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -65,7 +93,7 @@ export function ReportesFiltros({
             {ultimaActualizacion}
           </span>
         </p>
-        <Button size="sm" className="shrink-0">
+        <Button size="sm" className="shrink-0" onClick={exportar}>
           <Download data-icon="inline-start" />
           Exportar
         </Button>

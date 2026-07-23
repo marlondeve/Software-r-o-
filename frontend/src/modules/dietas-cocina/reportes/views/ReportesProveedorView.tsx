@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart"
@@ -9,10 +11,29 @@ import {
 } from "@/modules/dietas-cocina/reportes/components/ReportesCharts"
 import { ReportesFiltros } from "@/modules/dietas-cocina/reportes/components/ReportesFiltros"
 import { ReportesKpiGrid } from "@/modules/dietas-cocina/reportes/components/ReportesKpiGrid"
+import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { mockReportesProveedor } from "@/modules/dietas-cocina/reportes/datos/mockReportesProveedor"
+import {
+  type FiltrosReportes,
+} from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
+import { construirReportesProveedorDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
+
+const FILTROS_INICIALES: FiltrosReportes = {
+  desde: "2023-10-01",
+  hasta: "2023-10-24",
+  servicio: "todos",
+  horario: "todos",
+}
 
 export function ReportesProveedorView() {
-  const data = mockReportesProveedor
+  const base = mockReportesProveedor
+  const { ordenes, etiquetas } = useCicloBandejas()
+  const [filtros, setFiltros] = useState<FiltrosReportes>(FILTROS_INICIALES)
+
+  const data = useMemo(
+    () => construirReportesProveedorDesdeCiclo(ordenes, etiquetas, filtros),
+    [ordenes, etiquetas, filtros],
+  )
 
   return (
     <div className="space-y-5">
@@ -21,7 +42,11 @@ export function ReportesProveedorView() {
         subtitle="Analítica operativa de planta y despacho."
       />
 
-      <ReportesFiltros {...data.filtros} />
+      <ReportesFiltros
+        {...base.filtros}
+        filtros={filtros}
+        onFiltrosChange={setFiltros}
+      />
 
       <ReportesKpiGrid kpis={data.kpis} />
 
@@ -87,7 +112,7 @@ export function ReportesProveedorView() {
         </div>
 
         <HallazgosPanel
-          hallazgos={data.hallazgos}
+          hallazgos={base.hallazgos}
           titulo="Alertas operativas"
         />
       </div>

@@ -45,6 +45,8 @@ interface FormularioSolicitud {
   observaciones: string
 }
 
+export type DatosSolicitudDieta = FormularioSolicitud
+
 interface DietasSolicitudSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -54,6 +56,7 @@ interface DietasSolicitudSheetProps {
   tiposDieta: string[]
   consistencias: string[]
   cierreVentanaMinutos: number
+  onGuardar?: (fila: FilaDieta, datos: DatosSolicitudDieta) => void
 }
 
 function crearFormularioDesdeFila(
@@ -81,6 +84,7 @@ export function DietasSolicitudSheet({
   tiposDieta,
   consistencias,
   cierreVentanaMinutos,
+  onGuardar,
 }: DietasSolicitudSheetProps) {
   const [formulario, setFormulario] = useState<FormularioSolicitud | null>(null)
 
@@ -94,6 +98,9 @@ export function DietasSolicitudSheet({
 
   const editable = esSolicitudEditable(fila)
   const ventana = obtenerVentanaComida(formulario.comida)
+  const formularioValido =
+    formulario.tipoDieta.trim().length > 0 &&
+    formulario.consistencia.trim().length > 0
 
   function actualizarFormulario(cambios: Partial<FormularioSolicitud>) {
     setFormulario((prev) => (prev ? { ...prev, ...cambios } : prev))
@@ -261,7 +268,12 @@ export function DietasSolicitudSheet({
 
         <SheetFooter className="mt-0 shrink-0 flex-col gap-3 border-t bg-muted/30 px-5 py-4">
           {editable ? (
-            <Button type="button" className="w-full">
+            <Button
+              type="button"
+              className="w-full"
+              disabled={!formularioValido}
+              onClick={() => onGuardar?.(fila, formulario)}
+            >
               Guardar
             </Button>
           ) : (

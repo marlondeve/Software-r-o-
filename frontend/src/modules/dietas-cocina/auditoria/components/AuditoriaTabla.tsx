@@ -33,6 +33,9 @@ interface AuditoriaTablaProps {
   paginaDesde: number
   paginaHasta: number
   total: number
+  paginaActual: number
+  totalPaginas: number
+  onCambiarPagina: (pagina: number) => void
   onVerDetalle: (id: string) => void
 }
 
@@ -80,6 +83,9 @@ export function AuditoriaTabla({
   paginaDesde,
   paginaHasta,
   total,
+  paginaActual,
+  totalPaginas,
+  onCambiarPagina,
   onVerDetalle,
 }: AuditoriaTablaProps) {
   const columnas = useMemo<ColumnDef<FilaAuditoria>[]>(
@@ -207,6 +213,14 @@ export function AuditoriaTabla({
     [onVerDetalle],
   )
 
+  const paginasVisibles = useMemo(() => {
+    const paginas: number[] = []
+    for (let i = 1; i <= totalPaginas; i += 1) {
+      paginas.push(i)
+    }
+    return paginas
+  }, [totalPaginas])
+
   return (
     <Card className="gap-0 py-0 shadow-none">
       <CardContent className="p-0">
@@ -214,6 +228,7 @@ export function AuditoriaTabla({
           columns={columnas}
           data={filas}
           className="rounded-none border-0"
+          emptyMessage="No hay eventos de auditoría para los filtros aplicados."
         />
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
           <p className="text-xs text-muted-foreground">
@@ -228,19 +243,33 @@ export function AuditoriaTabla({
             registros
           </p>
           <div className="flex items-center gap-1">
-            <Button type="button" variant="outline" size="icon-sm" disabled>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              disabled={paginaActual <= 1}
+              onClick={() => onCambiarPagina(paginaActual - 1)}
+            >
               ‹
             </Button>
-            <Button type="button" variant="default" size="icon-sm">
-              1
-            </Button>
-            <Button type="button" variant="outline" size="icon-sm">
-              2
-            </Button>
-            <Button type="button" variant="outline" size="icon-sm">
-              3
-            </Button>
-            <Button type="button" variant="outline" size="icon-sm" disabled>
+            {paginasVisibles.map((numero) => (
+              <Button
+                key={numero}
+                type="button"
+                variant={numero === paginaActual ? "default" : "outline"}
+                size="icon-sm"
+                onClick={() => onCambiarPagina(numero)}
+              >
+                {numero}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              disabled={paginaActual >= totalPaginas}
+              onClick={() => onCambiarPagina(paginaActual + 1)}
+            >
               ›
             </Button>
           </div>

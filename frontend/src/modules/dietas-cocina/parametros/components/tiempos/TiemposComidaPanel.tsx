@@ -14,6 +14,8 @@ interface TiemposComidaPanelProps {
   onComidaChange: (id: TiempoComida) => void
   activos: Record<TiempoComida, boolean>
   onActivoChange: (id: TiempoComida, activo: boolean) => void
+  horasPorComida: Record<TiempoComida, Record<string, string>>
+  onHoraChange: (comidaId: TiempoComida, hitoId: string, hora: string) => void
 }
 
 export function TiemposComidaPanel({
@@ -22,6 +24,8 @@ export function TiemposComidaPanel({
   onComidaChange,
   activos,
   onActivoChange,
+  horasPorComida,
+  onHoraChange,
 }: TiemposComidaPanelProps) {
   return (
     <Tabs
@@ -40,39 +44,61 @@ export function TiemposComidaPanel({
         ))}
       </TabsList>
 
-      {comidas.map((item) => (
-        <TabsContent key={item.id} value={item.id} className="mt-4 space-y-5">
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
-            <div>
+      {comidas.map((item) => {
+        const comidaConHoras: ParametrosTiempoComida = {
+          ...item,
+          hitos: item.hitos.map((hito) => ({
+            ...hito,
+            hora: horasPorComida[item.id]?.[hito.id] ?? hito.hora,
+          })),
+          ventanaCambios: {
+            ...item.ventanaCambios,
+            inicio:
+              horasPorComida[item.id]?.solicitud ?? item.ventanaCambios.inicio,
+            fin:
+              horasPorComida[item.id]?.novedades ?? item.ventanaCambios.fin,
+          },
+        }
+
+        return (
+          <TabsContent key={item.id} value={item.id} className="mt-4 space-y-5">
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  Parámetros de {item.label}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Define los hitos operativos para este tiempo de comida
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Label htmlFor={`activo-${item.id}`} className="text-xs font-medium">
+                  ACTIVO
+                </Label>
+                <Switch
+                  id={`activo-${item.id}`}
+                  checked={activos[item.id]}
+                  onCheckedChange={(checked) => onActivoChange(item.id, checked)}
+                />
+              </div>
+            </div>
+
+            <TiemposComidaFormulario
+              hitos={item.hitos}
+              horas={horasPorComida[item.id] ?? {}}
+              onHoraChange={(hitoId, hora) => onHoraChange(item.id, hitoId, hora)}
+              deshabilitado={!activos[item.id]}
+            />
+
+            <div className="space-y-2">
               <p className="text-sm font-semibold text-foreground">
-                Parámetros de {item.label}
+                Secuencia Operativa
               </p>
-              <p className="text-xs text-muted-foreground">
-                Define los hitos operativos para este tiempo de comida
-              </p>
+              <SecuenciaOperativa comida={comidaConHoras} />
             </div>
-            <div className="flex items-center gap-2">
-              <Label htmlFor={`activo-${item.id}`} className="text-xs font-medium">
-                ACTIVO
-              </Label>
-              <Switch
-                id={`activo-${item.id}`}
-                checked={activos[item.id]}
-                onCheckedChange={(checked) => onActivoChange(item.id, checked)}
-              />
-            </div>
-          </div>
-
-          <TiemposComidaFormulario hitos={item.hitos} deshabilitado={!activos[item.id]} />
-
-          <div className="space-y-2">
-            <p className="text-sm font-semibold text-foreground">
-              Secuencia Operativa
-            </p>
-            <SecuenciaOperativa comida={item} />
-          </div>
-        </TabsContent>
-      ))}
+          </TabsContent>
+        )
+      })}
     </Tabs>
   )
 }
