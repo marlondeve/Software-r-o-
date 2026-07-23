@@ -100,18 +100,10 @@ public class AtencionesQueryService : IAtencionesQueryService
     }
 
     public async Task<AtencionResponse?> GetAtencionPorIdAsync(
-        string atencionId,
+        int consecutivo,
         CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Consultando ingreso {AtencionId}", atencionId);
-
-        // atencionId debe ser "cedula_tipoDoc_consecutivo"
-        var partes = atencionId.Split('_');
-        if (partes.Length != 3) return null;
-
-        var cedula = partes[0];
-        var tipoDoc = partes[1];
-        if (!short.TryParse(partes[2], out var consecutivo)) return null;
+        _logger.LogInformation("Consultando ingreso con consecutivo {Consecutivo}", consecutivo);
 
         var sql = @"
             SELECT TOP 1
@@ -134,11 +126,9 @@ public class AtencionesQueryService : IAtencionesQueryService
             FROM INGRESOS i
             INNER JOIN CAPBAS c ON RTRIM(LTRIM(i.MPCedu)) = RTRIM(LTRIM(c.MPCedu)) 
                 AND RTRIM(LTRIM(i.MPTDoc)) = RTRIM(LTRIM(c.MPTDoc))
-            WHERE RTRIM(LTRIM(i.MPCedu)) = @p0
-              AND RTRIM(LTRIM(i.MPTDoc)) = @p1
-              AND i.IngCsc = @p2";
+            WHERE i.IngCsc = @p0";
 
-        var resultados = await EjecutarQueryAtencionesAsync(sql, cancellationToken, cedula, tipoDoc, consecutivo);
+        var resultados = await EjecutarQueryAtencionesAsync(sql, cancellationToken, (short)consecutivo);
 
         return resultados.FirstOrDefault();
     }
@@ -180,6 +170,36 @@ public class AtencionesQueryService : IAtencionesQueryService
 
         _logger.LogInformation("Se encontraron {Count} ingresos para el paciente {TipoDoc}-{NumDoc}", 
             resultados.Count, tipoDocumento, numeroDocumento);
+
+        return resultados;
+    }
+
+    public async Task<IEnumerable<AtencionHospitalariaResponse>> GetAtencionesHospitalariasAsync(
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Consultando atenciones hospitalarias activas para módulo de Dietas");
+
+        var sql = @"
+            SELECT  
+                i.IngCsc AS IdIngreso,
+                i.MPTDoc AS TipoDocumento, 
+                i.MPcedu AS Cedula, 
+                CONCAT_WS(' ', RTRIM(LTRIM(cap.MPNom1)), RTRIM(LTRIM(cap.MPNom2)), RTRIM(LTRIM(cap.MPApe1)), RTRIM(LTRIM(cap.MPApe2))) AS NombreCompleto, 
+                map.MPNomP AS Pabellon,
+                i.MPNumC AS Cama
+            FROM INGRESOS i 
+            INNER JOIN CAPBAS cap ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu))
+                AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))
+            INNER JOIN MAEPAB map ON map.MPCodP = i.MPCodP
+            WHERE i.MPCodP IN (3,4,5,6,7) 
+              AND i.IngFecEgr IS NULL 
+              AND (i.IngEstSld = 0 OR i.IngEstSld IS NULL)      
+              AND (i.IngHsp = 'S' OR i.IngHsp IS NULL)
+            ORDER BY map.MPNomP, i.MPNumC";
+
+        var resultados = await EjecutarQueryHospitalariasAsync(sql, cancellationToken);
+
+        _logger.LogInformation("Se encontraron {Count} atenciones hospitalarias activas", resultados.Count);
 
         return resultados;
     }
@@ -310,5 +330,68 @@ public class AtencionesQueryService : IAtencionesQueryService
         public string? DiagnosticoSalida { get; set; }
         public string? TipoHospitalizacion { get; set; }
         public string? NumeroFactura { get; set; }
+    }
+
+    /// <summary>
+    /// Ejecuta queries de atenciones hospitalarias usando ADO.NET puro
+    /// </summary>
+    private async Task<List<AtencionHospitalariaResponse>> EjecutarQueryHospitalariasAsync(
+        string sql,
+        CancellationToken cancellationToken,
+        params object[] parameters)
+    {
+        var resultados = new List<AtencionHospitalariaResponse>();
+
+        var connection = _context.Database.GetDbConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.CommandType = CommandType.Text;
+
+            // Agregar parámetros si existen
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var param = command.CreateParameter();
+                param.ParameterName = $"@p{i}";
+                param.Value = parameters[i] ?? DBNull.Value;
+                command.Parameters.Add(param);
+            }
+
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var atencion = new AtencionHospitalariaResponse
+                {
+                    IdIngreso = reader.GetInt16(reader.GetOrdinal("IdIngreso")),
+                    TipoDocumento = reader.IsDBNull(reader.GetOrdinal("TipoDocumento")) 
+                        ? string.Empty 
+                        : reader.GetString(reader.GetOrdinal("TipoDocumento")).Trim(),
+                    Cedula = reader.IsDBNull(reader.GetOrdinal("Cedula")) 
+                        ? string.Empty 
+                        : reader.GetString(reader.GetOrdinal("Cedula")).Trim(),
+                    NombreCompleto = reader.IsDBNull(reader.GetOrdinal("NombreCompleto")) 
+                        ? string.Empty 
+                        : reader.GetString(reader.GetOrdinal("NombreCompleto")).Trim(),
+                    Pabellon = reader.IsDBNull(reader.GetOrdinal("Pabellon")) 
+                        ? string.Empty 
+                        : reader.GetString(reader.GetOrdinal("Pabellon")).Trim(),
+                    Cama = reader.IsDBNull(reader.GetOrdinal("Cama")) 
+                        ? string.Empty 
+                        : reader.GetString(reader.GetOrdinal("Cama")).Trim()
+                };
+
+                resultados.Add(atencion);
+            }
+        }
+        finally
+        {
+            await connection.CloseAsync();
+        }
+
+        return resultados;
     }
 }

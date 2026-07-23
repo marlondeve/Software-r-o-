@@ -23,7 +23,7 @@ public interface IAtencionesQueryService
     /// Obtiene una atención por su ID
     /// </summary>
     Task<AtencionResponse?> GetAtencionPorIdAsync(
-        string atencionId,
+        int consecutivo,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -32,5 +32,12 @@ public interface IAtencionesQueryService
     Task<IEnumerable<AtencionResponse>> GetAtencionesPorPacienteAsync(
         string numeroDocumento,
         string tipoDocumento,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtiene atenciones hospitalarias activas para el módulo de Dietas
+    /// Filtra por pabellones 3-7, sin fecha egreso, estado salida activo
+    /// </summary>
+    Task<IEnumerable<AtencionHospitalariaResponse>> GetAtencionesHospitalariasAsync(
         CancellationToken cancellationToken = default);
 }

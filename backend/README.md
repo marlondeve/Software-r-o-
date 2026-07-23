@@ -71,12 +71,14 @@ backend/
 
 ### Endpoints implementados
 
+> 📘 **[Ver guía completa de API para Frontend →](./FRONTEND-API-GUIDE.md)**
+
 #### Pacientes
 
 ```http
 GET /api/v1/pacientes/buscar?numeroDocumento={doc}&tipoDocumento={tipo}
 GET /api/v1/pacientes/{id}
-GET /api/v1/pacientes/search?search={termino}&maxResults={max}
+GET /api/v1/pacientes/search?termino={termino}&maxResults={max}
 ```
 
 #### Atenciones (Ingresos)
@@ -84,8 +86,9 @@ GET /api/v1/pacientes/search?search={termino}&maxResults={max}
 ```http
 GET /api/v1/atenciones                                          # Activas
 GET /api/v1/atenciones?servicioId={id}                          # Por servicio
-GET /api/v1/atenciones/{id}                                     # Por ID
+GET /api/v1/atenciones/{id}                                     # Por ID (consecutivo)
 GET /api/v1/atenciones/paciente?numeroDocumento={doc}&tipoDocumento={tipo}  # Por paciente
+GET /api/v1/atenciones/hospitalarias                            # Para módulo de Dietas
 ```
 
 ### Base de datos Vital

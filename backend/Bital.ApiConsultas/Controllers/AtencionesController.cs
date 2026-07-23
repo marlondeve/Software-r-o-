@@ -70,9 +70,9 @@ public class AtencionesController : ControllerBase
     }
 
     /// <summary>
-    /// Obtiene una atención específica por su ID
+    /// Obtiene una atención específica por su ID (consecutivo del ingreso)
     /// </summary>
-    /// <param name="id">ID de la atención</param>
+    /// <param name="id">Consecutivo del ingreso</param>
     /// <param name="cancellationToken">Token de cancelación</param>
     /// <returns>Datos de la atención</returns>
     /// <response code="200">Retorna la atención</response>
@@ -83,7 +83,7 @@ public class AtencionesController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ApiResponse<AtencionResponse>>> GetAtencionPorId(
-        string id,
+        int id,
         CancellationToken cancellationToken)
     {
         try
@@ -167,6 +167,40 @@ public class AtencionesController : ControllerBase
                 tipoDocumento, numeroDocumento);
             return Problem(
                 title: "Error al consultar atenciones del paciente",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status500InternalServerError
+            );
+        }
+    }
+
+    /// <summary>
+    /// Obtiene atenciones hospitalarias activas para el módulo de Dietas
+    /// Filtra por pabellones 3-7, pacientes sin fecha de egreso y estado activo
+    /// </summary>
+    /// <param name="cancellationToken">Token de cancelación</param>
+    /// <returns>Lista de atenciones hospitalarias para dietas</returns>
+    /// <response code="200">Retorna la lista de atenciones hospitalarias</response>
+    /// <response code="500">Error interno del servidor</response>
+    [HttpGet("hospitalarias")]
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<AtencionHospitalariaResponse>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<ApiResponse<IEnumerable<AtencionHospitalariaResponse>>>> GetAtencionesHospitalarias(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("GET /api/v1/atenciones/hospitalarias - Atenciones para módulo de Dietas");
+
+            var atenciones = await _atencionesService.GetAtencionesHospitalariasAsync(cancellationToken);
+
+            var response = new ApiResponse<IEnumerable<AtencionHospitalariaResponse>>(atenciones);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al consultar atenciones hospitalarias para Dietas");
+            return Problem(
+                title: "Error al consultar atenciones hospitalarias",
                 detail: ex.Message,
                 statusCode: StatusCodes.Status500InternalServerError
             );
