@@ -46,6 +46,147 @@ backend/
 
 ---
 
+## 🔧 Implementación de Bital.ApiConsultas
+
+### Descripción
+
+**Bital.ApiConsultas** es un **bridge read-only** que expone datos del sistema legacy **Vital HIS** (SQL Server) mediante una API REST moderna.
+
+### Características implementadas
+
+- ✅ **API REST con .NET 8**
+- ✅ **Read-only DbContext** con `NoTracking` y bloqueo de escritura
+- ✅ **Logging estructurado** con Serilog (consola, archivo, JSON)
+- ✅ **Health checks** para base de datos y API
+- ✅ **Swagger/OpenAPI** para documentación interactiva
+- ✅ **Versionado de API** (v1)
+- ✅ **CORS configurado** para desarrollo local
+- ✅ **Response envelopes** con timestamp y versión
+- ✅ **ADO.NET puro** para queries complejas contra esquemas legacy
+
+### Puertos
+
+- **HTTP**: `5002`
+- **HTTPS**: `5003`
+
+### Endpoints implementados
+
+#### Pacientes
+
+```http
+GET /api/v1/pacientes/buscar?numeroDocumento={doc}&tipoDocumento={tipo}
+GET /api/v1/pacientes/{id}
+GET /api/v1/pacientes/search?search={termino}&maxResults={max}
+```
+
+#### Atenciones (Ingresos)
+
+```http
+GET /api/v1/atenciones                                          # Activas
+GET /api/v1/atenciones?servicioId={id}                          # Por servicio
+GET /api/v1/atenciones/{id}                                     # Por ID
+GET /api/v1/atenciones/paciente?numeroDocumento={doc}&tipoDocumento={tipo}  # Por paciente
+```
+
+### Base de datos Vital
+
+**Conexión**: SQL Server en `DESKTOP-P43447B\SQLEXPRESS`  
+**Base de datos**: `Hosvital_Pruebas`  
+**Usuario**: `Dev` / **Password**: `2410`
+
+#### Tablas principales
+
+| Tabla | Propósito |
+|-------|-----------|
+| `CAPBAS` | Datos demográficos básicos del paciente |
+| `MAEPAC` | Maestro de pacientes (afiliación, entidad) |
+| `INGRESOS` | Movimientos/ingresos hospitalarios |
+
+### Arquitectura técnica
+
+#### Patrón de acceso a datos
+
+Debido a la naturaleza **legacy** del esquema Vital (campos `char` con espacios, tipos ambiguos, sin constraints modernos), se implementó:
+
+1. **SQL Raw con ADO.NET puro** para queries de atenciones
+   - Control total sobre conversión de tipos
+   - Trim automático de campos `char`
+   - Manejo explícito de `smallint` → `Int16`
+
+2. **EF Core con SQL Raw** para queries de pacientes
+   - Proyección a DTOs internos
+   - Mapeo controlado a responses
+
+#### Servicios implementados
+
+```csharp
+// Backend/Bital.ApiConsultas/Services/
+├── PacientesQueryService.cs      // Consultas de pacientes (SQL Raw + EF)
+├── AtencionesQueryService.cs     // Consultas de atenciones (ADO.NET puro)
+├── IPacientesQueryService.cs     // Interface
+└── IAtencionesQueryService.cs    // Interface
+```
+
+#### Extensiones
+
+```csharp
+// Backend/Bital.ApiConsultas/Extensions/
+├── ServiceCollectionExtensions.cs  // DI: DB, servicios, health checks, CORS
+└── SerilogExtensions.cs            // Configuración de Serilog
+```
+
+### Ejemplo de uso
+
+```bash
+# Consultar paciente por documento
+curl -X GET "http://localhost:5002/api/v1/pacientes/buscar?numeroDocumento=1003195163&tipoDocumento=CC"
+
+# Consultar atenciones activas
+curl -X GET "http://localhost:5002/api/v1/atenciones"
+
+# Health check
+curl -X GET "http://localhost:5002/health"
+```
+
+#### Respuesta de ejemplo
+
+```json
+{
+  "data": {
+    "cedula": "1003195163",
+    "tipoDocumento": "CC",
+    "nombreCompleto": "MANUEL DE JESUS LOPEZ MARTINEZ",
+    "primerNombre": "MANUEL",
+    "segundoNombre": "DE JESUS",
+    "primerApellido": "LOPEZ",
+    "segundoApellido": "MARTINEZ",
+    "fechaNacimiento": "1996-01-14T00:00:00",
+    "edad": 30,
+    "sexo": "M",
+    "email": "manuellopez@gmail.com",
+    "direccion": "VEREDA LA COROZA LAS CAÑAS BARRIO CERETE",
+    "municipio": "162",
+    "estado": "A",
+    "nitEntidad": "22434"
+  },
+  "timestamp": "2026-07-23T07:39:34.4931611Z",
+  "version": "v1"
+}
+```
+
+### Notas técnicas importantes
+
+⚠️ **Esquema legacy**: El esquema Vital no sigue convenciones modernas:
+- Campos `char(N)` con espacios al final
+- Tipos ambiguos (ej: `varchar` en columnas numéricas)
+- Sin claves foráneas ni constraints
+
+💡 **Solución implementada**: ADO.NET puro con `DbDataReader` para control total sobre tipos y trimming.
+
+📌 **Controller de diagnóstico**: `DiagnosticoController` está disponible en Development para inspeccionar tablas. **Deshabilitarlo en producción**.
+
+---
+
 ## 🎯 Guía de Integración para Frontend
 
 ### Arquitectura de comunicación

@@ -17,18 +17,39 @@ public class VitalDbContext : DbContext
     }
 
     // DbSets - mapean a las tablas de Vital
-    public DbSet<Atencion> Atenciones => Set<Atencion>();
-    public DbSet<Paciente> Pacientes => Set<Paciente>();
+    public DbSet<CapBasica> CapBasica => Set<CapBasica>();
+    public DbSet<MaestroPaciente> MaestroPacientes => Set<MaestroPaciente>();
+    public DbSet<Ingreso> Ingresos => Set<Ingreso>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // Configuración de entidades
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(VitalDbContext).Assembly);
-
-        // Schema de Vital (ajustar según la estructura real)
+        // Schema de Vital
         modelBuilder.HasDefaultSchema("dbo");
+
+        // CAPBAS - Llave compuesta
+        modelBuilder.Entity<CapBasica>()
+            .HasKey(c => new { c.Cedula, c.TipoDocumento });
+
+        // MAEPAC - Llave compuesta
+        modelBuilder.Entity<MaestroPaciente>()
+            .HasKey(m => new { m.Cedula, m.TipoDocumento });
+
+        // INGRESOS - Llave compuesta
+        modelBuilder.Entity<Ingreso>()
+            .HasKey(i => new { i.Cedula, i.TipoDocumento, i.Consecutivo });
+
+        // Relaciones
+        modelBuilder.Entity<MaestroPaciente>()
+            .HasOne(m => m.CapBasica)
+            .WithOne(c => c.MaestroPaciente)
+            .HasForeignKey<MaestroPaciente>(m => new { m.Cedula, m.TipoDocumento });
+
+        modelBuilder.Entity<Ingreso>()
+            .HasOne(i => i.MaestroPaciente)
+            .WithMany(m => m.Ingresos)
+            .HasForeignKey(i => new { i.Cedula, i.TipoDocumento });
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -57,3 +78,4 @@ public class VitalDbContext : DbContext
         throw new InvalidOperationException("Este contexto es read-only. No se permiten operaciones de escritura.");
     }
 }
+

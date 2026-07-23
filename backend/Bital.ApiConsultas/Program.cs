@@ -76,9 +76,12 @@ try
         });
     });
 
+    // Database & Services
+    builder.Services.AddVitalDatabase(builder.Configuration);
+    builder.Services.AddQueryServices();
+
     // Health Checks
-    builder.Services.AddHealthChecks();
-    // TODO: Agregar health check de base de datos cuando esté configurado el DbContext
+    builder.Services.AddBitalHealthChecks(builder.Configuration);
 
     // ============================================================================
     // 3. Construir la aplicación

@@ -158,8 +158,8 @@ public class PacientesController : ControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status500InternalServerError)]
     public async Task<ActionResult<ApiResponse<IEnumerable<PacienteResponse>>>> Search(
         [FromQuery] string search,
-        [FromQuery] int maxResults = 20,
-        CancellationToken cancellationToken)
+        [FromQuery] int maxResults,
+        CancellationToken cancellationToken = default)
     {
         try
         {
@@ -174,7 +174,7 @@ public class PacientesController : ControllerBase
                 });
             }
 
-            if (maxResults < 1 || maxResults > 100)
+            if (maxResults < 1 || maxResults > 100 || maxResults == 0)
             {
                 maxResults = 20;
             }

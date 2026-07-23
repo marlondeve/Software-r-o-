@@ -4,85 +4,95 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Bital.ApiConsultas.Data.Entities;
 
 /// <summary>
-/// Entidad de Paciente desde Vital HIS
-/// NOTA: Ajustar nombres de tabla y columnas según schema real de Vital
+/// Entidad CAPBAS - Datos demográficos del paciente en Vital HIS
 /// </summary>
-[Table("Pacientes")] // Ajustar nombre real de tabla
-public class Paciente
+[Table("CAPBAS")]
+public class CapBasica
 {
     [Key]
-    [Column("PacienteID")]
-    public string PacienteId { get; set; } = string.Empty;
+    [Column("MPCedu")]
+    [MaxLength(16)]
+    public string Cedula { get; set; } = string.Empty;
 
-    [Column("NumeroDocumento")]
-    [StringLength(50)]
-    public string NumeroDocumento { get; set; } = string.Empty;
-
-    [Column("TipoDocumento")]
-    [StringLength(10)]
+    [Key]
+    [Column("MPTDoc")]
+    [MaxLength(3)]
     public string TipoDocumento { get; set; } = string.Empty;
 
-    [Column("PrimerNombre")]
-    [StringLength(100)]
-    public string PrimerNombre { get; set; } = string.Empty;
+    [Column("MPNom1")]
+    [MaxLength(60)]
+    public string? PrimerNombre { get; set; }
 
-    [Column("SegundoNombre")]
-    [StringLength(100)]
+    [Column("MPNom2")]
+    [MaxLength(60)]
     public string? SegundoNombre { get; set; }
 
-    [Column("PrimerApellido")]
-    [StringLength(100)]
-    public string PrimerApellido { get; set; } = string.Empty;
+    [Column("MPApe1")]
+    [MaxLength(60)]
+    public string? PrimerApellido { get; set; }
 
-    [Column("SegundoApellido")]
-    [StringLength(100)]
+    [Column("MPApe2")]
+    [MaxLength(60)]
     public string? SegundoApellido { get; set; }
 
-    [Column("FechaNacimiento")]
-    public DateTime FechaNacimiento { get; set; }
+    [Column("MPFchN")]
+    public DateTime? FechaNacimiento { get; set; }
 
-    [Column("Genero")]
-    [StringLength(10)]
-    public string Genero { get; set; } = string.Empty;
+    [Column("MPSexo")]
+    [MaxLength(1)]
+    public string? Sexo { get; set; }
 
-    [Column("Telefono")]
-    [StringLength(50)]
-    public string? Telefono { get; set; }
-
-    [Column("Email")]
-    [StringLength(200)]
-    public string? Email { get; set; }
-
-    [Column("Direccion")]
-    [StringLength(300)]
+    [Column("MPDire")]
+    [MaxLength(200)]
     public string? Direccion { get; set; }
 
-    [Column("Ciudad")]
-    [StringLength(100)]
-    public string? Ciudad { get; set; }
+    [Column("MPTele")]
+    [MaxLength(50)]
+    public string? Telefono { get; set; }
 
-    [Column("EPS")]
-    [StringLength(200)]
-    public string? EPS { get; set; }
+    [Column("MDCodD")]
+    [MaxLength(8)]
+    public string? CodigoDepartamento { get; set; }
 
-    [Column("TipoAfiliacion")]
-    [StringLength(50)]
-    public string? TipoAfiliacion { get; set; }
+    [Column("MDCodM")]
+    [MaxLength(8)]
+    public string? CodigoMunicipio { get; set; }
 
-    // Propiedad calculada
+    [Column("MDCodB")]
+    [MaxLength(8)]
+    public string? CodigoBarrio { get; set; }
+
+    [Column("MpMail")]
+    [MaxLength(200)]
+    public string? Email { get; set; }
+
+    [Column("MPEstPac")]
+    [MaxLength(1)]
+    public string? EstadoPaciente { get; set; }
+
+    [Column("MPCodPai")]
+    [MaxLength(3)]
+    public string? CodigoPais { get; set; }
+
+    // Propiedades calculadas
     [NotMapped]
     public string NombreCompleto =>
-        $"{PrimerNombre} {SegundoNombre} {PrimerApellido} {SegundoApellido}".Replace("  ", " ").Trim();
+        $"{PrimerNombre?.Trim()} {SegundoNombre?.Trim()} {PrimerApellido?.Trim()} {SegundoApellido?.Trim()}"
+            .Replace("  ", " ").Trim();
 
     [NotMapped]
-    public int Edad
+    public int? Edad
     {
         get
         {
+            if (!FechaNacimiento.HasValue) return null;
             var hoy = DateTime.Today;
-            var edad = hoy.Year - FechaNacimiento.Year;
-            if (FechaNacimiento.Date > hoy.AddYears(-edad)) edad--;
+            var edad = hoy.Year - FechaNacimiento.Value.Year;
+            if (FechaNacimiento.Value.Date > hoy.AddYears(-edad)) edad--;
             return edad;
         }
     }
+
+    // Navegación
+    public MaestroPaciente? MaestroPaciente { get; set; }
 }
