@@ -35,6 +35,8 @@ backend/dist
 # Local
 *.local
 
+#pnpm
+pnpm-lock.yaml
 
 ## Claude
 /frontend/.claude

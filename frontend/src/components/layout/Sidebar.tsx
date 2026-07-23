@@ -140,6 +140,11 @@ function bottomNavItems(module: ModuleType, usuario: Usuario | null): NavItem[] 
       to: `/${module}/parametros`,
       icon: Settings,
     })
+    items.push({
+      label: "Usuarios y roles",
+      to: `/${module}/usuarios`,
+      icon: Users,
+    })
   }
 
   if (module === "dietas-cocina") {
