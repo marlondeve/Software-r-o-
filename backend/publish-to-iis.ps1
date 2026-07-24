@@ -249,9 +249,9 @@ Write-Host @"
 
 4. Probar el despliegue:
 
-   Health Check: http://190.242.127.238:2000/health
-   Swagger UI:    http://190.242.127.238:2000/swagger
-   API Info:      http://190.242.127.238:2000/
+   Health Check: http://190.242.127.238:8080/health
+   Swagger UI:    http://190.242.127.238:8080/swagger
+   API Info:      http://190.242.127.238:8080/
 
 "@ -ForegroundColor White
 
@@ -279,11 +279,11 @@ PASOS RÁPIDOS:
   2. En IIS Manager:
 	 - Crear Application Pool: "BitalApiConsultasPool" (No Managed Code)
 	 - Crear sitio web: "BitalApiConsultas" apuntando a la carpeta
-	 - Configurar binding: http:*:2000
+	 - Configurar binding: http:*:8080
   3. Dar permisos a IIS_IUSRS en la carpeta
   4. Abrir puerto 2000 en Windows Firewall
   5. Iniciar el sitio en IIS
-  6. Probar: http://localhost:2000/health
+  6. Probar: http://localhost:8080/health
 
 IMPORTANTE:
   - Verificar que appsettings.Production.json tenga la contraseña real de BD
@@ -294,9 +294,9 @@ DOCUMENTACIÓN COMPLETA:
   Ver archivo: backend\DEPLOYMENT-IIS-GUIDE.md
 
 URLs DE PRUEBA (después del despliegue):
-  - Health: http://190.242.127.238:2000/health
-  - Swagger: http://190.242.127.238:2000/swagger
-  - Info: http://190.242.127.238:2000/
+  - Health: http://190.242.127.238:8080/health
+  - Swagger: http://190.242.127.238:8080/swagger
+  - Info: http://190.242.127.238:8080/
 
 ENDPOINTS PRINCIPALES:
   - GET /api/v1/pacientes/search?termino=lopez

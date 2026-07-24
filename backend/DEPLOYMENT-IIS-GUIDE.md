@@ -9,10 +9,10 @@
 - **Protocolo**: HTTP (interno) - considerar HTTPS con certificado para producción
 
 ### URLs de Acceso
-- **Interna**: `http://10.238.97.67:2000/api/v1/`
-- **Externa**: `http://186.190.254.230:2000/api/v1/`
-- **Swagger UI**: `http://186.190.254.230:2000/swagger`
-- **Health Check**: `http://186.190.254.230:2000/health`
+- **Interna**: `http://10.238.97.67:8080/api/v1/`
+- **Externa**: `http://186.190.254.230:8080/api/v1/`
+- **Swagger UI**: `http://186.190.254.230:8080/swagger`
+- **Health Check**: `http://186.190.254.230:8080/health`
 
 ---
 
@@ -248,7 +248,7 @@ Get-NetFirewallRule -DisplayName "Bital API Consultas - Puerto 2000"
 
 ```powershell
 # En el servidor, verificar que el proceso esté escuchando
-netstat -ano | findstr :2000
+netstat -ano | findstr :8080
 ```
 
 ---
@@ -259,39 +259,39 @@ netstat -ano | findstr :2000
 
 ```powershell
 # Probar health check
-Invoke-RestMethod http://localhost:2000/health
+Invoke-RestMethod http://localhost:8080/health
 
 # Probar endpoint de info
-Invoke-RestMethod http://localhost:2000/
+Invoke-RestMethod http://localhost:8080/
 
 # Swagger
-Start-Process "http://localhost:2000/swagger"
+Start-Process "http://localhost:8080/swagger"
 ```
 
 ### 5.2 Desde tu máquina de desarrollo
 
 ```powershell
 # Probar acceso interno
-Invoke-RestMethod http://10.238.97.67:2000/health
+Invoke-RestMethod http://10.238.97.67:8080/health
 
 # Probar acceso externo (IP pública)
-Invoke-RestMethod http://186.190.254.230:2000/health
+Invoke-RestMethod http://186.190.254.230:8080/health
 
 # Abrir Swagger en navegador
-Start-Process "http://186.190.254.230:2000/swagger"
+Start-Process "http://186.190.254.230:8080/swagger"
 ```
 
 ### 5.3 Probar endpoints de la API
 
 ```powershell
 # Endpoint de pacientes
-Invoke-RestMethod "http://186.190.254.230:2000/api/v1/pacientes/search?termino=lopez"
+Invoke-RestMethod "http://186.190.254.230:8080/api/v1/pacientes/search?termino=lopez"
 
 # Endpoint de atenciones
-Invoke-RestMethod "http://186.190.254.230:2000/api/v1/atenciones/1"
+Invoke-RestMethod "http://186.190.254.230:8080/api/v1/atenciones/1"
 
 # Endpoint de atenciones hospitalarias (para Dietas)
-Invoke-RestMethod "http://186.190.254.230:2000/api/v1/atenciones/hospitalarias"
+Invoke-RestMethod "http://186.190.254.230:8080/api/v1/atenciones/hospitalarias"
 ```
 
 ---
@@ -346,7 +346,7 @@ Si falla:
 ```json
 "Cors": {
   "AllowedOrigins": [
-	"http://186.190.254.230:2000",
+	"http://186.190.254.230:8080",
 	"http://tu-frontend-url-aqui:puerto"
   ]
 }
@@ -359,7 +359,7 @@ Reiniciar la aplicación después del cambio.
 **Solución**:
 1. Verificar que el firewall de Windows tenga la regla habilitada (paso 4.1)
 2. Verificar que el router/firewall de red permita tráfico al puerto 2000
-3. Contactar al equipo de redes para habilitar NAT/port forwarding de `186.190.254.230:2000` → `10.238.97.67:2000`
+3. Contactar al equipo de redes para habilitar NAT/port forwarding de `186.190.254.230:8080` → `10.238.97.67:8080`
 
 ---
 
@@ -385,7 +385,7 @@ Get-EventLog -LogName Application -Source "IIS AspNetCore Module" -Newest 20
 # Crear script de monitoreo (guardar como C:\scripts\monitor-bital-api.ps1)
 while ($true) {
 	try {
-		$response = Invoke-RestMethod http://localhost:2000/health
+		$response = Invoke-RestMethod http://localhost:8080/health
 		Write-Host "[$(Get-Date)] OK - Status: $($response.status)" -ForegroundColor Green
 	} catch {
 		Write-Host "[$(Get-Date)] ERROR - API no responde" -ForegroundColor Red
@@ -415,7 +415,7 @@ while ($true) {
 
 4. Verificar:
    ```powershell
-   Invoke-RestMethod http://localhost:2000/health
+   Invoke-RestMethod http://localhost:8080/health
    ```
 
 ---
@@ -468,8 +468,8 @@ Para soporte del despliegue:
 - [ ] Sitio web `BitalApiConsultas` configurado en puerto 2000
 - [ ] Firewall Windows abierto para puerto 2000
 - [ ] Conectividad SQL verificada (`10.238.97.69:1433`)
-- [ ] Health check respondiendo: `http://localhost:2000/health`
-- [ ] Swagger accesible: `http://186.190.254.230:2000/swagger`
+- [ ] Health check respondiendo: `http://localhost:8080/health`
+- [ ] Swagger accesible: `http://186.190.254.230:8080/swagger`
 - [ ] Endpoints de API probados desde frontend
 - [ ] CORS configurado para origenes del frontend
 - [ ] Logs monitoreados y funcionando

@@ -79,29 +79,29 @@ Remove-PSSession $session
 
 ```powershell
 # Health check
-Invoke-RestMethod http://localhost:2000/health
+Invoke-RestMethod http://localhost:8080/health
 
 # Info de la API
-Invoke-RestMethod http://localhost:2000/
+Invoke-RestMethod http://localhost:8080/
 
 # Abrir Swagger
-Start-Process "http://localhost:2000/swagger"
+Start-Process "http://localhost:8080/swagger"
 ```
 
 ### Desde cualquier máquina (acceso externo)
 
 ```powershell
 # Health check público
-Invoke-RestMethod http://186.190.254.230:2000/health
+Invoke-RestMethod http://186.190.254.230:8080/health
 
 # Swagger público
-Start-Process "http://186.190.254.230:2000/swagger"
+Start-Process "http://186.190.254.230:8080/swagger"
 
 # Probar endpoint de pacientes
-Invoke-RestMethod "http://186.190.254.230:2000/api/v1/pacientes/search?termino=lopez"
+Invoke-RestMethod "http://186.190.254.230:8080/api/v1/pacientes/search?termino=lopez"
 
 # Probar endpoint de atenciones
-Invoke-RestMethod "http://186.190.254.230:2000/api/v1/atenciones/1"
+Invoke-RestMethod "http://186.190.254.230:8080/api/v1/atenciones/1"
 ```
 
 ---
@@ -175,12 +175,12 @@ Test-NetConnection -ComputerName 10.238.97.69 -Port 1433
 
 | Endpoint | URL Externa |
 |----------|-------------|
-| **Swagger UI** | http://186.190.254.230:2000/swagger |
-| **Health Check** | http://186.190.254.230:2000/health |
-| **API Base** | http://186.190.254.230:2000/api/v1/ |
-| **Pacientes** | http://186.190.254.230:2000/api/v1/pacientes/search?termino=... |
-| **Atenciones** | http://186.190.254.230:2000/api/v1/atenciones/{id} |
-| **Atenciones Hospitalarias** | http://186.190.254.230:2000/api/v1/atenciones/hospitalarias |
+| **Swagger UI** | http://186.190.254.230:8080/swagger |
+| **Health Check** | http://186.190.254.230:8080/health |
+| **API Base** | http://186.190.254.230:8080/api/v1/ |
+| **Pacientes** | http://186.190.254.230:8080/api/v1/pacientes/search?termino=... |
+| **Atenciones** | http://186.190.254.230:8080/api/v1/atenciones/{id} |
+| **Atenciones Hospitalarias** | http://186.190.254.230:8080/api/v1/atenciones/hospitalarias |
 
 ---
 

@@ -9,16 +9,16 @@
 
 ### Servidor Principal
 ```
-Base URL:   http://186.190.254.230:2000
-API Base:   http://186.190.254.230:2000/api/v1
-Swagger:    http://186.190.254.230:2000/swagger
-Health:     http://186.190.254.230:2000/health
+Base URL:   http://186.190.254.230:8080
+API Base:   http://186.190.254.230:8080/api/v1
+Swagger:    http://186.190.254.230:8080/swagger
+Health:     http://186.190.254.230:8080/health
 ```
 
 ### Servidor Interno (Red Clínica)
 ```
-Base URL:   http://10.238.97.67:2000
-API Base:   http://10.238.97.67:2000/api/v1
+Base URL:   http://10.238.97.67:8080
+API Base:   http://10.238.97.67:8080/api/v1
 ```
 
 ---
@@ -29,10 +29,10 @@ API Base:   http://10.238.97.67:2000/api/v1
 
 ```javascript
 // JavaScript/TypeScript
-const API_BASE = 'http://186.190.254.230:2000/api/v1';
+const API_BASE = 'http://186.190.254.230:8080/api/v1';
 
 // Health check
-fetch('http://186.190.254.230:2000/health')
+fetch('http://186.190.254.230:8080/health')
   .then(res => res.json())
   .then(data => console.log('API Status:', data.status));
 ```
@@ -372,7 +372,7 @@ const safeApiCall = async (url) => {
 ```typescript
 // src/services/bitalApiService.ts
 
-const API_BASE = 'http://186.190.254.230:2000/api/v1';
+const API_BASE = 'http://186.190.254.230:8080/api/v1';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -441,7 +441,7 @@ class BitalApiService {
   }
 
   async checkHealth(): Promise<{ status: string }> {
-	const response = await fetch('http://186.190.254.230:2000/health');
+	const response = await fetch('http://186.190.254.230:8080/health');
 	return response.json();
   }
 }
@@ -542,7 +542,7 @@ const TEST_ATENCIONES = [
 // Probar si la API está accesible
 const testApi = async () => {
   try {
-	const response = await fetch('http://186.190.254.230:2000/health');
+	const response = await fetch('http://186.190.254.230:8080/health');
 	const data = await response.json();
 	console.log('✅ API disponible:', data);
   } catch (error) {
@@ -555,7 +555,7 @@ testApi();
 
 ### Ver Documentación Completa (Swagger)
 ```
-http://186.190.254.230:2000/swagger
+http://186.190.254.230:8080/swagger
 ```
 
 ---
@@ -600,4 +600,4 @@ http://186.190.254.230:2000/swagger
 **Última actualización**: 2026-07-23  
 **Versión API**: v1.0  
 **Entorno**: Producción  
-**Base URL**: http://186.190.254.230:2000
+**Base URL**: http://186.190.254.230:8080
