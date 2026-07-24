@@ -96,16 +96,16 @@ try
     app.UseSerilogRequestLogging();
 
     // Swagger (solo en Development)
-    if (app.Environment.IsDevelopment())
-    {
+    //if (app.Environment.IsDevelopment())
+    //{
         app.UseSwagger();
         app.UseSwaggerUI(options =>
         {
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "Bital API Consultas v1");
             options.RoutePrefix = "swagger";
         });
-        Log.Information("Swagger habilitado en: {SwaggerUrl}", "https://localhost:5003/swagger");
-    }
+        //Log.Information("Swagger habilitado en: {SwaggerUrl}", "https://localhost:5003/swagger");
+    //}
 
     // HTTPS Redirection
     app.UseHttpsRedirection();
