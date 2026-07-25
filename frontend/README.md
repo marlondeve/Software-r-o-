@@ -19,6 +19,7 @@ frontend/
 │   ├── app/             # Router principal
 │   ├── components/      # Layout (sidebar, topbar), UI compartida (shadcn)
 │   ├── features/        # Autenticación, administración transversal
+│   ├── api/             # Capa global HTTP (Axios → Bital.ApiConsultas)
 │   ├── modules/         # Módulos de negocio (dietas-cocina, encuestas)
 │   ├── servicios/       # Servicios globales (auth mock)
 │   ├── lib/             # Utilidades
@@ -79,28 +80,48 @@ La autenticación actual es mock (`src/servicios/authService.ts`). La contraseñ
 
 Guards de ruta en `src/features/autenticacion/components/`: `RequireAuth`, `RequireModuleAccess`, `RequireAdmin`, `RequireDietasRuta`.
 
+## Capa API global (`src/api/`)
+
+Transporte HTTP compartido por ambos módulos. Cliente Axios único, tipos y servicios alineados con [`backend/API-FRONTEND-PRODUCCION.md`](../backend/API-FRONTEND-PRODUCCION.md).
+
+```typescript
+import { getAtencionesHospitalarias, searchPacientes } from "@/api"
+```
+
+| Archivo | Contenido |
+|---|---|
+| `src/api/client.ts` | Instancia Axios + manejo de errores |
+| `src/api/pacientes.service.ts` | `searchPacientes` |
+| `src/api/atenciones.service.ts` | Atenciones, hospitalarias, por paciente |
+| `src/api/health.service.ts` | Health check |
+
+Los módulos **no duplican Axios**: sus repositorios en `modules/*/api/` delegan a `@/api`.
+
 ## Patrón de datos (mock / HTTP)
 
-Los módulos usan repositorios con implementaciones mock y HTTP en `modules/*/api/`. El selector elige la implementación según variables de entorno:
+Cada módulo adapta la respuesta del API global a su dominio con repositorios mock/HTTP:
 
 ```typescript
 // modules/dietas-cocina/api/index.ts
-import.meta.env.VITE_DIETAS_COCINA_API === "true" ? http : mock
+import.meta.env.VITE_DIETAS_COCINA_API === "true" ? censoRepositoryHttp : censoRepositoryMock
 ```
 
 | Variable | Efecto |
 |---|---|
-| `VITE_DIETAS_COCINA_API=true` | Activa repositorios HTTP del módulo Dietas y Cocina |
+| `VITE_BITAL_API_BASE_URL` | Base URL ApiConsultas (default: producción del doc Back) |
+| `VITE_BITAL_API_HEALTH_URL` | URL del health check |
+| `VITE_DIETAS_COCINA_API=true` | Censo y ciclo bandejas usan HTTP (vía `@/api`) |
+| `VITE_ENCUESTAS_API=true` | Repositorio de pacientes Encuestas usa HTTP (vía `@/api`) |
 
-Crear un archivo `.env.local` en `frontend/` para activar variables en desarrollo.
+Copiar [`frontend/.env.example`](.env.example) a `.env.local` para desarrollo.
 
 ## Integración con backend
 
-El frontend consume **solo `Bital.ApiNegocio`** como punto de entrada. No debe llamar a `Bital.ApiConsultas` directamente.
+Integración HIS vía **Bital.ApiConsultas** (producción: `http://186.190.254.230:8080/api/v1`). Primera integración operativa: **Actualizar censo** en Dietas-Cocina (`GET /atenciones/hospitalarias`).
 
-Documentación del backend: [backend/README.md](../backend/README.md)
+Documentación: [backend/API-FRONTEND-PRODUCCION.md](../backend/API-FRONTEND-PRODUCCION.md)
 
-Estado actual: Dietas y Cocina opera con datos mock (y repositorios HTTP preparados). Encuestas y Administración usan mock estático sin flujos completos. La integración HTTP se activará conforme ApiNegocio exponga los endpoints de negocio.
+Encuestas tiene repositorio HTTP preparado (`modules/encuestas/api/`); las pantallas siguen en mock hasta conectar identificación de paciente.
 
 ## Despliegue IIS
 

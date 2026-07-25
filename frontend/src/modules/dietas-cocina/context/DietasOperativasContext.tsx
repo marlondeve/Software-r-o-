@@ -4,74 +4,26 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
 
 import {
+  obtenerCensoRepository,
+  usarApiDietasCocina,
+} from "@/modules/dietas-cocina/api"
+import {
+  configDietasOperativas,
   mockDietas,
   type FilaDieta,
 } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { cargarFilasCensoDesdeApi } from "@/modules/dietas-cocina/lib/cargarCensoHospitalario"
 import {
   cargarDietasOperativas,
   guardarDietasOperativas,
 } from "@/modules/dietas-cocina/lib/dietasStorage"
 import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
-/** Pacientes nuevos del censo hospitalario (demo). */
-const CENSO_NUEVOS: Omit<FilaDieta, "id">[] = [
-  {
-    pacienteId: "PAC-11001",
-    paciente: "Salazar, L.",
-    edad: 38,
-    servicio: "Medicina Interna",
-    pabellon: "Pab. Central",
-    habitacion: "303-B",
-    consistencia: null,
-    tipoDieta: null,
-    aislamiento: "Ninguno",
-    alergico: false,
-    alergias: "",
-    observacionAislamiento: "",
-    observaciones: "Ingreso reciente — pendiente valoración nutricional.",
-    estado: "no-solicitada",
-    comida: "almuerzo",
-  },
-  {
-    pacienteId: "PAC-11002",
-    paciente: "Peña, R.",
-    edad: 52,
-    servicio: "Cirugía General",
-    pabellon: "Pab. Norte",
-    habitacion: "405-C",
-    consistencia: null,
-    tipoDieta: null,
-    aislamiento: "Ninguno",
-    alergico: false,
-    alergias: "",
-    observacionAislamiento: "",
-    observaciones: "",
-    estado: "no-solicitada",
-    comida: "almuerzo",
-  },
-  {
-    pacienteId: "PAC-11003",
-    paciente: "Ortiz, M.",
-    edad: 67,
-    servicio: "UCI",
-    pabellon: "Pab. Norte",
-    habitacion: "316-A",
-    consistencia: null,
-    tipoDieta: null,
-    aislamiento: "Contacto",
-    alergico: true,
-    alergias: "Penicilina",
-    observacionAislamiento: "Precauciones de contacto.",
-    observaciones: "",
-    estado: "no-solicitada",
-    comida: "almuerzo",
-  },
-]
 
 function formatearHoraSincronizacion(): string {
   return new Date().toLocaleTimeString("es-CO", {
@@ -80,13 +32,34 @@ function formatearHoraSincronizacion(): string {
   })
 }
 
+function estadoInicialFilas(persistido: ReturnType<typeof cargarDietasOperativas>): FilaDieta[] {
+  if (persistido?.filas.length) {
+    return persistido.filas.map((fila) => ({ ...fila }))
+  }
+  if (usarApiDietasCocina()) {
+    return []
+  }
+  return mockDietas.filas.map((fila) => ({ ...fila }))
+}
+
+function estadoInicialSincronizacion(
+  persistido: ReturnType<typeof cargarDietasOperativas>,
+): string {
+  if (persistido?.ultimaSincronizacion) {
+    return persistido.ultimaSincronizacion
+  }
+  return usarApiDietasCocina() ? "Sin sincronizar" : mockDietas.ultimaSincronizacion
+}
+
 interface DietasOperativasContextValue {
   filas: FilaDieta[]
   ultimaSincronizacion: string
-  meta: typeof mockDietas
+  meta: typeof configDietasOperativas
+  sincronizandoCenso: boolean
+  errorSincronizacion: string | null
   actualizarFila: (id: string, cambios: Partial<FilaDieta>) => void
   setFilas: React.Dispatch<React.SetStateAction<FilaDieta[]>>
-  sincronizarCenso: () => number
+  sincronizarCenso: (comida?: TiempoComida) => Promise<number>
   asignarConsistenciaMasiva: (ids: string[], consistencia: string) => number
   filasPorComida: (comida: TiempoComida) => FilaDieta[]
 }
@@ -96,14 +69,21 @@ const DietasOperativasContext = createContext<DietasOperativasContextValue | nul
 )
 
 export function DietasOperativasProvider({ children }: { children: ReactNode }) {
+  const apiActiva = usarApiDietasCocina()
   const persistido = useMemo(() => cargarDietasOperativas(), [])
+  const censoRepository = useMemo(() => obtenerCensoRepository(), [])
+  const censoInicialCargado = useRef(false)
 
-  const [filas, setFilas] = useState<FilaDieta[]>(
-    () => persistido?.filas ?? mockDietas.filas.map((f) => ({ ...f })),
+  const [filas, setFilas] = useState<FilaDieta[]>(() => estadoInicialFilas(persistido))
+  const [ultimaSincronizacion, setUltimaSincronizacion] = useState(() =>
+    estadoInicialSincronizacion(persistido),
   )
-  const [ultimaSincronizacion, setUltimaSincronizacion] = useState(
-    () => persistido?.ultimaSincronizacion ?? mockDietas.ultimaSincronizacion,
+  const [sincronizandoCenso, setSincronizandoCenso] = useState(false)
+  const [errorSincronizacion, setErrorSincronizacion] = useState<string | null>(
+    null,
   )
+  const filasRef = useRef(filas)
+  filasRef.current = filas
 
   useEffect(() => {
     guardarDietasOperativas({ filas, ultimaSincronizacion })
@@ -118,22 +98,61 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
     [],
   )
 
-  const sincronizarCenso = useCallback(() => {
-    let agregados = 0
-    setFilas((prev) => {
-      const idsExistentes = new Set(prev.map((f) => f.pacienteId))
-      const nuevos = CENSO_NUEVOS.filter((f) => !idsExistentes.has(f.pacienteId)).map(
-        (fila, index) => ({
-          ...fila,
-          id: `censo-${Date.now()}-${index}`,
-        }),
-      )
-      agregados = nuevos.length
-      return nuevos.length > 0 ? [...prev, ...nuevos] : prev
-    })
-    setUltimaSincronizacion(formatearHoraSincronizacion())
-    return agregados
-  }, [])
+  const sincronizarCenso = useCallback(
+    async (comida: TiempoComida = "almuerzo"): Promise<number> => {
+      setSincronizandoCenso(true)
+      setErrorSincronizacion(null)
+
+      try {
+        let resultado = 0
+
+        if (apiActiva) {
+          const { filas: filasActualizadas, totalEnCenso } =
+            await cargarFilasCensoDesdeApi(comida, filasRef.current)
+          setFilas(filasActualizadas)
+          resultado = totalEnCenso
+        } else {
+          const candidatos =
+            await censoRepository.obtenerPacientesHospitalizados(comida)
+
+          setFilas((prev) => {
+            const idsExistentes = new Set(prev.map((f) => f.pacienteId))
+            const nuevos = candidatos
+              .filter((fila) => !idsExistentes.has(fila.pacienteId))
+              .map((fila, index) => ({
+                ...fila,
+                id: `censo-${Date.now()}-${index}`,
+              }))
+            resultado = nuevos.length
+            return nuevos.length > 0 ? [...prev, ...nuevos] : prev
+          })
+        }
+
+        setUltimaSincronizacion(formatearHoraSincronizacion())
+        return resultado
+      } catch (error) {
+        const mensaje =
+          error instanceof Error
+            ? error.message
+            : "No se pudo sincronizar el censo hospitalario."
+        setErrorSincronizacion(mensaje)
+        throw error
+      } finally {
+        setSincronizandoCenso(false)
+      }
+    },
+    [apiActiva, censoRepository],
+  )
+
+  useEffect(() => {
+    if (!apiActiva || censoInicialCargado.current) return
+    if (persistido?.filas.length) {
+      censoInicialCargado.current = true
+      return
+    }
+    censoInicialCargado.current = true
+    void sincronizarCenso(configDietasOperativas.comidaActiva).catch(() => {})
+  }, [apiActiva, persistido, sincronizarCenso])
 
   const asignarConsistenciaMasiva = useCallback(
     (ids: string[], consistencia: string) => {
@@ -160,7 +179,9 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
     () => ({
       filas,
       ultimaSincronizacion,
-      meta: mockDietas,
+      meta: configDietasOperativas,
+      sincronizandoCenso,
+      errorSincronizacion,
       actualizarFila,
       setFilas,
       sincronizarCenso,
@@ -170,6 +191,8 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
     [
       filas,
       ultimaSincronizacion,
+      sincronizandoCenso,
+      errorSincronizacion,
       actualizarFila,
       sincronizarCenso,
       asignarConsistenciaMasiva,

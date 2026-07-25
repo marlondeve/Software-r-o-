@@ -16,6 +16,7 @@ import {
   obtenerDescripcionDieta,
   obtenerTrazabilidad,
 } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
+import { formatearIdentificacionPaciente } from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
 import { cn } from "@/lib/utils"
 
 interface DietasDetalleSheetProps {
@@ -66,8 +67,7 @@ export function DietasDetalleSheet({
             <div className="min-w-0">
               <p className="font-semibold text-foreground">{fila.paciente}</p>
               <p className="text-sm text-muted-foreground">
-                Hab {fila.habitacion} · ID:{" "}
-                {fila.pacienteId.replace("PAC-", "")}
+                {formatearIdentificacionPaciente(fila)}
               </p>
             </div>
           </div>
