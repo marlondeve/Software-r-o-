@@ -15,10 +15,8 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import type {
-  PacienteContextoEncuesta,
-  SeccionEncuesta,
-} from "@/modules/encuestas/captura-encuesta/datos/mockCapturaEncuesta"
+import type { PacienteContextoEncuesta } from "@/modules/encuestas/types/patients"
+import type { SeccionEncuesta } from "@/modules/encuestas/types/capture"
 
 const ICONOS_SECCION: Record<string, LucideIcon> = {
   "satisfaccion-global": Smile,

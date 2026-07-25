@@ -26,8 +26,8 @@ import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { rutaDietasPermitida } from "@/modules/dietas-cocina/lib/permisos"
 import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { cn } from "@/lib/utils"
-import type { ModuloId } from "@/tipos/modulo"
-import type { Usuario } from "@/tipos/usuario"
+import type { ModuloId } from "@/types/module"
+import type { Usuario } from "@/types/user"
 
 export type ModuleType = ModuloId
 

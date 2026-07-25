@@ -1,9 +1,1 @@
-import type { Atencion, Paciente } from "@/api/types"
-
-export interface PacientesRepository {
-  buscarPacientes(termino: string): Promise<Paciente[]>
-  obtenerAtencionesPaciente(
-    cedula: string,
-    tipoDocumento: string,
-  ): Promise<Atencion[]>
-}
+export type { PacientesRepository } from "@/modules/encuestas/types/repositories"

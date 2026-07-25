@@ -1,3 +1,4 @@
+import type { FiltrosReportes } from "@/modules/dietas-cocina/types/reports"
 import { useMemo, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,9 +14,6 @@ import {
 import { ReportesFiltros } from "@/modules/dietas-cocina/reportes/components/ReportesFiltros"
 import { ReportesKpiGrid } from "@/modules/dietas-cocina/reportes/components/ReportesKpiGrid"
 import { mockReportesNutricionista } from "@/modules/dietas-cocina/reportes/datos/mockReportesNutricionista"
-import {
-  type FiltrosReportes,
-} from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
 import { construirReportesNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
 
 const FILTROS_INICIALES: FiltrosReportes = {

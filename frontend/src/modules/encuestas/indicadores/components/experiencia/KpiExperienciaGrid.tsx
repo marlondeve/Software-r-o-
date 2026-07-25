@@ -2,7 +2,7 @@ import { TrendingDown, TrendingUp } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import type { KpiExperiencia } from "@/modules/encuestas/indicadores/datos/mockIndicadoresExperiencia"
+import type { KpiExperiencia } from "@/modules/encuestas/types/indicators"
 
 export function KpiExperienciaGrid({ kpis }: { kpis: KpiExperiencia[] }) {
   return (

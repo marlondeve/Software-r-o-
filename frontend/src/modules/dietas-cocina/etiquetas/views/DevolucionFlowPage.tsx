@@ -1,3 +1,5 @@
+import type { MotivoDevolucion } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { useCallback, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
@@ -7,10 +9,6 @@ import { IngresoManualEtiquetaDialog } from "@/modules/dietas-cocina/etiquetas/c
 import { RegistroDevolucionForm } from "@/modules/dietas-cocina/etiquetas/components/RegistroDevolucionForm"
 import { BandejaResumenCard } from "@/modules/dietas-cocina/etiquetas/components/BandejaResumenCard"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
-import type {
-  EtiquetaEnfermera,
-  MotivoDevolucion,
-} from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 
 export function DevolucionFlowPage() {

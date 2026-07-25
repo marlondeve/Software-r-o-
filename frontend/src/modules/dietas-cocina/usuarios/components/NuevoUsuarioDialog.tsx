@@ -1,3 +1,5 @@
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -19,9 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
-import type { UsuarioModulo } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
-
 interface NuevoUsuarioDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void

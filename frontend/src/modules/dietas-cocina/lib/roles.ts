@@ -1,12 +1,8 @@
 import { obtenerRolEnModulo } from "@/lib/modulos"
-import type { Usuario } from "@/tipos/usuario"
+import type { Usuario } from "@/types/user"
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 
-export type RolDietas =
-  | "Administrador"
-  | "Nutricionista"
-  | "Doctor"
-  | "Proveedor"
-  | "Enfermera"
+export type { RolDietas }
 
 const ROLES_DIETAS: RolDietas[] = [
   "Administrador",

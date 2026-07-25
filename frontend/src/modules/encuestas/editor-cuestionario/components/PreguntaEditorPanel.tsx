@@ -14,10 +14,8 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  TIPOS_RESPUESTA,
-  type PreguntaEditor,
-} from "@/modules/encuestas/editor-cuestionario/datos/mockEditorCuestionario"
+import { TIPOS_RESPUESTA } from "@/modules/encuestas/editor-cuestionario/datos/mockEditorCuestionario"
+import type { PreguntaEditor } from "@/modules/encuestas/types/questionnaire-editor"
 
 interface PreguntaEditorPanelProps {
   pregunta: PreguntaEditor

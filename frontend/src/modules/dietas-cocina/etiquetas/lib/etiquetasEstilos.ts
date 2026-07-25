@@ -1,6 +1,5 @@
-import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-import type { KpiEtiqueta, EtiquetaDieta, EstadoEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
+import type { EstadoEtiqueta, EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaDieta, EtiquetaEnfermera, KpiEtiqueta } from "@/modules/dietas-cocina/types/labels"
 import { puedeReimprimirEtiqueta } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 
 export { puedeReimprimirEtiqueta }

@@ -1,3 +1,4 @@
+import type { ModuloAuditoria } from "@/modules/dietas-cocina/types/enums"
 import type { ReactNode } from "react"
 import { Search } from "lucide-react"
 
@@ -10,7 +11,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { ModuloAuditoria } from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
 import { MODULO_LABEL } from "@/modules/dietas-cocina/auditoria/lib/auditoriaEstilos"
 
 interface AuditoriaFiltrosProps {

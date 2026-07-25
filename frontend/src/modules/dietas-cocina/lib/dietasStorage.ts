@@ -1,4 +1,4 @@
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 
 const STORAGE_KEY_MOCK = "dietas-cocina-operativas-mock-v1"

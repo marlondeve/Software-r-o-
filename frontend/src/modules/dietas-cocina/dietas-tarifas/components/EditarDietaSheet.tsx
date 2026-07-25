@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { useEffect, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -11,7 +12,6 @@ import {
 } from "@/components/ui/sheet"
 import { DietaCatalogoForm } from "@/modules/dietas-cocina/dietas-tarifas/components/DietaCatalogoForm"
 import type { DietaCatalogoFormValues } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietaCatalogoFormDefaults"
-import type { DietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import {
   fechaCatalogoAISO,
   formatearFechaCatalogo,

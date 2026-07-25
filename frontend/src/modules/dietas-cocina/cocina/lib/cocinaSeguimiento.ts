@@ -1,7 +1,6 @@
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { resolverEstadoLogisticaOrden } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-
 export const PASOS_SEGUIMIENTO = [
   { id: "solicitud", label: "Solicitud" },
   { id: "confirmada", label: "Confirmada" },

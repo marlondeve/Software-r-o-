@@ -14,7 +14,7 @@ import { EstadoEncuestaBadge } from "@/modules/encuestas/encuestas-realizadas/co
 import type {
   FilaEncuestaRealizada,
   RespuestaEncuestaDetalle,
-} from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
+} from "@/modules/encuestas/types/completed-surveys"
 import { mockEncuestasRealizadas } from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
 import { cn } from "@/lib/utils"
 
@@ -173,7 +173,7 @@ export function DetalleEncuestaSheet({
                     <div key={`${evento.titulo}-${index}`} className="relative">
                       <span
                         className={cn(
-                          "absolute top-1 -left-[1.625rem] size-3 rounded-full border-2 border-background",
+                          "absolute top-1 -left-6.5 size-3 rounded-full border-2 border-background",
                           evento.actual ? "bg-primary" : "bg-muted-foreground/60",
                         )}
                       />

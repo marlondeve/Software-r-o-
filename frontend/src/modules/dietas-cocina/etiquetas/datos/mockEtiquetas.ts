@@ -1,34 +1,7 @@
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import type { TiempoComida, EstadoEtiqueta } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaDieta, KpiEtiqueta } from "@/modules/dietas-cocina/types/labels"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
-
-export type EstadoEtiqueta = "pendiente" | "generada" | "impresa" | "reimpresa"
-
-export interface KpiEtiqueta {
-  id: string
-  label: string
-  value: number
-  variant?: "default" | "info" | "success" | "destructive"
-}
-
-export interface EtiquetaDieta {
-  id: string
-  codigo: string
-  pacienteId: string
-  paciente: string
-  documento: string
-  edad: number
-  aislamiento: boolean
-  pabellon: string
-  habitacion: string
-  tipoDieta: string
-  consistencia: string
-  observaciones: string
-  comida: TiempoComida
-  fechaHora: string
-  estado: EstadoEtiqueta
-  qrPayload: string
-}
 
 export const COMIDAS_ETIQUETAS = COMIDAS_TABS
 

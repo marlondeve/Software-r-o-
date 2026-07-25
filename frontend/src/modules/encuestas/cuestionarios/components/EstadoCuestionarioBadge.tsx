@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { EstadoCuestionario } from "@/modules/encuestas/cuestionarios/datos/mockCuestionarios"
+import type { EstadoCuestionario } from "@/modules/encuestas/types/enums"
 
 const ESTADO_CONFIG: Record<EstadoCuestionario, { label: string; className: string }> = {
   activo: {

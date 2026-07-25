@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { useMemo } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { DietasTarifasAccionesPopover } from "@/modules/dietas-cocina/dietas-tarifas/components/DietasTarifasAccionesPopover"
 import { EstadoDietaCatalogoBadge } from "@/modules/dietas-cocina/dietas-tarifas/components/EstadoDietaCatalogoBadge"
-import type { DietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import { formatearMonedaTarifa } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
 
 interface DietasTarifasTablaProps {

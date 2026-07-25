@@ -1,7 +1,7 @@
 import { CircleCheck, Mic, Phone, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import type { PacienteContextoEncuesta } from "@/modules/encuestas/captura-encuesta/datos/mockCapturaEncuesta"
+import type { PacienteContextoEncuesta } from "@/modules/encuestas/types/patients"
 
 interface CapturaEncuestaTopBarProps {
   paciente: PacienteContextoEncuesta

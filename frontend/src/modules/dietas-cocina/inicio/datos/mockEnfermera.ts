@@ -1,5 +1,4 @@
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 export const mockEnfermera = {
   piso: "Piso 3 - Ala Norte",
   servicioEnCurso: "Almuerzo en curso (45 min est.)",

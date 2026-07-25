@@ -7,7 +7,7 @@ import { EncuestasRealizadasToolbar } from "@/modules/encuestas/encuestas-realiz
 import { FiltrosAvanzados } from "@/modules/encuestas/encuestas-realizadas/components/FiltrosAvanzados"
 import type { FiltrosAvanzadosState } from "@/modules/encuestas/encuestas-realizadas/components/FiltrosAvanzados"
 import { mockEncuestasRealizadas } from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
-import type { FilaEncuestaRealizada } from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
+import type { FilaEncuestaRealizada } from "@/modules/encuestas/types/completed-surveys"
 
 const FILTROS_INICIALES: FiltrosAvanzadosState = {
   consecutivo: "",

@@ -1,3 +1,5 @@
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useMemo, useState } from "react"
 import { FileText, RefreshCw, Tag } from "lucide-react"
 import { useNavigate } from "react-router-dom"
@@ -9,7 +11,6 @@ import { CocinaFiltrosBar } from "@/modules/dietas-cocina/cocina/components/Coci
 import { CocinaKpiGrid } from "@/modules/dietas-cocina/cocina/components/CocinaKpiGrid"
 import { CocinaTabla } from "@/modules/dietas-cocina/cocina/components/CocinaTabla"
 import { mockCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import {
   calcularKpisCocina,
   filtrosDesdeKpiCocina,
@@ -25,13 +26,15 @@ import {
   descargarArchivoDemo,
 } from "@/modules/dietas-cocina/lib/demoFeedback"
 import {
+  formatearFechaOperativa,
+  formatearHoraActualizacion,
+} from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
+import {
   puedeDespachar,
   puedeGenerarEtiqueta,
   puedeMarcarLista,
   motivoNoMarcarLista,
 } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 const FILTROS_INICIALES: FiltrosCocina = {
   pabellon: "Todos",
   habitacion: "Todas",
@@ -63,6 +66,7 @@ export function CocinaProveedorView() {
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [ordenDetalle, setOrdenDetalle] = useState<OrdenCocina | null>(null)
   const [detalleAbierto, setDetalleAbierto] = useState(false)
+  const [ultimaActualizacion, setUltimaActualizacion] = useState(() => new Date())
 
   const ordenesFiltradas = useMemo(() => {
     return ordenes.filter(
@@ -221,7 +225,7 @@ export function CocinaProveedorView() {
     <div className="space-y-5 pb-6">
       <DashboardPageHeader
         title="Preparación de dietas"
-        subtitle={`${data.fechaReferencia} · Actualizado ${data.horaActualizacion}`}
+        subtitle={`${formatearFechaOperativa(ultimaActualizacion)} · Actualizado ${formatearHoraActualizacion(ultimaActualizacion)}`}
       />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -256,6 +260,7 @@ export function CocinaProveedorView() {
             aria-label="Actualizar"
             onClick={() => {
               rehidratarDesdeStorage()
+              setUltimaActualizacion(new Date())
               demoToast("Datos sincronizados desde la sesión guardada.")
             }}
           >

@@ -1,23 +1,4 @@
-export type ContactoBrecha = "valido" | "na" | "invalido"
-export type EstadoBrecha = "en_gestion" | "pendiente" | "justificado"
-
-export type TonoMotivoBrecha = "neutro" | "negativo"
-
-export interface FilaBrecha {
-  id: string
-  iniciales: string
-  nombre: string
-  documento: string
-  fecha: string
-  servicio: string
-  convenio: string
-  contacto: ContactoBrecha
-  gestionNombre: string | null
-  intentos: number
-  motivo: string
-  motivoTono: TonoMotivoBrecha
-  estado: EstadoBrecha
-}
+import type { FilaBrecha } from "@/modules/encuestas/types/indicators"
 
 export const mockAnalisisBrechas = {
   mes: "Octubre 2023",

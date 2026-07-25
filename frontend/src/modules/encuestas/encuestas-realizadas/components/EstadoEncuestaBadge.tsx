@@ -2,7 +2,7 @@ import { Ban, CircleCheck, Clock } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { EstadoEncuesta } from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
+import type { EstadoEncuesta } from "@/modules/encuestas/types/enums"
 
 const ESTADO_CONFIG: Record<
   EstadoEncuesta,

@@ -1,10 +1,8 @@
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { ParametrosTiempoComida } from "@/modules/dietas-cocina/types/parameters"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import type {
-  ParametrosTiempoComida,
-  TiempoComida,
-} from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 import { SecuenciaOperativa } from "@/modules/dietas-cocina/parametros/components/tiempos/SecuenciaOperativa"
 import { TiemposComidaFormulario } from "@/modules/dietas-cocina/parametros/components/tiempos/TiemposComidaFormulario"
 

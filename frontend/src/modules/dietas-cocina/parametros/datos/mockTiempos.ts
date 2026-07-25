@@ -1,29 +1,11 @@
-export type TiempoComida =
-  | "desayuno"
-  | "merienda-manana"
-  | "almuerzo"
-  | "merienda-tarde"
-  | "cena"
-  | "merienda-noche"
-
-export interface HitoTiempo {
-  id: string
-  label: string
-  /** Hora en formato 24 h (HH:mm) para inputs nativos */
-  hora: string
-}
-
-export interface ParametrosTiempoComida {
-  id: TiempoComida
-  label: string
-  activo: boolean
-  hitos: HitoTiempo[]
-  ventanaCambios: { inicio: string; fin: string; label: string }
-}
-
-export type ModoCargaAnticipada =
-  | "todas-desde-manana"
-  | "ventana-por-comida"
+import type {
+  ModoCargaAnticipada,
+  TiempoComida,
+} from "@/modules/dietas-cocina/types/enums"
+import type {
+  HitoTiempo,
+  ParametrosTiempoComida,
+} from "@/modules/dietas-cocina/types/parameters"
 
 const hitosComidaPrincipal = (
   solicitud: string,

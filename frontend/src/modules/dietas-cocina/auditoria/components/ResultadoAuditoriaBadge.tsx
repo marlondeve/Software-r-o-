@@ -1,7 +1,7 @@
+import type { ResultadoAuditoria } from "@/modules/dietas-cocina/types/enums"
 import { Check, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import type { ResultadoAuditoria } from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
 import { resultadoAuditoriaEstilos } from "@/modules/dietas-cocina/auditoria/lib/auditoriaEstilos"
 import { cn } from "@/lib/utils"
 

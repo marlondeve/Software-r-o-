@@ -1,7 +1,8 @@
 import { obtenerRolEnModulo } from "@/lib/modulos"
-import type { Usuario } from "@/tipos/usuario"
+import type { Usuario } from "@/types/user"
+import type { RolEncuestas } from "@/modules/encuestas/types/enums"
 
-export type RolEncuestas = "Administrador" | "Encuestador"
+export type { RolEncuestas }
 
 export const ROLES_ENCUESTAS_MODULO: RolEncuestas[] = ["Administrador", "Encuestador"]
 

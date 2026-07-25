@@ -1,6 +1,6 @@
-import type { EstadoCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type { KpiCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
+import type { KpiCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { EstadoCocina } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {
   claseBadgeLogistica,
   etiquetaLogisticaLabel,
@@ -96,11 +96,11 @@ export function claseBadgeEstadoCocina(estado: EstadoCocina): string {
     case "por_iniciar":
       return "bg-muted text-muted-foreground border-border"
     case "en_preparacion":
-      return "bg-accent/30 text-accent-foreground border-accent/40"
+      return "bg-orange-500/20 text-orange-900 border-orange-500/40 dark:text-orange-300"
     case "lista":
-      return "bg-primary/10 text-primary border-primary/20"
+      return "bg-amber-500/20 text-amber-900 border-amber-500/40 dark:text-amber-300"
     case "despachada":
-      return "bg-sky-500/10 text-sky-700 border-sky-500/25 dark:text-sky-400"
+      return "bg-sky-500/20 text-sky-900 border-sky-500/40 dark:text-sky-300"
     case "cancelada":
       return "bg-muted/80 text-muted-foreground border-border"
   }

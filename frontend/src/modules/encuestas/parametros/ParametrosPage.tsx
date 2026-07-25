@@ -8,7 +8,7 @@ import { NuevaReglaForm } from "@/modules/encuestas/parametros/components/NuevaR
 import type { NuevaRegla } from "@/modules/encuestas/parametros/components/NuevaReglaForm"
 import { ReglasActivasList } from "@/modules/encuestas/parametros/components/ReglasActivasList"
 import { mockParametrosReglas } from "@/modules/encuestas/parametros/datos/mockParametrosReglas"
-import type { ReglaActiva } from "@/modules/encuestas/parametros/datos/mockParametrosReglas"
+import type { ReglaActiva } from "@/modules/encuestas/types/parameters"
 import { DashboardPageHeader } from "@/modules/encuestas/inicio/components/DashboardPageHeader"
 
 export function ParametrosPage() {

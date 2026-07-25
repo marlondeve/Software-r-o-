@@ -1,10 +1,8 @@
+import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
 import type { ReactNode, SVGProps } from "react"
 
 import logoClinica from "@/assets/Logo-Clinica-del-Rio.png"
-import {
-  etiquetaComidaLabel,
-  type EtiquetaDieta,
-} from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
+import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
   ETIQUETA_QR_COL_RATIO,
   dimensionesEtiquetaPantalla,

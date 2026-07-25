@@ -1,5 +1,4 @@
-import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-
+import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/types/enums"
 export function etiquetaLogisticaLabel(estado: EstadoLogisticaEtiqueta): string {
   switch (estado) {
     case "generada":
@@ -22,9 +21,9 @@ export function claseBadgeLogistica(estado: EstadoLogisticaEtiqueta): string {
     case "impresa":
       return "bg-muted text-muted-foreground border-border"
     case "pre_entregada":
-      return "bg-sky-500/10 text-sky-700 border-sky-500/25 dark:text-sky-400"
+      return "bg-violet-500/20 text-violet-900 border-violet-500/40 dark:text-violet-300"
     case "entregada":
-      return "bg-primary/10 text-primary border-primary/25"
+      return "bg-emerald-500/25 text-emerald-900 border-emerald-600/40 dark:text-emerald-300"
     case "devuelta":
       return "bg-destructive/10 text-destructive border-destructive/25"
   }

@@ -1,3 +1,4 @@
+import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useState } from "react"
 import {
   KeyRound,
@@ -14,7 +15,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import type { UsuarioModulo } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
 import { cn } from "@/lib/utils"
 
 interface UsuarioAccionesPopoverProps {

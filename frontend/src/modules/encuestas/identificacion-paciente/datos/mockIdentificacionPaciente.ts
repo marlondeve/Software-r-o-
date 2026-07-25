@@ -1,19 +1,4 @@
-export type CanalPaciente = "telefonica" | "presencial"
-
-export interface PacienteEncontrado {
-  nombre: string
-  documento: string
-  edad: number
-  sexo: string
-  elegible: boolean
-  canal: CanalPaciente
-  entidadEps: string
-  contrato: string
-  servicio: string
-  puntoAtencion: string
-  fechaAtencion: string
-  fechaRelativa: string
-}
+import type { PacienteEncontrado } from "@/modules/encuestas/types/patients"
 
 export const TIPOS_DOCUMENTO = [
   "Cédula de Ciudadanía (CC)",

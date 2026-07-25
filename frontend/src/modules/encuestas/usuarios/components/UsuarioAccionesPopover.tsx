@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import type { UsuarioEncuestasModulo } from "@/modules/encuestas/usuarios/datos/mockUsuarios"
+import type { UsuarioEncuestasModulo } from "@/modules/encuestas/types/users"
 import { cn } from "@/lib/utils"
 
 interface UsuarioAccionesPopoverProps {

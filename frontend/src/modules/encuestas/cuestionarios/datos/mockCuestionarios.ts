@@ -1,15 +1,8 @@
-export type EstadoCuestionario = "activo" | "inactivo" | "borrador"
-export type CanalCuestionario = "presencial" | "telefonico" | "ambos"
-
-export interface Cuestionario {
-  id: string
-  nombre: string
-  descripcion: string
-  canal: CanalCuestionario
-  preguntas: number
-  estado: EstadoCuestionario
-  actualizadoEn: string
-}
+import type {
+  CanalCuestionario,
+  EstadoCuestionario,
+} from "@/modules/encuestas/types/enums"
+import type { Cuestionario } from "@/modules/encuestas/types/questionnaires"
 
 export const CANALES_CUESTIONARIO: { value: CanalCuestionario; label: string }[] = [
   { value: "presencial", label: "Presencial" },

@@ -1,7 +1,7 @@
 import { Ban, PhoneCall, PhoneOff } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import type { ContactoBrecha } from "@/modules/encuestas/indicadores/datos/mockAnalisisBrechas"
+import type { ContactoBrecha } from "@/modules/encuestas/types/enums"
 
 const CONFIG: Record<ContactoBrecha, { label: string; className: string; icon: typeof PhoneCall }> = {
   valido: { label: "Válido", className: "text-primary", icon: PhoneCall },

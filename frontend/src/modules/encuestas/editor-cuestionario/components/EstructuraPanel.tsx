@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-import type { SeccionEditor } from "@/modules/encuestas/editor-cuestionario/datos/mockEditorCuestionario"
+import type { SeccionEditor } from "@/modules/encuestas/types/questionnaire-editor"
 
 interface EstructuraPanelProps {
   secciones: SeccionEditor[]

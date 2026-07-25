@@ -1,47 +1,5 @@
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
-export interface ComidaTab {
-  id: TiempoComida
-  label: string
-}
-
-export interface KpiDieta {
-  id: string
-  label: string
-  value: number
-  variant?: "default" | "destructive" | "warning" | "success" | "info" | "muted"
-}
-
-export interface FilaDieta {
-  id: string
-  pacienteId: string
-  /** Consecutivo del ingreso en el HIS (cuando viene del API). */
-  idIngreso?: number
-  cedula?: string
-  tipoDocumento?: string
-  paciente: string
-  edad: number
-  servicio: string
-  pabellon: string
-  habitacion: string
-  consistencia: string | null
-  tipoDieta: string | null
-  aislado?: boolean
-  aislamiento: string
-  alergico: boolean
-  alergias: string
-  observacionAislamiento: string
-  observaciones: string
-  descripcionDieta?: string
-  solicitadoPor?: string
-  solicitadoEn?: string
-  /** true cuando la cancelación ocurre fuera del horario de novedades */
-  cancelacionTardia?: boolean
-  estado: EstadoDieta
-  comida: TiempoComida
-  ordenCocinaId?: string
-}
+import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { ComidaTab, FilaDieta, KpiDieta } from "@/modules/dietas-cocina/types/diets"
 
 export const COMIDAS_TABS: ComidaTab[] = [
   { id: "desayuno", label: "Desayuno" },
@@ -84,8 +42,8 @@ const filasAlmuerzo: FilaDieta[] = [
     paciente: "García, M.",
     edad: 45,
     servicio: "Urgencias",
-    pabellon: "Pabellón A",
-    habitacion: "301-A",
+    pabellon: "Pab. Sur",
+    habitacion: "112-C",
     consistencia: "Sólida",
     tipoDieta: "Blanda",
     descripcionDieta: "Sin restricciones adicionales de sodio o azúcar.",

@@ -1,10 +1,10 @@
+import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
 import { flushSync } from "react-dom"
 import { createRoot, type Root } from "react-dom/client"
 import html2canvas from "html2canvas"
 import QRCode from "qrcode"
 
 import { EtiquetaLabelFaceImpresion } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaLabelFaceImpresion"
-import type { EtiquetaDieta } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import { ETIQUETA_QR_RESolucion } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 

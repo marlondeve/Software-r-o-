@@ -1,4 +1,5 @@
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import {
   formatearIdentificacionPaciente,
   formatearReferenciaIngreso,
@@ -6,8 +7,6 @@ import {
 } from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
 import { formatearHora12 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { mockParametrosTiempos } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 export function tituloSolicitudDieta(fila: FilaDieta): string {
   if (fila.estado === "no-solicitada") return "Nueva Solicitud de Dieta"
   if (fila.estado === "guardado") return "Editar Solicitud de Dieta"

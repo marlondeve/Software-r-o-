@@ -12,26 +12,23 @@ import {
 import { ReportesFiltros } from "@/modules/dietas-cocina/reportes/components/ReportesFiltros"
 import { ReportesKpiGrid } from "@/modules/dietas-cocina/reportes/components/ReportesKpiGrid"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
 import { mockReportesProveedor } from "@/modules/dietas-cocina/reportes/datos/mockReportesProveedor"
-import {
-  type FiltrosReportes,
-} from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
+import { crearFiltrosReportesIniciales } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
 import { construirReportesProveedorDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
-
-const FILTROS_INICIALES: FiltrosReportes = {
-  desde: "2023-10-01",
-  hasta: "2023-10-24",
-  servicio: "todos",
-  horario: "todos",
-}
 
 export function ReportesProveedorView() {
   const base = mockReportesProveedor
   const { ordenes, etiquetas } = useCicloBandejas()
-  const [filtros, setFiltros] = useState<FiltrosReportes>(FILTROS_INICIALES)
+  const [filtros, setFiltros] = useState(crearFiltrosReportesIniciales)
 
   const data = useMemo(
     () => construirReportesProveedorDesdeCiclo(ordenes, etiquetas, filtros),
+    [ordenes, etiquetas, filtros],
+  )
+
+  const subtituloActualizacion = useMemo(
+    () => formatearUltimaActualizacionReporte(new Date()),
     [ordenes, etiquetas, filtros],
   )
 
@@ -45,6 +42,7 @@ export function ReportesProveedorView() {
       <ReportesFiltros
         {...base.filtros}
         filtros={filtros}
+        ultimaActualizacion={subtituloActualizacion}
         onFiltrosChange={setFiltros}
       />
 
@@ -86,7 +84,9 @@ export function ReportesProveedorView() {
             </Card>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div
+            className={`grid gap-4 ${data.mostrarDistribucionTurno ? "lg:grid-cols-2" : ""}`}
+          >
             <Card className="gap-0 py-0 shadow-none">
               <CardHeader className="border-b py-3">
                 <CardTitle className="text-sm font-semibold">
@@ -98,23 +98,22 @@ export function ReportesProveedorView() {
               </CardContent>
             </Card>
 
-            <Card className="gap-0 py-0 shadow-none">
-              <CardHeader className="border-b py-3">
-                <CardTitle className="text-sm font-semibold">
-                  Distribución por turno
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-4">
-                <VerticalBarChart items={data.distribucionServicio} />
-              </CardContent>
-            </Card>
+            {data.mostrarDistribucionTurno && (
+              <Card className="gap-0 py-0 shadow-none">
+                <CardHeader className="border-b py-3">
+                  <CardTitle className="text-sm font-semibold">
+                    Distribución por turno
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="py-4">
+                  <VerticalBarChart items={data.distribucionServicio} />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 
-        <HallazgosPanel
-          hallazgos={base.hallazgos}
-          titulo="Alertas operativas"
-        />
+        <HallazgosPanel hallazgos={data.hallazgos} titulo="Alertas operativas" />
       </div>
     </div>
   )

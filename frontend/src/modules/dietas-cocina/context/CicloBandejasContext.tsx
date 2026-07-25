@@ -9,21 +9,16 @@ import {
 } from "react"
 
 import { obtenerCicloBandejasRepository } from "@/modules/dietas-cocina/api"
-
-import {
-  crearOrdenesIniciales,
-  type OrdenCocina,
-} from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import {
-  crearEtiquetasEnfermeraIniciales,
-  type EtiquetaEnfermera,
-  type MotivoDevolucion,
-} from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-import {
-  mockEtiquetas,
-  type EtiquetaDieta,
-  type EstadoEtiqueta,
-} from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
+import { crearOrdenesIniciales } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
+import { crearEtiquetasEnfermeraIniciales } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
+import { mockEtiquetas } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type {
+  ConfirmarDevolucionInput,
+  CrearOrdenDesdeDietaInput,
+} from "@/modules/dietas-cocina/types/tray-cycle"
+import type { EstadoEtiqueta } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaDieta, EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { formatearHoraActual } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 import {
@@ -39,26 +34,7 @@ import {
 import { crearEstadoInicialCicloBandejas, sincronizarSeedsCocinaEtiquetas } from "@/modules/dietas-cocina/lib/sincronizarSeedsCocinaEtiquetas"
 import { cargarCicloBandejas, guardarCicloBandejas } from "@/modules/dietas-cocina/lib/cicloBandejasStorage"
 
-interface ConfirmarDevolucionInput {
-  motivo: MotivoDevolucion
-  observaciones?: string
-  fotoDevolucion?: string
-}
-
-export interface CrearOrdenDesdeDietaInput {
-  pacienteId: string
-  paciente: string
-  edad: number
-  pabellon: string
-  habitacion: string
-  cama?: string
-  tipoDieta: string
-  consistencia: string
-  comida: OrdenCocina["comida"]
-  aislado?: boolean
-  alergias?: string[]
-  observaciones?: string
-}
+export type { CrearOrdenDesdeDietaInput } from "@/modules/dietas-cocina/types/tray-cycle"
 
 interface CicloBandejasContextValue {
   ordenes: OrdenCocina[]

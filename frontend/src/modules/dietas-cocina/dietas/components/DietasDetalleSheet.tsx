@@ -1,3 +1,4 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import { History, PencilLine } from "lucide-react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -11,7 +12,6 @@ import {
 } from "@/components/ui/sheet"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import {
   obtenerDescripcionDieta,
   obtenerTrazabilidad,

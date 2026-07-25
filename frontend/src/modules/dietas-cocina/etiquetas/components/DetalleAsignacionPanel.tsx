@@ -1,9 +1,9 @@
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { AlertaCriticaCard } from "@/modules/dietas-cocina/etiquetas/components/AlertaCriticaCard"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 
 interface DetalleAsignacionPanelProps {

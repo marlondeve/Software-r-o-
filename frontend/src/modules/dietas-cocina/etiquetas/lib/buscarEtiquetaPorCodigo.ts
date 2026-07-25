@@ -1,4 +1,4 @@
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { extraerCodigoDesdeQr } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 
 export function buscarEtiquetaPorCodigo(

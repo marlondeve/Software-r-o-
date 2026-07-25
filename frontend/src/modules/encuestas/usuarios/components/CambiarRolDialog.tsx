@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ROLES_ENCUESTAS_MODULO, type RolEncuestas } from "@/modules/encuestas/lib/roles"
-import type { UsuarioEncuestasModulo } from "@/modules/encuestas/usuarios/datos/mockUsuarios"
+import type { UsuarioEncuestasModulo } from "@/modules/encuestas/types/users"
 
 interface CambiarRolDialogProps {
   usuario: UsuarioEncuestasModulo | null

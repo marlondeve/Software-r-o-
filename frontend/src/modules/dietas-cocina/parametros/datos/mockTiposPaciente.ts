@@ -1,13 +1,4 @@
-export type EstadoCategoria = "activo" | "borrador"
-
-export interface CategoriaEdad {
-  id: string
-  nombre: string
-  rangoMin: number
-  rangoMax: number
-  unidad: "Años" | "Meses" | "Días"
-  estado: EstadoCategoria
-}
+import type { CategoriaEdad } from "@/modules/dietas-cocina/types/parameters"
 
 export const mockTiposPaciente = {
   alertaSuperposicion:

@@ -1,6 +1,5 @@
-import type { CensoRepository } from "@/modules/dietas-cocina/api/censoRepository"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { CensoRepository } from "@/modules/dietas-cocina/types/repositories"
 /** Pacientes nuevos del censo hospitalario (demo). */
 const CENSO_NUEVOS: Omit<FilaDieta, "id">[] = [
   {

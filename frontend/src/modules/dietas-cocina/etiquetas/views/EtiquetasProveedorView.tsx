@@ -1,3 +1,4 @@
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
 
@@ -24,8 +25,6 @@ import {
   puedeReimprimirEtiqueta,
 } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 interface EtiquetasLocationState {
   preseleccion?: string[]
 }

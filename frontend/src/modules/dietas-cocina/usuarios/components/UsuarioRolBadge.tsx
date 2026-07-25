@@ -1,3 +1,4 @@
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import {
   Headphones,
   HeartPulse,
@@ -7,7 +8,6 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { rolDietasEstilos } from "@/modules/dietas-cocina/usuarios/lib/usuarioEstilos"
 import { cn } from "@/lib/utils"
 

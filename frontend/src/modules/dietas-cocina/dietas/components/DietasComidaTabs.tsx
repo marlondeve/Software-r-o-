@@ -1,5 +1,5 @@
-import type { ComidaTab } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import type { ComidaTab } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { cn } from "@/lib/utils"
 
 interface DietasComidaTabsProps {

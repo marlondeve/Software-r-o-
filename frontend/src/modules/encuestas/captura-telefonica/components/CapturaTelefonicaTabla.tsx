@@ -4,7 +4,7 @@ import { History, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { EstadoLlamadaBadge } from "@/modules/encuestas/captura-telefonica/components/EstadoLlamadaBadge"
-import type { FilaCapturaTelefonica } from "@/modules/encuestas/captura-telefonica/datos/mockCapturaTelefonica"
+import type { FilaCapturaTelefonica } from "@/modules/encuestas/types/capture"
 import { cn } from "@/lib/utils"
 
 interface CapturaTelefonicaTablaProps {

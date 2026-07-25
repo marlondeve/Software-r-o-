@@ -1,18 +1,7 @@
-export interface EventoTrazabilidad {
-  id: string
-  titulo: string
-  descripcion: string
-  fecha: string
-  activo?: boolean
-}
+import type { EventoTrazabilidad } from "@/modules/dietas-cocina/types/diets"
+import { MOTIVOS_NOVEDAD } from "@/modules/dietas-cocina/types/enums"
 
-export const MOTIVOS_NOVEDAD = [
-  "Cambio clínico",
-  "Ajuste de consistencia",
-  "Modificación por alergia",
-  "Corrección de solicitud",
-  "Otro",
-]
+export { MOTIVOS_NOVEDAD }
 
 const trazabilidadBase: EventoTrazabilidad[] = [
   {

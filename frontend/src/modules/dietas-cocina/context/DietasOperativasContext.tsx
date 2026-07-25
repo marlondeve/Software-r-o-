@@ -1,3 +1,5 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import {
   createContext,
   useCallback,
@@ -13,18 +15,12 @@ import {
   obtenerCensoRepository,
   usarApiDietasCocina,
 } from "@/modules/dietas-cocina/api"
-import {
-  configDietasOperativas,
-  mockDietas,
-  type FilaDieta,
-} from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { configDietasOperativas, mockDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { cargarFilasCensoDesdeApi } from "@/modules/dietas-cocina/lib/cargarCensoHospitalario"
 import {
   cargarDietasOperativas,
   guardarDietasOperativas,
 } from "@/modules/dietas-cocina/lib/dietasStorage"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 function formatearHoraSincronizacion(): string {
   return new Date().toLocaleTimeString("es-CO", {
     hour: "2-digit",

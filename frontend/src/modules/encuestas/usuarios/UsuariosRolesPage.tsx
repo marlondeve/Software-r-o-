@@ -9,10 +9,8 @@ import { CambiarRolDialog } from "@/modules/encuestas/usuarios/components/Cambia
 import { RolesPermisosPanel } from "@/modules/encuestas/usuarios/components/RolesPermisosPanel"
 import { UsuariosFiltros } from "@/modules/encuestas/usuarios/components/UsuariosFiltros"
 import { UsuariosTabla } from "@/modules/encuestas/usuarios/components/UsuariosTabla"
-import {
-  mockUsuariosEncuestas,
-  type UsuarioEncuestasModulo,
-} from "@/modules/encuestas/usuarios/datos/mockUsuarios"
+import { mockUsuariosEncuestas } from "@/modules/encuestas/usuarios/datos/mockUsuarios"
+import type { UsuarioEncuestasModulo } from "@/modules/encuestas/types/users"
 import type { RolEncuestas } from "@/modules/encuestas/lib/roles"
 
 export function UsuariosRolesPage() {

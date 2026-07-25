@@ -1,3 +1,5 @@
+import type { ComidaTab, FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, Check, Info, Save, Shield, UtensilsCrossed } from "lucide-react"
 
@@ -26,10 +28,8 @@ import {
   ContextoPacienteCard,
   SeccionTitulo,
 } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
-import type { ComidaTab, FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { MOTIVOS_NOVEDAD } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
 import { obtenerVentanaComida } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 import { cn } from "@/lib/utils"
 
 interface FormularioNovedad {

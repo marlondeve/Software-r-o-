@@ -1,5 +1,4 @@
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 export const mockNutricionista = {
   periodoOperativo: "Almuerzo - 11:30 AM",
   kpis: [
@@ -13,10 +12,10 @@ export const mockNutricionista = {
   distribucion: {
     total: 142,
     segmentos: [
-      { label: "No solicitada", value: 12, color: "#b00020" },
+      { label: "Sin solicitud", value: 12, color: "#b00020" },
       { label: "Confirmada", value: 115, color: "#006671" },
       { label: "Devuelta", value: 3, color: "#94a3b8" },
-      { label: "Borrador", value: 8, color: "#bbf244" },
+      { label: "Guardado", value: 8, color: "#bbf244" },
       { label: "Recibida", value: 2, color: "#00818f" },
       { label: "Cancelada", value: 2, color: "#d8e0e8" },
     ],

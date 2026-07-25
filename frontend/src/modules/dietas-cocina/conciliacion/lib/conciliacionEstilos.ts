@@ -1,5 +1,5 @@
-import type { EstadoConciliacion, FilaConciliacion } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
-
+import type { FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
+import type { EstadoConciliacion } from "@/modules/dietas-cocina/types/enums"
 /** Estilos compartidos de conciliación — una sola paleta en tabla y badges. */
 export const conciliacionColores = {
   ok: "text-primary",

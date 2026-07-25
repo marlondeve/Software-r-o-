@@ -1,41 +1,11 @@
-export interface FiltrosReportes {
-  desde: string
-  hasta: string
-  servicio: string
-  horario: string
-}
-
-export interface ReportesKpi {
-  label: string
-  value: string
-  detalle?: string
-  detalleVariant: "positive" | "negative" | "neutral"
-}
-
-export interface ReportesChartItem {
-  label: string
-  value: number
-  color: string
-}
-
-export interface ReportesSegmento {
-  label: string
-  value: number
-  color: string
-}
-
-export interface ReportesEstadoDietas {
-  total: string
-  totalNumerico: number
-  segmentos: ReportesSegmento[]
-}
-
-export interface ReportesHito {
-  etapa: string
-  tiempo: string
-  tendencia: string
-  tendenciaVariant: "positive" | "negative" | "neutral"
-}
+import type {
+  FiltrosReportes,
+  ReportesChartItem,
+  ReportesEstadoDietas,
+  ReportesHito,
+  ReportesKpi,
+  ReportesSegmento,
+} from "@/modules/dietas-cocina/types/reports"
 
 interface ReportesBase {
   kpis: ReportesKpi[]
@@ -95,12 +65,23 @@ function factorHorario(horario: string): number {
   }
 }
 
-function calcularFactor(filtros: FiltrosReportes): number {
+export function calcularFactor(filtros: FiltrosReportes): number {
   return (
     factorFechas(filtros.desde, filtros.hasta) *
     factorServicio(filtros.servicio) *
     factorHorario(filtros.horario)
   )
+}
+
+export function crearFiltrosReportesIniciales(): FiltrosReportes {
+  const hoy = new Date()
+  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
+  return {
+    desde: inicioMes.toISOString().slice(0, 10),
+    hasta: hoy.toISOString().slice(0, 10),
+    servicio: "todos",
+    horario: "todos",
+  }
 }
 
 function escalarItems(

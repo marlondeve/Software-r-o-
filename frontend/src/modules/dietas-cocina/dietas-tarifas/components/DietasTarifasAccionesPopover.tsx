@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { useState } from "react"
 import {
   Ban,
@@ -13,7 +14,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import type { DietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import { cn } from "@/lib/utils"
 
 interface DietasTarifasAccionesPopoverProps {

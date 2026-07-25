@@ -1,9 +1,5 @@
-import {
-  mockParametrosTiempos,
-  type ModoCargaAnticipada,
-  type TiempoComida,
-} from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
+import type { ModoCargaAnticipada, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import { mockParametrosTiempos } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 const STORAGE_KEY = "dietas-cocina-parametros-tiempos"
 
 export interface ConfigTiempos {

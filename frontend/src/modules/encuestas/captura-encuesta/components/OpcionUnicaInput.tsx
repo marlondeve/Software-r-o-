@@ -1,6 +1,6 @@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { cn } from "@/lib/utils"
-import type { OpcionUnica } from "@/modules/encuestas/captura-encuesta/datos/mockCapturaEncuesta"
+import type { OpcionUnica } from "@/modules/encuestas/types/capture"
 
 interface OpcionUnicaInputProps {
   opciones: OpcionUnica[]
