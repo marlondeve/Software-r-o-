@@ -1,4 +1,9 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import {
+  formatearIdentificacionPaciente,
+  formatearReferenciaIngreso,
+  formatearUbicacionPaciente,
+} from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
 import { formatearHora12 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { mockParametrosTiempos } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
@@ -26,8 +31,26 @@ export function esCancelacionTardia(fila: FilaDieta): boolean {
   return fila.cancelacionTardia ?? false
 }
 
+export interface LineasContextoPaciente {
+  identificacion: string
+  ubicacion: string
+  ingreso: string | null
+}
+
+export function obtenerLineasContextoPaciente(
+  fila: FilaDieta,
+): LineasContextoPaciente {
+  return {
+    identificacion: formatearIdentificacionPaciente(fila),
+    ubicacion: formatearUbicacionPaciente(fila),
+    ingreso: formatearReferenciaIngreso(fila),
+  }
+}
+
+/** @deprecated Usar obtenerLineasContextoPaciente para evitar textos duplicados. */
 export function formatearContextoPaciente(fila: FilaDieta): string {
-  return `${fila.servicio} | ${fila.pabellon} - Hab ${fila.habitacion}`
+  const { identificacion, ubicacion, ingreso } = obtenerLineasContextoPaciente(fila)
+  return [identificacion, ubicacion, ingreso].filter(Boolean).join(" · ")
 }
 
 export function obtenerVentanaComida(comida: TiempoComida): string {

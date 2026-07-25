@@ -1,6 +1,10 @@
-/** Feedback demo sin backend — toast visual mínimo vía alert nativo. */
-export function demoToast(mensaje: string) {
-  window.alert(mensaje)
+import { sileo } from "sileo"
+
+export type DemoToastVariant = "success" | "error" | "warning" | "info"
+
+/** Notificación toast del módulo (Sileo). */
+export function demoToast(mensaje: string, variant: DemoToastVariant = "info") {
+  sileo[variant]({ title: mensaje })
 }
 
 export function descargarArchivoDemo(
