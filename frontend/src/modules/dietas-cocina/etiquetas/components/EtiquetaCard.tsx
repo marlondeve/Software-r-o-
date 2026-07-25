@@ -1,10 +1,10 @@
+import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
 import { Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { EtiquetaLabelFace } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaLabelFace"
-import type { EtiquetaDieta } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import { ETIQUETA_QR_RESolucion, dimensionesEtiquetaPantalla } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 

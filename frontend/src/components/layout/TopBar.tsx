@@ -13,11 +13,27 @@ import {
   resolverModuloActivo,
   usuarioEsAdministrador,
 } from "@/lib/modulos"
-import type { ModuloId } from "@/tipos/modulo"
+import type { ModuloId } from "@/types/module"
 
 interface TopBarProps {
   module: ModuloId
   onMenuClick?: () => void
+}
+
+function resolverPlaceholderBusqueda(
+  pathname: string,
+  modulo: ModuloId | null,
+): string {
+  if (pathname.startsWith("/administracion")) {
+    return "Buscar usuarios o roles..."
+  }
+  if (modulo === "dietas-cocina") {
+    return "Buscar orden, paciente o habitación..."
+  }
+  if (modulo === "encuestas") {
+    return "Buscar paciente o encuesta..."
+  }
+  return "Buscar..."
 }
 
 export function TopBar({ module, onMenuClick }: TopBarProps) {
@@ -27,6 +43,10 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
     esRutaDeModulo(location.pathname) ?? module ?? resolverModuloActivo(usuario)
   const rol = obtenerRolEnModulo(usuario, moduloActual)
   const enAdministracion = location.pathname.startsWith("/administracion")
+  const placeholderBusqueda = resolverPlaceholderBusqueda(
+    location.pathname,
+    moduloActual,
+  )
 
   return (
     <header
@@ -52,7 +72,7 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
             <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar usuarios o roles..."
+              placeholder={placeholderBusqueda}
               className="h-8 w-full rounded-full border-0 bg-muted py-0 pl-9 text-sm shadow-none focus-visible:ring-1"
             />
           </div>
@@ -91,7 +111,7 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
         <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Buscar usuarios o roles..."
+          placeholder={placeholderBusqueda}
           className="h-8 w-full rounded-full border-0 bg-muted py-0 pl-9 text-sm shadow-none focus-visible:ring-1"
         />
       </div>

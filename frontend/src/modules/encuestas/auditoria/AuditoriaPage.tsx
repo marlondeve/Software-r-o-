@@ -18,7 +18,7 @@ import {
   RANGOS_FECHA_AUDITORIA,
   mockAuditoriaEncuestas,
 } from "@/modules/encuestas/auditoria/datos/mockAuditoriaEncuestas"
-import type { FilaAuditoriaEncuesta } from "@/modules/encuestas/auditoria/datos/mockAuditoriaEncuestas"
+import type { FilaAuditoriaEncuesta } from "@/modules/encuestas/types/audit"
 import { DashboardPageHeader } from "@/modules/encuestas/inicio/components/DashboardPageHeader"
 
 export function AuditoriaPage() {

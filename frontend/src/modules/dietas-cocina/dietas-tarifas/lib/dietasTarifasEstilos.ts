@@ -1,8 +1,4 @@
-import type {
-  DietaCatalogo,
-  TarifaHistorico,
-} from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
-
+import type { DietaCatalogo, TarifaHistorico } from "@/modules/dietas-cocina/types/catalog"
 const formatoMonedaCop = new Intl.NumberFormat("es-CO", {
   style: "currency",
   currency: "COP",

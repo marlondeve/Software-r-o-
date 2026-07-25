@@ -7,7 +7,7 @@ import { CuestionariosFiltros } from "@/modules/encuestas/cuestionarios/componen
 import type { CuestionariosFiltrosState } from "@/modules/encuestas/cuestionarios/components/CuestionariosFiltros"
 import { CuestionariosTabla } from "@/modules/encuestas/cuestionarios/components/CuestionariosTabla"
 import { mockCuestionarios } from "@/modules/encuestas/cuestionarios/datos/mockCuestionarios"
-import type { Cuestionario } from "@/modules/encuestas/cuestionarios/datos/mockCuestionarios"
+import type { Cuestionario } from "@/modules/encuestas/types/questionnaires"
 import { DashboardPageHeader } from "@/modules/encuestas/inicio/components/DashboardPageHeader"
 
 const FILTROS_INICIALES: CuestionariosFiltrosState = {

@@ -1,7 +1,6 @@
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 export type FiltroSeguimientoCocina =
   | "Todos"
   | "en_transito"

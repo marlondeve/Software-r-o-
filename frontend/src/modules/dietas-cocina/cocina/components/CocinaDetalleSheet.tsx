@@ -1,3 +1,5 @@
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {
   AlertTriangle,
   ClipboardCheck,
@@ -28,14 +30,12 @@ import {
 } from "@/components/ui/sheet"
 import { AlertaCriticaCard } from "@/modules/dietas-cocina/etiquetas/components/AlertaCriticaCard"
 import { CocinaSeguimientoTimeline } from "@/modules/dietas-cocina/cocina/components/CocinaSeguimientoTimeline"
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import {
   claseBadgeEstadoVisibleCocina,
   claseTipoDieta,
   descripcionEstadoLogisticaCocina,
   labelEstadoVisibleCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
   enPasoEtiquetaSeguimiento,

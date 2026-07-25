@@ -1,34 +1,7 @@
-export type EstadoLlamada =
-  | "pendiente"
-  | "reintento"
-  | "no_contesta"
-  | "rechazo"
-  | "completada"
-
-export interface IntentoLlamada {
-  resultado: string
-  fecha: string
-  gestor: string
-  nota?: string
-}
-
-export interface FilaCapturaTelefonica {
-  id: string
-  paciente: string
-  documento: string
-  telefono: string
-  puntoAtencion: string
-  servicio: string
-  especialidad: string
-  eps: string
-  fechaCita: string
-  intentos: number
-  intentosMax: number
-  ultimoIntento?: string
-  horaReintento?: string
-  estado: EstadoLlamada
-  historialIntentos: IntentoLlamada[]
-}
+import type { ResultadoLlamada } from "@/modules/encuestas/types/enums"
+import type {
+  FilaCapturaTelefonica,
+} from "@/modules/encuestas/types/capture"
 
 interface KpiCapturaTelefonica {
   label: string
@@ -36,14 +9,6 @@ interface KpiCapturaTelefonica {
   sublabel?: string
   variant: "highlight" | "default" | "warning" | "destructive" | "success"
 }
-
-export type ResultadoLlamada =
-  | "acepta_encuesta"
-  | "solicita_posterior"
-  | "no_contesta"
-  | "ocupado"
-  | "telefono_apagado"
-  | "rechaza_participar"
 
 export const RESULTADOS_LLAMADA: {
   id: ResultadoLlamada

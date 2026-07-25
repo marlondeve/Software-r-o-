@@ -1,13 +1,10 @@
+import type { EstadoCicloBandejas } from "@/modules/dietas-cocina/types/tray-cycle"
+import type { CicloBandejasRepository } from "@/modules/dietas-cocina/types/repositories"
 import { buscarEtiquetaPorCodigo } from "@/modules/dietas-cocina/etiquetas/lib/buscarEtiquetaPorCodigo"
 import {
   cargarCicloBandejas,
   guardarCicloBandejas,
 } from "@/modules/dietas-cocina/lib/cicloBandejasStorage"
-import type {
-  CicloBandejasRepository,
-  EstadoCicloBandejas,
-} from "@/modules/dietas-cocina/api/cicloBandejasRepository"
-
 export const cicloBandejasRepositoryMock: CicloBandejasRepository = {
   async cargar(): Promise<EstadoCicloBandejas | null> {
     return cargarCicloBandejas()

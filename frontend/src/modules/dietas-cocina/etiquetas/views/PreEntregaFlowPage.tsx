@@ -1,3 +1,4 @@
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { useCallback, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
@@ -6,7 +7,6 @@ import { BandejaResumenCard } from "@/modules/dietas-cocina/etiquetas/components
 import { EscannerEtiquetaPanel } from "@/modules/dietas-cocina/etiquetas/components/EscannerEtiquetaPanel"
 import { IngresoManualEtiquetaDialog } from "@/modules/dietas-cocina/etiquetas/components/IngresoManualEtiquetaDialog"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { motivoNoConfirmarPreEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 

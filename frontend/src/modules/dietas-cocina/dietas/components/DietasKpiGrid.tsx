@@ -1,5 +1,5 @@
+import type { KpiDieta } from "@/modules/dietas-cocina/types/diets"
 import { Card, CardContent } from "@/components/ui/card"
-import type { KpiDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import {
   claseKpiDieta,
   claseValorKpi,

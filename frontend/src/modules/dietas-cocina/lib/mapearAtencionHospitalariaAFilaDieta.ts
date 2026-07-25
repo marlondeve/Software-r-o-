@@ -1,7 +1,6 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { AtencionHospitalaria } from "@/api/types"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 const DEFAULTS_OPERATIVOS = {
   consistencia: null as string | null,
   tipoDieta: null as string | null,

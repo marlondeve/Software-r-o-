@@ -2,7 +2,7 @@ import { AlertTriangle, CircleCheck } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { EstadoCaptura } from "@/modules/encuestas/inicio/datos/mockInicio"
+import type { EstadoCaptura } from "@/modules/encuestas/types/enums"
 
 const ESTADO_CONFIG: Record<
   EstadoCaptura,

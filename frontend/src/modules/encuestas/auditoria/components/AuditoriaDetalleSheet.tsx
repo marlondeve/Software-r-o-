@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { ResultadoAuditoriaBadge } from "@/modules/encuestas/auditoria/components/ResultadoAuditoriaBadge"
-import type { FilaAuditoriaEncuesta } from "@/modules/encuestas/auditoria/datos/mockAuditoriaEncuestas"
+import type { FilaAuditoriaEncuesta } from "@/modules/encuestas/types/audit"
 import { mockAuditoriaEncuestas } from "@/modules/encuestas/auditoria/datos/mockAuditoriaEncuestas"
 
 interface AuditoriaDetalleSheetProps {

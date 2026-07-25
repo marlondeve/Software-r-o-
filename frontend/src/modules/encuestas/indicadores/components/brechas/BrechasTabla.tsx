@@ -19,7 +19,7 @@ import { Input } from "@/components/ui/input"
 import { ContactoBadge } from "@/modules/encuestas/indicadores/components/brechas/ContactoBadge"
 import { EstadoBrechaBadge } from "@/modules/encuestas/indicadores/components/brechas/EstadoBrechaBadge"
 import { MotivoBrechaChip } from "@/modules/encuestas/indicadores/components/brechas/MotivoBrechaChip"
-import type { FilaBrecha } from "@/modules/encuestas/indicadores/datos/mockAnalisisBrechas"
+import type { FilaBrecha } from "@/modules/encuestas/types/indicators"
 
 const REGISTROS_POR_PAGINA = 3
 

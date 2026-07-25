@@ -1,14 +1,12 @@
+import type { MotivoDevolucion } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { Camera, ImagePlus } from "lucide-react"
 import { useState } from "react"
 
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { BandejaResumenCard } from "@/modules/dietas-cocina/etiquetas/components/BandejaResumenCard"
-import {
-  MOTIVOS_DEVOLUCION,
-  type EtiquetaEnfermera,
-  type MotivoDevolucion,
-} from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
+import { MOTIVOS_DEVOLUCION } from "@/modules/dietas-cocina/types/enums"
 import { claseChipMotivoDevolucion } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
 import { cn } from "@/lib/utils"
 

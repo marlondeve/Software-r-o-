@@ -1,21 +1,4 @@
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
-
-export type EstadoUsuario = "activo" | "inactivo"
-
-export type OrigenUsuario = "Vital API" | "Bital"
-
-export interface UsuarioModulo {
-  id: string
-  nombre: string
-  usuario: string
-  correo: string
-  rol: RolDietas
-  servicioArea: string
-  orgProveedora: string | null
-  estado: EstadoUsuario
-  ultimoAcceso: string
-  origen: OrigenUsuario
-}
+import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 
 export const mockUsuariosDietas = {
   total: 124,

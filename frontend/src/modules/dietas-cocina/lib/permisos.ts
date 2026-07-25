@@ -1,21 +1,11 @@
 import {
   normalizarRolDietas,
   resolverRolPermisos,
-  type RolDietas,
 } from "@/modules/dietas-cocina/lib/roles"
+import type { RolDietas, RutaDietas } from "@/modules/dietas-cocina/types/enums"
 import { cargarConfigAccesoModulos } from "@/lib/configAccesoModulos"
 
-export type RutaDietas =
-  | "inicio"
-  | "dietas"
-  | "dietas-tarifas"
-  | "cocina"
-  | "etiquetas"
-  | "reportes"
-  | "conciliacion"
-  | "parametros"
-  | "auditoria"
-  | "usuarios"
+export type { RutaDietas }
 
 const RUTAS_CLINICAS: RutaDietas[] = [
   "inicio",

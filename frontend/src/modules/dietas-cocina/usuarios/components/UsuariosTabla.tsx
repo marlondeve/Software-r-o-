@@ -1,11 +1,10 @@
+import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useMemo } from "react"
 
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { UsuarioAccionesPopover } from "@/modules/dietas-cocina/usuarios/components/UsuarioAccionesPopover"
 import { UsuarioEstadoBadge } from "@/modules/dietas-cocina/usuarios/components/UsuarioEstadoBadge"
 import { UsuarioRolBadge } from "@/modules/dietas-cocina/usuarios/components/UsuarioRolBadge"
-import type { UsuarioModulo } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
-
 interface UsuariosTablaProps {
   usuarios: UsuarioModulo[]
   puedeGestionar: boolean

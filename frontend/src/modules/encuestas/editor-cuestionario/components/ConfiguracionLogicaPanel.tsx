@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils"
 import {
   COMPORTAMIENTOS_ALERTA,
   SERVICIOS_APLICABLES,
-  type PreguntaEditor,
 } from "@/modules/encuestas/editor-cuestionario/datos/mockEditorCuestionario"
+import type { PreguntaEditor } from "@/modules/encuestas/types/questionnaire-editor"
 
 interface ConfiguracionLogicaPanelProps {
   pregunta: PreguntaEditor

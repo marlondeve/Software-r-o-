@@ -1,3 +1,4 @@
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { QrCode } from "lucide-react"
 import { Link } from "react-router-dom"
 
@@ -5,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
   claseBadgeLogistica,

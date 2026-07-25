@@ -1,3 +1,4 @@
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useMemo, useState } from "react"
 import { Settings2 } from "lucide-react"
 
@@ -19,7 +20,6 @@ import {
   type RutaDietasConfig,
 } from "@/lib/configAccesoModulos"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { ConfirmarAccionDialog } from "@/modules/dietas-cocina/usuarios/components/ConfirmarAccionDialog"
 import {
   diffPermisosRol,

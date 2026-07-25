@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { EstadoEncuestaBadge } from "@/modules/encuestas/encuestas-realizadas/components/EstadoEncuestaBadge"
 import { SatNpsBadge } from "@/modules/encuestas/encuestas-realizadas/components/SatNpsBadge"
-import type { FilaEncuestaRealizada } from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
+import type { FilaEncuestaRealizada } from "@/modules/encuestas/types/completed-surveys"
 import { cn } from "@/lib/utils"
 
 interface EncuestasRealizadasTablaProps {

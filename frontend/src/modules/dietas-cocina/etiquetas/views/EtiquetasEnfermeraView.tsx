@@ -1,3 +1,4 @@
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 
@@ -18,7 +19,6 @@ import {
 } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { KpiCardSimple } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { puedeConfirmarPreEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { cn } from "@/lib/utils"

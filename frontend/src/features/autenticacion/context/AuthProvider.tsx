@@ -11,8 +11,8 @@ import {
   cerrarSesion as cerrarSesionService,
   iniciarSesion as iniciarSesionService,
   obtenerSesion,
-} from "@/servicios/authService"
-import type { Usuario } from "@/tipos/usuario"
+} from "@/services/authService"
+import type { Usuario } from "@/types/user"
 
 interface AuthContextValue {
   usuario: Usuario | null

@@ -1,49 +1,5 @@
-export type TipoRespuesta =
-  | "escala"
-  | "numerico"
-  | "texto_libre"
-  | "opcion_unica"
-  | "opcion_multiple"
-
-export interface OpcionRespuesta {
-  id: string
-  texto: string
-  esNegativa: boolean
-}
-
-export interface CondicionLogica {
-  id: string
-  variable: string
-  operador: string
-  valor: string
-}
-
-export interface LogicaCondicional {
-  activa: boolean
-  condiciones: CondicionLogica[]
-}
-
-export interface PreguntaEditor {
-  id: string
-  codigoInterno: string
-  texto: string
-  descripcion: string
-  tipoRespuesta: TipoRespuesta
-  tipoBadgeLabel: string
-  requerida: boolean
-  habilitada: boolean
-  opciones: OpcionRespuesta[]
-  servicioAplicable: string
-  canalCaptura: "presencial" | "llamada"
-  logica: LogicaCondicional
-  comportamientoAlerta: string
-}
-
-export interface SeccionEditor {
-  id: string
-  titulo: string
-  preguntas: PreguntaEditor[]
-}
+import type { TipoRespuesta } from "@/modules/encuestas/types/enums"
+import type { SeccionEditor } from "@/modules/encuestas/types/questionnaire-editor"
 
 export const TIPOS_RESPUESTA: { value: TipoRespuesta; label: string; badge: string }[] = [
   { value: "escala", label: "Escala de Satisfacción (1-5)", badge: "Escala" },

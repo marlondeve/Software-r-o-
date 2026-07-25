@@ -1,6 +1,6 @@
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import type { RutaDietasConfig } from "@/lib/configAccesoModulos"
 import { RUTAS_DIETAS } from "@/lib/configAccesoModulos"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { obtenerRutasPermitidas } from "@/modules/dietas-cocina/lib/permisos"
 
 export interface ResultadoValidacion {

@@ -1,12 +1,9 @@
+import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
 import { UtensilsCrossed } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import {
-  etiquetaComidaLabel,
-  type EtiquetaDieta,
-} from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
-
+import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 interface BandejaResumenCardProps {
   etiqueta: EtiquetaDieta
   compacto?: boolean

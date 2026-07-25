@@ -1,5 +1,5 @@
 import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
-import type { ModuloId } from "@/tipos/modulo"
+import type { ModuloId } from "@/types/module"
 
 const STORAGE_KEY = "bital:config-acceso-modulos"
 

@@ -1,3 +1,4 @@
+import type { DetalleConciliacion, RegistroSistema } from "@/modules/dietas-cocina/types/reconciliation"
 import { AlertTriangle, ArrowRight, CheckCircle2, Database } from "lucide-react"
 import { useEffect, useState } from "react"
 
@@ -25,10 +26,6 @@ import {
   DataTable,
   type ColumnDef,
 } from "@/components/ui/data-table"
-import type {
-  DetalleConciliacion,
-  RegistroSistema,
-} from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
 import { conciliacionColores } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionEstilos"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { cn } from "@/lib/utils"

@@ -19,9 +19,9 @@ import {
   PACIENTE_CONTEXTO_DEFECTO,
   SECCIONES_ENCUESTA,
   VALORES_NEGATIVOS,
-  type PacienteContextoEncuesta,
-  type ValorSatisfaccion,
 } from "@/modules/encuestas/captura-encuesta/datos/mockCapturaEncuesta"
+import type { PacienteContextoEncuesta } from "@/modules/encuestas/types/patients"
+import type { ValorSatisfaccion } from "@/modules/encuestas/types/enums"
 
 interface RespuestaSeccion {
   valor: string | null

@@ -1,8 +1,8 @@
 import type { LucideIcon } from "lucide-react"
 import { ClipboardList, UtensilsCrossed } from "lucide-react"
 
-import type { ModuloId } from "@/tipos/modulo"
-import type { Usuario } from "@/tipos/usuario"
+import type { ModuloId } from "@/types/module"
+import type { Usuario } from "@/types/user"
 
 export interface ModuloConfig {
   id: ModuloId

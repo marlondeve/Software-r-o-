@@ -1,8 +1,8 @@
+import type { ModoFlujoEtiqueta } from "@/modules/dietas-cocina/types/enums"
 import { Camera, Flashlight, Keyboard } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import type { ModoFlujoEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { useEscannerQr } from "@/modules/dietas-cocina/etiquetas/hooks/useEscannerQr"
 
 interface EscannerEtiquetaPanelProps {

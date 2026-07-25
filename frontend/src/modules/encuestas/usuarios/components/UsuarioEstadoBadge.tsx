@@ -1,4 +1,4 @@
-import type { EstadoUsuarioEncuestas } from "@/modules/encuestas/usuarios/datos/mockUsuarios"
+import type { EstadoUsuarioEncuestas } from "@/modules/encuestas/types/enums"
 import { cn } from "@/lib/utils"
 
 const ESTADO_CONFIG: Record<EstadoUsuarioEncuestas, { label: string; dotClassName: string }> = {

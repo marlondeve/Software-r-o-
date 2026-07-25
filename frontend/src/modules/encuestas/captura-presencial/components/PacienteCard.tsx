@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { InfoChip } from "@/modules/encuestas/captura-presencial/components/InfoChip"
 import { PacienteEstadoBadge } from "@/modules/encuestas/captura-presencial/components/PacienteEstadoBadge"
-import type { PacientePresencial } from "@/modules/encuestas/captura-presencial/datos/mockCapturaPresencial"
+import type { PacientePresencial } from "@/modules/encuestas/types/patients"
 import { cn } from "@/lib/utils"
 
 interface PacienteCardProps {

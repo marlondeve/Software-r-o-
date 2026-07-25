@@ -1,5 +1,4 @@
-export type TipoCaptura = "telefonica" | "presencial"
-export type EstadoCaptura = "completada" | "revision"
+import type { EstadoCaptura, TipoCaptura } from "@/modules/encuestas/types/enums"
 
 interface KpiDato {
   label: string

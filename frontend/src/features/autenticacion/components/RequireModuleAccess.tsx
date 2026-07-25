@@ -4,7 +4,7 @@ import { Navigate } from "react-router-dom"
 
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { guardarModuloActivo } from "@/lib/modulos"
-import type { ModuloId } from "@/tipos/modulo"
+import type { ModuloId } from "@/types/module"
 
 interface RequireModuleAccessProps {
   moduloId: ModuloId

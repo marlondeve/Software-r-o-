@@ -1,13 +1,9 @@
-export const MOTIVOS_CANCELACION = [
-  { id: "alta-medica", label: "Alta médica" },
-  { id: "traslado", label: "Traslado" },
-  { id: "fallecimiento", label: "Fallecimiento" },
-  { id: "npo", label: "NPO / Nada vía oral" },
-  { id: "error-solicitud", label: "Error de solicitud" },
-  { id: "otro", label: "Otro" },
-] as const
+import {
+  MOTIVOS_CANCELACION,
+  type MotivoCancelacionId,
+} from "@/modules/dietas-cocina/types/enums"
 
-export type MotivoCancelacionId = (typeof MOTIVOS_CANCELACION)[number]["id"]
+export { MOTIVOS_CANCELACION, type MotivoCancelacionId }
 
 export const mockCancelarDieta = {
   avisoCancelacionTardia:

@@ -13,7 +13,7 @@ import {
   RESULTADOS_LLAMADA,
   mockCapturaTelefonica,
 } from "@/modules/encuestas/captura-telefonica/datos/mockCapturaTelefonica"
-import type { FilaCapturaTelefonica } from "@/modules/encuestas/captura-telefonica/datos/mockCapturaTelefonica"
+import type { FilaCapturaTelefonica } from "@/modules/encuestas/types/capture"
 import { DashboardPageHeader } from "@/modules/encuestas/inicio/components/DashboardPageHeader"
 
 const FILTROS_INICIALES: CapturaTelefonicaFiltrosState = {

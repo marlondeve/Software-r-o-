@@ -1,6 +1,6 @@
+import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
 import { jsPDF } from "jspdf"
 
-import type { EtiquetaDieta } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import { capturarEtiquetaCanvas } from "@/modules/dietas-cocina/etiquetas/lib/capturarEtiquetaCanvas"
 import {
   ALTO_ETIQUETA_MM,

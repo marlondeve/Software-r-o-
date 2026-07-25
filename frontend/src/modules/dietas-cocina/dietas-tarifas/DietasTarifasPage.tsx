@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { useEffect, useMemo, useState } from "react"
 import { Plus } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
@@ -9,11 +10,7 @@ import { DietasTarifasTabla } from "@/modules/dietas-cocina/dietas-tarifas/compo
 import { EditarDietaSheet } from "@/modules/dietas-cocina/dietas-tarifas/components/EditarDietaSheet"
 import { HistoricoTarifasSheet } from "@/modules/dietas-cocina/dietas-tarifas/components/HistoricoTarifasSheet"
 import { NuevaTarifaSheet } from "@/modules/dietas-cocina/dietas-tarifas/components/NuevaTarifaSheet"
-import {
-  crearDietasCatalogoIniciales,
-  TAMANO_PAGINA_CATALOGO,
-  type DietaCatalogo,
-} from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
+import { crearDietasCatalogoIniciales, TAMANO_PAGINA_CATALOGO } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 
 export function DietasTarifasPage() {

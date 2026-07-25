@@ -1,3 +1,5 @@
+import type { ComidaTab, FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { MotivoCancelacionId } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { AlertTriangle, X, XIcon } from "lucide-react"
@@ -10,13 +12,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
-import type { ComidaTab, FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import {
-  mockCancelarDieta,
-  MOTIVOS_CANCELACION,
-  type MotivoCancelacionId,
-} from "@/modules/dietas-cocina/dietas/datos/mockCancelarDieta"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import { mockCancelarDieta, MOTIVOS_CANCELACION } from "@/modules/dietas-cocina/dietas/datos/mockCancelarDieta"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { esCancelacionTardia } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import { cn } from "@/lib/utils"
 

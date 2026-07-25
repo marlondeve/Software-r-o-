@@ -17,11 +17,9 @@ import {
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { TimePicker } from "@/components/ui/time-picker"
-import {
-  RESULTADOS_LLAMADA,
-  type FilaCapturaTelefonica,
-  type ResultadoLlamada,
-} from "@/modules/encuestas/captura-telefonica/datos/mockCapturaTelefonica"
+import { RESULTADOS_LLAMADA } from "@/modules/encuestas/captura-telefonica/datos/mockCapturaTelefonica"
+import type { ResultadoLlamada } from "@/modules/encuestas/types/enums"
+import type { FilaCapturaTelefonica } from "@/modules/encuestas/types/capture"
 import { cn } from "@/lib/utils"
 
 export interface IntentoGuardado {
@@ -180,7 +178,7 @@ export function GestionLlamadaSheet({
                     <div key={`${intento.resultado}-${index}`} className="relative">
                       <span
                         className={cn(
-                          "absolute top-1 -left-[1.625rem] size-3 rounded-full border-2 border-background",
+                          "absolute top-1 -left-6.5 size-3 rounded-full border-2 border-background",
                           index === 0 ? "bg-destructive" : "bg-muted-foreground/60",
                         )}
                       />

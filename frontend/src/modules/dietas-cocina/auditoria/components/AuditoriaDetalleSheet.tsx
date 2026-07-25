@@ -1,3 +1,4 @@
+import type { DetalleAuditoria } from "@/modules/dietas-cocina/types/audit"
 import type { ComponentType, ReactNode } from "react"
 import {
   AlertTriangle,
@@ -19,7 +20,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import type { DetalleAuditoria } from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
 import {
   avatarColorPorIniciales,
   impactoNivelColor,

@@ -3,7 +3,7 @@ import { Clock, CircleCheck, PencilLine, Trash2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { ReglaActiva } from "@/modules/encuestas/parametros/datos/mockParametrosReglas"
+import type { ReglaActiva } from "@/modules/encuestas/types/parameters"
 
 interface ReglasActivasListProps {
   reglas: ReglaActiva[]

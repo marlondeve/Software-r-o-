@@ -1,8 +1,4 @@
-import type {
-  DetalleAuditoria,
-  FilaAuditoria,
-} from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
-
+import type { DetalleAuditoria, FilaAuditoria } from "@/modules/dietas-cocina/types/audit"
 export function obtenerDetalleAuditoria(
   id: string,
   filas: FilaAuditoria[],

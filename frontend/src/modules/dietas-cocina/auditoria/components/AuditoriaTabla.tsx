@@ -1,3 +1,5 @@
+import type { CambioAuditoria, FilaAuditoria } from "@/modules/dietas-cocina/types/audit"
+import type { ModuloAuditoria } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
 import type { ComponentType } from "react"
 import {
@@ -17,11 +19,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { ResultadoAuditoriaBadge } from "@/modules/dietas-cocina/auditoria/components/ResultadoAuditoriaBadge"
-import type {
-  CambioAuditoria,
-  FilaAuditoria,
-  ModuloAuditoria,
-} from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
 import {
   MODULO_LABEL,
   avatarColorPorIniciales,

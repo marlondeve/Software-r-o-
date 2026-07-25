@@ -1,11 +1,4 @@
-export type EstadoRegla = "activa" | "borrador"
-
-export interface ReglaActiva {
-  id: string
-  descripcion: string
-  estado: EstadoRegla
-  modificado: string
-}
+import type { ReglaActiva } from "@/modules/encuestas/types/parameters"
 
 export const CAMPOS_DATOS = [
   "EPS del Paciente",

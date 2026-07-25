@@ -1,5 +1,4 @@
-import type { ModuloAuditoria, ResultadoAuditoria } from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
-
+import type { ModuloAuditoria, ResultadoAuditoria } from "@/modules/dietas-cocina/types/enums"
 export const MODULO_LABEL: Record<ModuloAuditoria, string> = {
   dietas: "Dietas",
   cocina: "Cocina",

@@ -6,7 +6,7 @@ import type { CapturaPresencialFiltrosState } from "@/modules/encuestas/captura-
 import { CapturaPresencialKpiGrid } from "@/modules/encuestas/captura-presencial/components/CapturaPresencialKpiGrid"
 import { PacienteCard } from "@/modules/encuestas/captura-presencial/components/PacienteCard"
 import { mockCapturaPresencial } from "@/modules/encuestas/captura-presencial/datos/mockCapturaPresencial"
-import type { PacientePresencial } from "@/modules/encuestas/captura-presencial/datos/mockCapturaPresencial"
+import type { PacientePresencial } from "@/modules/encuestas/types/patients"
 
 const FILTROS_INICIALES: CapturaPresencialFiltrosState = {
   busqueda: "",

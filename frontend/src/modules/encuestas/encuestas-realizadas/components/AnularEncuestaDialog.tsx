@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import type { FilaEncuestaRealizada } from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
+import type { FilaEncuestaRealizada } from "@/modules/encuestas/types/completed-surveys"
 
 interface AnularEncuestaDialogProps {
   open: boolean

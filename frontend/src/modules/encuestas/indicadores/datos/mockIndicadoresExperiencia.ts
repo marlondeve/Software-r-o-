@@ -1,16 +1,4 @@
-export interface KpiExperiencia {
-  label: string
-  valor: string
-  sufijo?: string
-  trend?: { direction: "up" | "down"; texto: string }
-  nota?: string
-}
-
-export interface SegmentoBarra {
-  label: string
-  value: number
-  color: string
-}
+import type { KpiExperiencia, SegmentoBarra } from "@/modules/encuestas/types/indicators"
 
 export const RANGOS_FECHA = ["Hoy", "Última semana", "Último mes", "Último trimestre"]
 export const SERVICIOS_EXPERIENCIA = [

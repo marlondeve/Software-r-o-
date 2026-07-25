@@ -1,6 +1,5 @@
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 /** Reemplaza el censo de una comida con datos del HIS, conservando estado operativo local. */
 export function fusionarCensoOperativo(
   anteriores: FilaDieta[],

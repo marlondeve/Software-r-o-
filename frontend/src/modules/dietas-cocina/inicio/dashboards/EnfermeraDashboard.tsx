@@ -1,3 +1,4 @@
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
 import {
   AlertTriangle,
@@ -14,7 +15,6 @@ import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOpera
 import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/DashboardCard"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { KpiCardSimple } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
 import { construirDashboardEnfermeraDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardEnfermera"
 

@@ -7,11 +7,8 @@ import { Input } from "@/components/ui/input"
 import { ConfiguracionLogicaPanel } from "@/modules/encuestas/editor-cuestionario/components/ConfiguracionLogicaPanel"
 import { EstructuraPanel } from "@/modules/encuestas/editor-cuestionario/components/EstructuraPanel"
 import { PreguntaEditorPanel } from "@/modules/encuestas/editor-cuestionario/components/PreguntaEditorPanel"
-import {
-  mockEditorCuestionario,
-  type PreguntaEditor,
-  type SeccionEditor,
-} from "@/modules/encuestas/editor-cuestionario/datos/mockEditorCuestionario"
+import { mockEditorCuestionario } from "@/modules/encuestas/editor-cuestionario/datos/mockEditorCuestionario"
+import type { PreguntaEditor, SeccionEditor } from "@/modules/encuestas/types/questionnaire-editor"
 import { mockCuestionarios } from "@/modules/encuestas/cuestionarios/datos/mockCuestionarios"
 import { DashboardPageHeader } from "@/modules/encuestas/inicio/components/DashboardPageHeader"
 

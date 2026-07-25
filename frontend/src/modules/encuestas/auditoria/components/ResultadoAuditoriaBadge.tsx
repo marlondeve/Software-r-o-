@@ -2,9 +2,13 @@ import { Check, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { ResultadoAuditoria } from "@/modules/encuestas/auditoria/datos/mockAuditoriaEncuestas"
+import type { ResultadoAuditoriaEncuestas } from "@/modules/encuestas/types/enums"
 
-export function ResultadoAuditoriaBadge({ resultado }: { resultado: ResultadoAuditoria }) {
+export function ResultadoAuditoriaBadge({
+  resultado,
+}: {
+  resultado: ResultadoAuditoriaEncuestas
+}) {
   const esExito = resultado === "exito"
   const Icon = esExito ? Check : X
 

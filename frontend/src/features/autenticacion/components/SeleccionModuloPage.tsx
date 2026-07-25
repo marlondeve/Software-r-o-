@@ -27,7 +27,7 @@ import {
   obtenerRolEnModulo,
   usuarioEsAdministrador,
 } from "@/lib/modulos"
-import type { ModuloId } from "@/tipos/modulo"
+import type { ModuloId } from "@/types/module"
 
 export function SeleccionModuloPage() {
   const navigate = useNavigate()

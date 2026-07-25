@@ -1,9 +1,8 @@
 export const mockReportesProveedor = {
   filtros: {
-    rangoFechas: "Oct 1 - Oct 24, 2023",
-    servicio: "Turno actual: Cena",
-    horario: "Planta Central",
-    ultimaActualizacion: "Hoy, 18:15 PM",
+    rangoFechas: "Seleccionar rango",
+    servicio: "Todos los servicios",
+    horario: "Todos los turnos",
   },
   kpis: [
     {
@@ -77,7 +76,7 @@ export const mockReportesProveedor = {
         "15 órdenes de UCI superaron el tiempo de tránsito estimado hoy.",
     },
     {
-      variant: "info" as const,
+      variant: "warning" as const,
       titulo: "Etiquetas pendientes",
       descripcion:
         "40 raciones listas sin escaneo de despacho en Planta Central.",

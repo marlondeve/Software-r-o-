@@ -1,20 +1,4 @@
-import type { RolEncuestas } from "@/modules/encuestas/lib/roles"
-
-export type EstadoUsuarioEncuestas = "activo" | "inactivo"
-export type OrigenUsuarioEncuestas = "Vital API" | "Bital"
-
-export interface UsuarioEncuestasModulo {
-  id: string
-  nombre: string
-  usuario: string
-  correo: string
-  rol: RolEncuestas
-  servicioArea: string
-  orgProveedora: string | null
-  estado: EstadoUsuarioEncuestas
-  ultimoAcceso: string
-  origen: OrigenUsuarioEncuestas
-}
+import type { UsuarioEncuestasModulo } from "@/modules/encuestas/types/users"
 
 export const mockUsuariosEncuestas = {
   total: 124,

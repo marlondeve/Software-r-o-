@@ -1,10 +1,8 @@
+import type { CensoRepository, CicloBandejasRepository } from "@/modules/dietas-cocina/types/repositories"
 import { censoRepositoryHttp } from "@/modules/dietas-cocina/api/censoRepository.http"
 import { censoRepositoryMock } from "@/modules/dietas-cocina/api/censoRepository.mock"
 import { cicloBandejasRepositoryMock } from "@/modules/dietas-cocina/api/cicloBandejasRepository.mock"
 import { cicloBandejasRepositoryHttp } from "@/modules/dietas-cocina/api/cicloBandejasRepository.http"
-import type { CensoRepository } from "@/modules/dietas-cocina/api/censoRepository"
-import type { CicloBandejasRepository } from "@/modules/dietas-cocina/api/cicloBandejasRepository"
-
 export type { CensoRepository } from "@/modules/dietas-cocina/api/censoRepository"
 export type { CicloBandejasRepository } from "@/modules/dietas-cocina/api/cicloBandejasRepository"
 export type { DietasRepository } from "@/modules/dietas-cocina/api/dietasRepository"

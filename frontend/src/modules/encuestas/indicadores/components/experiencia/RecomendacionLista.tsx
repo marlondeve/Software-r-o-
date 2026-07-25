@@ -1,4 +1,4 @@
-import type { SegmentoBarra } from "@/modules/encuestas/indicadores/datos/mockIndicadoresExperiencia"
+import type { SegmentoBarra } from "@/modules/encuestas/types/indicators"
 
 export function RecomendacionLista({ segmentos }: { segmentos: SegmentoBarra[] }) {
   return (

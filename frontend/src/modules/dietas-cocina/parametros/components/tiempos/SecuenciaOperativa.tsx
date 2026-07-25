@@ -1,4 +1,4 @@
-import type { ParametrosTiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import type { ParametrosTiempoComida } from "@/modules/dietas-cocina/types/parameters"
 import {
   formatearHora12,
   formatearRangoHora12,
