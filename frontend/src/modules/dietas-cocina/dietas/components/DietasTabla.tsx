@@ -18,6 +18,10 @@ import {
   formatearUbicacion,
 } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
 import {
+  formatearIdentificacionPaciente,
+  formatearUbicacionPaciente,
+} from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
+import {
   esSolicitudEditable,
   puedeCancelarDieta,
   puedeRegistrarNovedad,
@@ -88,7 +92,10 @@ export function DietasTabla({
           <div>
             <p className="font-medium text-foreground">{row.original.paciente}</p>
             <p className="text-xs text-muted-foreground">
-              {row.original.pacienteId}
+              {formatearIdentificacionPaciente(row.original)}
+            </p>
+            <p className="text-xs text-muted-foreground/80">
+              {formatearUbicacionPaciente(row.original)}
             </p>
           </div>
         ),

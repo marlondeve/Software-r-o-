@@ -28,6 +28,7 @@ import {
 import type { ComidaTab, FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import {
   esSolicitudEditable,
+  obtenerLineasContextoPaciente,
   obtenerVentanaComida,
   tituloSolicitudDieta,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
@@ -106,6 +107,8 @@ export function DietasSolicitudSheet({
     setFormulario((prev) => (prev ? { ...prev, ...cambios } : prev))
   }
 
+  const { identificacion, ubicacion } = obtenerLineasContextoPaciente(fila)
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -115,7 +118,7 @@ export function DietasSolicitudSheet({
         <SheetHeader className="shrink-0 border-b px-5 py-4 pr-12 text-left">
           <SheetTitle>{tituloSolicitudDieta(fila)}</SheetTitle>
           <SheetDescription>
-            {fila.paciente} | ID: {fila.pacienteId.replace("PAC-", "")}
+            {identificacion} · {ubicacion}
           </SheetDescription>
         </SheetHeader>
 

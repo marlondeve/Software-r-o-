@@ -16,6 +16,10 @@ export interface KpiDieta {
 export interface FilaDieta {
   id: string
   pacienteId: string
+  /** Consecutivo del ingreso en el HIS (cuando viene del API). */
+  idIngreso?: number
+  cedula?: string
+  tipoDocumento?: string
   paciente: string
   edad: number
   servicio: string
@@ -231,13 +235,44 @@ const filasDesayuno: FilaDieta[] = filasAlmuerzo.slice(0, 6).map((fila, index) =
         : ("no-solicitada" as EstadoDieta),
 }))
 
-export const mockDietas = {
-  fecha: "Hoy, 24 de Octubre",
-  ultimaSincronizacion: "08:30 AM",
+export const configDietasOperativas = {
   comidaActiva: "almuerzo" as TiempoComida,
   comidas: COMIDAS_TABS,
   avisoClinico:
     "Revise las condiciones clínicas de cada paciente antes de confirmar cambios masivos en las dietas asignadas.",
+  tiposDieta: [
+    "General",
+    "Blanda",
+    "Blanda / Sin sal",
+    "Hipocalórica",
+    "Líquida clara",
+    "Líquida completa",
+    "Diabética",
+  ],
+  consistencias: ["Sólida", "Blanda", "Líquida", "Puré"],
+  cierreVentanaMinutos: 45,
+  servicios: [
+    "Medicina Interna",
+    "Cirugía General",
+    "UCI",
+    "Pediatría",
+    "Urgencias",
+  ],
+}
+
+export function formatearFechaReferenciaDietas(): string {
+  const hoy = new Date()
+  const fecha = hoy.toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "long",
+  })
+  return `Hoy, ${fecha}`
+}
+
+export const mockDietas = {
+  fecha: "Hoy, 24 de Octubre",
+  ultimaSincronizacion: "08:30 AM",
+  ...configDietasOperativas,
   kpis: [
     { id: "total", label: "Total", value: 142, variant: "default" },
     {
@@ -252,23 +287,5 @@ export const mockDietas = {
     { id: "devueltas", label: "Devueltas", value: 2, variant: "muted" },
     { id: "canceladas", label: "Canceladas", value: 0, variant: "muted" },
   ] satisfies KpiDieta[],
-  servicios: [
-    "Medicina Interna",
-    "Cirugía General",
-    "UCI",
-    "Pediatría",
-    "Urgencias",
-  ],
-  tiposDieta: [
-    "General",
-    "Blanda",
-    "Blanda / Sin sal",
-    "Hipocalórica",
-    "Líquida clara",
-    "Líquida completa",
-    "Diabética",
-  ],
-  consistencias: ["Sólida", "Blanda", "Líquida", "Puré"],
-  cierreVentanaMinutos: 45,
   filas: [...filasAlmuerzo, ...filasDesayuno],
 }

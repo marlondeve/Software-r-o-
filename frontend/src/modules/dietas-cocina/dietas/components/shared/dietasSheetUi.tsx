@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import { formatearContextoPaciente } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
+import { obtenerLineasContextoPaciente } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 
 export function SeccionTitulo({ children }: { children: ReactNode }) {
   return (
@@ -20,6 +20,8 @@ interface ContextoPacienteCardProps {
 }
 
 export function ContextoPacienteCard({ fila }: ContextoPacienteCardProps) {
+  const { identificacion, ubicacion, ingreso } = obtenerLineasContextoPaciente(fila)
+
   return (
     <section className="rounded-xl border border-border bg-muted/40 p-4">
       <div className="flex items-start justify-between gap-3">
@@ -29,13 +31,24 @@ export function ContextoPacienteCard({ fila }: ContextoPacienteCardProps) {
           className="shrink-0 font-semibold uppercase tracking-wide"
         />
       </div>
-      <div className="mt-3 space-y-1">
-        <p className="font-semibold text-foreground">
-          {fila.paciente} ({fila.edad} años)
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {formatearContextoPaciente(fila)}
-        </p>
+      <div className="mt-3 space-y-2">
+        <p className="font-semibold text-foreground">{fila.paciente}</p>
+        <dl className="space-y-1 text-sm text-muted-foreground">
+          <div className="flex gap-2">
+            <dt className="shrink-0 font-medium text-foreground/70">Documento</dt>
+            <dd>{identificacion}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="shrink-0 font-medium text-foreground/70">Ubicación</dt>
+            <dd>{ubicacion}</dd>
+          </div>
+          {ingreso && (
+            <div className="flex gap-2">
+              <dt className="shrink-0 font-medium text-foreground/70">Ingreso</dt>
+              <dd>{ingreso}</dd>
+            </div>
+          )}
+        </dl>
       </div>
     </section>
   )

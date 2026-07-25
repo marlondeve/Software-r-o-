@@ -14,7 +14,11 @@ import { DietasKpiGrid } from "@/modules/dietas-cocina/dietas/components/DietasK
 import { DietasNovedadSheet } from "@/modules/dietas-cocina/dietas/components/DietasNovedadSheet"
 import { DietasSolicitudSheet } from "@/modules/dietas-cocina/dietas/components/DietasSolicitudSheet"
 import { DietasTabla } from "@/modules/dietas-cocina/dietas/components/DietasTabla"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import {
+  formatearFechaReferenciaDietas,
+  type FilaDieta,
+} from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
   calcularKpisDietas,
   ESTADOS_PENDIENTES,
@@ -48,6 +52,7 @@ export function DietasPage() {
     filas,
     ultimaSincronizacion,
     meta: data,
+    sincronizandoCenso,
     actualizarFila,
     setFilas,
     sincronizarCenso,
@@ -84,6 +89,14 @@ export function DietasPage() {
     () => calcularKpisDietas(filas, comidaActiva),
     [filas, comidaActiva],
   )
+
+  const serviciosDisponibles = useMemo(() => {
+    if (!usarApiDietasCocina()) {
+      return data.servicios
+    }
+    const desdeFilas = filas.map((fila) => fila.servicio)
+    return [...new Set(desdeFilas)].sort((a, b) => a.localeCompare(b, "es"))
+  }, [filas, data.servicios])
 
   const idsVisibles = useMemo(
     () => new Set(filasFiltradas.map((fila) => fila.id)),
@@ -241,7 +254,8 @@ export function DietasPage() {
         title="Gestión diaria de dietas"
         subtitle={
           <>
-            {data.fecha} · Última sincronización: {ultimaSincronizacion}
+            {formatearFechaReferenciaDietas()} · Última sincronización:{" "}
+            {ultimaSincronizacion}
           </>
         }
         actions={
@@ -249,17 +263,40 @@ export function DietasPage() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              const agregados = sincronizarCenso()
-              demoToast(
-                agregados > 0
-                  ? `Censo actualizado: ${agregados} paciente(s) nuevo(s) incorporado(s).`
-                  : "Censo ya estaba al día. No hay ingresos nuevos.",
-              )
+            disabled={sincronizandoCenso}
+            onClick={async () => {
+              try {
+                const total = await sincronizarCenso(comidaActiva)
+                if (usarApiDietasCocina()) {
+                  demoToast(
+                    total > 0
+                      ? `Censo actualizado: ${total} paciente(s) hospitalizado(s).`
+                      : "No hay pacientes hospitalizados en el censo del HIS.",
+                    total > 0 ? "success" : "warning",
+                  )
+                } else {
+                  demoToast(
+                    total > 0
+                      ? `Censo actualizado: ${total} paciente(s) nuevo(s) incorporado(s).`
+                      : "Censo ya estaba al día. No hay ingresos nuevos.",
+                    total > 0 ? "success" : "info",
+                  )
+                }
+              } catch (error) {
+                demoToast(
+                  error instanceof Error
+                    ? error.message
+                    : "Error al sincronizar el censo hospitalario.",
+                  "error",
+                )
+              }
             }}
           >
-            <RefreshCw data-icon="inline-start" />
-            Actualizar censo
+            <RefreshCw
+              data-icon="inline-start"
+              className={sincronizandoCenso ? "animate-spin" : undefined}
+            />
+            {sincronizandoCenso ? "Sincronizando..." : "Actualizar censo"}
           </Button>
         }
       />
@@ -284,7 +321,7 @@ export function DietasPage() {
         servicio={servicio}
         estado={estado}
         soloPendientes={soloPendientes}
-        servicios={data.servicios}
+        servicios={serviciosDisponibles}
         onBusquedaChange={setBusqueda}
         onServicioChange={setServicio}
         onEstadoChange={setEstado}
