@@ -1,8 +1,8 @@
+import type { ModoFlujoEtiqueta } from "@/modules/dietas-cocina/types/enums"
 import { Navigate, useLocation, useNavigate, useSearchParams } from "react-router-dom"
 
 import { CicloFinalizadoPanel } from "@/modules/dietas-cocina/etiquetas/components/CicloFinalizadoPanel"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
-import type { ModoFlujoEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 
 interface ExitoLocationState {

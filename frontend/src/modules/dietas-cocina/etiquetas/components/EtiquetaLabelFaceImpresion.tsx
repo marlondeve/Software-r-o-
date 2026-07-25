@@ -1,8 +1,6 @@
+import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
 import logoClinica from "@/assets/Logo-Clinica-del-Rio.png"
-import {
-  etiquetaComidaLabel,
-  type EtiquetaDieta,
-} from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
+import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
   CAPTURA_PADDING_PX,
   ETIQUETA_ALTO_PX,

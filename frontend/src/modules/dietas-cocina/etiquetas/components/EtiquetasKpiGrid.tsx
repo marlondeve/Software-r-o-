@@ -1,5 +1,5 @@
+import type { KpiEtiqueta } from "@/modules/dietas-cocina/types/labels"
 import { Card, CardContent } from "@/components/ui/card"
-import type { KpiEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
   claseKpiEtiqueta,
   claseValorKpiEtiqueta,

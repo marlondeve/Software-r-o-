@@ -1,48 +1,5 @@
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-
-export type EstadoCocina =
-  | "por_iniciar"
-  | "en_preparacion"
-  | "lista"
-  | "despachada"
-  | "cancelada"
-
-export interface ChecklistItem {
-  id: string
-  label: string
-  obligatorio: boolean
-  completado: boolean
-}
-
-export interface OrdenCocina {
-  id: string
-  etiquetaId?: string
-  pacienteId: string
-  paciente: string
-  edad: number
-  pabellon: string
-  habitacion: string
-  cama?: string
-  tipoDieta: string
-  consistencia: string
-  comida: TiempoComida
-  aislado: boolean
-  alergias: string[]
-  observaciones: string
-  estadoCocina: EstadoCocina
-  estadoLogistica?: EstadoLogisticaEtiqueta
-  etiquetaImpresa: boolean
-  etiquetaGenerada: boolean
-  checklist: ChecklistItem[]
-}
-
-export interface KpiCocina {
-  id: string
-  label: string
-  value: number
-  variant?: "default" | "info" | "success" | "destructive" | "warning" | "muted"
-}
+import type { EstadoCocina, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { ChecklistItem, OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 
 const checklistBase: ChecklistItem[] = [
   { id: "ck-1", label: "Receta revisada", obligatorio: false, completado: true },

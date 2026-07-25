@@ -2,10 +2,8 @@ import { Angry, Frown, Laugh, Meh, Smile } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import {
-  OPCIONES_SATISFACCION,
-  type ValorSatisfaccion,
-} from "@/modules/encuestas/captura-encuesta/datos/mockCapturaEncuesta"
+import { OPCIONES_SATISFACCION } from "@/modules/encuestas/captura-encuesta/datos/mockCapturaEncuesta"
+import type { ValorSatisfaccion } from "@/modules/encuestas/types/enums"
 
 const ICONOS: Record<ValorSatisfaccion, LucideIcon> = {
   muy_satisfecho: Laugh,

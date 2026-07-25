@@ -1,13 +1,12 @@
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {
   ordenCoincideSeguimiento,
   ordenEnTransito,
   resolverEstadoLogisticaOrden,
   type FiltroSeguimientoCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 export interface FiltrosCocina {
   pabellon: string
   habitacion: string
@@ -81,6 +80,12 @@ export function calcularKpisCocina(
   return [
     { id: "total", label: "TOTAL", value: activas.length, variant: "default" as const },
     {
+      id: "por-preparar",
+      label: "POR PREPARAR",
+      value: filtradas.filter((o) => o.estadoCocina === "por_iniciar").length,
+      variant: "warning" as const,
+    },
+    {
       id: "en-preparacion",
       label: "EN PREPARACIÓN",
       value: filtradas.filter((o) => o.estadoCocina === "en_preparacion").length,
@@ -131,6 +136,8 @@ export function filtrosDesdeKpiCocina(kpiId: string): Partial<FiltrosCocina> {
   switch (kpiId) {
     case "total":
       return { estadoCocina: "Todos", seguimiento: "Todos" }
+    case "por-preparar":
+      return { estadoCocina: "por_iniciar", seguimiento: "Todos" }
     case "en-preparacion":
       return { estadoCocina: "en_preparacion", seguimiento: "Todos" }
     case "listas":

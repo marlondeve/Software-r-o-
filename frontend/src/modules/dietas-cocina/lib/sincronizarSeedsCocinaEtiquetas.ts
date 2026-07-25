@@ -1,6 +1,5 @@
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 function sincronizarOrdenConEtiqueta(
   orden: OrdenCocina,
   etiqueta: EtiquetaEnfermera,

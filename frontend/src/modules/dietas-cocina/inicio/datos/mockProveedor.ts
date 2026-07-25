@@ -1,7 +1,5 @@
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 export const mockProveedor = {
-  turno: "Cena (18:00 - 20:00)",
   kpis: [
     {
       label: "Total a preparar",

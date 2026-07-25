@@ -1,8 +1,8 @@
+import type { TarifaHistorico } from "@/modules/dietas-cocina/types/catalog"
 import { Clock, Tag, User } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import type { TarifaHistorico } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import {
   formatearMonedaTarifaGrande,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"

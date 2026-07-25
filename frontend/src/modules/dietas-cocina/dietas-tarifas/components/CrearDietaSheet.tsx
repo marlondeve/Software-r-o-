@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { Button } from "@/components/ui/button"
 import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import {
@@ -14,7 +15,6 @@ import {
   DIETA_CATALOGO_FORM_VACIO,
   type DietaCatalogoFormValues,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietaCatalogoFormDefaults"
-import type { DietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import {
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,

@@ -1,18 +1,16 @@
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type {
-  EstadoConciliacion,
-  FilaConciliacion,
-  RegistroSistema,
-} from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { FilaConciliacion, RegistroSistema } from "@/modules/dietas-cocina/types/reconciliation"
+import type { EstadoConciliacion, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { crearDietasCatalogoIniciales } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import {
+  formatearMonedaCOP,
   formatearTarifaCOP,
   normalizarNombreTipoDieta,
+  parseDifEconomica,
+  parseMonedaCOP,
   resolverTarifaPorTipoDieta,
 } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 const CATALOGO = crearDietasCatalogoIniciales()
 
 function labelComida(comida: TiempoComida): string {
@@ -58,12 +56,8 @@ function resolverEstadoConciliacion(
 }
 
 function formatearDifEconomica(valor: number): string {
-  const fmt = Math.abs(valor).toLocaleString("es-CO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-  if (valor === 0) return "$0.00"
-  return `${valor > 0 ? "+" : "-"}$${fmt}`
+  if (valor === 0) return formatearMonedaCOP(0)
+  return formatearMonedaCOP(valor, true)
 }
 
 function construirRegistros(ordenes: OrdenCocina[]): RegistroSistema[] {
@@ -159,8 +153,7 @@ export function construirDetallesConciliacionDesdeFilas(
 
   for (const fila of filas) {
     if (fila.estado === "dif-cantidad" && fila.registros?.length) {
-      const tarifaNum =
-        Number.parseFloat(fila.tarifa.replace(/[^0-9.-]/g, "")) || 0
+      const tarifaNum = parseMonedaCOP(fila.tarifa)
       const valorBital = fila.cantSist * tarifaNum
       const valorProveedor = fila.cantFact * tarifaNum
       detalles[fila.id] = {

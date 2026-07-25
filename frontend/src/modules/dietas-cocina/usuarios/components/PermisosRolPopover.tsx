@@ -1,6 +1,6 @@
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { RUTAS_DIETAS } from "@/lib/configAccesoModulos"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { cn } from "@/lib/utils"
 
 interface PermisosRolResumenProps {

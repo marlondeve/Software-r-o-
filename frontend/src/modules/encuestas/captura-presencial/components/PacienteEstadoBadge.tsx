@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { EstadoPaciente } from "@/modules/encuestas/captura-presencial/datos/mockCapturaPresencial"
+import type { EstadoPaciente } from "@/modules/encuestas/types/enums"
 
 const ESTADO_CONFIG: Record<EstadoPaciente, { label: string; className: string }> = {
   pendiente: {

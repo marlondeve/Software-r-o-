@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,8 +11,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { HistoricoTarifasTimeline } from "@/modules/dietas-cocina/dietas-tarifas/components/HistoricoTarifasTimeline"
-import type { DietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
-
 interface HistoricoTarifasSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void

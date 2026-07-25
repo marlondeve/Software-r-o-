@@ -1,10 +1,10 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { ReactNode } from "react"
 
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { obtenerLineasContextoPaciente } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 
 export function SeccionTitulo({ children }: { children: ReactNode }) {

@@ -1,17 +1,4 @@
-export type EstadoPaciente = "pendiente" | "en_proceso" | "completada" | "no_disponible"
-
-export interface PacientePresencial {
-  id: string
-  nombre: string
-  documento: string
-  servicio: string
-  ubicacion: string
-  aseguradora?: string
-  estado: EstadoPaciente
-  guardadoHace?: string
-  motivoNoDisponible?: string
-  horaReporte?: string
-}
+import type { PacientePresencial } from "@/modules/encuestas/types/patients"
 
 export const SERVICIOS_PRESENCIAL = [
   "Hospitalización",

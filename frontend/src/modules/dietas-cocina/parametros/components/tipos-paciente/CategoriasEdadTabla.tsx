@@ -1,3 +1,4 @@
+import type { CategoriaEdad } from "@/modules/dietas-cocina/types/parameters"
 import { useMemo } from "react"
 import { PencilLine, SlidersHorizontal, Trash2 } from "lucide-react"
 
@@ -5,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
-import type { CategoriaEdad } from "@/modules/dietas-cocina/parametros/datos/mockTiposPaciente"
 import { cn } from "@/lib/utils"
 
 interface CategoriasEdadTablaProps {

@@ -1,3 +1,4 @@
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -5,10 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { CargaAnticipadaCard } from "@/modules/dietas-cocina/parametros/components/tiempos/CargaAnticipadaCard"
 import { TiemposComidaPanel } from "@/modules/dietas-cocina/parametros/components/tiempos/TiemposComidaPanel"
 import { VistaPreviaEnfermeria } from "@/modules/dietas-cocina/parametros/components/tiempos/VistaPreviaEnfermeria"
-import {
-  mockParametrosTiempos,
-  type TiempoComida,
-} from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import { mockParametrosTiempos } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import {
   cargarConfigTiempos,

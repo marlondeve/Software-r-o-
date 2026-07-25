@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import type { TonoMotivoBrecha } from "@/modules/encuestas/indicadores/datos/mockAnalisisBrechas"
+import type { TonoMotivoBrecha } from "@/modules/encuestas/types/enums"
 
 export function MotivoBrechaChip({
   motivo,

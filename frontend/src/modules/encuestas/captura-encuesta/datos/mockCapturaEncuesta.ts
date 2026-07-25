@@ -1,31 +1,9 @@
-export type TipoPreguntaEncuesta = "escala_satisfaccion" | "opcion_unica" | "texto_libre"
-
-export type ValorSatisfaccion =
-  | "muy_satisfecho"
-  | "satisfecho"
-  | "neutral"
-  | "insatisfecho"
-  | "muy_insatisfecho"
-
-export interface OpcionEscalaSatisfaccion {
-  valor: ValorSatisfaccion
-  label: string
-}
-
-export interface OpcionUnica {
-  id: string
-  label: string
-}
-
-export interface SeccionEncuesta {
-  id: string
-  numero: number
-  titulo: string
-  pregunta: string
-  tipo: TipoPreguntaEncuesta
-  opciones: OpcionUnica[]
-  opcional?: boolean
-}
+import type { ValorSatisfaccion } from "@/modules/encuestas/types/enums"
+import type {
+  OpcionEscalaSatisfaccion,
+  SeccionEncuesta,
+} from "@/modules/encuestas/types/capture"
+import type { PacienteContextoEncuesta } from "@/modules/encuestas/types/patients"
 
 export const OPCIONES_SATISFACCION: OpcionEscalaSatisfaccion[] = [
   { valor: "muy_satisfecho", label: "Muy satisfecho" },
@@ -114,15 +92,6 @@ export const SECCIONES_ENCUESTA: SeccionEncuesta[] = [
     opcional: true,
   },
 ]
-
-export interface PacienteContextoEncuesta {
-  nombre: string
-  documento: string
-  eps: string
-  contrato?: string
-  servicio: string
-  canal: "presencial" | "telefonica"
-}
 
 export const PACIENTE_CONTEXTO_DEFECTO: PacienteContextoEncuesta = {
   nombre: "Carlos Alberto Ramírez",

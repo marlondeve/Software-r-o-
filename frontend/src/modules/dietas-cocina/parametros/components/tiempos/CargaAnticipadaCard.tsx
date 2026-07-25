@@ -1,9 +1,9 @@
+import type { ModoCargaAnticipada } from "@/modules/dietas-cocina/types/enums"
 import { Info } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import type { ModoCargaAnticipada } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
 import { cn } from "@/lib/utils"
 
 interface OpcionCarga {

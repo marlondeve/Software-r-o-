@@ -1,11 +1,11 @@
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { Check } from "lucide-react"
 
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import {
   indicePasoActivoSeguimiento,
   PASOS_SEGUIMIENTO,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaSeguimiento"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { cn } from "@/lib/utils"
 
 interface CocinaSeguimientoTimelineProps {

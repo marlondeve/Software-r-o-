@@ -4,7 +4,7 @@ import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { UsuarioAccionesPopover } from "@/modules/encuestas/usuarios/components/UsuarioAccionesPopover"
 import { UsuarioEstadoBadge } from "@/modules/encuestas/usuarios/components/UsuarioEstadoBadge"
 import { UsuarioRolBadge } from "@/modules/encuestas/usuarios/components/UsuarioRolBadge"
-import type { UsuarioEncuestasModulo } from "@/modules/encuestas/usuarios/datos/mockUsuarios"
+import type { UsuarioEncuestasModulo } from "@/modules/encuestas/types/users"
 
 interface UsuariosTablaProps {
   usuarios: UsuarioEncuestasModulo[]

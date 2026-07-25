@@ -1,5 +1,4 @@
-import type { CategoriaEdad } from "@/modules/dietas-cocina/parametros/datos/mockTiposPaciente"
-
+import type { CategoriaEdad } from "@/modules/dietas-cocina/types/parameters"
 export interface ResultadoClasificacion {
   edadCalculada: string
   categoria: string

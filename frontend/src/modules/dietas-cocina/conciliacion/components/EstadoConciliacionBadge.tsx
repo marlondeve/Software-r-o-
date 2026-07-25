@@ -1,6 +1,6 @@
+import type { EstadoConciliacion } from "@/modules/dietas-cocina/types/enums"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { EstadoConciliacion } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
 import { badgeClassPorEstado } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionEstilos"
 
 const ESTADO_LABEL: Record<EstadoConciliacion, string> = {

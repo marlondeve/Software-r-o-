@@ -1,18 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-
-export type EstadoDieta =
-  | "confirmada"
-  | "guardado"
-  | "no-solicitada"
-  | "preparando"
-  | "en-preparacion"
-  | "lista-despacho"
-  | "por-iniciar"
-  | "recibida"
-  | "devuelta"
-  | "cancelada"
-  | "despachada"
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 
 const ESTADO_CONFIG: Record<
   EstadoDieta,
@@ -27,7 +15,7 @@ const ESTADO_CONFIG: Record<
     className: "bg-accent/30 text-accent-foreground border-accent/40",
   },
   "no-solicitada": {
-    label: "No solicitada",
+    label: "Sin solicitud",
     className: "bg-destructive/10 text-destructive border-destructive/20",
   },
   preparando: {

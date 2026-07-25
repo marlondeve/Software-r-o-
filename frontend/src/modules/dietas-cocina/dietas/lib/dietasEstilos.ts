@@ -1,6 +1,5 @@
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import type { FilaDieta, KpiDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import type { FilaDieta, KpiDieta } from "@/modules/dietas-cocina/types/diets"
+import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { cn } from "@/lib/utils"
 
 export const ESTADO_FILTRO_LABEL: Record<string, string> = {
@@ -50,7 +49,16 @@ export function claseValorKpi(kpi: KpiDieta): string {
 }
 
 export function formatearUbicacion(fila: FilaDieta): string {
-  return `${fila.pabellon} · ${fila.habitacion}`
+  return `${normalizarPabellon(fila.pabellon)} · Hab. ${fila.habitacion}`
+}
+
+/** Unifica alias históricos del HIS para evitar duplicidad visual. */
+export function normalizarPabellon(pabellon: string): string {
+  const alias: Record<string, string> = {
+    "Pabellón A": "Pab. Central",
+    "Pabellon A": "Pab. Central",
+  }
+  return alias[pabellon] ?? pabellon
 }
 
 export function filaCoincideBusqueda(fila: FilaDieta, termino: string): boolean {

@@ -1,9 +1,10 @@
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   AlertTriangle,
+  Bell,
   CheckCircle2,
-  CircleCheck,
   ClipboardList,
   Clock,
   Download,
@@ -23,7 +24,6 @@ import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/Dashboa
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { KpiCard } from "@/modules/dietas-cocina/inicio/components/KpiCard"
 import { construirDashboardNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardNutricionista"
 import { descargarArchivoDemo } from "@/modules/dietas-cocina/lib/demoFeedback"
@@ -33,7 +33,7 @@ const KPI_ICONS = [
   Users,
   ClipboardList,
   CheckCircle2,
-  CircleCheck,
+  Bell,
   XCircle,
   Clock,
 ] as const
@@ -52,7 +52,13 @@ export function NutricionistaDashboard() {
   const { filas } = useDietasOperativas()
 
   const data = useMemo(
-    () => construirDashboardNutricionistaDesdeCiclo(filas, ordenes, etiquetas),
+    () =>
+      construirDashboardNutricionistaDesdeCiclo(
+        filas,
+        ordenes,
+        etiquetas,
+        new Date(),
+      ),
     [filas, ordenes, etiquetas],
   )
 
@@ -65,19 +71,34 @@ export function NutricionistaDashboard() {
           <span className="font-medium">{row.original.paciente}</span>
         ),
       },
-      { accessorKey: "accion", header: "Acción" },
       {
-        accessorKey: "hora",
-        header: "Hora",
+        id: "accion",
+        header: "Acción",
         cell: ({ row }) => (
-          <span className="text-muted-foreground">{row.original.hora}</span>
+          <span
+            className="block w-36 truncate text-sm"
+            title={row.original.accion}
+          >
+            {row.original.accion}
+          </span>
         ),
       },
       {
-        accessorKey: "estado",
-        header: "Estado",
+        id: "hora",
+        header: () => <span className="block w-16 text-right">Hora</span>,
         cell: ({ row }) => (
-          <EstadoBadge estado={row.original.estado as EstadoDieta} />
+          <span className="block w-16 text-right tabular-nums text-muted-foreground">
+            {row.original.hora}
+          </span>
+        ),
+      },
+      {
+        id: "estado",
+        header: () => <span className="block w-28 text-right">Estado</span>,
+        cell: ({ row }) => (
+          <div className="flex w-28 justify-end">
+            <EstadoBadge estado={row.original.estado as EstadoDieta} />
+          </div>
         ),
       },
     ],
@@ -150,9 +171,6 @@ export function NutricionistaDashboard() {
           accentTop="destructive"
           className="lg:col-span-2"
         >
-          <div className="mb-2 flex items-center gap-2">
-            <AlertTriangle className="size-4 text-destructive" />
-          </div>
           <div className="divide-y divide-border">
             {data.atencion.map((item) => (
               <AlertaItem

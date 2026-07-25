@@ -1,10 +1,9 @@
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { mockEnfermera } from "@/modules/dietas-cocina/inicio/datos/mockEnfermera"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 /** Pabellones asociados al piso de enfermería demo. */
 const PABELLONES_ENFERMERIA = ["Pab. Central", "Pab. Norte"]
 

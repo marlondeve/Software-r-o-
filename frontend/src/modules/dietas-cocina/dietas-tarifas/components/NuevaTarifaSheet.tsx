@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { useEffect, useState } from "react"
 import { AlertCircle, ArrowRight, Info } from "lucide-react"
 
@@ -15,7 +16,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import type { DietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import {
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,

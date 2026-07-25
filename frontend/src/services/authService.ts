@@ -1,5 +1,5 @@
-import type { AccesoModulo } from "@/tipos/modulo"
-import type { Usuario } from "@/tipos/usuario"
+import type { AccesoModulo } from "@/types/module"
+import type { Usuario } from "@/types/user"
 
 import {
   limpiarModuloActivo,

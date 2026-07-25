@@ -1,9 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type {
-  EstadoLlamada,
-  FilaCapturaTelefonica,
-} from "@/modules/encuestas/captura-telefonica/datos/mockCapturaTelefonica"
+import type { EstadoLlamada } from "@/modules/encuestas/types/enums"
+import type { FilaCapturaTelefonica } from "@/modules/encuestas/types/capture"
 
 const ESTADO_CONFIG: Record<
   EstadoLlamada,

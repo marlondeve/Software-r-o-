@@ -1,23 +1,11 @@
-export type EstadoEncuesta = "completada" | "incompleta" | "anulada"
-export type CanalEncuesta = "telefono" | "presencial"
-
-export interface FilaEncuestaRealizada {
-  id: string
-  consecutivo: string
-  fecha: string
-  paciente: string
-  documento: string
-  entidad: string
-  servicio: string
-  puntoAtencion: string
-  canal: CanalEncuesta
-  encuestador: string
-  sat: number | null
-  nps: number | null
-  estado: EstadoEncuesta
-  comentarioNegativo?: boolean
-  motivoAnulacion?: string
-}
+import type {
+  CanalEncuesta,
+  EstadoEncuesta,
+} from "@/modules/encuestas/types/enums"
+import type {
+  DetalleEncuestaRealizada,
+  FilaEncuestaRealizada,
+} from "@/modules/encuestas/types/completed-surveys"
 
 export const CANALES: { value: CanalEncuesta; label: string }[] = [
   { value: "telefono", label: "Teléfono" },
@@ -31,32 +19,6 @@ export const ESTADOS: { value: EstadoEncuesta; label: string }[] = [
   { value: "completada", label: "Completada" },
   { value: "incompleta", label: "Incompleta" },
 ]
-
-export type EstadoSincronizacion = "sincronizado" | "pendiente" | "error"
-export type TonoRespuesta = "positivo" | "neutro" | "negativo"
-
-export interface RespuestaEncuestaDetalle {
-  numero: number
-  pregunta: string
-  valor: number
-  etiqueta: string
-  tono: TonoRespuesta
-  comentarioObligatorio?: string
-}
-
-export interface EventoHistorialEncuesta {
-  titulo: string
-  detalle: string
-  actual?: boolean
-}
-
-export interface DetalleEncuestaRealizada {
-  idCompleto: string
-  canalDetalle: string
-  estadoSincronizacion: EstadoSincronizacion
-  respuestas: RespuestaEncuestaDetalle[]
-  historial: EventoHistorialEncuesta[]
-}
 
 const detallesEncuesta: Record<string, DetalleEncuestaRealizada> = {
   "1": {

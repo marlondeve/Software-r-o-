@@ -1,7 +1,6 @@
+import type { HitoTiempo } from "@/modules/dietas-cocina/types/parameters"
 import { Label } from "@/components/ui/label"
 import { TimePicker } from "@/components/ui/time-picker"
-import type { HitoTiempo } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 interface TiemposComidaFormularioProps {
   hitos: HitoTiempo[]
   horas: Record<string, string>

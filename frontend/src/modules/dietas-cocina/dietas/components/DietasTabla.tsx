@@ -1,3 +1,4 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import { useMemo } from "react"
 import { Eye, MoreHorizontal, PencilLine } from "lucide-react"
 
@@ -12,7 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { construirAccionesDietaFila } from "@/modules/dietas-cocina/dietas/lib/dietasAcciones"
 import {
   cnFilaTabla,
   formatearUbicacion,
@@ -23,8 +24,6 @@ import {
 } from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
 import {
   esSolicitudEditable,
-  puedeCancelarDieta,
-  puedeRegistrarNovedad,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 
 interface DietasTablaProps {
@@ -116,17 +115,30 @@ export function DietasTabla({
         id: "consistencia",
         header: "Consistencia",
         cell: ({ row }) => (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-foreground">
-              {row.original.consistencia ?? "Sin asignar"}
-            </span>
-            {row.original.aislado && (
+          <span className="text-foreground">
+            {row.original.consistencia ?? "Sin asignar"}
+          </span>
+        ),
+      },
+      {
+        id: "precauciones",
+        header: "Precauciones",
+        cell: ({ row }) => (
+          <div className="flex flex-col gap-1">
+            {row.original.aislado ? (
               <Badge
                 variant="outline"
-                className="rounded-full border-sky-500/30 bg-sky-500/10 text-[10px] text-sky-700"
+                className="w-fit rounded-full border-destructive/30 bg-destructive/10 text-[10px] font-bold uppercase text-destructive"
               >
-                AISLADO
+                Aislado
               </Badge>
+            ) : (
+              <span className="text-sm text-muted-foreground">—</span>
+            )}
+            {row.original.aislamiento !== "Ninguno" && (
+              <span className="text-xs text-muted-foreground">
+                {row.original.aislamiento}
+              </span>
             )}
           </div>
         ),
@@ -137,39 +149,21 @@ export function DietasTabla({
         cell: ({ row }) => {
           const fila = row.original
           const puedeEditar = esSolicitudEditable(fila)
-          const puedeNovedad = puedeRegistrarNovedad(fila)
-
-          const accionesSecundarias = [
-            fila.estado === "guardado" && {
-              key: "detalle",
-              label: "Ver detalle",
-              onClick: () => onAbrirDetalle(fila),
-            },
-            puedeNovedad && {
-              key: "novedad",
-              label: "Registrar novedad",
-              onClick: () => onRegistrarNovedad(fila),
-            },
-            puedeCancelarDieta(fila) && {
-              key: "cancelar",
-              label: "Cancelar dieta",
-              destructive: true,
-              onClick: () => onCancelarDieta(fila),
-            },
-          ].filter(Boolean) as Array<{
-            key: string
-            label: string
-            destructive?: boolean
-            onClick?: () => void
-          }>
+          const acciones = construirAccionesDietaFila(fila, {
+            onAbrirDetalle,
+            onAbrirSolicitud,
+            onRegistrarNovedad,
+            onCancelarDieta,
+          })
 
           return (
             <div className="flex items-center justify-end gap-0.5">
               {puedeEditar ? (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="icon-sm"
+                  className="size-8 border-border bg-background shadow-xs"
                   aria-label="Editar solicitud"
                   onClick={() => onAbrirSolicitud(fila)}
                 >
@@ -178,44 +172,44 @@ export function DietasTabla({
               ) : (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="icon-sm"
+                  className="size-8 border-border bg-background shadow-xs"
                   aria-label="Ver detalle"
                   onClick={() => onAbrirDetalle(fila)}
                 >
                   <Eye className="size-4" />
                 </Button>
               )}
-              {accionesSecundarias.length > 0 && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    className="size-8 border-border bg-background shadow-xs"
+                    aria-label="Más acciones"
+                  >
+                    <MoreHorizontal className="size-4" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-48 p-1">
+                  {acciones.map((accion) => (
+                    <button
+                      key={accion.key}
                       type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label="Más acciones"
+                      className={
+                        accion.destructive
+                          ? "flex w-full rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+                          : "flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
+                      }
+                      onClick={accion.onClick}
                     >
-                      <MoreHorizontal className="size-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent align="end" className="w-48 p-1">
-                    {accionesSecundarias.map((accion) => (
-                      <button
-                        key={accion.key}
-                        type="button"
-                        className={
-                          accion.destructive
-                            ? "flex w-full rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
-                            : "flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
-                        }
-                        onClick={accion.onClick}
-                      >
-                        {accion.label}
-                      </button>
-                    ))}
-                  </PopoverContent>
-                </Popover>
-              )}
+                      {accion.label}
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
             </div>
           )
         },

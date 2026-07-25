@@ -1,12 +1,12 @@
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import {
   claseBadgeEstadoVisibleCocina,
   descripcionEstadoLogisticaCocina,
   labelEstadoVisibleCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import {
   checklistProgreso,
   puedeEditarChecklist,

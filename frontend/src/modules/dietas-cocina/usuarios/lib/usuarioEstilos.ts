@@ -1,6 +1,4 @@
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
-import type { EstadoUsuario } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
-
+import type { EstadoUsuario, RolDietas } from "@/modules/dietas-cocina/types/enums"
 export const rolDietasEstilos: Record<RolDietas, { className: string }> = {
   Nutricionista: {
     className: "bg-primary/10 text-primary border-primary/20",

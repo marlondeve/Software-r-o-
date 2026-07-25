@@ -1,3 +1,4 @@
+import type { CategoriaEdad } from "@/modules/dietas-cocina/types/parameters"
 import {
   createContext,
   useCallback,
@@ -8,11 +9,7 @@ import {
 } from "react"
 
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
-import {
-  mockTiposPaciente,
-  type CategoriaEdad,
-} from "@/modules/dietas-cocina/parametros/datos/mockTiposPaciente"
-
+import { mockTiposPaciente } from "@/modules/dietas-cocina/parametros/datos/mockTiposPaciente"
 interface ParametrosTiposPacienteContextValue {
   categorias: CategoriaEdad[]
   crearCategoria: () => void

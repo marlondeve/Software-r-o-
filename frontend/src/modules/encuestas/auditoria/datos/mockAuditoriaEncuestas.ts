@@ -1,43 +1,7 @@
-export type ResultadoAuditoria = "exito" | "denegado"
-
-export type DetalleAuditoria =
-  | { tipo: "texto"; texto: string }
-  | { tipo: "diff"; antes: string; despues: string }
-
-export interface FilaAuditoriaEncuesta {
-  id: string
-  idEvento: string
-  fecha: string
-  relativo: string
-  usuarioNombre: string
-  usuarioRol: string
-  modulo: string
-  accion: string
-  accionAlerta?: boolean
-  idRegistro: string
-  idSecundario: string
-  detalle: DetalleAuditoria
-  resultado: ResultadoAuditoria
-  origenIp: string
-  origenDispositivo: string
-}
-
-export interface ContextoRelacionado {
-  tipo: "encuesta" | "paciente"
-  titulo: string
-  subtitulo: string
-}
-
-export interface ModificacionRegla {
-  valorAnterior: string
-  valorNuevo: string
-}
-
-export interface DetalleAuditoriaExtendido {
-  contexto: ContextoRelacionado[]
-  modificacion?: ModificacionRegla
-  motivo?: string
-}
+import type {
+  DetalleAuditoriaExtendido,
+  FilaAuditoriaEncuesta,
+} from "@/modules/encuestas/types/audit"
 
 export const RANGOS_FECHA_AUDITORIA = [
   "Hoy (Últimas 24h)",

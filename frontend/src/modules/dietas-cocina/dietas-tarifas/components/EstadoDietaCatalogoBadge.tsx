@@ -1,7 +1,7 @@
+import type { EstadoDietaCatalogo } from "@/modules/dietas-cocina/types/enums"
 import { Check, Clock, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import type { EstadoDietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import { cn } from "@/lib/utils"
 
 const CONFIG: Record<

@@ -3,7 +3,7 @@ import { Archive, ArchiveRestore, Copy, Eye, MoreHorizontal, PencilLine, Trash2 
 
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import type { Cuestionario } from "@/modules/encuestas/cuestionarios/datos/mockCuestionarios"
+import type { Cuestionario } from "@/modules/encuestas/types/questionnaires"
 import { cn } from "@/lib/utils"
 
 interface CuestionarioAccionesPopoverProps {

@@ -4,7 +4,7 @@ import { Phone, UserCheck, Users } from "lucide-react"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { CuestionarioAccionesPopover } from "@/modules/encuestas/cuestionarios/components/CuestionarioAccionesPopover"
 import { EstadoCuestionarioBadge } from "@/modules/encuestas/cuestionarios/components/EstadoCuestionarioBadge"
-import type { Cuestionario } from "@/modules/encuestas/cuestionarios/datos/mockCuestionarios"
+import type { Cuestionario } from "@/modules/encuestas/types/questionnaires"
 
 const CANAL_LABEL: Record<Cuestionario["canal"], { label: string; icon: typeof Phone }> = {
   presencial: { label: "Presencial", icon: UserCheck },

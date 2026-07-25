@@ -1,3 +1,4 @@
+import type { FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
 import { useMemo } from "react"
 import { Eye, PencilLine, Search } from "lucide-react"
 
@@ -6,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { Input } from "@/components/ui/input"
 import { EstadoConciliacionBadge } from "@/modules/dietas-cocina/conciliacion/components/EstadoConciliacionBadge"
-import type { FilaConciliacion } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
 import {
   claseDiferenciaCantidad,
   claseDiferenciaEconomica,
@@ -178,6 +178,12 @@ export function ConciliacionTabla({
             filaRequiereAtencion(fila) ? conciliacionColores.alertaFila : undefined
           }
         />
+        {filas.some((fila) => fila.tarifaAlerta) && (
+          <p className="border-t px-4 py-2 text-xs text-muted-foreground">
+            * La tarifa facturada por el proveedor difiere de la tarifa vigente
+            en catálogo.
+          </p>
+        )}
       </CardContent>
     </Card>
   )

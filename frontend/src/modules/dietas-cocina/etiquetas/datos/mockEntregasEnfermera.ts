@@ -1,34 +1,10 @@
-import { mockEtiquetas, type EtiquetaDieta } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
-
-export type EstadoLogisticaEtiqueta =
-  | "generada"
-  | "impresa"
-  | "pre_entregada"
-  | "entregada"
-  | "devuelta"
-
-export type ModoFlujoEtiqueta = "pre-entrega" | "entrega" | "devolucion"
-
-export interface EtiquetaEnfermera extends EtiquetaDieta {
-  estadoLogistica: EstadoLogisticaEtiqueta
-  alergias?: string[]
-  pabellonDetalle?: string
-  cama?: string
-  horaPreEntrega?: string
-  horaEntrega?: string
-  horaDevolucion?: string
-  recibidoPor?: string
-  motivoDevolucion?: string
-  observacionesDevolucion?: string
-  fotoDevolucion?: string
-}
-
-export interface KpiEnfermeraEtiqueta {
-  id: string
-  label: string
-  value: number
-  variant?: "default" | "info" | "success" | "destructive"
-}
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type {
+  EtiquetaDieta,
+  EtiquetaEnfermera,
+  KpiEnfermeraEtiqueta,
+} from "@/modules/dietas-cocina/types/labels"
+import { mockEtiquetas } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 
 const logisticaPorId: Record<
   string,
@@ -96,7 +72,7 @@ export function crearEtiquetasEnfermeraIniciales(): EtiquetaEnfermera[] {
 
 export function calcularKpisEnfermera(
   etiquetas: EtiquetaEnfermera[],
-  comidaActiva: EtiquetaDieta["comida"],
+  comidaActiva: TiempoComida,
 ): KpiEnfermeraEtiqueta[] {
   const filtradas = etiquetas.filter((e) => e.comida === comidaActiva)
   const pendientesRecepcion = filtradas.filter(
@@ -130,12 +106,3 @@ export function calcularKpisEnfermera(
     },
   ]
 }
-
-export const MOTIVOS_DEVOLUCION = [
-  "Rechazo del paciente",
-  "Condición médica",
-  "Error en cocina",
-  "Temperatura inadecuada",
-] as const
-
-export type MotivoDevolucion = (typeof MOTIVOS_DEVOLUCION)[number]

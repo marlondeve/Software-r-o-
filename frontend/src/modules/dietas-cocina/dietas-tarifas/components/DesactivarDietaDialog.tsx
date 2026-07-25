@@ -1,3 +1,4 @@
+import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -7,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import type { DietaCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import { formatearFechaHoraCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
 
 interface DesactivarDietaDialogProps {

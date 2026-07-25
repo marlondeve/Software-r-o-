@@ -1,10 +1,9 @@
+import type { ModoFlujoEtiqueta } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { CheckCircle2, QrCode, WifiOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import type { ModoFlujoEtiqueta } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-
 interface CicloFinalizadoPanelProps {
   modo: ModoFlujoEtiqueta
   etiqueta: EtiquetaEnfermera

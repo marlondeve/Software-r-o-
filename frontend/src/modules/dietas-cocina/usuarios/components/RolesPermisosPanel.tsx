@@ -1,3 +1,4 @@
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -10,8 +11,6 @@ import {
 } from "@/modules/dietas-cocina/usuarios/components/EditarPermisosRolDialog"
 import { PermisosRolResumen } from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
 import { UsuarioRolBadge } from "@/modules/dietas-cocina/usuarios/components/UsuarioRolBadge"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
-
 interface RolPermisoFila {
   id: string
   rol: RolDietas

@@ -2,7 +2,7 @@ import { BookmarkCheck, CircleCheck, TriangleAlert } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { EstadoBrecha } from "@/modules/encuestas/indicadores/datos/mockAnalisisBrechas"
+import type { EstadoBrecha } from "@/modules/encuestas/types/enums"
 
 const CONFIG: Record<
   EstadoBrecha,

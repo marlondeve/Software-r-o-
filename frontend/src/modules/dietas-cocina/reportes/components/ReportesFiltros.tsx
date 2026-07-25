@@ -1,3 +1,4 @@
+import type { FiltrosReportes } from "@/modules/dietas-cocina/types/reports"
 import { Download } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -10,8 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { descargarArchivoDemo } from "@/modules/dietas-cocina/lib/demoFeedback"
-import type { FiltrosReportes } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
-
 interface ReportesFiltrosProps {
   rangoFechas: string
   servicio: string
@@ -62,10 +61,10 @@ export function ReportesFiltros({
             <SelectValue placeholder={servicio} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">{servicio}</SelectItem>
-            <SelectItem value="cardiologia">Cardiología</SelectItem>
-            <SelectItem value="pediatria">Pediatría</SelectItem>
-            <SelectItem value="urgencias">Urgencias</SelectItem>
+            <SelectItem value="todos">Todos los servicios</SelectItem>
+            <SelectItem value="cardiologia">Cardiología · Pab Central</SelectItem>
+            <SelectItem value="pediatria">Pediatría · Pab Norte</SelectItem>
+            <SelectItem value="urgencias">Urgencias · Pab Sur</SelectItem>
           </SelectContent>
         </Select>
         <Select
@@ -78,7 +77,7 @@ export function ReportesFiltros({
             <SelectValue placeholder={horario} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">{horario}</SelectItem>
+            <SelectItem value="todos">Todos los turnos</SelectItem>
             <SelectItem value="desayuno">Desayuno</SelectItem>
             <SelectItem value="almuerzo">Almuerzo</SelectItem>
             <SelectItem value="cena">Cena</SelectItem>

@@ -1,12 +1,11 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { AtencionHospitalaria } from "@/api/types"
-import type { FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { getPacientePorDocumento } from "@/api/pacientes.service"
 import { getAtencionesHospitalarias } from "@/api/atenciones.service"
 import { fusionarCensoOperativo } from "@/modules/dietas-cocina/lib/fusionarCensoOperativo"
 import { mapearAtencionHospitalariaAFilaDieta } from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
 import { configDietasOperativas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 const edadPorDocumento = new Map<string, number>()
 
 async function enriquecerEdadPaciente(

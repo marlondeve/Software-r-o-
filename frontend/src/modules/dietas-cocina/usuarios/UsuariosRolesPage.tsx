@@ -1,3 +1,4 @@
+import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useEffect, useMemo, useState } from "react"
 import { Plus, Shield, Users } from "lucide-react"
 
@@ -14,11 +15,8 @@ import { NuevoUsuarioDialog } from "@/modules/dietas-cocina/usuarios/components/
 import { RolesPermisosPanel } from "@/modules/dietas-cocina/usuarios/components/RolesPermisosPanel"
 import { UsuariosFiltros } from "@/modules/dietas-cocina/usuarios/components/UsuariosFiltros"
 import { UsuariosTabla } from "@/modules/dietas-cocina/usuarios/components/UsuariosTabla"
-import {
-  mockUsuariosDietas,
-  type UsuarioModulo,
-} from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { mockUsuariosDietas } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import { puedeGestionarUsuariosRoles } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
 
 const TAMANO_PAGINA_USUARIOS = 10

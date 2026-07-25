@@ -1,75 +1,11 @@
-export type ResultadoAuditoria = "exitoso" | "fallido"
-
-export type ModuloAuditoria =
-  | "dietas"
-  | "cocina"
-  | "etiquetas"
-  | "reportes"
-  | "conciliacion"
-  | "parametros"
-  | "usuarios"
-  | "inicio"
-
-export interface CambioAuditoria {
-  tipo: "diff" | "texto"
-  lineas?: { prefijo: "-" | "+"; texto: string }[]
-  texto?: string
-}
-
-export interface FilaAuditoria {
-  id: string
-  codigoAuditoria: string
-  fechaHora: string
-  usuario: {
-    nombre: string
-    rol: string
-    iniciales: string
-    esSistema?: boolean
-  }
-  modulo: ModuloAuditoria
-  accion: string
-  registroId: string
-  cambios: CambioAuditoria
-  resultado: ResultadoAuditoria
-}
-
-export interface EventoHistorialAuditoria {
-  titulo: string
-  tiempo: string
-  actual?: boolean
-}
-
-export interface DetalleAuditoria {
-  codigoAuditoria: string
-  usuario: {
-    nombre: string
-    area: string
-    iniciales: string
-    esSistema?: boolean
-  }
-  fechaHora: string
-  entidad: {
-    etiqueta: string
-    estado?: string
-  }
-  parametro?: string
-  valorAnterior?: string
-  valorNuevo?: string
-  justificacion?: string
-  impacto?: {
-    riesgoClinico: string
-    riesgoClinicoNivel: "alto" | "medio" | "bajo" | "ninguno"
-    impactoTarifa: string
-    impactoTarifaNivel: "ninguno" | "medio" | "alto"
-  }
-  metadatos: {
-    ip: string
-    dispositivo: string
-    sistema: string
-  }
-  historial: EventoHistorialAuditoria[]
-  mensajeError?: string
-}
+import type {
+  DetalleAuditoria,
+  FilaAuditoria,
+} from "@/modules/dietas-cocina/types/audit"
+import type {
+  ModuloAuditoria,
+  ResultadoAuditoria,
+} from "@/modules/dietas-cocina/types/enums"
 
 export const mockAuditoria = {
   total: 1245,
@@ -91,7 +27,7 @@ export const mockAuditoria = {
         rol: "Nutricionista Clínica",
         iniciales: "MR",
       },
-      modulo: "dietas",
+      modulo: "dietas" as ModuloAuditoria,
       accion: "Editar Prescripción",
       registroId: "DIET-8429",
       cambios: {
@@ -101,7 +37,7 @@ export const mockAuditoria = {
           { prefijo: "+", texto: "Tipo: Hiposódica Estricta" },
         ],
       },
-      resultado: "exitoso",
+      resultado: "exitoso" as ResultadoAuditoria,
     },
     {
       id: "aud-2",
@@ -112,7 +48,7 @@ export const mockAuditoria = {
         rol: "Administrador TI",
         iniciales: "AS",
       },
-      modulo: "usuarios",
+      modulo: "usuarios" as ModuloAuditoria,
       accion: "Desactivar usuario",
       registroId: "USR-1044",
       cambios: {
@@ -120,7 +56,7 @@ export const mockAuditoria = {
         texto:
           "Intento de desactivar usuario con dietas activas vinculadas en el módulo.",
       },
-      resultado: "fallido",
+      resultado: "fallido" as ResultadoAuditoria,
     },
     {
       id: "aud-3",
@@ -132,14 +68,14 @@ export const mockAuditoria = {
         iniciales: "SYS",
         esSistema: true,
       },
-      modulo: "cocina",
+      modulo: "cocina" as ModuloAuditoria,
       accion: "Generar Comandas",
       registroId: "BATCH-9921",
       cambios: {
         tipo: "diff",
         lineas: [{ prefijo: "+", texto: "Generadas: 142 comandas (Almuerzo)" }],
       },
-      resultado: "exitoso",
+      resultado: "exitoso" as ResultadoAuditoria,
     },
     {
       id: "aud-4",
@@ -150,14 +86,14 @@ export const mockAuditoria = {
         rol: "Proveedor",
         iniciales: "OL",
       },
-      modulo: "conciliacion",
+      modulo: "conciliacion" as ModuloAuditoria,
       accion: "Marcar conciliado",
       registroId: "CONC-2201",
       cambios: {
         tipo: "texto",
         texto: "Conciliación manual validada para Líquida Clara - Desayuno.",
       },
-      resultado: "exitoso",
+      resultado: "exitoso" as ResultadoAuditoria,
     },
     {
       id: "aud-5",
@@ -168,7 +104,7 @@ export const mockAuditoria = {
         rol: "Enfermera",
         iniciales: "LM",
       },
-      modulo: "dietas",
+      modulo: "dietas" as ModuloAuditoria,
       accion: "Confirmar dieta",
       registroId: "DIET-8390",
       cambios: {
@@ -178,7 +114,7 @@ export const mockAuditoria = {
           { prefijo: "+", texto: "Estado: Confirmada" },
         ],
       },
-      resultado: "exitoso",
+      resultado: "exitoso" as ResultadoAuditoria,
     },
   ] satisfies FilaAuditoria[],
   detalles: {

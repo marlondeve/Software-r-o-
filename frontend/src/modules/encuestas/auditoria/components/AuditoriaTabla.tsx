@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { ResultadoAuditoriaBadge } from "@/modules/encuestas/auditoria/components/ResultadoAuditoriaBadge"
-import type { FilaAuditoriaEncuesta } from "@/modules/encuestas/auditoria/datos/mockAuditoriaEncuestas"
+import type { FilaAuditoriaEncuesta } from "@/modules/encuestas/types/audit"
 
 const REGISTROS_POR_PAGINA = 5
 

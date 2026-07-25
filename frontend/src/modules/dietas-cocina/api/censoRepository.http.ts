@@ -1,4 +1,4 @@
-import type { CensoRepository } from "@/modules/dietas-cocina/api/censoRepository"
+import type { CensoRepository } from "@/modules/dietas-cocina/types/repositories"
 import { cargarFilasCensoDesdeApi } from "@/modules/dietas-cocina/lib/cargarCensoHospitalario"
 
 export const censoRepositoryHttp: CensoRepository = {

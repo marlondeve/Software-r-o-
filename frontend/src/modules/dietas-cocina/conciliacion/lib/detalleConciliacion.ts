@@ -1,9 +1,5 @@
-import type {
-  DetalleConciliacion,
-  EstadoConciliacion,
-  FilaConciliacion,
-} from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
-
+import type { DetalleConciliacion, FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
+import type { EstadoConciliacion } from "@/modules/dietas-cocina/types/enums"
 export function construirDetalleDesdeFila(
   fila: FilaConciliacion,
 ): DetalleConciliacion {

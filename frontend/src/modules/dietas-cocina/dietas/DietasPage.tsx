@@ -1,3 +1,5 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useMemo, useState } from "react"
 import { Info, RefreshCw } from "lucide-react"
 
@@ -14,10 +16,7 @@ import { DietasKpiGrid } from "@/modules/dietas-cocina/dietas/components/DietasK
 import { DietasNovedadSheet } from "@/modules/dietas-cocina/dietas/components/DietasNovedadSheet"
 import { DietasSolicitudSheet } from "@/modules/dietas-cocina/dietas/components/DietasSolicitudSheet"
 import { DietasTabla } from "@/modules/dietas-cocina/dietas/components/DietasTabla"
-import {
-  formatearFechaReferenciaDietas,
-  type FilaDieta,
-} from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { formatearFechaReferenciaDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
   calcularKpisDietas,
@@ -30,8 +29,6 @@ import {
   demoToast,
   descargarArchivoDemo,
 } from "@/modules/dietas-cocina/lib/demoFeedback"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
 type TipoSheetDieta = "solicitud" | "detalle" | "novedad"
 
 interface SheetDietaState {

@@ -1,15 +1,7 @@
 import { normalizarRolEncuestas, type RolEncuestas } from "@/modules/encuestas/lib/roles"
+import type { RutaEncuestasModulo } from "@/modules/encuestas/types/enums"
 
-export type RutaEncuestasModulo =
-  | "inicio"
-  | "captura-presencial"
-  | "captura-telefonica"
-  | "encuestas-realizadas"
-  | "cuestionarios"
-  | "indicadores"
-  | "parametros"
-  | "auditoria"
-  | "usuarios"
+export type { RutaEncuestasModulo }
 
 export const RUTAS_ENCUESTAS_MODULO: { id: RutaEncuestasModulo; label: string }[] = [
   { id: "inicio", label: "Inicio" },

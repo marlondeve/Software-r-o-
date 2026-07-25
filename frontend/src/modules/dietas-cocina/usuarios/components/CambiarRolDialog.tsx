@@ -1,3 +1,5 @@
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useEffect, useMemo, useState } from "react"
 
 import { Button } from "@/components/ui/button"
@@ -18,8 +20,6 @@ import {
 } from "@/components/ui/select"
 import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
-import type { UsuarioModulo } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
 import { ConfirmarAccionDialog } from "@/modules/dietas-cocina/usuarios/components/ConfirmarAccionDialog"
 import { PermisosRolResumen } from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
 import { validarCambioRol } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"

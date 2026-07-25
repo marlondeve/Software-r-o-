@@ -1,4 +1,4 @@
-import type { EstadoUsuario } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
+import type { EstadoUsuario } from "@/modules/dietas-cocina/types/enums"
 import { estadoUsuarioEstilos } from "@/modules/dietas-cocina/usuarios/lib/usuarioEstilos"
 import { cn } from "@/lib/utils"
 

@@ -1,3 +1,4 @@
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import { useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import {
@@ -22,10 +23,14 @@ import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/Dashboa
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { KpiCardProgress } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
 import { ProgressStat } from "@/modules/dietas-cocina/inicio/components/ProgressBar"
+import { mockCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import { mockProveedor } from "@/modules/dietas-cocina/inicio/datos/mockProveedor"
+import {
+  formatearTurnoOperativo,
+  labelComida,
+} from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
 import { puedeDespachar } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import { cn } from "@/lib/utils"
 
 export function ProveedorDashboard() {
@@ -33,10 +38,12 @@ export function ProveedorDashboard() {
   const { ordenes, etiquetas, registrarDespacho, getEtiquetaByOrdenId } =
     useCicloBandejas()
   const data = mockProveedor
+  const comidaActiva = mockCocina.comidaActiva
+  const turnoActual = formatearTurnoOperativo(comidaActiva)
 
-  const ordenesAlmuerzo = useMemo(
-    () => ordenes.filter((o) => o.comida === "almuerzo").slice(0, 6),
-    [ordenes],
+  const ordenesTurno = useMemo(
+    () => ordenes.filter((o) => o.comida === comidaActiva).slice(0, 6),
+    [ordenes, comidaActiva],
   )
 
   const kpisDinamicos = useMemo(() => {
@@ -135,11 +142,21 @@ export function ProveedorDashboard() {
         cell: ({ row }) => {
           const etq = getEtiquetaByOrdenId(row.original.id)
           const puedeDesp = puedeDespachar(row.original, etq)
+          const accionLabel =
+            row.original.etiquetaGenerada && !puedeDesp
+              ? "Ver etiqueta QR"
+              : puedeDesp
+                ? "Despachar orden"
+                : "Despacho no disponible"
+
           return (
             <div className="text-right">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon-sm"
+                className="size-8 border-border bg-background shadow-xs hover:bg-muted"
+                title={accionLabel}
+                aria-label={accionLabel}
                 onClick={() => {
                   if (row.original.etiquetaGenerada && !puedeDesp) {
                     navigate("/dietas-cocina/etiquetas")
@@ -188,7 +205,7 @@ export function ProveedorDashboard() {
     <div className="space-y-5">
       <DashboardPageHeader
         title="Panel de producción"
-        subtitle={`Turno actual: ${data.turno}`}
+        subtitle={`Turno actual: ${turnoActual}`}
         actions={
           <>
             <Button
@@ -223,14 +240,14 @@ export function ProveedorDashboard() {
 
       <div className="grid gap-4 lg:grid-cols-5">
         <DashboardCard
-          title="Órdenes próximas (Almuerzo)"
+          title={`Órdenes próximas (${labelComida(comidaActiva)})`}
           linkLabel="Ver todas"
           linkTo="/dietas-cocina/cocina"
           className="lg:col-span-3"
         >
           <DataTable
             columns={columnasOrdenes}
-            data={ordenesAlmuerzo}
+            data={ordenesTurno}
             className="rounded-none border-0"
           />
         </DashboardCard>

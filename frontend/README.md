@@ -21,10 +21,10 @@ frontend/
 │   ├── features/        # Autenticación, administración transversal
 │   ├── api/             # Capa global HTTP (Axios → Bital.ApiConsultas)
 │   ├── modules/         # Módulos de negocio (dietas-cocina, encuestas)
-│   ├── servicios/       # Servicios globales (auth mock)
+│   ├── services/        # Global services (auth mock)
 │   ├── lib/             # Utilidades
 │   ├── hooks/
-│   ├── tipos/
+│   ├── types/
 │   └── estilos/
 ├── vite.config.ts       # Alias @/ → src/
 └── components.json      # Configuración shadcn/ui
@@ -69,7 +69,7 @@ Servidor de desarrollo: `http://localhost:5173`
 
 ## Autenticación (mock)
 
-La autenticación actual es mock (`src/servicios/authService.ts`). La contraseña puede ser cualquier valor no vacío.
+La autenticación actual es mock (`src/services/authService.ts`). La contraseña puede ser cualquier valor no vacío.
 
 | Correo | Acceso |
 |---|---|

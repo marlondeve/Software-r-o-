@@ -1,3 +1,4 @@
+import type { EstadoCocina } from "@/modules/dietas-cocina/types/enums"
 import { Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -16,8 +17,6 @@ import {
 } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
 import type { FiltrosCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaFiltros"
 import type { FiltroSeguimientoCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
-import type { EstadoCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-
 interface CocinaFiltrosBarProps {
   filtros: FiltrosCocina
   pabellones: string[]

@@ -1,4 +1,4 @@
-import type { AccesoModulo } from "@/tipos/modulo"
+import type { AccesoModulo } from "@/types/module"
 
 export interface Usuario {
   id: string

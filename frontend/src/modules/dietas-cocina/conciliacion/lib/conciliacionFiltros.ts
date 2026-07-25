@@ -1,12 +1,17 @@
+import type { FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
 import { useMemo, useState } from "react"
 
-import type { FilaConciliacion } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
 import { mockConciliacion } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import {
   construirConciliacionDesdeCiclo,
   construirDetallesConciliacionDesdeFilas,
 } from "@/modules/dietas-cocina/lib/construirConciliacionDesdeCiclo"
+import {
+  formatearMonedaCOP,
+  parseDifEconomica,
+  parseMonedaCOP,
+} from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
 
 export function filtrarFilasConciliacion(
   filas: FilaConciliacion[],
@@ -51,30 +56,40 @@ export function calcularKpisConciliacion(filas: FilaConciliacion[]) {
     (f) => f.estado !== "coincide" && f.estado !== "conciliado-manual",
   ).length
 
-  const parseMoney = (s: string) =>
-    Number.parseFloat(s.replace(/[^0-9.-]/g, "")) || 0
-
   const valorCalc = filas.reduce(
-    (sum, f) => sum + f.cantSist * parseMoney(f.tarifa),
+    (sum, f) => sum + f.cantSist * parseMonedaCOP(f.tarifa),
     0,
   )
-  const valorFact = filas.reduce(
-    (sum, f) => sum + f.cantFact * parseMoney(f.tarifa),
+  const diferencia = filas.reduce(
+    (sum, f) => sum + parseDifEconomica(f.difEconomica),
     0,
   )
-  const diferencia = valorFact - valorCalc
-
-  const fmt = (n: number) =>
-    n.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  const valorFact = valorCalc + diferencia
 
   return [
-    { label: "Dietas registradas", value: cantSist.toLocaleString("es-CO"), variant: "default" as const },
-    { label: "Dietas facturadas", value: cantFact.toLocaleString("es-CO"), variant: "default" as const },
-    { label: "Valor calculado", value: `$${fmt(valorCalc)}`, variant: "default" as const },
-    { label: "Valor facturado", value: `$${fmt(valorFact)}`, variant: "default" as const },
+    {
+      label: "Dietas registradas",
+      value: cantSist.toLocaleString("es-CO"),
+      variant: "default" as const,
+    },
+    {
+      label: "Dietas facturadas",
+      value: cantFact.toLocaleString("es-CO"),
+      variant: "default" as const,
+    },
+    {
+      label: "Valor calculado",
+      value: formatearMonedaCOP(valorCalc),
+      variant: "default" as const,
+    },
+    {
+      label: "Valor facturado",
+      value: formatearMonedaCOP(valorFact),
+      variant: "default" as const,
+    },
     {
       label: "Diferencia total",
-      value: `${diferencia >= 0 ? "+" : "-"}$${fmt(Math.abs(diferencia))}`,
+      value: formatearMonedaCOP(diferencia, true),
       variant: diferencia === 0 ? ("default" as const) : ("warning" as const),
     },
     {

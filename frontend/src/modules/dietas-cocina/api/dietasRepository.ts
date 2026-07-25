@@ -1,9 +1,5 @@
-import type { CrearOrdenDesdeDietaInput } from "@/modules/dietas-cocina/context/CicloBandejasContext"
-
-export interface DietasRepository {
-  confirmarDieta(filaId: string): Promise<void>
-  crearOrdenDesdeDieta(input: CrearOrdenDesdeDietaInput): Promise<string>
-}
+import type { DietasRepository } from "@/modules/dietas-cocina/types/repositories"
+import type { CrearOrdenDesdeDietaInput } from "@/modules/dietas-cocina/types/tray-cycle"
 
 /** Stub HTTP — reemplazar cuando exista backend de dietas. */
 export const dietasRepositoryHttp: DietasRepository = {

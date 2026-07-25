@@ -1,3 +1,4 @@
+import type { CategoriaEdad } from "@/modules/dietas-cocina/types/parameters"
 import { useState } from "react"
 import { Calculator } from "lucide-react"
 
@@ -5,7 +6,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DatePickerFromString } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
-import type { CategoriaEdad } from "@/modules/dietas-cocina/parametros/datos/mockTiposPaciente"
 import {
   clasificarEdadPaciente,
   type ResultadoClasificacion,

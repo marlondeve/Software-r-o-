@@ -1,8 +1,6 @@
+import type { EstadoCicloBandejas } from "@/modules/dietas-cocina/types/tray-cycle"
+import type { CicloBandejasRepository } from "@/modules/dietas-cocina/types/repositories"
 import { cargarCicloBandejas, guardarCicloBandejas } from "@/modules/dietas-cocina/lib/cicloBandejasStorage"
-import type {
-  CicloBandejasRepository,
-  EstadoCicloBandejas,
-} from "@/modules/dietas-cocina/api/cicloBandejasRepository"
 import { buscarEtiquetaPorCodigo } from "@/modules/dietas-cocina/etiquetas/lib/buscarEtiquetaPorCodigo"
 
 /** Stub HTTP con fallback a storage local hasta tener backend real. */

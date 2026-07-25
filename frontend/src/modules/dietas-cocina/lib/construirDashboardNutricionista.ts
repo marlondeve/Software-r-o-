@@ -1,11 +1,16 @@
-import type { OrdenCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
-import { COMIDAS_TABS, type FilaDieta } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import type { EstadoDieta } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
+import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { mockNutricionista } from "@/modules/dietas-cocina/inicio/datos/mockNutricionista"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
-import type { TiempoComida } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
-
+import {
+  formatearPeriodoOperativo,
+  resolverComidaOperativaActual,
+  resolverProximoCierre,
+} from "@/modules/dietas-cocina/lib/resolverPeriodoOperativoNutricionista"
 const COLORES_ESTADO: Record<string, string> = {
   "no-solicitada": "#b00020",
   guardado: "#bbf244",
@@ -20,8 +25,8 @@ const COLORES_ESTADO: Record<string, string> = {
 }
 
 const LABEL_ESTADO: Record<string, string> = {
-  "no-solicitada": "No solicitada",
-  guardado: "Borrador",
+  "no-solicitada": "Sin solicitud",
+  guardado: "Guardado",
   confirmada: "Confirmada",
   "por-iniciar": "Por iniciar",
   "en-preparacion": "En preparación",
@@ -65,8 +70,9 @@ export function construirDashboardNutricionistaDesdeCiclo(
   filas: FilaDieta[],
   ordenes: OrdenCocina[],
   etiquetas: EtiquetaEnfermera[],
-  comida: TiempoComida = "almuerzo",
+  fechaReferencia = new Date(),
 ) {
+  const comida = resolverComidaOperativaActual(fechaReferencia)
   const ordenPorId = new Map(ordenes.map((o) => [o.id, o]))
   const etiquetaPorOrden = new Map<string, EtiquetaEnfermera>()
   for (const orden of ordenes) {
@@ -146,7 +152,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
   const comidaLabel = labelComida(comida)
 
   return {
-    periodoOperativo: `${comidaLabel} - ${mockNutricionista.periodoOperativo.split(" - ")[1] ?? "11:30 AM"}`,
+    periodoOperativo: formatearPeriodoOperativo(fechaReferencia),
     kpis: [
       {
         label: "Pacientes activos",
@@ -198,7 +204,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
         title: "Cambios pendientes",
         description:
           cambiosPendientes > 0
-            ? `${cambiosPendientes} solicitud(es) en borrador por validar.`
+            ? `${cambiosPendientes} solicitud(es) guardadas por validar.`
             : "No hay modificaciones de enfermería pendientes.",
       },
     ],
@@ -207,7 +213,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
         ? actividadReciente
         : mockNutricionista.actividadReciente,
     proximoCierre: {
-      ...mockNutricionista.proximoCierre,
+      ...resolverProximoCierre(fechaReferencia),
       pendientes: pendientes || mockNutricionista.proximoCierre.pendientes,
     },
   }

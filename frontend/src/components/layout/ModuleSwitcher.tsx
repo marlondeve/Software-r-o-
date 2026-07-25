@@ -17,7 +17,7 @@ import {
   obtenerModulosDisponibles,
 } from "@/lib/modulos"
 import { cn } from "@/lib/utils"
-import type { ModuloId } from "@/tipos/modulo"
+import type { ModuloId } from "@/types/module"
 
 const moduleShortLabels: Record<ModuloId, string> = {
   "dietas-cocina": "Gestión de Dietas",

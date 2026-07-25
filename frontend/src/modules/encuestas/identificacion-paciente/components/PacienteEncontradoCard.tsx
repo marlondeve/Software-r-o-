@@ -3,7 +3,7 @@ import { CircleCheck, Phone, RefreshCw, ShieldCheck, TriangleAlert, UserCheck } 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import type { PacienteEncontrado } from "@/modules/encuestas/identificacion-paciente/datos/mockIdentificacionPaciente"
+import type { PacienteEncontrado } from "@/modules/encuestas/types/patients"
 
 interface InfoCampoProps {
   label: string

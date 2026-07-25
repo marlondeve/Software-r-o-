@@ -6,7 +6,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
-import type { SegmentoBarra } from "@/modules/encuestas/indicadores/datos/mockIndicadoresExperiencia"
+import type { SegmentoBarra } from "@/modules/encuestas/types/indicators"
 
 function slugify(label: string) {
   return label
