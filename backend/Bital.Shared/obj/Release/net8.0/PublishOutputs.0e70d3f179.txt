@@ -1,0 +1,3 @@
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\bin\Release\net8.0\publish\Bital.Shared.dll
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\bin\Release\net8.0\publish\Bital.Shared.deps.json
+C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Shared\bin\Release\net8.0\publish\Bital.Shared.pdb

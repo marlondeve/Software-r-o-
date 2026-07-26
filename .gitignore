@@ -41,3 +41,7 @@ pnpm-lock.yaml
 ## Claude
 /frontend/.claude
 /frontend/CLAUDE.md
+
+# vscode
+.vs/
+
