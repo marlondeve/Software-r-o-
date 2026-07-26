@@ -1,4 +1,4 @@
-# 🚀 Despliegue Rápido - Bital.ApiConsultas en IIS
+# 🚀 Despliegue Rápido - Bital.ApiNegocio en IIS
 
 ## 📋 Resumen de Infraestructura
 
@@ -21,7 +21,7 @@ Este script:
 - Publica en `C:\temp\bital-api-consultas-deploy`
 - Verifica todos los archivos necesarios
 
-**⚠️ IMPORTANTE**: Antes de publicar, edita `backend/Bital.ApiConsultas/appsettings.Production.json` y reemplaza:
+**⚠️ IMPORTANTE**: Antes de publicar, edita `backend/Bital.ApiNegocio/appsettings.Production.json` y reemplaza:
 
 ```json
 "Password=#{VITAL_DB_PASSWORD}#"
@@ -53,8 +53,8 @@ Este script automáticamente:
 
 ### 📂 Paso 3: Copiar archivos publicados
 
-**Desde** (tu máquina): `C:\temp\bital-api-consultas-deploy\`  
-**Hacia** (servidor): `C:\inetpub\wwwroot\bital-api-consultas\`
+**Desde** (tu máquina): `C:\temp\bital-api-negocio-deploy\`  
+**Hacia** (servidor): `C:\inetpub\wwwroot\bital-api-negocio\`
 
 **Métodos**:
 
@@ -112,27 +112,27 @@ Invoke-RestMethod "http://186.190.254.230:8080/api/v1/atenciones/1"
 
 ```powershell
 # En el servidor
-Get-Content "C:\inetpub\wwwroot\bital-api-consultas\logs\app-*.log" -Tail 100 -Wait
+Get-Content "C:\inetpub\wwwroot\bital-api-negocio\logs\app-*.log" -Tail 100 -Wait
 ```
 
 ### Ver logs de IIS
 
 ```powershell
-Get-Content "C:\inetpub\wwwroot\bital-api-consultas\logs\stdout*.log" -Tail 50
+Get-Content "C:\inetpub\wwwroot\bital-api-negocio\logs\stdout*.log" -Tail 50
 ```
 
 ### Reiniciar el sitio
 
 ```powershell
-Restart-WebAppPool -Name BitalApiConsultasPool
-Restart-Website -Name BitalApiConsultas
+Restart-WebAppPool -Name BitalApiNegocioPool
+Restart-Website -Name BitalApiNegocio
 ```
 
 ### Verificar estado
 
 ```powershell
-Get-Website -Name BitalApiConsultas
-Get-WebAppPoolState -Name BitalApiConsultasPool
+Get-Website -Name BitalApiNegocio
+Get-WebAppPoolState -Name BitalApiNegocioPool
 ```
 
 ---
@@ -200,13 +200,13 @@ cd backend
 .\publish-to-iis.ps1
 
 # 2. En el servidor, detener el sitio
-Stop-Website -Name BitalApiConsultas
+Stop-Website -Name BitalApiNegocio
 
 # 3. Copiar archivos actualizados
 # (usando RDP o PowerShell Remoting)
 
 # 4. Reiniciar el sitio
-Start-Website -Name BitalApiConsultas
+Start-Website -Name BitalApiNegocio
 ```
 
 ---
