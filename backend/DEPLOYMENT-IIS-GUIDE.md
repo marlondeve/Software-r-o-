@@ -1,4 +1,4 @@
-# Guía de Despliegue - Bital.ApiConsultas en IIS
+# Guía de Despliegue - Bital.ApiNegocio en IIS
 
 ## 📋 Información de Infraestructura
 
@@ -96,7 +96,7 @@ Set-Acl "C:\inetpub\wwwroot\bital-api-consultas\logs" $acl
 **IMPORTANTE**: Antes de publicar, debes reemplazar `#{VITAL_DB_PASSWORD}#` en `appsettings.Production.json` con la contraseña real del usuario `bital_readonly`.
 
 ```json
-// En backend/Bital.ApiConsultas/appsettings.Production.json
+// En backend/Bital.ApiNegocio/appsettings.Production.json
 "ConnectionStrings": {
   "VitalDatabase": "Server=10.238.97.69;Database=VitalHIS;User Id=bital_readonly;Password=TU_PASSWORD_REAL_AQUI;TrustServerCertificate=True;Connection Timeout=30;",
   ...
@@ -109,7 +109,7 @@ Set-Acl "C:\inetpub\wwwroot\bital-api-consultas\logs" $acl
 
 ```powershell
 # Desde tu máquina de desarrollo (C:\Users\Juan Dev\Desktop\Software-r-o-)
-cd backend/Bital.ApiConsultas
+cd backend/Bital.ApiNegocio
 
 # Limpiar builds anteriores
 dotnet clean -c Release
@@ -173,12 +173,12 @@ inetmgr
 
 1. En IIS Manager, clic derecho en **Application Pools** → **Add Application Pool**
 2. Configurar:
-   - **Name**: `BitalApiConsultasPool`
+	  - **Name**: `BitalApiNegocioPool`
    - **.NET CLR version**: `No Managed Code` (importante para .NET Core/8)
    - **Managed pipeline mode**: `Integrated`
    - **Start application pool immediately**: ✅
 
-3. Clic derecho en `BitalApiConsultasPool` → **Advanced Settings**:
+3. Clic derecho en `BitalApiNegocioPool` → **Advanced Settings**:
    - **Identity**: `ApplicationPoolIdentity` (recomendado)
    - **Start Mode**: `AlwaysRunning`
    - **Idle Time-out (minutes)**: `0` (para que no se detenga)
@@ -190,8 +190,8 @@ inetmgr
 
 1. Clic derecho en **Sites** → **Add Website**
 2. Configurar:
-   - **Site name**: `BitalApiConsultas`
-   - **Application pool**: `BitalApiConsultasPool`
+	  - **Site name**: `BitalApiNegocio`
+   - **Application pool**: `BitalApiNegocioPool`
    - **Physical path**: `C:\inetpub\wwwroot\bital-api-consultas`
    - **Binding**:
 	 - **Type**: `http`
@@ -206,7 +206,7 @@ Si prefieres que esté bajo el sitio por defecto con una ruta virtual:
 1. Clic derecho en **Default Web Site** → **Add Application**
 2. Configurar:
    - **Alias**: `bital-api-consultas`
-   - **Application pool**: `BitalApiConsultasPool`
+	  - **Application pool**: `BitalApiNegocioPool`
    - **Physical path**: `C:\inetpub\wwwroot\bital-api-consultas`
 
 En este caso, la URL sería: `http://10.238.97.67/bital-api-consultas/`
@@ -224,7 +224,7 @@ Si usaste la Opción B (aplicación), necesitas:
 
 ### 3.5 Verificar módulo ASP.NET Core
 
-1. En IIS Manager, selecciona el sitio `BitalApiConsultas`
+1. En IIS Manager, selecciona el sitio `BitalApiNegocio`
 2. Doble clic en **Modules**
 3. Verifica que aparezca: `AspNetCoreModuleV2`
 
@@ -400,7 +400,7 @@ while ($true) {
 
 1. Detener el sitio en IIS:
    ```powershell
-   Stop-IISSite -Name "BitalApiConsultas"
+	  Stop-IISSite -Name "BitalApiNegocio"
    ```
 
 2. Reemplazar archivos:
@@ -410,7 +410,7 @@ while ($true) {
 
 3. Reiniciar el sitio:
    ```powershell
-   Start-IISSite -Name "BitalApiConsultas"
+	  Start-IISSite -Name "BitalApiNegocio"
    ```
 
 4. Verificar:
@@ -464,8 +464,8 @@ Para soporte del despliegue:
 - [ ] Contraseña real en `appsettings.Production.json`
 - [ ] API compilada en modo Release
 - [ ] Archivos transferidos al servidor
-- [ ] Application Pool `BitalApiConsultasPool` creado
-- [ ] Sitio web `BitalApiConsultas` configurado en puerto 2000
+- [ ] Application Pool `BitalApiNegocioPool` creado
+- [ ] Sitio web `BitalApiNegocio` configurado en puerto 2000
 - [ ] Firewall Windows abierto para puerto 2000
 - [ ] Conectividad SQL verificada (`10.238.97.69:1433`)
 - [ ] Health check respondiendo: `http://localhost:8080/health`

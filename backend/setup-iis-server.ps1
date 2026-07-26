@@ -1,12 +1,12 @@
-# Script de Configuración IIS - Bital.ApiConsultas
+# Script de Configuración IIS - Bital.ApiNegocio
 # Ejecutar ESTE SCRIPT EN EL SERVIDOR 10.238.97.67 como Administrador
 
 #Requires -RunAsAdministrator
 
 param(
-	[string]$SitePath = "C:\inetpub\wwwroot\bital-api-consultas",
-	[string]$SiteName = "BitalApiConsultas",
-	[string]$AppPoolName = "BitalApiConsultasPool",
+	[string]$SitePath = "C:\inetpub\wwwroot\bital-api-negocio",
+	[string]$SiteName = "BitalApiNegocio",
+	[string]$AppPoolName = "BitalApiNegocioPool",
 	[int]$Port = 2000,
 	[string]$IPAddress = "10.238.97.67"
 )
@@ -23,7 +23,7 @@ Write-Host @"
 
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║        Bital.ApiConsultas - Configuración IIS Server     ║
+║        Bital.ApiNegocio - Configuración IIS Server       ║
 ║                   Servidor: 10.238.97.67                 ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
@@ -171,17 +171,17 @@ Write-Success "Sitio web creado: $SiteName en puerto $Port"
 
 # Verificar archivos de la aplicación
 Write-Step "Verificando archivos de la aplicación..."
-$dllFile = Join-Path $SitePath "Bital.ApiConsultas.dll"
+$dllFile = Join-Path $SitePath "Bital.ApiNegocio.dll"
 if (Test-Path $dllFile) {
-	Write-Success "Aplicación encontrada: Bital.ApiConsultas.dll"
+	Write-Success "Aplicación encontrada: Bital.ApiNegocio.dll"
 } else {
-	Write-Warning "Bital.ApiConsultas.dll NO encontrado en $SitePath"
+	Write-Warning "Bital.ApiNegocio.dll NO encontrado en $SitePath"
 	Write-Host "Debes copiar los archivos publicados a esta carpeta" -ForegroundColor Yellow
 }
 
 # Configurar firewall
 Write-Step "Configurando Windows Firewall..."
-$ruleName = "Bital API Consultas - Puerto $Port"
+$ruleName = "Bital API Negocio - Puerto $Port"
 $existingRule = Get-NetFirewallRule -DisplayName $ruleName -ErrorAction SilentlyContinue
 if ($existingRule) {
 	Write-Warning "Regla de firewall ya existe. Se recreará."
