@@ -1,4 +1,4 @@
-# Script de Publicación - Bital.ApiConsultas
+# Script de Publicación - Bital.ApiNegocio
 # Automatiza la compilación y preparación para despliegue en IIS
 
 param(
@@ -36,7 +36,7 @@ Write-Host @"
 
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║         Bital.ApiConsultas - Script de Publicación       ║
+║         Bital.ApiNegocio - Script de Publicación         ║
 ║              Despliegue en IIS Windows Server            ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
@@ -45,8 +45,8 @@ Write-Host @"
 
 # Verificar ubicación
 $scriptRoot = Split-Path -Parent $PSCommandPath
-$projectPath = Join-Path $scriptRoot "Bital.ApiConsultas"
-$csprojFile = Join-Path $projectPath "Bital.ApiConsultas.csproj"
+$projectPath = Join-Path $scriptRoot "Bital.ApiNegocio"
+$csprojFile = Join-Path $projectPath "Bital.ApiNegocio.csproj"
 
 Write-Step "Verificando estructura del proyecto..."
 if (-not (Test-Path $csprojFile)) {
@@ -166,7 +166,7 @@ Pop-Location
 
 # Verificar archivos publicados
 Write-Step "Verificando archivos publicados..."
-$dllFile = Join-Path $OutputPath "Bital.ApiConsultas.dll"
+$dllFile = Join-Path $OutputPath "Bital.ApiNegocio.dll"
 $webConfigFile = Join-Path $OutputPath "web.config"
 $appSettingsFile = Join-Path $OutputPath "appsettings.json"
 $appSettingsProdFile = Join-Path $OutputPath "appsettings.Production.json"
@@ -175,7 +175,7 @@ $allFilesOk = $true
 
 if (Test-Path $dllFile) {
 	$dllSize = (Get-Item $dllFile).Length / 1KB
-	Write-Success "Bital.ApiConsultas.dll ($([math]::Round($dllSize, 2)) KB)"
+	Write-Success "Bital.ApiNegocio.dll ($([math]::Round($dllSize, 2)) KB)"
 } else {
 	Write-Error "DLL principal no encontrado"
 	$allFilesOk = $false
@@ -243,7 +243,7 @@ Write-Host @"
 3. Configurar IIS en el servidor:
 
    - Ver guía completa en: backend\DEPLOYMENT-IIS-GUIDE.md
-   - Crear Application Pool: BitalApiConsultasPool
+	  - Crear Application Pool: BitalApiNegocioPool
    - Crear sitio web en puerto 2000
    - Verificar permisos de IIS_IUSRS
 
@@ -261,7 +261,7 @@ Write-Host ("=" * 60) -ForegroundColor Gray
 $readmeFile = Join-Path $OutputPath "INSTRUCCIONES-DESPLIEGUE.txt"
 $readmeContent = @"
 =============================================================================
-  INSTRUCCIONES DE DESPLIEGUE - Bital.ApiConsultas
+INSTRUCCIONES DE DESPLIEGUE - Bital.ApiNegocio
 =============================================================================
 
 FECHA DE PUBLICACIÓN: $(Get-Date -Format "yyyy-MM-dd HH:mm:ss")
@@ -277,8 +277,8 @@ RUTA DE DESPLIEGUE:
 PASOS RÁPIDOS:
   1. Copiar todos los archivos de esta carpeta al servidor en la ruta indicada
   2. En IIS Manager:
-	 - Crear Application Pool: "BitalApiConsultasPool" (No Managed Code)
-	 - Crear sitio web: "BitalApiConsultas" apuntando a la carpeta
+	 - Crear Application Pool: "BitalApiNegocioPool" (No Managed Code)
+	 - Crear sitio web: "BitalApiNegocio" apuntando a la carpeta
 	 - Configurar binding: http:*:8080
   3. Dar permisos a IIS_IUSRS en la carpeta
   4. Abrir puerto 2000 en Windows Firewall

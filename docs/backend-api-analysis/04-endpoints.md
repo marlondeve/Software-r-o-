@@ -182,66 +182,72 @@ generada → impresa → pre_entregada → entregada → devuelta
 
 ### L. Pacientes e identificación
 
+> Rutas reales expuestas por `PacientesEncuestasController`.
+
 | Método | Endpoint | API | Entidad | Operación | Request | Response | Filtros | Permiso | Evidencia frontend |
 |--------|----------|-----|---------|-----------|---------|----------|---------|---------|-------------------|
-| GET | `/api/encuestas/pacientes/search` | ApiNegocio | Paciente | Proxy búsqueda | Query: `termino`, `maxResults?` | Envelope pacientes | Término ≥3 | Encuestador, Admin | `pacientesRepository.http.ts` |
-| GET | `/api/encuestas/pacientes/{cedula}/atenciones` | ApiNegocio | Atención | Atenciones paciente | Query: `tipoDocumento` | Envelope atenciones | Documento | Encuestador, Admin | `obtenerAtencionesPaciente` |
-| POST | `/api/encuestas/pacientes/identificar` | ApiNegocio | Paciente | Identificación captura | Body: `{ documento, tipo, canal }` | `{ data: PacienteContexto }` | — | Encuestador | `identificacion-paciente/`, `PacienteEncontradoCard.tsx` |
+| GET | `/api/v1/encuestas/pacientes/search` | ApiNegocio | Paciente | Búsqueda parcial | Query: `termino`, `maxResults?` | `{ data: BusquedaPacienteDto[], total }` | Término ≥3 | Encuestador, Admin | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| GET | `/api/v1/encuestas/pacientes/{cedula}/atenciones` | ApiNegocio | Atención | Atenciones paciente | Query: `tipoDocumento` | `{ data: AtencionPacienteDto[], total }` | Documento | Encuestador, Admin | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| POST | `/api/v1/encuestas/pacientes/identificar` | ApiNegocio | Paciente | Identificación captura | Body: `{ numeroDocumento, tipoDocumento, canal, numeroAtencion? }` | `{ data: PacienteContextoDto }` | — | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
 
 ### M. Cuestionarios (editor)
 
+> Rutas reales expuestas por `CuestionariosController`.
+
 | Método | Endpoint | API | Entidad | Operación | Request | Response | Filtros | Permiso | Evidencia frontend |
 |--------|----------|-----|---------|-----------|---------|----------|---------|---------|-------------------|
-| GET | `/api/encuestas/cuestionarios` | ApiNegocio | Cuestionario | Listar | Query: `estado?`, `canal?`, `busqueda?` | `{ data: Cuestionario[] }` | Estado, canal | Admin, Encuestador | `CuestionariosTabla.tsx`, `CuestionariosFiltros.tsx` |
-| GET | `/api/encuestas/cuestionarios/{id}` | ApiNegocio | Cuestionario | Detalle con secciones | Path: `id` | `{ data: CuestionarioCompleto }` | — | Admin | Editor cuestionario |
-| POST | `/api/encuestas/cuestionarios` | ApiNegocio | Cuestionario | Crear borrador | Body: metadatos | `{ data }` | — | Admin | `CuestionariosPage.tsx` |
-| PUT | `/api/encuestas/cuestionarios/{id}` | ApiNegocio | Cuestionario | Actualizar metadatos | Body: nombre, descripcion, canal | `{ data }` | — | Admin | Acciones popover |
-| PATCH | `/api/encuestas/cuestionarios/{id}/estado` | ApiNegocio | Cuestionario | Activar/desactivar | Body: `{ estado }` | `{ data }` | — | Admin | `onToggleEstado` |
-| POST | `/api/encuestas/cuestionarios/{id}/duplicar` | ApiNegocio | Cuestionario | Duplicar | — | `{ data: Cuestionario }` | — | Admin | `onDuplicar` |
-| DELETE | `/api/encuestas/cuestionarios/{id}` | ApiNegocio | Cuestionario | Eliminar borrador | — | `204` | Solo borrador | Admin | `onEliminar` |
-| GET | `/api/encuestas/cuestionarios/{id}/estructura` | ApiNegocio | SeccionEditor[] | Árbol secciones/preguntas | — | `{ data: SeccionEditor[] }` | — | Admin | `EstructuraPanel.tsx` |
-| PUT | `/api/encuestas/cuestionarios/{id}/estructura` | ApiNegocio | SeccionEditor[] | Guardar estructura completa | Body: secciones + preguntas | `{ data }` | — | Admin | `editor-cuestionario/` |
-| POST | `/api/encuestas/cuestionarios/{id}/preguntas` | ApiNegocio | PreguntaEditor | Añadir pregunta | Body: `PreguntaEditor` | `{ data }` | — | Admin | `PreguntaEditorPanel.tsx` |
-| PUT | `/api/encuestas/cuestionarios/{id}/preguntas/{preguntaId}` | ApiNegocio | PreguntaEditor | Editar pregunta | Body: campos pregunta | `{ data }` | — | Admin | `PreguntaEditorPanel.tsx` |
-| PUT | `/api/encuestas/cuestionarios/{id}/preguntas/{preguntaId}/logica` | ApiNegocio | LogicaCondicional | Configurar lógica | Body: `LogicaCondicional` | `{ data }` | — | Admin | `ConfiguracionLogicaPanel.tsx` |
+| GET | `/api/v1/encuestas/cuestionarios` | ApiNegocio | Cuestionario | Listar | Query: `estado?`, `canal?`, `busqueda?`, `page?`, `pageSize?` | `{ data: CuestionarioResumenDto[], meta }` | Estado, canal, búsqueda, paginación | Admin, Encuestador | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| GET | `/api/v1/encuestas/cuestionarios/{id}` | ApiNegocio | Cuestionario | Detalle con secciones | Path: `id` | `{ data: CuestionarioDetalleDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| POST | `/api/v1/encuestas/cuestionarios` | ApiNegocio | Cuestionario | Crear borrador | Body: `CuestionarioCreacionDto` | `{ data: CuestionarioDetalleDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| PUT | `/api/v1/encuestas/cuestionarios/{id}` | ApiNegocio | Cuestionario | Actualizar metadatos | Body: `CuestionarioActualizacionDto` | `{ data: CuestionarioDetalleDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| PATCH | `/api/v1/encuestas/cuestionarios/{id}/estado` | ApiNegocio | Cuestionario | Cambiar estado | Body: `CuestionarioEstadoDto` | `{ data: CuestionarioDetalleDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| POST | `/api/v1/encuestas/cuestionarios/{id}/duplicar` | ApiNegocio | Cuestionario | Duplicar | Body opcional: `CuestionarioDuplicadoDto` | `{ data: CuestionarioDetalleDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| DELETE | `/api/v1/encuestas/cuestionarios/{id}` | ApiNegocio | Cuestionario | Eliminar borrador | — | `204 NoContent` | Solo borrador | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| GET | `/api/v1/encuestas/cuestionarios/{id}/estructura` | ApiNegocio | SeccionCuestionarioDto[] | Árbol secciones/preguntas | — | `{ data: SeccionCuestionarioDto[] }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| PUT | `/api/v1/encuestas/cuestionarios/{id}/estructura` | ApiNegocio | SeccionCuestionarioDto[] | Guardar estructura completa | Body: `EstructuraCuestionarioDto` | `{ data: SeccionCuestionarioDto[] }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| POST | `/api/v1/encuestas/cuestionarios/{id}/preguntas` | ApiNegocio | PreguntaCuestionarioDto | Añadir pregunta | Body: `PreguntaCuestionarioCreacionDto` | `{ data: PreguntaCuestionarioDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| PUT | `/api/v1/encuestas/cuestionarios/{id}/preguntas/{preguntaId}` | ApiNegocio | PreguntaCuestionarioDto | Editar pregunta | Body: `PreguntaCuestionarioActualizacionDto` | `{ data: PreguntaCuestionarioDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
+| PUT | `/api/v1/encuestas/cuestionarios/{id}/preguntas/{preguntaId}/logica` | ApiNegocio | PreguntaCuestionarioDto | Configurar lógica | Body: `LogicaPreguntaCuestionarioDto` | `{ data: PreguntaCuestionarioDto }` | — | Admin | `backend/Bital.ApiNegocio/Controllers/CuestionariosController.cs` |
 
 ### N. Captura encuestas
 
+> Rutas reales expuestas por `PacientesEncuestasController`.
+
 | Método | Endpoint | API | Entidad | Operación | Request | Response | Filtros | Permiso | Evidencia frontend |
 |--------|----------|-----|---------|-----------|---------|----------|---------|---------|-------------------|
-| GET | `/api/encuestas/captura/presencial/pendientes` | ApiNegocio | Paciente captura | Cola presencial | Query: filtros captura | `{ data: Fila[] }` | Servicio, estado | Encuestador | `CapturaPresencialPage.tsx`, `CapturaPresencialFiltros.tsx` |
-| POST | `/api/encuestas/captura/presencial/{pacienteId}/iniciar` | ApiNegocio | Encuesta | Iniciar captura | Body: `{ cuestionarioId }` | `{ data: SeccionEncuesta[] }` | — | Encuestador | `CapturaEncuestaPage.tsx` |
-| PUT | `/api/encuestas/captura/{encuestaId}/respuestas` | ApiNegocio | Respuesta | Guardar respuestas parciales | Body: respuestas por sección | `{ data }` | — | Encuestador | `SeccionEncuestaCard.tsx` |
-| POST | `/api/encuestas/captura/{encuestaId}/completar` | ApiNegocio | Encuesta | Finalizar encuesta | Body: respuestas finales | `{ data: { consecutivo } }` | Validación requeridas | Encuestador | `RevisionFinalStep.tsx` |
-| GET | `/api/encuestas/captura/telefonica/pendientes` | ApiNegocio | FilaCapturaTelefonica | Cola telefónica | Query: filtros | `{ data }` | Servicio, estado llamada | Encuestador | `CapturaTelefonicaTabla.tsx` |
-| POST | `/api/encuestas/captura/telefonica/{id}/intento` | ApiNegocio | IntentoLlamada | Registrar intento | Body: `IntentoGuardado` | `{ data: FilaCapturaTelefonica }` | — | Encuestador | `GestionLlamadaSheet.tsx` |
-| POST | `/api/encuestas/captura/telefonica/{id}/iniciar-encuesta` | ApiNegocio | Encuesta | Iniciar tras aceptación | — | `{ data: redirect }` | Resultado `acepta_encuesta` | Encuestador | `onIniciarEncuesta` |
+| GET | `/api/v1/encuestas/captura/presencial/pendientes` | ApiNegocio | Paciente captura | Cola presencial | Query: `servicio?`, `pabellon?`, `estado?`, `busqueda?`, `page?`, `pageSize?` | `{ data: PacienteCapturaPresencialDto[], meta, kpis }` | Servicio, estado, búsqueda, paginación | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| POST | `/api/v1/encuestas/captura/presencial/{pacienteId}/iniciar` | ApiNegocio | Encuesta | Iniciar captura | Body: `{ cuestionarioId }` | `{ data: SeccionEncuestaDto[] }` | — | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| PUT | `/api/v1/encuestas/captura/{encuestaId}/respuestas` | ApiNegocio | Respuesta | Guardar respuestas parciales | Body: `GuardarRespuestasEncuestaRequestDto` | `{ data: { encuestaId, secciones } }` | — | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| POST | `/api/v1/encuestas/captura/{encuestaId}/completar` | ApiNegocio | Encuesta | Finalizar encuesta | Body: `FinalizarEncuestaRequestDto` | `{ data: FinalizarEncuestaResponseDto }` | Validación requeridas | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| GET | `/api/v1/encuestas/captura/telefonica/pendientes` | ApiNegocio | FilaCapturaTelefonica | Cola telefónica | Query: `busqueda?`, `tipoHospitalizacion?`, `servicio?`, `estado?`, `fechaCitaDesde?`, `fechaCitaHasta?`, `page?`, `pageSize?` | `{ data: FilaCapturaTelefonicaDto[], meta, kpis }` | Servicio, estado llamada | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| POST | `/api/v1/encuestas/captura/telefonica/{id}/intento` | ApiNegocio | IntentoLlamada | Registrar intento | Body: `IntentoLlamadaRequestDto` | `{ data: FilaCapturaTelefonicaDto }` | — | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
+| POST | `/api/v1/encuestas/captura/telefonica/{id}/iniciar-encuesta` | ApiNegocio | Encuesta | Iniciar tras aceptación | — | `{ data: RespuestaCapturaTelefonicaInicioDto }` | Resultado `acepta_encuesta` | Encuestador | `backend/Bital.ApiNegocio/Controllers/PacientesEncuestasController.cs` |
 
 ### O. Encuestas realizadas
 
 | Método | Endpoint | API | Entidad | Operación | Request | Response | Filtros | Permiso | Evidencia frontend |
 |--------|----------|-----|---------|-----------|---------|----------|---------|---------|-------------------|
-| GET | `/api/encuestas/realizadas` | ApiNegocio | FilaEncuestaRealizada | Listar encuestas | Query: filtros avanzados + `page`, `pageSize` | `{ data, meta: { total, page } }` | Fecha, servicio, canal, SAT/NPS | Admin, Encuestador | `EncuestasRealizadasTabla.tsx`, `FiltrosAvanzados.tsx` |
-| GET | `/api/encuestas/realizadas/{id}` | ApiNegocio | DetalleEncuestaRealizada | Detalle completo | Path: `id` | `{ data: DetalleEncuestaRealizada }` | — | Admin, Encuestador | `DetalleEncuestaSheet.tsx` |
-| POST | `/api/encuestas/realizadas/{id}/anular` | ApiNegocio | FilaEncuestaRealizada | Anular encuesta | Body: `{ motivo }` | `{ data }` | Motivo requerido + checkbox | Admin | `AnularEncuestaDialog.tsx` |
+| GET | `/api/v1/encuestas/realizadas` | ApiNegocio | FilaEncuestaRealizada | Listar encuestas | Query: filtros avanzados + `page`, `pageSize` | `{ data, meta: { total, page } }` | Fecha, servicio, canal, SAT/NPS | Admin, Encuestador | `EncuestasRealizadasTabla.tsx`, `FiltrosAvanzados.tsx` |
+| GET | `/api/v1/encuestas/realizadas/{id}` | ApiNegocio | DetalleEncuestaRealizada | Detalle completo | Path: `id` | `{ data: DetalleEncuestaRealizada }` | — | Admin, Encuestador | `DetalleEncuestaSheet.tsx` |
+| POST | `/api/v1/encuestas/realizadas/{id}/anular` | ApiNegocio | FilaEncuestaRealizada | Anular encuesta | Body: `{ motivo }` | `{ data }` | Motivo requerido + checkbox | Admin | `AnularEncuestaDialog.tsx` |
 
 ### P. Indicadores y brechas
 
 | Método | Endpoint | API | Entidad | Operación | Request | Response | Filtros | Permiso | Evidencia frontend |
 |--------|----------|-----|---------|-----------|---------|----------|---------|---------|-------------------|
-| GET | `/api/encuestas/indicadores/experiencia` | ApiNegocio | KpiExperiencia | KPIs experiencia | Query: rango, servicio, punto, eps, contrato, canal | `{ data: { kpis, segmentos } }` | Multiples | Admin, Encuestador | `mockIndicadoresExperiencia.ts`, `IndicadoresExperienciaTab.tsx` |
-| GET | `/api/encuestas/indicadores/experiencia/nivel-satisfaccion` | ApiNegocio | SegmentoBarra | Distribución SAT | Query: filtros | `{ data: SegmentoBarra[] }` | — | Admin | `NivelSatisfaccionChart.tsx` |
-| GET | `/api/encuestas/indicadores/brechas` | ApiNegocio | FilaBrecha | Análisis brechas | Query: filtros brechas | `{ data: FilaBrecha[], kpis }` | Servicio, estado brecha | Admin | `BrechasTabla.tsx`, `AnalisisBrechasTab.tsx` |
+| GET | `/api/v1/encuestas/indicadores/experiencia` | ApiNegocio | KpiExperiencia | KPIs experiencia | Query: rango, servicio, punto, eps, contrato, canal | `{ data: { kpis, segmentos } }` | Multiples | Admin, Encuestador | `mockIndicadoresExperiencia.ts`, `IndicadoresExperienciaTab.tsx` |
+| GET | `/api/v1/encuestas/indicadores/experiencia/nivel-satisfaccion` | ApiNegocio | SegmentoBarra | Distribución SAT | Query: filtros | `{ data: SegmentoBarra[] }` | — | Admin | `NivelSatisfaccionChart.tsx` |
+| GET | `/api/v1/encuestas/indicadores/brechas` | ApiNegocio | FilaBrecha | Análisis brechas | Query: filtros brechas | `{ data: FilaBrecha[], kpis }` | Servicio, estado brecha | Admin | `BrechasTabla.tsx`, `AnalisisBrechasTab.tsx` |
 
 ### Q. Parámetros encuestas
 
 | Método | Endpoint | API | Entidad | Operación | Request | Response | Filtros | Permiso | Evidencia frontend |
 |--------|----------|-----|---------|-----------|---------|----------|---------|---------|-------------------|
-| GET | `/api/encuestas/parametros/reglas` | ApiNegocio | Regla condicional | Listar reglas activas | — | `{ data: Regla[] }` | — | Admin | `ReglasActivasList.tsx` |
-| POST | `/api/encuestas/parametros/reglas` | ApiNegocio | Regla | Crear regla | Body: `NuevaRegla` | `{ data }` | — | Admin | `NuevaReglaForm.tsx` |
-| PATCH | `/api/encuestas/parametros/reglas/{id}/estado` | ApiNegocio | Regla | Activar/borrador | Body: `{ estado }` | `{ data }` | — | Admin | `ModoPruebaPanel.tsx` |
-| GET | `/api/encuestas/parametros/modo-prueba` | ApiNegocio | — | Estado modo prueba | — | `{ data: { activo } }` | — | Admin | `ModoPruebaPanel.tsx` |
-| PUT | `/api/encuestas/parametros/modo-prueba` | ApiNegocio | — | Toggle modo prueba | Body: `{ activo }` | `{ data }` | — | Admin | `ModoPruebaPanel.tsx` |
+| GET | `/api/v1/encuestas/parametros/reglas` | ApiNegocio | Regla condicional | Listar reglas activas | — | `{ data: Regla[] }` | — | Admin | `ReglasActivasList.tsx` |
+| POST | `/api/v1/encuestas/parametros/reglas` | ApiNegocio | Regla | Crear regla | Body: `NuevaRegla` | `{ data }` | — | Admin | `NuevaReglaForm.tsx` |
+| PATCH | `/api/v1/encuestas/parametros/reglas/{id}/estado` | ApiNegocio | Regla | Activar/borrador | Body: `{ estado }` | `{ data }` | — | Admin | `ModoPruebaPanel.tsx` |
+| GET | `/api/v1/encuestas/parametros/modo-prueba` | ApiNegocio | — | Estado modo prueba | — | `{ data: { activo } }` | — | Admin | `ModoPruebaPanel.tsx` |
+| PUT | `/api/v1/encuestas/parametros/modo-prueba` | ApiNegocio | — | Toggle modo prueba | Body: `{ activo }` | `{ data }` | — | Admin | `ModoPruebaPanel.tsx` |
 
 ### R. Auditoría y usuarios (Encuestas)
 

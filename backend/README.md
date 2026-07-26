@@ -1,6 +1,6 @@
 # Backend BITAL (.NET 8)
 
-Backend del proyecto **BITAL** (nombre código) para Clínica del Río. Expone dos APIs independientes sobre arquitectura por capas (Clean Architecture).
+Backend del proyecto **BITAL** (nombre código) para Clínica del Río. Expone una API sobre arquitectura por capas (Clean Architecture).
 
 Documentación general del monorepo: [README.md](../README.md)
 
@@ -8,12 +8,9 @@ Documentación general del monorepo: [README.md](../README.md)
 
 | API | Rol | Estado |
 |---|---|---|
-| `Bital.ApiNegocio` | Punto de entrada para el frontend; reglas de negocio de Bital | Scaffold |
-| `Bital.ApiConsultas` | Bridge read-only hacia el HIS Vital (SQL Server) | Implementada |
+| `Bital.ApiNegocio` | Punto de entrada para el frontend; reglas de negocio y consultas integradas | Implementada |
 
-El frontend **solo debe consumir `Bital.ApiNegocio`**. ApiConsultas es un servicio interno que ApiNegocio orquestará cuando la integración esté completa.
-
-Referencia detallada de endpoints de ApiConsultas: [FRONTEND-API-GUIDE.md](./FRONTEND-API-GUIDE.md)
+El frontend **solo debe consumir `Bital.ApiNegocio`**.
 
 ## Prerrequisitos
 
@@ -32,7 +29,6 @@ Referencia detallada de endpoints de ApiConsultas: [FRONTEND-API-GUIDE.md](./FRO
 backend/
 ├── Bital.sln
 ├── global.json
-├── Bital.ApiConsultas/       # API REST read-only → Vital HIS
 ├── Bital.ApiNegocio/         # API de negocio (entrada del frontend)
 ├── Bital.Application/        # Casos de uso
 ├── Bital.Domain/             # Entidades y reglas de dominio
@@ -48,17 +44,15 @@ backend/
 ```text
 Frontend (React)
       ↓
-Bital.ApiNegocio  →  Application / Infrastructure  →  SQL Server Bital
-      ↓
-Bital.ApiConsultas  →  Vital HIS (read-only, ADO.NET + EF Core raw SQL)
+Bital.ApiNegocio  →  Application / Infrastructure  →  SQL Server Bital + Vital HIS
 ```
 
 ### Decisiones aplicadas
 
 1. Solución única `Bital.sln` para todo el backend.
 2. Separación en capas con dirección de dependencias hacia el dominio.
-3. APIs independientes: consultas (Vital) y negocio (Bital).
-4. ApiConsultas usa DbContext read-only (`NoTracking`, bloqueo de escritura).
+3. Una sola API pública: `Bital.ApiNegocio`.
+4. Acceso read-only a Vital integrado en la capa de infraestructura.
 
 ## Ejecución local
 
@@ -66,14 +60,12 @@ Puertos definidos en `Properties/launchSettings.json` de cada proyecto:
 
 | API | HTTP | HTTPS | Swagger |
 |---|---|---|---|
-| ApiConsultas | 5013 | 7006 | `http://localhost:5013/swagger` |
 | ApiNegocio | 5042 | 7031 | `http://localhost:5042/swagger` |
 
 ```bash
 cd backend
 dotnet restore
 dotnet build Bital.sln
-dotnet run --project Bital.ApiConsultas
 dotnet run --project Bital.ApiNegocio
 ```
 
@@ -85,51 +77,25 @@ dotnet test Bital.sln
 
 Resultado esperado: `0 Warning(s)` y `0 Error(s)`.
 
-## Bital.ApiConsultas
-
-Bridge read-only que expone datos del HIS **Vital** (SQL Server) mediante API REST.
-
-**Implementado:**
-
-- Endpoints de pacientes y atenciones (ingresos hospitalarios)
-- Health checks (API y base de datos)
-- Swagger/OpenAPI, versionado v1, CORS para desarrollo local
-- Logging estructurado con Serilog
-- ADO.NET puro para queries legacy; EF Core con SQL raw para pacientes
-
-**Endpoints principales** (detalle completo en [FRONTEND-API-GUIDE.md](./FRONTEND-API-GUIDE.md)):
-
-```http
-GET /api/v1/pacientes/buscar
-GET /api/v1/pacientes/{id}
-GET /api/v1/pacientes/search
-GET /api/v1/atenciones
-GET /api/v1/atenciones/{id}
-GET /api/v1/atenciones/paciente
-GET /api/v1/atenciones/hospitalarias
-GET /health
-```
-
 ## Bital.ApiNegocio
 
-Scaffold inicial. Será el único punto de entrada del frontend para operaciones de negocio (órdenes, menús, autenticación, etc.). Actualmente expone solo el endpoint de plantilla `/weatherforecast`.
+Será el único punto de entrada del frontend para operaciones de negocio y consultas integradas.
 
 ## Configuración
 
 La configuración por ambiente vive en `appsettings.json` y `appsettings.Development.json` de cada proyecto.
 
-**ApiConsultas** — claves relevantes:
+**ApiNegocio** — claves relevantes:
 
 | Clave | Descripción |
 |---|---|
+| `ConnectionStrings:BitalDatabase` | Conexión al SQL Server de negocio |
 | `ConnectionStrings:VitalDatabase` | Conexión al SQL Server de Vital |
 | `ConnectionStrings:VitalDatabaseReadOnly` | Conexión read-only (ApplicationIntent) |
 | `Cors:AllowedOrigins` | Orígenes permitidos (incluye `http://localhost:5173`) |
 | `Serilog` | Niveles y sinks de logging |
 
-Para desarrollo local, editar `Bital.ApiConsultas/appsettings.Development.json`. En entornos compartidos o producción, usar [User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) o variables de entorno — no commitear credenciales.
-
-> **Nota:** `DiagnosticoController` está disponible solo en Development para inspeccionar tablas legacy. Deshabilitar en producción.
+Para desarrollo local, editar `Bital.ApiNegocio/appsettings.Development.json`. En entornos compartidos o producción, usar [User Secrets](https://learn.microsoft.com/en-us/aspnet/core/security/app-secrets) o variables de entorno — no commitear credenciales.
 
 ## Workspace Node (placeholder)
 
@@ -137,7 +103,7 @@ El paquete `backend` del monorepo pnpm incluye un servidor Node mínimo (`src/in
 
 ## Esquema legacy Vital
 
-El esquema Vital no sigue convenciones modernas (campos `char(N)` con espacios, tipos ambiguos, sin constraints). ApiConsultas maneja esto con trimming explícito y ADO.NET para control total sobre tipos en queries de atenciones.
+El esquema Vital no sigue convenciones modernas (campos `char(N)` con espacios, tipos ambiguos, sin constraints). La capa de infraestructura maneja esto con trimming explícito y ADO.NET para control total sobre tipos en queries de atenciones.
 
 Tablas principales consultadas:
 

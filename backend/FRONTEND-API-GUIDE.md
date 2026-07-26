@@ -1,6 +1,6 @@
-# Referencia de API — Bital.ApiConsultas
+# Referencia de API — Bital.ApiNegocio
 
-> **Alcance:** Este documento describe los endpoints de **Bital.ApiConsultas**, el bridge read-only hacia Vital HIS. El frontend **no debe consumir ApiConsultas directamente**; toda comunicación debe hacerse a través de **Bital.ApiNegocio** cuando esos endpoints estén expuestos.
+> **Alcance:** Este documento describe los endpoints de **Bital.ApiNegocio**. El frontend debe consumir únicamente este host.
 
 Setup, arquitectura y ejecución local: [README.md](./README.md)
 
@@ -11,13 +11,13 @@ Setup, arquitectura y ejecución local: [README.md](./README.md)
 **Development (local):**
 
 ```text
-http://localhost:5013
+http://localhost:5042
 ```
 
 **Swagger UI:**
 
 ```text
-http://localhost:5013/swagger
+http://localhost:5042/swagger
 ```
 
 ---
