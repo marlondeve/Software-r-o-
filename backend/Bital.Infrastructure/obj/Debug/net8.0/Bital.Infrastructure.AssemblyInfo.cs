@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Bital.Infrastructure")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+adcbd89bb26d8e57cf72507117b0002baa5e4ce4")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+2c89cbbed29a8a0a34fbc4980a29df048d6fcba9")]
 [assembly: System.Reflection.AssemblyProductAttribute("Bital.Infrastructure")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Bital.Infrastructure")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
