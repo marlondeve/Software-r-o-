@@ -17,6 +17,7 @@ import {
   mapFilasDietasToOrdenesCocina,
 } from "@/modules/dietas-cocina/api/mappers/ordenCocina.mapper"
 import { deduplicarEtiquetasPorFila } from "@/modules/dietas-cocina/api/mappers/etiqueta.mapper"
+import { enriquecerEtiquetasConOrdenes } from "@/modules/dietas-cocina/etiquetas/lib/enriquecerEtiquetasConOrdenes"
 import {
   actualizarEstadoOrdenCocina,
   actualizarChecklistOrdenCocina,
@@ -223,25 +224,30 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
 
   const recargarEtiquetas = useCallback(async () => {
     const lista = deduplicarEtiquetasPorFila(await etiquetasRepository.listar())
-    setEtiquetas(lista)
-    setOrdenes((prev) => syncOrdenesFromEtiquetas(prev, lista))
-    return lista
+    const enriquecidas = enriquecerEtiquetasConOrdenes(lista, ordenesRef.current)
+    setEtiquetas(enriquecidas)
+    setOrdenes((prev) => syncOrdenesFromEtiquetas(prev, enriquecidas))
+    return enriquecidas
   }, [syncOrdenesFromEtiquetas, etiquetasRepository])
 
   const recargarDesdeApi = useCallback(async () => {
     const persistido = await repository.cargar()
     if (!persistido) return
     const etiquetasDedup = deduplicarEtiquetasPorFila(persistido.etiquetas)
+    setOrdenes((prev) => {
+      const fusionadas = fusionarOrdenesCocina(prev, persistido.ordenes)
+      return syncOrdenesFromEtiquetas(fusionadas, etiquetasDedup)
+    })
     setEtiquetas((prev) => {
       const map = new Map(prev.map((etiqueta) => [etiqueta.id, etiqueta]))
       for (const etiqueta of etiquetasDedup) {
         map.set(etiqueta.id, etiqueta)
       }
-      return deduplicarEtiquetasPorFila(Array.from(map.values()))
-    })
-    setOrdenes((prev) => {
-      const fusionadas = fusionarOrdenesCocina(prev, persistido.ordenes)
-      return syncOrdenesFromEtiquetas(fusionadas, etiquetasDedup)
+      const dedup = deduplicarEtiquetasPorFila(Array.from(map.values()))
+      return enriquecerEtiquetasConOrdenes(
+        dedup,
+        fusionarOrdenesCocina(ordenesRef.current, persistido.ordenes),
+      )
     })
   }, [repository, syncOrdenesFromEtiquetas])
 
@@ -249,9 +255,29 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
     if (!apiActiva) return
     setOrdenes((prev) => {
       const mapped = mapFilasDietasToOrdenesCocina(filas, etiquetasRef.current)
-      return fusionarOrdenesCocina(prev, mapped)
+      const fusionadas = fusionarOrdenesCocina(prev, mapped)
+      setEtiquetas((prevEtiquetas) =>
+        enriquecerEtiquetasConOrdenes(prevEtiquetas, fusionadas),
+      )
+      return fusionadas
     })
   }, [apiActiva])
+
+  useEffect(() => {
+    if (!apiActiva || !hidrato) return
+    setEtiquetas((prev) => {
+      const enriquecidas = enriquecerEtiquetasConOrdenes(prev, ordenes)
+      const cambio = enriquecidas.some((etiqueta, index) => {
+        const anterior = prev[index]
+        return (
+          !anterior ||
+          etiqueta.aislamiento !== anterior.aislamiento ||
+          etiqueta.observaciones !== anterior.observaciones
+        )
+      })
+      return cambio ? enriquecidas : prev
+    })
+  }, [ordenes, apiActiva, hidrato])
 
   useEffect(() => {
     if (hidrato) return

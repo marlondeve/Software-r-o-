@@ -432,8 +432,18 @@ public class EtiquetasService : IEtiquetasService
         return PdfEtiquetasHelper.Generar(lineas);
     }
 
+    private static bool ResolverAisladoFila(FilaDieta? fila)
+    {
+        if (fila == null) return false;
+        if (fila.Aislado) return true;
+        return !string.IsNullOrWhiteSpace(fila.Aislamiento)
+            && !fila.Aislamiento.Equals("Ninguno", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static EtiquetaEnfermeraDto MapearADto(EtiquetaEnfermera etiqueta)
     {
+        var fila = etiqueta.FilaDieta;
+        var aislado = ResolverAisladoFila(fila);
         return new EtiquetaEnfermeraDto
         {
             Id = etiqueta.Id,
@@ -441,14 +451,19 @@ public class EtiquetasService : IEtiquetasService
             OrdenCocinaId = etiqueta.OrdenCocinaId,
             NumeroOrden = etiqueta.OrdenCocina?.NumeroOrden ?? 0,
             FilaDietaId = etiqueta.FilaDietaId,
-            PacienteId = etiqueta.FilaDieta?.PacienteId ?? "",
-            Paciente = etiqueta.FilaDieta?.Paciente ?? "",
-            Cedula = etiqueta.FilaDieta?.Cedula ?? "",
-            Pabellon = etiqueta.FilaDieta?.Pabellon ?? "",
-            Habitacion = etiqueta.FilaDieta?.Habitacion ?? "",
+            PacienteId = fila?.PacienteId ?? "",
+            Paciente = fila?.Paciente ?? "",
+            Cedula = fila?.Cedula ?? "",
+            Edad = fila?.Edad ?? 0,
+            Aislado = aislado,
+            ObservacionAislamiento = fila?.ObservacionAislamiento,
+            Alergico = fila?.Alergico ?? false,
+            Alergias = string.IsNullOrWhiteSpace(fila?.Alergias) ? null : fila.Alergias,
+            Pabellon = fila?.Pabellon ?? "",
+            Habitacion = fila?.Habitacion ?? "",
             Comida = etiqueta.Comida.ToString(),
-            TipoDieta = etiqueta.FilaDieta?.DescripcionDieta ?? "",
-            Consistencia = etiqueta.FilaDieta?.Consistencia ?? "",
+            TipoDieta = fila?.DescripcionDieta ?? "",
+            Consistencia = fila?.Consistencia ?? "",
             EstadoLogistica = etiqueta.EstadoLogistica,
             FechaOperativa = etiqueta.FechaOperativa,
             GeneradaPor = etiqueta.GeneradaPor,
@@ -463,8 +478,32 @@ public class EtiquetasService : IEtiquetasService
             ObservacionesDevolucion = etiqueta.ObservacionesDevolucion,
             FotoDevolucionUrl = etiqueta.FotoDevolucionUrl,
             DevueltaEn = etiqueta.DevueltaEn,
-            Observaciones = etiqueta.Observaciones
+            Observaciones = ResolverObservacionesEtiqueta(etiqueta, fila)
         };
+    }
+
+    private static string? ResolverObservacionesEtiqueta(
+        EtiquetaEnfermera etiqueta,
+        FilaDieta? fila)
+    {
+        var partes = new List<string>();
+
+        if (!string.IsNullOrWhiteSpace(fila?.Observaciones))
+            partes.Add(fila.Observaciones.Trim());
+
+        if (ResolverAisladoFila(fila) && !string.IsNullOrWhiteSpace(fila?.ObservacionAislamiento))
+            partes.Add(fila.ObservacionAislamiento.Trim());
+
+        if (fila?.Alergico == true && !string.IsNullOrWhiteSpace(fila.Alergias))
+            partes.Add($"Alergias: {fila.Alergias.Trim()}");
+
+        if (!string.IsNullOrWhiteSpace(etiqueta.Observaciones))
+            partes.Add(etiqueta.Observaciones.Trim());
+
+        if (partes.Count == 0)
+            return null;
+
+        return string.Join(" · ", partes.Distinct(StringComparer.OrdinalIgnoreCase));
     }
 
     private static string GenerarCodigo()
