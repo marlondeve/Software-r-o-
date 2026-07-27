@@ -29,7 +29,6 @@ interface CocinaFiltrosBarProps {
 }
 
 const ESTADOS_FILTRO: EstadoCocina[] = [
-  "por_iniciar",
   "en_preparacion",
   "lista",
   "despachada",

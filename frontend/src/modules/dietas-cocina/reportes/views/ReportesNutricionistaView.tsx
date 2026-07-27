@@ -22,7 +22,6 @@ import {
 } from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
 import { obtenerReporteNutricionista } from "@/modules/dietas-cocina/api/services/reportes.service"
 import { REPORTES_FILTROS_UI } from "@/modules/dietas-cocina/config/reportes-ui"
-import { mesclarReporteConCiclo } from "@/modules/dietas-cocina/lib/mesclarDashboardOperativo"
 import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
 
 export function ReportesNutricionistaView() {
@@ -59,8 +58,7 @@ export function ReportesNutricionistaView() {
 
   const data = useMemo(() => {
     if (!apiActiva) return dataCiclo
-    const api = reporteApi ?? reporteViewVacio()
-    return mesclarReporteConCiclo(api, dataCiclo, { modoApi: true })
+    return reporteApi ?? reporteViewVacio()
   }, [apiActiva, reporteApi, dataCiclo])
 
   const ultimaActualizacion = useMemo(

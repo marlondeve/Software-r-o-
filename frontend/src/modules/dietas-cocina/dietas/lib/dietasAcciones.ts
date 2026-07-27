@@ -1,8 +1,8 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { EstadoDieta, RolDietas, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import {
   esSolicitudEditable,
-  puedeCancelarDieta,
-  puedeRegistrarNovedad,
+  evaluarAccionesDietaClinica,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 
 export interface AccionDietaFila {
@@ -19,12 +19,25 @@ interface HandlersAccionesDieta {
   onCancelarDieta: (fila: FilaDieta) => void
 }
 
-/** Acciones de fila deterministas por estado — el menú se muestra siempre. */
+interface ContextoAccionesDietaFila {
+  estadoVisible: EstadoDieta
+  comidaActiva: TiempoComida
+  rol?: RolDietas | null
+}
+
+/** Acciones de fila deterministas por estado operativo visible. */
 export function construirAccionesDietaFila(
   fila: FilaDieta,
   handlers: HandlersAccionesDieta,
+  contexto: ContextoAccionesDietaFila,
 ): AccionDietaFila[] {
   const acciones: AccionDietaFila[] = []
+  const evaluacion = evaluarAccionesDietaClinica({
+    fila,
+    estadoVisible: contexto.estadoVisible,
+    comida: contexto.comidaActiva,
+    rol: contexto.rol,
+  })
 
   if (esSolicitudEditable(fila)) {
     acciones.push({
@@ -40,7 +53,7 @@ export function construirAccionesDietaFila(
     onClick: () => handlers.onAbrirDetalle(fila),
   })
 
-  if (puedeRegistrarNovedad(fila)) {
+  if (evaluacion.mostrarRegistrarNovedad) {
     acciones.push({
       key: "novedad",
       label: "Registrar novedad",
@@ -48,7 +61,7 @@ export function construirAccionesDietaFila(
     })
   }
 
-  if (puedeCancelarDieta(fila)) {
+  if (evaluacion.puedeCancelarDieta) {
     acciones.push({
       key: "cancelar",
       label: "Cancelar dieta",

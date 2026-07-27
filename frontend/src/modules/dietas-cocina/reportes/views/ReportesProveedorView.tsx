@@ -15,7 +15,6 @@ import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasC
 import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
 import { mockReportesProveedor } from "@/modules/dietas-cocina/reportes/datos/mockReportesProveedor"
 import { crearFiltrosReportesIniciales } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
-import { mesclarReporteConCiclo } from "@/modules/dietas-cocina/lib/mesclarDashboardOperativo"
 import { construirReportesProveedorDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
@@ -57,8 +56,7 @@ export function ReportesProveedorView() {
 
   const data = useMemo(() => {
     if (!apiActiva) return dataCiclo
-    const api = reporteApi ?? reporteViewVacio()
-    return mesclarReporteConCiclo(api, dataCiclo, { modoApi: true })
+    return reporteApi ?? reporteViewVacio()
   }, [apiActiva, reporteApi, dataCiclo])
 
   const subtituloActualizacion = useMemo(

@@ -8,6 +8,49 @@ import {
   resolverEtiquetaParaOrden,
 } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 
+function normalizarFechaOperativa(valor: string): string | undefined {
+  const iso = valor.match(/^(\d{4}-\d{2}-\d{2})/)
+  if (iso) return iso[1]
+
+  const latam = valor.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (latam) {
+    const [, day, month, year] = latam
+    return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
+  }
+
+  const parsed = Date.parse(valor)
+  if (!Number.isNaN(parsed)) {
+    const fecha = new Date(parsed)
+    const year = fecha.getFullYear()
+    const month = String(fecha.getMonth() + 1).padStart(2, "0")
+    const day = String(fecha.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+  }
+
+  return undefined
+}
+
+function fechaEnRangoReporte(fecha: string, desde: string, hasta: string): boolean {
+  return fecha >= desde && fecha <= hasta
+}
+
+export function filtrarEtiquetasPorRangoReporte(
+  etiquetas: EtiquetaEnfermera[],
+  filtros: FiltrosReportes,
+): EtiquetaEnfermera[] {
+  const comida =
+    filtros.horario !== "todos" ? (filtros.horario as TiempoComida) : undefined
+
+  return etiquetas.filter((etiqueta) => {
+    if (comida && etiqueta.comida !== comida) return false
+    const ref = etiqueta.fechaHora?.trim()
+    if (!ref) return false
+    const fecha = normalizarFechaOperativa(ref)
+    if (!fecha) return false
+    return fechaEnRangoReporte(fecha, filtros.desde, filtros.hasta)
+  })
+}
+
 const PABELLON_POR_SERVICIO: Record<string, string> = {
   cardiologia: "Pab Central",
   pediatria: "Pab Norte",
@@ -38,11 +81,9 @@ export function filtrarEtiquetasReporte(
   ordenesFiltradas: OrdenCocina[],
   filtros?: FiltrosReportes,
 ): EtiquetaEnfermera[] {
-  const comida =
-    filtros?.horario !== "todos"
-      ? (filtros?.horario as TiempoComida)
-      : undefined
-  const delPeriodo = filtrarEtiquetasDelPeriodoOperativo(etiquetas, { comida })
+  const delPeriodo = filtros
+    ? filtrarEtiquetasPorRangoReporte(etiquetas, filtros)
+    : filtrarEtiquetasDelPeriodoOperativo(etiquetas)
 
   return delPeriodo.filter((etiqueta) =>
     ordenesFiltradas.some(
@@ -67,6 +108,12 @@ export function crearLookupEtiquetaOrden(
 export function contextoFiltroReporte(filtros: FiltrosReportes): string {
   const partes: string[] = []
 
+  if (filtros.desde === filtros.hasta) {
+    partes.push(`el ${filtros.desde}`)
+  } else {
+    partes.push(`del ${filtros.desde} al ${filtros.hasta}`)
+  }
+
   if (filtros.horario !== "todos") {
     partes.push(`turno ${labelComida(filtros.horario as TiempoComida)}`)
   }
@@ -75,5 +122,5 @@ export function contextoFiltroReporte(filtros: FiltrosReportes): string {
     partes.push(pabellon ?? filtros.servicio)
   }
 
-  return partes.length > 0 ? partes.join(" · ") : "todos los turnos y servicios"
+  return partes.join(" · ")
 }

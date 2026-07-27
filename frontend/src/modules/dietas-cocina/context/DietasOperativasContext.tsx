@@ -25,6 +25,7 @@ import type {
 import type { DatosSolicitudDietaInput } from "@/modules/dietas-cocina/api/mappers"
 import { configDietasOperativas, mockDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
+import { solicitarRefreshCenso } from "@/modules/dietas-cocina/lib/cocinaSyncBus"
 import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
 import { suscribirRefreshCenso } from "@/modules/dietas-cocina/lib/cocinaSyncBus"
 import {
@@ -282,6 +283,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       if (filasSync !== filasRef.current) setFilas(filasSync)
       const fila = await dietasRepository.confirmar(filaId)
       reemplazarFila(fila)
+      solicitarRefreshCenso(fila.comida)
       return fila
     },
     [dietasRepository, reemplazarFila],

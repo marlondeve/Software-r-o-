@@ -41,9 +41,8 @@ export function claseValorKpiCocina(kpi: KpiCocina): string {
 export function labelEstadoCocina(estado: EstadoCocina): string {
   switch (estado) {
     case "por_iniciar":
-      return "Por prep."
     case "en_preparacion":
-      return "En prep."
+      return "En gestión"
     case "lista":
       return "Lista"
     case "despachada":
@@ -96,7 +95,6 @@ export function descripcionEstadoLogisticaCocina(
 export function claseBadgeEstadoCocina(estado: EstadoCocina): string {
   switch (estado) {
     case "por_iniciar":
-      return "bg-muted text-muted-foreground border-border"
     case "en_preparacion":
       return "bg-orange-500/20 text-orange-900 border-orange-500/40 dark:text-orange-300"
     case "lista":

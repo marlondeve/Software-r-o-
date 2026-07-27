@@ -62,7 +62,6 @@ export function estadoDietaDesdeCiclo(
 
   switch (ordenValida.estadoCocina) {
     case "por_iniciar":
-      return "por-iniciar"
     case "en_preparacion":
       return "en-preparacion"
     case "lista":

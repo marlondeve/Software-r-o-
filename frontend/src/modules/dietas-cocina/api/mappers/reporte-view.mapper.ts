@@ -104,7 +104,33 @@ function mapGraficosPie(graficos: unknown): Segmento[] {
   for (const raw of graficos) {
     const grafico = asRecord(raw) ?? {}
     const tipo = String(grafico.tipo ?? grafico.Tipo ?? "").toLowerCase()
-    if (tipo !== "pie" && tipo !== "donut" && tipo !== "barra") continue
+    if (tipo !== "pie" && tipo !== "donut") continue
+
+    const categorias = leerCampo(grafico, "categorias", "Categorias")
+    const series = leerCampo(grafico, "series", "Series")
+    if (!Array.isArray(categorias) || !Array.isArray(series) || series.length === 0) continue
+
+    const primeraSerie = asRecord(series[0]) ?? {}
+    const valores = leerCampo(primeraSerie, "valores", "Valores")
+    if (!Array.isArray(valores)) continue
+
+    return categorias.map((categoria, index) => ({
+      label: String(categoria),
+      value: Number(valores[index] ?? 0),
+      color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#006671",
+    }))
+  }
+
+  return []
+}
+
+function mapGraficosBarra(graficos: unknown): BarItem[] {
+  if (!Array.isArray(graficos)) return []
+
+  for (const raw of graficos) {
+    const grafico = asRecord(raw) ?? {}
+    const tipo = String(grafico.tipo ?? grafico.Tipo ?? "").toLowerCase()
+    if (tipo !== "barra" && tipo !== "bar") continue
 
     const categorias = leerCampo(grafico, "categorias", "Categorias")
     const series = leerCampo(grafico, "series", "Series")
@@ -142,6 +168,9 @@ export function mapReporteDto(dto: ReporteDto) {
   const segmentos =
     segmentosDesdeObjeto.length > 0 ? segmentosDesdeObjeto : mapGraficosPie(graficosRaw)
   const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
+  const tiposDesdeGraficos = mapBarItems(graficosObj?.tiposDieta)
+  const tiposDieta =
+    tiposDesdeGraficos.length > 0 ? tiposDesdeGraficos : mapGraficosBarra(graficosRaw)
 
   const kpisRaw = leerCampo(dtoRecord, "kpis", "Kpis")
   const hitosRaw = leerCampo(dtoRecord, "hitos", "Hitos")
@@ -187,7 +216,7 @@ export function mapReporteDto(dto: ReporteDto) {
       totalNumerico,
       segmentos,
     },
-    tiposDieta: mapBarItems(graficosObj?.tiposDieta),
+    tiposDieta,
     motivosDevolucion: mapBarItems(graficosObj?.motivosDevolucion, "#e879a9"),
     distribucionServicio: mapBarItems(
       graficosObj?.distribucionServicio ?? graficosObj?.distribucionTurno,

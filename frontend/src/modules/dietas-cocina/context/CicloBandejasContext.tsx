@@ -503,7 +503,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
             prev.map((orden) =>
               pendientesApi.some((item) => item.id === orden.id) &&
               !orden.ordenCocinaApiId
-                ? { ...orden, estadoCocina: "por_iniciar" }
+                ? { ...orden, estadoCocina: "en_preparacion" }
                 : orden,
             ),
           )
@@ -846,22 +846,53 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
   }, [syncOrdenesFromEtiquetas, apiActiva, recargarEtiquetas])
 
   const crearOrdenDesdeDieta = useCallback((input: CrearOrdenDesdeDietaInput) => {
+    const actualizarOrden = (orden: OrdenCocina): OrdenCocina => ({
+      ...orden,
+      paciente: input.paciente,
+      edad: input.edad,
+      pabellon: input.pabellon,
+      habitacion: input.habitacion,
+      cama: input.cama ?? orden.cama,
+      tipoDieta: input.tipoDieta,
+      consistencia: input.consistencia,
+      comida: input.comida,
+      aislado: input.aislado ?? orden.aislado,
+      alergias: input.alergias ?? orden.alergias,
+      observaciones: input.observaciones ?? orden.observaciones,
+      ordenCocinaApiId: input.ordenCocinaApiId ?? orden.ordenCocinaApiId,
+      estadoCocina:
+        orden.estadoCocina === "cancelada" ? orden.estadoCocina : "en_preparacion",
+    })
+
     if (input.id) {
-      const porId = ordenes.find((o) => o.id === input.id)
-      if (porId) return porId.id
+      const porId = ordenesRef.current.find((o) => o.id === input.id)
+      if (porId) {
+        setOrdenes((prev) =>
+          prev.map((orden) => (orden.id === porId.id ? actualizarOrden(orden) : orden)),
+        )
+        return porId.id
+      }
     }
 
-    const existente = ordenes.find(
+    const existente = ordenesRef.current.find(
       (o) =>
         o.pacienteId === input.pacienteId &&
         o.comida === input.comida &&
         o.estadoCocina !== "cancelada",
     )
-    if (existente) return existente.id
+    if (existente) {
+      setOrdenes((prev) =>
+        prev.map((orden) =>
+          orden.id === existente.id ? actualizarOrden(orden) : orden,
+        ),
+      )
+      return existente.id
+    }
 
     const id = input.id ?? `ord-diet-${Date.now()}`
     const nuevaOrden: OrdenCocina = {
       id,
+      ordenCocinaApiId: input.ordenCocinaApiId,
       pacienteId: input.pacienteId,
       paciente: input.paciente,
       edad: input.edad,
@@ -874,7 +905,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       aislado: input.aislado ?? false,
       alergias: input.alergias ?? [],
       observaciones: input.observaciones ?? "",
-      estadoCocina: "por_iniciar",
+      estadoCocina: "en_preparacion",
       etiquetaImpresa: false,
       etiquetaGenerada: false,
       checklist: [
@@ -886,7 +917,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
     }
     setOrdenes((prev) => [...prev, nuevaOrden])
     return id
-  }, [ordenes])
+  }, [])
 
   const cancelarOrdenCocina = useCallback(
     async (ordenId: string, motivo = "Cancelada desde dietas-cocina"): Promise<boolean> => {

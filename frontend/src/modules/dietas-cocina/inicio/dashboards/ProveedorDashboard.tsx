@@ -18,6 +18,7 @@ import {
   labelEstadoVisibleCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
 import { ordenEnTransito } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
+import { ordenEnGestion } from "@/modules/dietas-cocina/cocina/lib/cocinaFiltros"
 import { AlertaCard, AlertaItem } from "@/modules/dietas-cocina/inicio/components/AlertaItem"
 import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/DashboardCard"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
@@ -63,7 +64,7 @@ export function ProveedorDashboard() {
 
   const kpisDinamicos = useMemo(() => {
     const total = ordenesComida.length || 1
-    const enPrep = ordenesComida.filter((o) => o.estadoCocina === "en_preparacion").length
+    const enGestion = ordenesComida.filter((o) => ordenEnGestion(o)).length
     const listas = ordenesComida.filter((o) => o.estadoCocina === "lista").length
     const despachadas = ordenesComida.filter((o) =>
       ordenEnTransito(o, getEtiquetaByOrdenId(o.id)),
@@ -78,10 +79,10 @@ export function ProveedorDashboard() {
         accentBorder: true,
       },
       {
-        label: "En preparación",
-        value: String(enPrep),
-        subtitle: "Bandejas en cocina",
-        progress: Math.round((enPrep / total) * 100),
+        label: "En gestión",
+        value: String(enGestion),
+        subtitle: "Dietas confirmadas en cocina",
+        progress: Math.round((enGestion / total) * 100),
         progressColor: "secondary" as const,
         accentBorder: true,
       },

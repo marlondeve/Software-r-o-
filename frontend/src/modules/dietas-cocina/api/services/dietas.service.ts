@@ -126,12 +126,11 @@ export async function confirmarDietasMasivo(
 
 export async function cancelarDieta(
   filaDietaId: string,
-  motivo: string,
+  payload: Record<string, unknown>,
 ): Promise<FilaDieta> {
   await apiClient.post(
     buildDietasCocinaPath(`/dietas/${filaDietaId}/cancelar`),
-    motivo,
-    { headers: { "Content-Type": "application/json" } },
+    payload,
   )
   return obtenerDetalleDieta(filaDietaId)
 }

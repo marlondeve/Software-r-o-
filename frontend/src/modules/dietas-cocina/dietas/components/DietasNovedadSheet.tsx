@@ -152,7 +152,9 @@ export function DietasNovedadSheet({
 
   if (!fila || !formulario || !estadoVentana) return null
   const hayCambios = cambios.some((c) => c.anterior !== c.nuevo)
+  const ventanaPermiteCambios = estadoVentana.ventanaAbierta
   const formularioValido =
+    ventanaPermiteCambios &&
     formulario.motivo.trim().length > 0 &&
     formulario.tipoDieta.trim().length > 0 &&
     formulario.consistencia.trim().length > 0 &&
@@ -177,11 +179,26 @@ export function DietasNovedadSheet({
 
         <ScrollAreaFlex>
           <div className="w-full space-y-5 px-5 py-4">
-            <Alert className="border-primary/20 bg-primary/5">
-              <Info className="text-primary" />
+            <Alert
+              className={
+                ventanaPermiteCambios
+                  ? "border-primary/20 bg-primary/5"
+                  : "border-destructive/30 bg-destructive/5"
+              }
+            >
+              <Info className={ventanaPermiteCambios ? "text-primary" : "text-destructive"} />
               <AlertDescription className="text-foreground/80">
-                La novedad puede registrarse dentro del horario permitido.{" "}
-                Ventana: {estadoVentana.ventanaTexto}.{" "}
+                {ventanaPermiteCambios ? (
+                  <>
+                    La novedad puede registrarse dentro del horario permitido.{" "}
+                    Ventana: {estadoVentana.ventanaTexto}.{" "}
+                  </>
+                ) : (
+                  <>
+                    La ventana de cambios está cerrada. No es posible registrar novedades
+                    fuera del horario configurado. Ventana: {estadoVentana.ventanaTexto}.{" "}
+                  </>
+                )}
                 <span
                   className={cn(
                     "font-medium",

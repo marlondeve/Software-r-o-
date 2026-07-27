@@ -26,6 +26,149 @@ public class DashboardService : IDashboardService
             && Enum.TryParse<TiempoComida>(comida, ignoreCase: true, out tiempoComida);
     }
 
+    private static bool TryResolverComidaReporte(FiltrosReportesDto filtros, out TiempoComida comida)
+    {
+        if (!string.IsNullOrWhiteSpace(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out comida))
+        {
+            return true;
+        }
+
+        var horario = filtros.Horario?.Trim().ToLowerInvariant();
+        comida = horario switch
+        {
+            "desayuno" => TiempoComida.Desayuno,
+            "merienda-manana" => TiempoComida.MediaNueve,
+            "almuerzo" => TiempoComida.Almuerzo,
+            "merienda-tarde" => TiempoComida.Onces,
+            "cena" => TiempoComida.Cena,
+            "merienda-noche" => TiempoComida.MediaNoche,
+            _ => default,
+        };
+
+        return horario is not (null or "" or "todos");
+    }
+
+    private static int ContarDiasPeriodo(DateTime desde, DateTime hasta) =>
+        Math.Max(1, (hasta.Date - desde.Date).Days + 1);
+
+    private static string ContextoFiltroReporte(DateTime desde, DateTime hasta) =>
+        desde.Date == hasta.Date
+            ? $"el {desde:yyyy-MM-dd}"
+            : $"del {desde:yyyy-MM-dd} al {hasta:yyyy-MM-dd}";
+
+    private static string EtiquetaEstadoDietaReporte(EstadoDieta estado) =>
+        estado switch
+        {
+            EstadoDieta.Pendiente => "Sin solicitud",
+            EstadoDieta.Guardado or EstadoDieta.Solicitada => "Guardadas",
+            EstadoDieta.Confirmada => "Confirmadas",
+            EstadoDieta.EnPreparacion => "En gestión",
+            EstadoDieta.ListaEnvio => "Listas",
+            EstadoDieta.EnRuta => "En tránsito",
+            EstadoDieta.Entregada or EstadoDieta.Consumida => "Entregadas",
+            EstadoDieta.NoConsumida or EstadoDieta.Devuelta => "Devueltas",
+            EstadoDieta.Cancelada => "Canceladas",
+            _ => estado.ToString(),
+        };
+
+    private static int? PromedioMinutosEtiquetas(
+        IEnumerable<Domain.Entities.DietasCocina.EtiquetaEnfermera> etiquetas,
+        Func<Domain.Entities.DietasCocina.EtiquetaEnfermera, DateTime?> inicio,
+        Func<Domain.Entities.DietasCocina.EtiquetaEnfermera, DateTime?> fin)
+    {
+        var muestras = etiquetas
+            .Select(e =>
+            {
+                var desde = inicio(e);
+                var hasta = fin(e);
+                if (!desde.HasValue || !hasta.HasValue || hasta <= desde) return (int?)null;
+                return (int?)Math.Round((hasta.Value - desde.Value).TotalMinutes);
+            })
+            .Where(minutos => minutos.HasValue)
+            .Select(minutos => minutos!.Value)
+            .ToList();
+
+        return muestras.Count > 0 ? (int)Math.Round(muestras.Average()) : null;
+    }
+
+    private static List<HallazgoDto> ConstruirHallazgosNutricionista(
+        List<Domain.Entities.DietasCocina.FilaDieta> dietas,
+        List<Domain.Entities.DietasCocina.EtiquetaEnfermera> etiquetas,
+        DateTime desde,
+        DateTime hasta)
+    {
+        var hallazgos = new List<HallazgoDto>();
+        var contexto = ContextoFiltroReporte(desde, hasta);
+        var totalEtiquetas = etiquetas.Count;
+
+        if (totalEtiquetas == 0 && dietas.Count == 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "sin_actividad",
+                Descripcion = $"Sin actividad registrada para {contexto}",
+                Severidad = "info",
+                Cantidad = 0,
+            });
+            return hallazgos;
+        }
+
+        var entregadas = etiquetas.Count(e => e.EstadoLogistica == "entregada");
+        var devueltas = etiquetas.Count(e => e.EstadoLogistica == "devuelta");
+        var recogidas = etiquetas.Count(e =>
+            e.EstadoLogistica == "devuelta" && e.EntregadaEn.HasValue);
+        var rechazadas = devueltas - recogidas;
+
+        if (devueltas > 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "cierres_bandeja",
+                Descripcion =
+                    $"{recogidas} recogida(s), {rechazadas} rechazada(s) de {totalEtiquetas} en {contexto}",
+                Severidad = rechazadas > 5 ? "alta" : "media",
+                Cantidad = devueltas,
+            });
+        }
+
+        if (totalEtiquetas > 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "resumen_logistico",
+                Descripcion =
+                    $"{entregadas} entregadas, {recogidas} recogidas, {rechazadas} rechazadas de {totalEtiquetas} etiquetas ({contexto})",
+                Severidad = "info",
+                Cantidad = totalEtiquetas,
+            });
+        }
+
+        var canceladas = dietas.Count(d => d.Estado == EstadoDieta.Cancelada);
+        if (canceladas > 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "dietas_canceladas",
+                Descripcion = $"{canceladas} dieta(s) cancelada(s) en {contexto}",
+                Severidad = canceladas > 10 ? "alta" : "media",
+                Cantidad = canceladas,
+            });
+        }
+
+        if (hallazgos.Count == 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "sin_alertas",
+                Descripcion = $"No hay incidencias para {contexto}",
+                Severidad = "info",
+                Cantidad = 0,
+            });
+        }
+
+        return hallazgos;
+    }
+
     private static string MapearEstadoActividad(string tipoEvento, Domain.Enums.EstadoDieta estadoNuevo)
     {
         return tipoEvento.ToLowerInvariant() switch
@@ -315,17 +458,19 @@ public class DashboardService : IDashboardService
 
     public async Task<ReporteNutricionistaDto> ObtenerReporteNutricionistaAsync(FiltrosReportesDto filtros)
     {
-        var desde = filtros.Desde ?? DateTime.Today.AddDays(-30);
-        var hasta = filtros.Hasta ?? DateTime.Today;
+        var desde = (filtros.Desde ?? DateTime.Today.AddDays(-30)).Date;
+        var hasta = (filtros.Hasta ?? DateTime.Today).Date;
+        var diasPeriodo = ContarDiasPeriodo(desde, hasta);
 
         // Dietas en el rango
         var dietasQuery = _context.FilasDietas
+            .Include(f => f.TipoDieta)
             .Where(f => f.FechaOperativa >= desde && f.FechaOperativa <= hasta);
 
         if (!string.IsNullOrEmpty(filtros.Servicio))
             dietasQuery = dietasQuery.Where(f => f.Servicio == filtros.Servicio);
 
-        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaFiltro))
+        if (TryResolverComidaReporte(filtros, out var comidaFiltro))
             dietasQuery = dietasQuery.Where(f => f.Comida == comidaFiltro);
 
         var dietas = await dietasQuery.ToListAsync();
@@ -336,11 +481,20 @@ public class DashboardService : IDashboardService
         var ordenesQuery = _context.OrdenesCocina
             .Where(o => o.FechaOperativa >= desde && o.FechaOperativa <= hasta);
 
-        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaReporteOrden))
+        if (TryResolverComidaReporte(filtros, out var comidaReporteOrden))
             ordenesQuery = ordenesQuery.Where(o => o.Comida == comidaReporteOrden);
 
         var ordenes = await ordenesQuery.ToListAsync();
         var totalOrdenes = ordenes.Count;
+
+        // Etiquetas del período (tiempos logísticos)
+        var etiquetasQuery = _context.EtiquetasEnfermeria
+            .Where(e => e.FechaOperativa >= desde && e.FechaOperativa <= hasta);
+
+        if (TryResolverComidaReporte(filtros, out var comidaReporteEtiqueta))
+            etiquetasQuery = etiquetasQuery.Where(e => e.Comida == comidaReporteEtiqueta);
+
+        var etiquetas = await etiquetasQuery.ToListAsync();
 
         // KPIs
         var kpis = new List<KpiDto>
@@ -348,21 +502,63 @@ public class DashboardService : IDashboardService
             new() { Clave = "total_dietas_periodo", Etiqueta = "Total dietas período", Valor = totalDietas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "dietas_activas_periodo", Etiqueta = "Dietas activas período", Valor = dietasActivas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "ordenes_periodo", Etiqueta = "Órdenes período", Valor = totalOrdenes, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "promedio_diario", Etiqueta = "Promedio diario dietas", Valor = (hasta - desde).Days > 0 ? Math.Round((decimal)totalDietas / (hasta - desde).Days, 1) : 0, Formato = "numero", Tendencia = null, Comparacion = null }
+            new() { Clave = "promedio_diario", Etiqueta = "Promedio diario dietas", Valor = Math.Round((decimal)totalDietas / diasPeriodo, 1), Formato = "numero", Tendencia = null, Comparacion = null }
         };
 
-        // Hitos
-        var hitos = new List<HitoReporteDto>
+        // Hitos logísticos (promedios en minutos)
+        var hitos = new List<HitoReporteDto>();
+        var minImpresion = PromedioMinutosEtiquetas(etiquetas, e => e.GeneradaEn, e => e.ImpresaEn);
+        if (minImpresion.HasValue)
         {
-            new() { Fecha = desde, Evento = "Inicio período", Detalle = $"Reporte generado desde {desde:yyyy-MM-dd}" },
-            new() { Fecha = hasta, Evento = "Fin período", Detalle = $"Reporte generado hasta {hasta:yyyy-MM-dd}" }
-        };
+            hitos.Add(new HitoReporteDto
+            {
+                Fecha = hasta,
+                Evento = "Impresión de etiqueta",
+                Detalle = $"{minImpresion.Value} min",
+            });
+        }
+
+        var minTransito = PromedioMinutosEtiquetas(etiquetas, e => e.ImpresaEn, e => e.PreEntregadaEn);
+        if (minTransito.HasValue)
+        {
+            hitos.Add(new HitoReporteDto
+            {
+                Fecha = hasta,
+                Evento = "Tránsito a enfermería",
+                Detalle = $"{minTransito.Value} min",
+            });
+        }
+
+        var minEntrega = PromedioMinutosEtiquetas(etiquetas, e => e.PreEntregadaEn, e => e.EntregadaEn);
+        if (minEntrega.HasValue)
+        {
+            hitos.Add(new HitoReporteDto
+            {
+                Fecha = hasta,
+                Evento = "Entrega al paciente",
+                Detalle = $"{minEntrega.Value} min",
+            });
+        }
 
         // Gráfico de dietas por día
         var dietasPorDia = dietas
             .GroupBy(d => d.FechaOperativa.Date)
             .OrderBy(g => g.Key)
             .Select(g => new { Fecha = g.Key.ToString("yyyy-MM-dd"), Cantidad = g.Count() })
+            .ToList();
+
+        var estadosDietas = dietas
+            .GroupBy(d => EtiquetaEstadoDietaReporte(d.Estado))
+            .OrderByDescending(g => g.Count())
+            .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
+            .ToList();
+
+        var tiposDieta = dietas
+            .Where(d => d.TipoDieta != null)
+            .GroupBy(d => d.TipoDieta!.Nombre)
+            .OrderByDescending(g => g.Count())
+            .Take(5)
+            .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
             .ToList();
 
         var graficos = new List<GraficoDto>
@@ -376,6 +572,26 @@ public class DashboardService : IDashboardService
                 {
                     new() { Etiqueta = "Dietas", Valores = dietasPorDia.Select(d => (decimal)d.Cantidad).ToList() }
                 }
+            },
+            new()
+            {
+                Tipo = "pie",
+                Titulo = "Estado de dietas",
+                Categorias = estadosDietas.Select(e => e.Categoria).ToList(),
+                Series = new List<GraficoSerieDto>
+                {
+                    new() { Etiqueta = "Dietas", Valores = estadosDietas.Select(e => (decimal)e.Cantidad).ToList() }
+                }
+            },
+            new()
+            {
+                Tipo = "barra",
+                Titulo = "Tipos de dieta principales",
+                Categorias = tiposDieta.Select(t => t.Categoria).ToList(),
+                Series = new List<GraficoSerieDto>
+                {
+                    new() { Etiqueta = "Dietas", Valores = tiposDieta.Select(t => (decimal)t.Cantidad).ToList() }
+                }
             }
         };
 
@@ -384,20 +600,21 @@ public class DashboardService : IDashboardService
             Kpis = kpis,
             Hitos = hitos,
             Graficos = graficos,
+            Hallazgos = ConstruirHallazgosNutricionista(dietas, etiquetas, desde, hasta),
             Filtros = filtros
         };
     }
 
     public async Task<ReporteProveedorDto> ObtenerReporteProveedorAsync(FiltrosReportesDto filtros)
     {
-        var desde = filtros.Desde ?? DateTime.Today.AddDays(-30);
-        var hasta = filtros.Hasta ?? DateTime.Today;
+        var desde = (filtros.Desde ?? DateTime.Today.AddDays(-30)).Date;
+        var hasta = (filtros.Hasta ?? DateTime.Today).Date;
 
         // Órdenes
         var ordenesQuery = _context.OrdenesCocina
             .Where(o => o.FechaOperativa >= desde && o.FechaOperativa <= hasta);
 
-        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaReporteOrden))
+        if (TryResolverComidaReporte(filtros, out var comidaReporteOrden))
             ordenesQuery = ordenesQuery.Where(o => o.Comida == comidaReporteOrden);
 
         var ordenes = await ordenesQuery.ToListAsync();
@@ -406,9 +623,9 @@ public class DashboardService : IDashboardService
 
         // Etiquetas
         var etiquetasQuery = _context.EtiquetasEnfermeria
-            .Where(e => e.GeneradaEn >= desde && e.GeneradaEn <= hasta);
+            .Where(e => e.FechaOperativa >= desde && e.FechaOperativa <= hasta);
 
-        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaReporteEtiqueta))
+        if (TryResolverComidaReporte(filtros, out var comidaReporteEtiqueta))
             etiquetasQuery = etiquetasQuery.Where(e => e.Comida == comidaReporteEtiqueta);
 
         var totalEtiquetas = await etiquetasQuery.CountAsync();

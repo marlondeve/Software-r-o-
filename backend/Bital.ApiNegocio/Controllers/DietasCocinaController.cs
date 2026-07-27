@@ -175,12 +175,16 @@ public class DietasCocinaController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CancelarDieta(
         Guid filaDietaId,
-        [FromBody] string motivo,
+        [FromBody] CancelarDietaDto cancelacion,
         CancellationToken cancellationToken)
     {
         var usuario = "TestUser"; // TODO: JWT
 
-        var resultado = await _dietasService.CancelarDietaAsync(filaDietaId, usuario, motivo, cancellationToken);
+        var resultado = await _dietasService.CancelarDietaAsync(
+            filaDietaId,
+            cancelacion,
+            usuario,
+            cancellationToken);
 
         if (!resultado)
             return NotFound(new { error = $"Dieta {filaDietaId} no encontrada" });

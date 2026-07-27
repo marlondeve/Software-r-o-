@@ -124,6 +124,7 @@ public record ReporteNutricionistaDto
     public required List<KpiDto> Kpis { get; init; } = new();
     public required List<HitoReporteDto> Hitos { get; init; } = new();
     public required List<GraficoDto> Graficos { get; init; } = new();
+    public required List<HallazgoDto> Hallazgos { get; init; } = new();
     public required FiltrosReportesDto Filtros { get; init; }
 }
 

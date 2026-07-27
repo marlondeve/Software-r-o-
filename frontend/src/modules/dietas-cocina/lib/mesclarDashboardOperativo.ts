@@ -96,12 +96,17 @@ export function mesclarReporteConCiclo(
 
   return {
     kpis: kpisTienenValores(api.kpis) ? api.kpis : ciclo.kpis,
-    hitos: ciclo.hitos,
+    hitos: preferirLista(api.hitos, ciclo.hitos),
     hallazgos: preferirLista(api.hallazgos, ciclo.hallazgos),
-    estadoDietas: ciclo.estadoDietas,
-    tiposDieta: ciclo.tiposDieta,
-    motivosDevolucion: ciclo.motivosDevolucion,
-    distribucionServicio: ciclo.distribucionServicio,
-    mostrarDistribucionTurno: ciclo.mostrarDistribucionTurno,
+    estadoDietas:
+      api.estadoDietas.segmentos.length > 0 ? api.estadoDietas : ciclo.estadoDietas,
+    tiposDieta: preferirLista(api.tiposDieta, ciclo.tiposDieta),
+    motivosDevolucion: preferirLista(api.motivosDevolucion, ciclo.motivosDevolucion),
+    distribucionServicio: preferirLista(
+      api.distribucionServicio,
+      ciclo.distribucionServicio,
+    ),
+    mostrarDistribucionTurno:
+      api.mostrarDistribucionTurno || ciclo.mostrarDistribucionTurno,
   }
 }

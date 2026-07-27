@@ -4,5 +4,6 @@ packages:
 
 allowBuilds:
   core-js: true
+  esbuild: true
 
 minimumReleaseAge: 0

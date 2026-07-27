@@ -291,22 +291,37 @@ public class DietasService : IDietasService
         return confirmadas;
     }
 
-    public async Task<bool> CancelarDietaAsync(Guid filaDietaId, string usuario, string motivo, CancellationToken cancellationToken = default)
+    public async Task<bool> CancelarDietaAsync(
+        Guid filaDietaId,
+        CancelarDietaDto cancelacion,
+        string usuario,
+        CancellationToken cancellationToken = default)
     {
-        var fila = await _context.FilasDietas.FindAsync(new object[] { filaDietaId }, cancellationToken);
+        var fila = await _context.FilasDietas
+            .FirstOrDefaultAsync(f => f.Id == filaDietaId, cancellationToken);
 
         if (fila == null) return false;
 
-        // Validar que esté en estado Solicitada o Confirmada
-        if (fila.Estado != EstadoDieta.Solicitada && fila.Estado != EstadoDieta.Confirmada)
+        var esNormal = DietasReglasNegocio.EsCancelacionNormal(fila.Estado);
+        var esTardia = DietasReglasNegocio.EsCancelacionTardia(fila.Estado, cancelacion.RolUsuario);
+
+        if (!esNormal && !esTardia)
         {
-            throw new InvalidOperationException($"La dieta debe estar en estado Solicitada o Confirmada para ser cancelada. Estado actual: {fila.Estado}");
+            throw new InvalidOperationException(
+                $"No se puede cancelar la dieta en estado {fila.Estado}.");
         }
 
-        // TODO: Validar ventana de cancelación (tardia vs normal)
+        if (esTardia && !cancelacion.AceptaFacturacion)
+        {
+            throw new InvalidOperationException(
+                "Debe aceptar la responsabilidad de facturación para cancelar una dieta confirmada o en preparación.");
+        }
+
+        var motivoCompleto = $"[{cancelacion.Motivo}] {cancelacion.Justificacion}".Trim();
 
         fila.Estado = EstadoDieta.Cancelada;
-        fila.Observaciones = $"{fila.Observaciones}\nCancelada: {motivo}".Trim();
+        fila.CancelacionTardia = esTardia;
+        fila.Observaciones = $"{fila.Observaciones}\nCancelada: {motivoCompleto}".Trim();
         fila.ModificadoPor = usuario;
         fila.ModificadoEn = DateTime.UtcNow;
 
@@ -664,6 +679,21 @@ public class DietasService : IDietasService
         var fila = await _context.FilasDietas
             .FirstOrDefaultAsync(f => f.Id == filaDietaId, cancellationToken)
             ?? throw new KeyNotFoundException($"Dieta {filaDietaId} no encontrada");
+
+        if (!DietasReglasNegocio.PermiteRegistrarNovedad(fila.Estado))
+        {
+            throw new InvalidOperationException(
+                $"No se puede registrar novedad en estado {fila.Estado}.");
+        }
+
+        var configTiempo = await _context.TiemposComida
+            .FirstOrDefaultAsync(t => t.Comida == fila.Comida, cancellationToken);
+
+        if (!DietasReglasNegocio.VentanaNovedadesAbierta(configTiempo, DateTime.Now))
+        {
+            throw new InvalidOperationException(
+                "La ventana de novedades está cerrada según los parámetros operativos.");
+        }
 
         // Registrar evento de trazabilidad
         var evento = new EventoTrazabilidad
