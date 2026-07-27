@@ -101,6 +101,14 @@ Para desarrollo local, editar `Bital.ApiNegocio/appsettings.Development.json`. E
 
 El paquete `backend` del monorepo pnpm incluye un servidor Node mínimo (`src/index.js`) que responde 503. Sirve únicamente para el script `pnpm dev:back` (puerto 3000). **No es el backend institucional**; el backend real es la solución .NET descrita arriba.
 
+## Migración SQL Server (BitalNegocio)
+
+Scripts y guía completa para crear la base operativa e importar datos desde Vital:
+
+- **Guía:** [docs/MIGRACION_SQL_SERVER.md](../docs/MIGRACION_SQL_SERVER.md)
+- **Orquestador:** `backend/scripts/Migrate-BitalNegocio.ps1`
+- **Datos:** `backend/scripts/02-MigrateData.sql`
+
 ## Esquema legacy Vital
 
 El esquema Vital no sigue convenciones modernas (campos `char(N)` con espacios, tipos ambiguos, sin constraints). La capa de infraestructura maneja esto con trimming explícito y ADO.NET para control total sobre tipos en queries de atenciones.

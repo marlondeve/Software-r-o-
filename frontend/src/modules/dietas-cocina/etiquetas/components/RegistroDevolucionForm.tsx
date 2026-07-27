@@ -1,4 +1,4 @@
-import type { MotivoDevolucion } from "@/modules/dietas-cocina/types/enums"
+import type { MotivoDevolucionFlujo } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { Camera, ImagePlus } from "lucide-react"
 import { useState } from "react"
@@ -6,22 +6,27 @@ import { useState } from "react"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { BandejaResumenCard } from "@/modules/dietas-cocina/etiquetas/components/BandejaResumenCard"
-import { MOTIVOS_DEVOLUCION } from "@/modules/dietas-cocina/types/enums"
 import { claseChipMotivoDevolucion } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
 import { cn } from "@/lib/utils"
 
 interface RegistroDevolucionFormProps {
   etiqueta: EtiquetaEnfermera
-  motivo: MotivoDevolucion | null
+  motivo: MotivoDevolucionFlujo | null
+  motivos: readonly string[]
+  descripcion?: string
+  etiquetaMotivo?: string
   observaciones: string
-  onMotivoChange: (motivo: MotivoDevolucion) => void
+  onMotivoChange: (motivo: MotivoDevolucionFlujo) => void
   onObservacionesChange: (value: string) => void
-  onFotoChange?: (nombre: string | null) => void
+  onFotoChange?: (archivo: File | null) => void
 }
 
 export function RegistroDevolucionForm({
   etiqueta,
   motivo,
+  motivos,
+  descripcion,
+  etiquetaMotivo = "Motivo principal",
   observaciones,
   onMotivoChange,
   onObservacionesChange,
@@ -29,25 +34,31 @@ export function RegistroDevolucionForm({
 }: RegistroDevolucionFormProps) {
   const [fotoNombre, setFotoNombre] = useState<string | null>(null)
 
-  function actualizarFoto(nombre: string | null) {
-    setFotoNombre(nombre)
-    onFotoChange?.(nombre)
+  function actualizarFoto(archivo: File | null) {
+    setFotoNombre(archivo?.name ?? null)
+    onFotoChange?.(archivo)
   }
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-5">
       <BandejaResumenCard etiqueta={etiqueta} />
 
+      {descripcion && (
+        <p className="text-sm text-muted-foreground">{descripcion}</p>
+      )}
+
       <div className="space-y-2">
         <Label>
-          Motivo principal <span className="text-destructive">*</span>
+          {etiquetaMotivo} <span className="text-destructive">*</span>
         </Label>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {MOTIVOS_DEVOLUCION.map((item) => (
+          {motivos.map((item) => (
             <button
               key={item}
               type="button"
-              onClick={() => onMotivoChange(item)}
+              onClick={() => {
+                onMotivoChange(item as MotivoDevolucionFlujo)
+              }}
               className={cn(
                 "rounded-lg border px-3 py-3 text-left text-sm font-medium transition-colors",
                 claseChipMotivoDevolucion(motivo === item),
@@ -81,8 +92,8 @@ export function RegistroDevolucionForm({
             accept="image/jpeg,image/png"
             className="sr-only"
             onChange={(e) => {
-              const file = e.target.files?.[0]
-              actualizarFoto(file?.name ?? null)
+              const file = e.target.files?.[0] ?? null
+              actualizarFoto(file)
             }}
           />
         </label>

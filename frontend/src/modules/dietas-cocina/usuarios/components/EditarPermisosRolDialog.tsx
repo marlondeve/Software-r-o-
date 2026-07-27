@@ -1,4 +1,5 @@
 import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
 import { useEffect, useMemo, useState } from "react"
 import { Settings2 } from "lucide-react"
 
@@ -19,6 +20,7 @@ import {
   alternarPermisoRutaDietas,
   type RutaDietasConfig,
 } from "@/lib/configAccesoModulos"
+import { actualizarPermisosRol, obtenerPermisosRoles } from "@/modules/dietas-cocina/api/services/usuarios.service"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { ConfirmarAccionDialog } from "@/modules/dietas-cocina/usuarios/components/ConfirmarAccionDialog"
 import {
@@ -26,10 +28,17 @@ import {
   etiquetaRuta,
   validarPermisosRol,
 } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
+import {
+  permisosPorRolDesdeApi,
+  rutasToPermisosRecord,
+} from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
 
 interface EditarPermisosRolDialogProps {
   rol: RolDietas
   puedeGestionar: boolean
+  apiActiva?: boolean
+  permisosApi?: PermisoRolDto[]
+  onPermisosActualizados?: (permisos: PermisoRolDto[]) => void
 }
 
 function SwitchPermiso({
@@ -67,13 +76,18 @@ function SwitchPermiso({
 export function EditarPermisosRolDialog({
   rol,
   puedeGestionar,
+  apiActiva = false,
+  permisosApi = [],
+  onPermisosActualizados,
 }: EditarPermisosRolDialogProps) {
   const { config, actualizar } = useConfigAccesoModulos()
   const [dialogAbierto, setDialogAbierto] = useState(false)
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [rutasPendientes, setRutasPendientes] = useState<RutaDietasConfig[]>([])
 
-  const rutasActuales = config.permisosDietas[rol] ?? []
+  const rutasActuales = apiActiva
+    ? permisosPorRolDesdeApi(permisosApi, rol)
+    : config.permisosDietas[rol] ?? []
 
   useEffect(() => {
     if (dialogAbierto) {
@@ -117,6 +131,25 @@ export function EditarPermisosRolDialog({
   }
 
   function aplicarCambios() {
+    if (apiActiva) {
+      void actualizarPermisosRol(rol, rutasToPermisosRecord(rutasPendientes))
+        .then(() => obtenerPermisosRoles())
+        .then((actualizados) => {
+          onPermisosActualizados?.(actualizados)
+          setDialogAbierto(false)
+          demoToast(`Permisos del rol ${rol} actualizados.`, "success")
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error
+              ? error.message
+              : "No se pudieron actualizar los permisos.",
+            "error",
+          )
+        })
+      return
+    }
+
     let nextConfig = config
     for (const ruta of diff.agregadas) {
       nextConfig = alternarPermisoRutaDietas(nextConfig, rol, ruta, true)

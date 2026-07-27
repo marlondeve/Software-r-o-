@@ -188,11 +188,6 @@ public class DietasCocinaController : ControllerBase
         return Ok(new { message = "Dieta cancelada exitosamente", dietaId = filaDietaId });
     }
 
-    /// <summary>
-    /// Obtiene el catálogo de tipos de dietas activas
-    /// </summary>
-    /// <param name="cancellationToken"></param>
-    /// <returns>Lista de tipos de dietas disponibles</returns>
     [HttpGet("catalogo")]
     [ProducesResponseType(typeof(List<DietaCatalogoDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<DietaCatalogoDto>>> ObtenerCatalogo(
@@ -200,6 +195,125 @@ public class DietasCocinaController : ControllerBase
     {
         var catalogo = await _dietasService.ObtenerCatalogoDietasAsync(cancellationToken);
         return Ok(catalogo);
+    }
+
+    [HttpGet("catalogo/{id:guid}")]
+    [ProducesResponseType(typeof(DietaCatalogoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DietaCatalogoDto>> ObtenerCatalogoPorId(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var dieta = await _dietasService.ObtenerCatalogoDietaPorIdAsync(id, cancellationToken);
+            return Ok(dieta);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = $"Dieta de catálogo {id} no encontrada" });
+        }
+    }
+
+    [HttpPost("catalogo")]
+    [ProducesResponseType(typeof(DietaCatalogoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<DietaCatalogoDto>> CrearCatalogo(
+        [FromBody] CrearDietaCatalogoDto dto,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usuario = "TestUser";
+            var dieta = await _dietasService.CrearDietaCatalogoAsync(dto, usuario, cancellationToken);
+            return CreatedAtAction(nameof(ObtenerCatalogoPorId), new { id = dieta.Id }, dieta);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPatch("catalogo/{id:guid}")]
+    [ProducesResponseType(typeof(DietaCatalogoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DietaCatalogoDto>> ActualizarCatalogo(
+        Guid id,
+        [FromBody] ActualizarDietaCatalogoDto dto,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usuario = "TestUser";
+            var dieta = await _dietasService.ActualizarDietaCatalogoAsync(id, dto, usuario, cancellationToken);
+            return Ok(dieta);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = $"Dieta de catálogo {id} no encontrada" });
+        }
+    }
+
+    [HttpPatch("catalogo/{id:guid}/desactivar")]
+    [ProducesResponseType(typeof(DietaCatalogoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DietaCatalogoDto>> DesactivarCatalogo(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usuario = "TestUser";
+            var dieta = await _dietasService.DesactivarDietaCatalogoAsync(id, usuario, cancellationToken);
+            return Ok(dieta);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = $"Dieta de catálogo {id} no encontrada" });
+        }
+    }
+
+    [HttpGet("catalogo/{id:guid}/tarifas")]
+    [ProducesResponseType(typeof(List<TarifaHistoricoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<List<TarifaHistoricoDto>>> ObtenerTarifasCatalogo(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var tarifas = await _dietasService.ObtenerTarifasDietaAsync(id, cancellationToken);
+            return Ok(tarifas);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = $"Dieta de catálogo {id} no encontrada" });
+        }
+    }
+
+    [HttpPost("catalogo/{id:guid}/tarifas")]
+    [ProducesResponseType(typeof(TarifaHistoricoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<TarifaHistoricoDto>> RegistrarTarifaCatalogo(
+        Guid id,
+        [FromBody] NuevaTarifaDto dto,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usuario = "TestUser";
+            var tarifa = await _dietasService.RegistrarTarifaDietaAsync(id, dto, usuario, cancellationToken);
+            return CreatedAtAction(nameof(ObtenerTarifasCatalogo), new { id }, tarifa);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = $"Dieta de catálogo {id} no encontrada" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     /// <summary>

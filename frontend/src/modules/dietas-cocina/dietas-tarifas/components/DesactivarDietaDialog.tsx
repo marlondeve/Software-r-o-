@@ -31,7 +31,7 @@ export function DesactivarDietaDialog({
       activa: false,
       estado: "vencida",
       ultimaActualizacion: formatearFechaHoraCatalogo(new Date()),
-    })
+    } as DietaCatalogo)
     onOpenChange(false)
   }
 

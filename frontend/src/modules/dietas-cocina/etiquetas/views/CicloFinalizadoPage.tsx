@@ -3,11 +3,13 @@ import { Navigate, useLocation, useNavigate, useSearchParams } from "react-route
 
 import { CicloFinalizadoPanel } from "@/modules/dietas-cocina/etiquetas/components/CicloFinalizadoPanel"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { configDevolucionPorTipo, type TipoDevolucionEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 
 interface ExitoLocationState {
   modo: ModoFlujoEtiqueta
   etiquetaId: string
+  tipoDevolucion?: TipoDevolucionEtiqueta
 }
 
 const MODOS_VALIDOS: ModoFlujoEtiqueta[] = ["pre-entrega", "entrega", "devolucion"]
@@ -23,9 +25,9 @@ export function CicloFinalizadoPage() {
   const { etiquetas } = useCicloBandejas()
   const state = location.state as ExitoLocationState | null
 
-  const modo =
-    state?.modo ??
-    (esModoValido(searchParams.get("modo")) ? searchParams.get("modo") : null)
+  const modoParam = searchParams.get("modo")
+  const modo: ModoFlujoEtiqueta | null =
+    state?.modo ?? (esModoValido(modoParam) ? modoParam : null)
   const etiquetaId = state?.etiquetaId ?? searchParams.get("etiquetaId")
 
   if (!modo || !etiquetaId) {
@@ -39,7 +41,9 @@ export function CicloFinalizadoPage() {
 
   const rutaSiguiente =
     modo === "devolucion"
-      ? "/dietas-cocina/etiquetas/devolucion"
+      ? state?.tipoDevolucion
+        ? configDevolucionPorTipo(state.tipoDevolucion).rutaExito
+        : "/dietas-cocina/etiquetas/devolucion/paciente"
       : modo === "pre-entrega"
         ? "/dietas-cocina/etiquetas/pre-entrega"
         : "/dietas-cocina/etiquetas/entrega"
@@ -53,6 +57,7 @@ export function CicloFinalizadoPage() {
       <CicloFinalizadoPanel
         modo={modo}
         etiqueta={etiqueta}
+        tipoDevolucion={state?.tipoDevolucion}
         onEscanearSiguiente={() => navigate(rutaSiguiente)}
       />
     </EtiquetasEnfermeraFlowLayout>

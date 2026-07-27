@@ -9,12 +9,16 @@ import {
 import { TopBar } from "@/components/layout/TopBar"
 import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { VistaRolAdminProvider } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
+import {
+  BannerVistaRolAdmin,
+} from "@/modules/dietas-cocina/components/SelectorVistaRolAdmin"
 
 interface MainLayoutProps {
   module: ModuleType
 }
 
-export function MainLayout({ module }: MainLayoutProps) {
+function MainLayoutContent({ module }: MainLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
@@ -38,6 +42,7 @@ export function MainLayout({ module }: MainLayoutProps) {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar module={module} onMenuClick={() => setMobileOpen(true)} />
+        {module === "dietas-cocina" && <BannerVistaRolAdmin />}
         <ScrollAreaFlex>
           <main className="p-3 md:p-4 lg:p-5">
             <Outlet />
@@ -46,4 +51,16 @@ export function MainLayout({ module }: MainLayoutProps) {
       </div>
     </div>
   )
+}
+
+export function MainLayout({ module }: MainLayoutProps) {
+  if (module === "dietas-cocina") {
+    return (
+      <VistaRolAdminProvider>
+        <MainLayoutContent module={module} />
+      </VistaRolAdminProvider>
+    )
+  }
+
+  return <MainLayoutContent module={module} />
 }

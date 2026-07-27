@@ -6,13 +6,15 @@ import { Button } from "@/components/ui/button"
 import { BandejaResumenCard } from "@/modules/dietas-cocina/etiquetas/components/BandejaResumenCard"
 import { EscannerEtiquetaPanel } from "@/modules/dietas-cocina/etiquetas/components/EscannerEtiquetaPanel"
 import { IngresoManualEtiquetaDialog } from "@/modules/dietas-cocina/etiquetas/components/IngresoManualEtiquetaDialog"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { motivoNoConfirmarPreEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 
 export function PreEntregaFlowPage() {
+  const apiActiva = usarApiDietasCocina()
   const navigate = useNavigate()
-  const { buscarPorCodigo, confirmarPreEntrega, getOrdenByEtiquetaId } =
+  const { buscarPorCodigoAsync, confirmarPreEntrega, getOrdenByEtiquetaId } =
     useCicloBandejas()
   const [paso, setPaso] = useState(1)
   const [etiqueta, setEtiqueta] = useState<EtiquetaEnfermera | null>(null)
@@ -21,14 +23,14 @@ export function PreEntregaFlowPage() {
   const [escaneando, setEscaneando] = useState(true)
 
   const procesarCodigo = useCallback(
-    (codigo: string) => {
-      const encontrada = buscarPorCodigo(codigo)
+    async (codigo: string) => {
+      const encontrada = await buscarPorCodigoAsync(codigo)
       if (!encontrada) {
         setError("No se encontró una etiqueta con ese código.")
         return
       }
       const orden = getOrdenByEtiquetaId(encontrada.id)
-      const motivo = motivoNoConfirmarPreEntrega(orden, encontrada)
+      const motivo = motivoNoConfirmarPreEntrega(orden, encontrada, { apiActiva })
       if (motivo) {
         setError(motivo)
         return
@@ -38,15 +40,19 @@ export function PreEntregaFlowPage() {
       setEscaneando(false)
       setPaso(2)
     },
-    [buscarPorCodigo, getOrdenByEtiquetaId],
+    [buscarPorCodigoAsync, getOrdenByEtiquetaId, apiActiva],
   )
 
-  function confirmar() {
+  async function confirmar() {
     if (!etiqueta) return
-    confirmarPreEntrega([etiqueta.id], "Enfermera de turno")
-    navigate("/dietas-cocina/etiquetas/exito", {
-      state: { modo: "pre-entrega", etiquetaId: etiqueta.id },
-    })
+    try {
+      await confirmarPreEntrega([etiqueta.id], "Enfermera de turno")
+      navigate("/dietas-cocina/etiquetas/exito", {
+        state: { modo: "pre-entrega", etiquetaId: etiqueta.id },
+      })
+    } catch {
+      setError("No se pudo confirmar la recepción. Intenta de nuevo.")
+    }
   }
 
   return (

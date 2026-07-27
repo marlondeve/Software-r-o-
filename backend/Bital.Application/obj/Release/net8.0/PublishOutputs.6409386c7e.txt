@@ -1,7 +1,0 @@
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Application\bin\Release\net8.0\publish\Bital.Application.dll
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Application\bin\Release\net8.0\publish\Bital.Application.deps.json
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Application\bin\Release\net8.0\publish\Bital.Application.pdb
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Application\bin\Release\net8.0\publish\Bital.Domain.dll
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Application\bin\Release\net8.0\publish\Bital.Shared.dll
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Application\bin\Release\net8.0\publish\Bital.Domain.pdb
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Application\bin\Release\net8.0\publish\Bital.Shared.pdb

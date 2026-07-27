@@ -5,6 +5,12 @@ namespace Bital.Application.DTOs.DietasCocina;
 
 // ===== Tiempos de comida =====
 
+public record TiemposComidaConfiguracionDto
+{
+    public required List<TiempoComidaDto> Tiempos { get; init; }
+    public string ModoCarga { get; init; } = "por-comida";
+}
+
 public record TiempoComidaDto
 {
     public Guid Id { get; init; }
@@ -23,6 +29,7 @@ public record ActualizarTiemposComidaDto
 {
     public required List<TiempoComidaItemDto> Tiempos { get; init; }
     public required string Usuario { get; init; }
+    public string? ModoCarga { get; init; }
 }
 
 public record TiempoComidaItemDto

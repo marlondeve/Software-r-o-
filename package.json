@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "pnpm --filter frontend dev",
+    "dev:clean": "pnpm --filter frontend dev:clean",
     "dev:front": "pnpm --filter frontend dev",
     "dev:back": "pnpm --filter backend dev",
     "build": "pnpm --filter frontend build",

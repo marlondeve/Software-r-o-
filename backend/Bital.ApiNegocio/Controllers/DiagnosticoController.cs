@@ -255,13 +255,13 @@ public class DiagnosticoController : ControllerBase
             var command = connection.CreateCommand();
             command.CommandText = query;
 
-            var registros = new List<Dictionary<string, object>>();
+            var registros = new List<Dictionary<string, object?>>();
 
             using (var reader = await command.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
                 {
-                    var registro = new Dictionary<string, object>();
+                    var registro = new Dictionary<string, object?>();
                     for (int i = 0; i < reader.FieldCount; i++)
                     {
                         registro[reader.GetName(i)] = reader.IsDBNull(i) ? null : reader.GetValue(i);

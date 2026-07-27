@@ -1,8 +1,6 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
-import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
-import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { mockNutricionista } from "@/modules/dietas-cocina/inicio/datos/mockNutricionista"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
@@ -11,6 +9,7 @@ import {
   resolverComidaOperativaActual,
   resolverProximoCierre,
 } from "@/modules/dietas-cocina/lib/resolverPeriodoOperativoNutricionista"
+import { labelComida as labelComidaOperativa } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
 const COLORES_ESTADO: Record<string, string> = {
   "no-solicitada": "#b00020",
   guardado: "#bbf244",
@@ -35,10 +34,6 @@ const LABEL_ESTADO: Record<string, string> = {
   recibida: "Recibida",
   devuelta: "Devuelta",
   cancelada: "Cancelada",
-}
-
-function labelComida(comida: TiempoComida): string {
-  return COMIDAS_TABS.find((c) => c.id === comida)?.label ?? comida
 }
 
 function extraerHora(solicitadoEn?: string): string {
@@ -73,6 +68,8 @@ export function construirDashboardNutricionistaDesdeCiclo(
   fechaReferencia = new Date(),
 ) {
   const comida = resolverComidaOperativaActual(fechaReferencia)
+  const cierreInfo = resolverProximoCierre(fechaReferencia)
+  const comidaPendientes = cierreInfo.comida
   const ordenPorId = new Map(ordenes.map((o) => [o.id, o]))
   const etiquetaPorOrden = new Map<string, EtiquetaEnfermera>()
   for (const orden of ordenes) {
@@ -81,7 +78,15 @@ export function construirDashboardNutricionistaDesdeCiclo(
     if (etiqueta) etiquetaPorOrden.set(orden.id, etiqueta)
   }
 
-  const filasComida = filas.filter((f) => f.comida === comida)
+  let filasComida = filas.filter((f) => f.comida === comida)
+  if (filasComida.length === 0 && filas.length > 0) {
+    filasComida = filas
+  }
+
+  let filasPendientesCierre = filas.filter((f) => f.comida === comidaPendientes)
+  if (filasPendientesCierre.length === 0 && !cierreInfo.diaSiguiente && filas.length > 0) {
+    filasPendientesCierre = filasComida
+  }
 
   const filasConEstado = filasComida.map((fila) => {
     const orden = fila.ordenCocinaId
@@ -95,9 +100,12 @@ export function construirDashboardNutricionistaDesdeCiclo(
   })
 
   const pacientesActivos = new Set(filasComida.map((f) => f.pacienteId)).size
-  const pendientes = filasConEstado.filter((f) =>
-    ["no-solicitada", "guardado"].includes(f.estado),
-  ).length
+  const pendientes = filasPendientesCierre.filter((fila) => {
+    const orden = fila.ordenCocinaId ? ordenPorId.get(fila.ordenCocinaId) : undefined
+    const etiqueta = fila.ordenCocinaId ? etiquetaPorOrden.get(fila.ordenCocinaId) : undefined
+    const estado = estadoDietaDesdeCiclo(fila.estado, orden, etiqueta)
+    return ["no-solicitada", "guardado"].includes(estado)
+  }).length
   const confirmadas = filasConEstado.filter((f) =>
     [
       "confirmada",
@@ -130,8 +138,6 @@ export function construirDashboardNutricionistaDesdeCiclo(
   const cambiosPendientes = filasComida.filter((f) => f.estado === "guardado").length
 
   const actividadReciente = filasComida
-    .filter((f) => f.solicitadoEn)
-    .sort((a, b) => (b.solicitadoEn ?? "").localeCompare(a.solicitadoEn ?? ""))
     .slice(0, 5)
     .map((fila) => {
       const orden = fila.ordenCocinaId
@@ -149,7 +155,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
       }
     })
 
-  const comidaLabel = labelComida(comida)
+  const comidaLabel = labelComidaOperativa(comida)
 
   return {
     periodoOperativo: formatearPeriodoOperativo(fechaReferencia),
@@ -213,8 +219,8 @@ export function construirDashboardNutricionistaDesdeCiclo(
         ? actividadReciente
         : mockNutricionista.actividadReciente,
     proximoCierre: {
-      ...resolverProximoCierre(fechaReferencia),
-      pendientes: pendientes || mockNutricionista.proximoCierre.pendientes,
+      ...cierreInfo,
+      pendientes: pendientes || (cierreInfo.diaSiguiente ? 0 : mockNutricionista.proximoCierre.pendientes),
     },
   }
 }

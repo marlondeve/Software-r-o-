@@ -10,6 +10,8 @@ interface EscannerEtiquetaPanelProps {
   onCodigoLeido: (codigo: string) => void
   onIngresoManual: () => void
   activo?: boolean
+  titulo?: string
+  guia?: string
 }
 
 const TITULOS: Record<ModoFlujoEtiqueta, string> = {
@@ -31,6 +33,8 @@ export function EscannerEtiquetaPanel({
   onCodigoLeido,
   onIngresoManual,
   activo = true,
+  titulo,
+  guia,
 }: EscannerEtiquetaPanelProps) {
   const { contenedorId, errorCamara, alternarCamara, alternarLinterna, iniciando } =
     useEscannerQr({ onCodigoLeido, activo })
@@ -38,14 +42,16 @@ export function EscannerEtiquetaPanel({
   return (
     <div className="mx-auto w-full max-w-lg space-y-4">
       <div className="text-center">
-        <h2 className="text-lg font-semibold text-foreground">{TITULOS[modo]}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{GUIAS[modo]}</p>
+        <h2 className="text-lg font-semibold text-foreground">
+          {titulo ?? TITULOS[modo]}
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">{guia ?? GUIAS[modo]}</p>
       </div>
 
       <div className="relative overflow-hidden rounded-xl bg-zinc-900">
         <div
           id={contenedorId}
-          className="min-h-[280px] w-full [&_video]:object-cover"
+          className="min-h-70 w-full overflow-hidden [&_video]:max-h-70 [&_video]:w-full [&_video]:object-cover"
         />
         <div
           aria-hidden

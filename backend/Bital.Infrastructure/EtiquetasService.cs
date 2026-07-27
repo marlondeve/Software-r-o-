@@ -3,6 +3,7 @@ using Bital.Application.Interfaces;
 using Bital.Domain.Entities.DietasCocina;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -95,11 +96,16 @@ public class EtiquetasService : IEtiquetasService
             foreach (var dieta in orden.Dietas)
             {
                 // Verificar que no exista ya una etiqueta para esta dieta
-                var etiquetaExistente = await _context.EtiquetasEnfermeria
-                    .AnyAsync(e => e.FilaDietaId == dieta.Id && e.OrdenCocinaId == orden.Id, cancellationToken);
+                var existente = await _context.EtiquetasEnfermeria
+                    .Where(e => e.FilaDietaId == dieta.Id && e.OrdenCocinaId == orden.Id)
+                    .OrderByDescending(e => e.GeneradaEn)
+                    .FirstOrDefaultAsync(cancellationToken);
 
-                if (etiquetaExistente)
+                if (existente != null)
+                {
+                    etiquetasIds.Add(existente.Id);
                     continue;
+                }
 
                 var etiqueta = new EtiquetaEnfermera
                 {
@@ -380,18 +386,50 @@ public class EtiquetasService : IEtiquetasService
             .FirstOrDefaultAsync(e => e.Id == etiquetaId, cancellationToken)
             ?? throw new KeyNotFoundException($"Etiqueta {etiquetaId} no encontrada");
 
-        // TODO: Implementar almacenamiento en Azure Blob Storage o filesystem
-        // Por ahora, devolvemos una URL placeholder
-        var urlPlaceholder = $"/api/devoluciones/fotos/{etiquetaId}/{nombreArchivo}";
+        // Almacenamiento en filesystem bajo wwwroot/uploads
+        var url = await ArchivosUploadHelper.GuardarAsync(
+            fotoStream,
+            "devoluciones",
+            nombreArchivo,
+            cancellationToken);
 
-        etiqueta.FotoDevolucionUrl = urlPlaceholder;
+        etiqueta.FotoDevolucionUrl = url;
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Foto de devolución subida para etiqueta {EtiquetaId}: {Url}",
-            etiquetaId, urlPlaceholder);
+            etiquetaId, url);
 
-        return urlPlaceholder;
+        return url;
+    }
+
+    public async Task<byte[]> GenerarPdfEtiquetasAsync(
+        IEnumerable<Guid> etiquetaIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = etiquetaIds.Distinct().ToList();
+        var etiquetas = await _context.EtiquetasEnfermeria
+            .Include(e => e.FilaDieta)
+            .Include(e => e.OrdenCocina)
+            .Where(e => ids.Contains(e.Id))
+            .ToListAsync(cancellationToken);
+
+        if (etiquetas.Count == 0)
+        {
+            throw new KeyNotFoundException("No se encontraron etiquetas para generar PDF");
+        }
+
+        var lineas = new List<string> { "Etiquetas de dieta - Bital" };
+        foreach (var etiqueta in etiquetas)
+        {
+            lineas.Add($"Codigo: {etiqueta.Codigo}");
+            lineas.Add($"Paciente: {etiqueta.FilaDieta?.Paciente ?? "—"}");
+            lineas.Add($"Dieta: {etiqueta.FilaDieta?.DescripcionDieta ?? "—"}");
+            lineas.Add($"Comida: {etiqueta.Comida}");
+            lineas.Add("---");
+        }
+
+        return PdfEtiquetasHelper.Generar(lineas);
     }
 
     private static EtiquetaEnfermeraDto MapearADto(EtiquetaEnfermera etiqueta)

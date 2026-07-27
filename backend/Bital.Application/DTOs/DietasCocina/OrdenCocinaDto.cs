@@ -54,4 +54,9 @@ public class OrdenCocinaDto
     /// Lista de dietas incluidas (opcional, para detalle)
     /// </summary>
     public List<FilaDietaDto>? Dietas { get; set; }
+
+    /// <summary>
+    /// Checklist operativo de la orden
+    /// </summary>
+    public List<ChecklistItemDto>? Checklist { get; set; }
 }

@@ -53,11 +53,12 @@ export function NuevaTarifaSheet({
   const montoNum = Number.parseFloat(monto) || 0
 
   function confirmar() {
-    if (solapamiento.solapa || montoNum <= 0 || !fechaInicio) return
+    if (!dieta || solapamiento.solapa || montoNum <= 0 || !fechaInicio) return
 
+    const dietaActual = dieta
     const anio = new Date(fechaInicio).getFullYear()
     const ahora = new Date()
-    const historicoActualizado = dieta.historicoTarifas.map((t) => ({
+    const historicoActualizado = dietaActual.historicoTarifas.map((t) => ({
       ...t,
       vigente: false,
     }))
@@ -75,7 +76,7 @@ export function NuevaTarifaSheet({
     }
 
     onConfirmar({
-      ...dieta,
+      ...dietaActual,
       tarifaVigente: montoNum,
       estado: "vigente",
       fechaInicio: formatearFechaCatalogo(new Date(fechaInicio)),

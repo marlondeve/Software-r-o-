@@ -54,4 +54,11 @@ public interface IConciliacionService
         string? periodo = null,
         string? proveedor = null,
         CancellationToken cancellationToken = default);
+
+    Task<FilaConciliacionDto> SubirFacturaAsync(
+        Guid id,
+        Stream archivo,
+        string nombreArchivo,
+        string usuario,
+        CancellationToken cancellationToken = default);
 }

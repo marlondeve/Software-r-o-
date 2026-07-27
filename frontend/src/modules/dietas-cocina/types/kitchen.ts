@@ -15,6 +15,8 @@ export interface ChecklistItem {
 
 export interface OrdenCocina {
   id: string
+  /** ID de la orden en Bital.ApiNegocio (`OrdenesCocina`), distinto del id de fila dieta. */
+  ordenCocinaApiId?: string
   etiquetaId?: string
   pacienteId: string
   paciente: string

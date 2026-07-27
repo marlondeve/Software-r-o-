@@ -7,6 +7,7 @@ using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
 using Bital.Domain.Entities.DietasCocina;
 using Bital.Infrastructure.Data;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -342,6 +343,32 @@ public class ConciliacionService : IConciliacionService
             kpis.Count, periodo, proveedor);
 
         return kpis;
+    }
+
+    public async Task<FilaConciliacionDto> SubirFacturaAsync(
+        Guid id,
+        Stream archivo,
+        string nombreArchivo,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        var fila = await _context.FilasConciliacion
+            .FirstOrDefaultAsync(f => f.Id == id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Línea de conciliación {id} no encontrada");
+
+        var url = await ArchivosUploadHelper.GuardarAsync(
+            archivo,
+            "conciliacion",
+            nombreArchivo,
+            cancellationToken);
+
+        fila.FacturaDocumentoUrl = url;
+        fila.ModificadoEn = DateTime.UtcNow;
+        fila.ModificadoPor = usuario;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Factura cargada para conciliación {Id}: {Url}", id, url);
+        return MapearADto(fila);
     }
 
     private static FilaConciliacionDto MapearADto(FilaConciliacion fila)

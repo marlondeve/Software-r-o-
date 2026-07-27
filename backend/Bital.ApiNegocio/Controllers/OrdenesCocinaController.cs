@@ -114,6 +114,37 @@ public class OrdenesCocinaController : ControllerBase
         {
             return NotFound(new { error = $"Orden {ordenId} no encontrada" });
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Actualiza el checklist operativo de una orden
+    /// </summary>
+    [HttpPatch("{ordenId}/checklist")]
+    [ProducesResponseType(typeof(OrdenCocinaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<OrdenCocinaDto>> ActualizarChecklistOrden(
+        Guid ordenId,
+        [FromBody] ActualizarChecklistOrdenDto datos,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usuario = "TestUser";
+            var orden = await _ordenesService.ActualizarChecklistOrdenAsync(
+                ordenId,
+                datos,
+                usuario,
+                cancellationToken);
+            return Ok(orden);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = $"Orden {ordenId} no encontrada" });
+        }
     }
 
     /// <summary>

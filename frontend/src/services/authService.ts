@@ -1,11 +1,23 @@
 import type { AccesoModulo } from "@/types/module"
 import type { Usuario } from "@/types/user"
 
+import { usarAuthModuloApi } from "@/api/authFlags"
+import {
+  cambiarPasswordModulo,
+  loginModulo,
+} from "@/api/authModulo.service"
 import {
   limpiarModuloActivo,
 } from "@/lib/modulos"
 
 const SESSION_KEY = "bital:session"
+
+/** TODO(producción): quitar modo demo y usar solo `institucional`. */
+export type ModoLoginAuth = "demo" | "institucional"
+
+export function authInstitucionalDisponible(): boolean {
+  return usarAuthModuloApi()
+}
 
 interface PerfilMock {
   nombre: string
@@ -109,6 +121,15 @@ function normalizarUsuario(raw: Usuario): Usuario | null {
   }
 }
 
+function guardarSesion(usuario: Usuario): Usuario {
+  const normalizado = normalizarUsuario(usuario)
+  if (!normalizado) {
+    throw new Error("El usuario no tiene acceso a ningún módulo.")
+  }
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(normalizado))
+  return normalizado
+}
+
 export function obtenerSesion(): Usuario | null {
   const raw = sessionStorage.getItem(SESSION_KEY)
   if (!raw) return null
@@ -126,11 +147,7 @@ export function obtenerSesion(): Usuario | null {
   }
 }
 
-export async function iniciarSesion(
-  email: string,
-  password: string,
-): Promise<Usuario> {
-  // Mock temporal: reemplazar con llamada a la API institucional.
+async function iniciarSesionMock(email: string, password: string): Promise<Usuario> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 
   if (!email.trim() || !password.trim()) {
@@ -138,17 +155,46 @@ export async function iniciarSesion(
   }
 
   const perfil = resolverPerfil(email)
-  const usuario: Usuario = {
+  return guardarSesion({
     id: crypto.randomUUID(),
     email,
     nombre: perfil.nombre,
     iniciales: perfil.iniciales,
     esAdministrador: perfil.esAdministrador,
     accesos: perfil.accesos,
+  })
+}
+
+export async function iniciarSesion(
+  email: string,
+  password: string,
+  modo: ModoLoginAuth = "demo",
+): Promise<Usuario> {
+  if (modo === "institucional") {
+    if (!usarAuthModuloApi()) {
+      throw new Error("El login institucional no está disponible en este entorno.")
+    }
+    const usuario = await loginModulo(email, password)
+    return guardarSesion(usuario)
   }
 
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(usuario))
-  return usuario
+  return iniciarSesionMock(email, password)
+}
+
+export async function cambiarPasswordSesion(
+  email: string,
+  passwordActual: string,
+  passwordNueva: string,
+): Promise<string> {
+  if (usarAuthModuloApi()) {
+    return cambiarPasswordModulo({ email, passwordActual, passwordNueva })
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  if (!email.trim() || !passwordActual.trim() || passwordNueva.length < 8) {
+    throw new Error("Revise los datos ingresados.")
+  }
+  return "Contraseña actualizada correctamente (demo)."
 }
 
 export function cerrarSesion(): void {

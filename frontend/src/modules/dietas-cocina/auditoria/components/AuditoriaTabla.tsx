@@ -23,6 +23,7 @@ import {
   MODULO_LABEL,
   avatarColorPorIniciales,
 } from "@/modules/dietas-cocina/auditoria/lib/auditoriaEstilos"
+import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { cn } from "@/lib/utils"
 
 interface AuditoriaTablaProps {
@@ -96,7 +97,7 @@ export function AuditoriaTabla({
         ),
         cell: ({ row }) => (
           <span className="text-xs tabular-nums text-muted-foreground">
-            {row.original.fechaHora}
+            {formatearFechaHoraEnCadena(row.original.fechaHora)}
           </span>
         ),
       },

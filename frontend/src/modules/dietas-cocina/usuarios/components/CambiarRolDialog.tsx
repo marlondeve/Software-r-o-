@@ -30,6 +30,7 @@ interface CambiarRolDialogProps {
   onOpenChange: (open: boolean) => void
   onConfirmar: (usuarioId: string, rol: RolDietas) => void
   puedeGestionar: boolean
+  apiActiva?: boolean
 }
 
 export function CambiarRolDialog({
@@ -38,6 +39,7 @@ export function CambiarRolDialog({
   onOpenChange,
   onConfirmar,
   puedeGestionar,
+  apiActiva = false,
 }: CambiarRolDialogProps) {
   const [rolSeleccionado, setRolSeleccionado] = useState<RolDietas>("Nutricionista")
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
@@ -70,7 +72,10 @@ export function CambiarRolDialog({
     if (!usuario) return
     onConfirmar(usuario.id, rolSeleccionado)
     onOpenChange(false)
-    demoToast(`Rol de ${usuario.nombre} actualizado a ${rolSeleccionado}.`)
+    demoToast(
+      `Rol de ${usuario.nombre} actualizado a ${rolSeleccionado}.`,
+      apiActiva ? "success" : undefined,
+    )
   }
 
   return (

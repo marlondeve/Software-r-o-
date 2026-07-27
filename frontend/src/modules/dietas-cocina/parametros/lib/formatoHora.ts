@@ -1,17 +1,3 @@
-/** Convierte "HH:mm" (24 h) a formato 12 h, p. ej. "07:00 a. m." */
-export function formatearHora12(hora24: string): string {
-  const [horasStr, minutosStr] = hora24.split(":")
-  const horas = Number.parseInt(horasStr ?? "", 10)
-  const minutos = Number.parseInt(minutosStr ?? "", 10)
-
-  if (Number.isNaN(horas) || Number.isNaN(minutos)) return hora24
-
-  const periodo = horas >= 12 ? "p. m." : "a. m."
-  const horas12 = horas % 12 || 12
-
-  return `${horas12.toString().padStart(2, "0")}:${minutos.toString().padStart(2, "0")} ${periodo}`
-}
-
 export type PeriodoHora = "a. m." | "p. m."
 
 export interface PartesHora12 {
@@ -20,20 +6,54 @@ export interface PartesHora12 {
   periodo: PeriodoHora
 }
 
-/** Parsea "HH:mm" (24 h) a componentes en 12 h. */
-export function parsearHora24(hora24: string): PartesHora12 {
+export interface PartesHora24 {
+  hora: number
+  minuto: number
+}
+
+/** Normaliza "H:mm" o "HH:mm" a formato 24 h con dos dígitos (valor interno/API). */
+export function formatearHora24(hora24: string): string {
+  const [horasStr, minutosStr] = hora24.split(":")
+  const horas = Number.parseInt(horasStr ?? "", 10)
+  const minutos = Number.parseInt(minutosStr ?? "", 10)
+
+  if (Number.isNaN(horas) || Number.isNaN(minutos)) return hora24
+
+  return `${horas.toString().padStart(2, "0")}:${minutos.toString().padStart(2, "0")}`
+}
+
+/** Parsea "HH:mm" a componentes 24 h (0–23). */
+export function parsearPartesHora24(hora24: string): PartesHora24 {
   const [horasStr, minutosStr] = hora24.split(":")
   const horas = Number.parseInt(horasStr ?? "", 10)
   const minutos = Number.parseInt(minutosStr ?? "", 10)
 
   if (Number.isNaN(horas) || Number.isNaN(minutos)) {
-    return { hora: 12, minuto: 0, periodo: "a. m." }
+    return { hora: 7, minuto: 0 }
   }
 
   return {
-    hora: horas % 12 || 12,
-    minuto: minutos,
-    periodo: horas >= 12 ? "p. m." : "a. m.",
+    hora: Math.min(23, Math.max(0, horas)),
+    minuto: Math.min(59, Math.max(0, minutos)),
+  }
+}
+
+/** Construye "HH:mm" desde hora y minuto en 24 h. */
+export function construirHoraDesdePartes24(hora: number, minuto: number): string {
+  const horasNormalizadas = ((hora % 24) + 24) % 24
+  const minutosNormalizados = Math.min(59, Math.max(0, minuto))
+  return `${horasNormalizadas.toString().padStart(2, "0")}:${minutosNormalizados
+    .toString()
+    .padStart(2, "0")}`
+}
+
+/** Parsea "HH:mm" (24 h) a componentes en 12 h. */
+export function parsearHora24(hora24: string): PartesHora12 {
+  const partes = parsearPartesHora24(hora24)
+  return {
+    hora: partes.hora % 12 || 12,
+    minuto: partes.minuto,
+    periodo: partes.hora >= 12 ? "p. m." : "a. m.",
   }
 }
 
@@ -45,10 +65,57 @@ export function construirHora24(
 ): string {
   let horas24 = hora % 12
   if (periodo === "p. m.") horas24 += 12
-  return `${horas24.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")}`
+  return construirHoraDesdePartes24(horas24, minuto)
+}
+
+/** Formatea "HH:mm" para mostrar en 12 h (p. ej. "04:30 p. m."). */
+export function formatearHora12(hora24: string): string {
+  const { hora, minuto, periodo } = parsearHora24(formatearHora24(hora24))
+  return `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")} ${periodo}`
+}
+
+/** Hora actual o de un `Date` en formato 12 h (p. ej. "07:55 p. m."). */
+export function formatearHoraDesdeFecha(fecha = new Date()): string {
+  return formatearHora12(
+    `${fecha.getHours().toString().padStart(2, "0")}:${fecha
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`,
+  )
 }
 
 /** Formatea un rango de horas en 12 h. */
 export function formatearRangoHora12(inicio: string, fin: string): string {
   return `${formatearHora12(inicio)} – ${formatearHora12(fin)}`
+}
+
+/** Convierte una hora con a. m./p. m. (o AM/PM) a "HH:mm". */
+export function normalizarHoraEnTexto(texto: string): string {
+  const match = texto.match(
+    /(\d{1,2}):(\d{2})(?::\d{2})?\s*(a\.\s*m\.|p\.\s*m\.|am|pm)?/i,
+  )
+  if (!match) return texto
+
+  let horas = Number.parseInt(match[1] ?? "0", 10)
+  const minutos = match[2] ?? "00"
+  const periodo = match[3]?.toLowerCase().replace(/\s/g, "") ?? ""
+
+  if (periodo.startsWith("p") && horas < 12) horas += 12
+  if (periodo.startsWith("a") && horas === 12) horas = 0
+
+  return `${horas.toString().padStart(2, "0")}:${minutos}`
+}
+
+/** Convierte la porción horaria dentro de un texto fecha-hora a 12 h. */
+export function formatearFechaHoraEnCadena(texto: string): string {
+  if (!texto) return texto
+  return texto.replace(
+    /(\d{1,2}:\d{2}(?::\d{2})?\s*(?:a\.\s*m\.|p\.\s*m\.|AM|PM)?)/gi,
+    (coincidencia) => formatearHora12(normalizarHoraEnTexto(coincidencia)),
+  )
+}
+
+/** @deprecated Usar {@link formatearRangoHora12} */
+export function formatearRangoHora24(inicio: string, fin: string): string {
+  return formatearRangoHora12(inicio, fin)
 }

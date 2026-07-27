@@ -24,16 +24,39 @@ export function crearConfigTiemposInicial(): ConfigTiempos {
   }
 }
 
+/** Completa campos faltantes si localStorage tiene JSON parcial o antiguo. */
+export function normalizarConfigTiempos(
+  config: Partial<ConfigTiempos> | null | undefined,
+): ConfigTiempos {
+  const base = crearConfigTiemposInicial()
+  if (!config) return base
+
+  return {
+    activos: { ...base.activos, ...(config.activos ?? {}) },
+    modoCarga: config.modoCarga ?? base.modoCarga,
+    horasPorComida: Object.fromEntries(
+      Object.keys(base.horasPorComida).map((comidaId) => [
+        comidaId,
+        {
+          ...base.horasPorComida[comidaId as TiempoComida],
+          ...(config.horasPorComida?.[comidaId as TiempoComida] ?? {}),
+        },
+      ]),
+    ) as Record<TiempoComida, Record<string, string>>,
+  }
+}
+
 export function cargarConfigTiempos(): ConfigTiempos {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return crearConfigTiemposInicial()
-    return JSON.parse(raw) as ConfigTiempos
+    return normalizarConfigTiempos(JSON.parse(raw) as Partial<ConfigTiempos>)
   } catch {
     return crearConfigTiemposInicial()
   }
 }
 
 export function guardarConfigTiempos(config: ConfigTiempos) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(config))
+  const { modoCarga: _modoCarga, ...persistible } = config
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(persistible))
 }

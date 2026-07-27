@@ -119,7 +119,7 @@ interface TimePickerProps {
   className?: string
 }
 
-/** Selector de hora con Popover (12 h), valor en formato 24 h "HH:mm". */
+/** Selector de hora con Popover (12 h), valor interno en formato 24 h "HH:mm". */
 export function TimePicker({
   id,
   value = "07:00",

@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
+import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { mockCancelarDieta, MOTIVOS_CANCELACION } from "@/modules/dietas-cocina/dietas/datos/mockCancelarDieta"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { esCancelacionTardia } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
@@ -221,7 +222,7 @@ export function DietasCancelarDialog({
                 <p className="text-muted-foreground sm:text-right">
                   Fecha y hora:{" "}
                   <span className="font-medium text-foreground">
-                    {config.fechaHora}
+                    {formatearFechaHoraEnCadena(config.fechaHora)}
                   </span>
                 </p>
               </div>

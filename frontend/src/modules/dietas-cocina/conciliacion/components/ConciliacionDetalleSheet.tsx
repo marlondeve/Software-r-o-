@@ -27,6 +27,7 @@ import {
   type ColumnDef,
 } from "@/components/ui/data-table"
 import { conciliacionColores } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionEstilos"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { cn } from "@/lib/utils"
 
@@ -76,6 +77,7 @@ export function ConciliacionDetalleSheet({
   onMarcarConciliado,
   onPendienteRevision,
 }: ConciliacionDetalleSheetProps) {
+  const apiActiva = usarApiDietasCocina()
   const [motivo, setMotivo] = useState("")
   const [observaciones, setObservaciones] = useState("")
 
@@ -231,7 +233,9 @@ export function ConciliacionDetalleSheet({
             className="flex-1"
             onClick={() => {
               onPendienteRevision(filaId)
-              demoToast("Fila marcada como pendiente de revisión (demo).")
+              if (!apiActiva) {
+                demoToast("Fila marcada como pendiente de revisión (demo).")
+              }
             }}
           >
             Pendiente de revisión
@@ -241,7 +245,9 @@ export function ConciliacionDetalleSheet({
             onClick={() => {
               if (!validarResolucion()) return
               onMarcarConciliado(filaId)
-              demoToast("Fila marcada como conciliada manualmente.")
+              if (!apiActiva) {
+                demoToast("Fila marcada como conciliada manualmente.")
+              }
               onOpenChange(false)
             }}
           >

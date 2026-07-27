@@ -15,4 +15,7 @@ public interface IUsuariosPermisosService
     // Gestión de permisos
     Task<MatrizPermisosDto> ObtenerMatrizPermisosAsync();
     Task ActualizarPermisosRolAsync(RolDietas rol, ActualizarPermisosRolDto dto);
+    Task<RestablecerPasswordResponseDto> RestablecerPasswordAsync(Guid id, string solicitadoPor);
+    Task<LoginModuloResponseDto> LoginAsync(LoginModuloDto dto);
+    Task<CambiarPasswordResponseDto> CambiarPasswordAsync(CambiarPasswordDto dto);
 }

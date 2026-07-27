@@ -16,6 +16,7 @@ interface HistoricoTarifasSheetProps {
   onOpenChange: (open: boolean) => void
   dieta: DietaCatalogo | null
   onRegistrarNuevaTarifa: (dieta: DietaCatalogo) => void
+  soloLectura?: boolean
 }
 
 export function HistoricoTarifasSheet({
@@ -23,6 +24,7 @@ export function HistoricoTarifasSheet({
   onOpenChange,
   dieta,
   onRegistrarNuevaTarifa,
+  soloLectura = false,
 }: HistoricoTarifasSheetProps) {
   if (!dieta) return null
 
@@ -44,18 +46,20 @@ export function HistoricoTarifasSheet({
         </ScrollAreaFlex>
 
         <SheetFooter className="shrink-0 border-t px-5 py-4">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => {
-              onOpenChange(false)
-              onRegistrarNuevaTarifa(dieta)
-            }}
-          >
-            <Plus className="size-4" />
-            Registrar Nueva Tarifa
-          </Button>
+          {!soloLectura && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full gap-2"
+              onClick={() => {
+                onOpenChange(false)
+                onRegistrarNuevaTarifa(dieta)
+              }}
+            >
+              <Plus className="size-4" />
+              Registrar Nueva Tarifa
+            </Button>
+          )}
         </SheetFooter>
       </SheetContent>
     </Sheet>

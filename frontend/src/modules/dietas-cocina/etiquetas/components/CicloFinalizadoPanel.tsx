@@ -4,13 +4,19 @@ import { CheckCircle2, QrCode, WifiOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  configDevolucionPorTipo,
+  type TipoDevolucionEtiqueta,
+} from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
+
 interface CicloFinalizadoPanelProps {
   modo: ModoFlujoEtiqueta
   etiqueta: EtiquetaEnfermera
+  tipoDevolucion?: TipoDevolucionEtiqueta
   onEscanearSiguiente: () => void
 }
 
-const MENSAJES: Record<ModoFlujoEtiqueta, { titulo: string; subtitulo: string }> = {
+const MENSAJES: Record<Exclude<ModoFlujoEtiqueta, "devolucion">, { titulo: string; subtitulo: string }> = {
   "pre-entrega": {
     titulo: "Recepción registrada",
     subtitulo:
@@ -21,19 +27,27 @@ const MENSAJES: Record<ModoFlujoEtiqueta, { titulo: string; subtitulo: string }>
     subtitulo:
       "La bandeja fue entregada al paciente y quedó registrada en el sistema.",
   },
-  devolucion: {
-    titulo: "Devolución registrada",
-    subtitulo:
-      "La bandeja fue registrada como devuelta a cocina exitosamente.",
-  },
 }
 
 export function CicloFinalizadoPanel({
   modo,
   etiqueta,
+  tipoDevolucion,
   onEscanearSiguiente,
 }: CicloFinalizadoPanelProps) {
-  const msg = MENSAJES[modo]
+  const msg =
+    modo === "devolucion" && tipoDevolucion
+      ? {
+          titulo: "Devolución registrada",
+          subtitulo: configDevolucionPorTipo(tipoDevolucion).mensajeExito,
+        }
+      : modo === "devolucion"
+        ? {
+            titulo: "Devolución registrada",
+            subtitulo:
+              "La bandeja fue registrada como devuelta a cocina exitosamente.",
+          }
+        : MENSAJES[modo]
   const hora =
     modo === "entrega"
       ? etiqueta.horaEntrega

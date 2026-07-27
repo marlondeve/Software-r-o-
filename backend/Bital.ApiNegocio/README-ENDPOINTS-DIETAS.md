@@ -63,9 +63,16 @@ Body:
 
 ```json
 {
-  "dieta": "Blanda",
-  "consistencia": "Puré",
-  "observaciones": "Sin sal"
+  "tipoDietaId": "guid",
+  "consistencia": "Sólida",
+  "descripcionDieta": "Dieta Hiposódica",
+  "observaciones": "Notas generales",
+  "aislado": true,
+  "aislamiento": "Contacto",
+  "observacionAislamiento": "Precauciones adicionales",
+  "alergico": true,
+  "alergias": "Maní, mariscos",
+  "guardar": true
 }
 ```
 
@@ -73,7 +80,7 @@ Body:
 
 Usar cuando el registro ya fue revisado y se quiere dejar constancia de que la dieta queda confirmada.
 
-El frontend normalmente debe mostrar una confirmación antes de ejecutar esta acción.
+Al confirmar, el backend crea automáticamente una orden de cocina 1:1 y devuelve `ordenCocinaId` en `FilaDietaDto` (visible en `GET /ordenes-cocina`).
 
 ```http
 POST /api/v1/dietas-cocina/dietas/{filaDietaId}/confirmar
@@ -529,10 +536,14 @@ PUT /api/v1/dietas-cocina/roles/{rol}/permisos
 - `/dietas-cocina/dietas/{filaDietaId}/historial`
 - `/dietas-cocina/dietas/buscar`
 - `/dietas-cocina/catalogo`
+- `/dietas-cocina/catalogo/{id}`
+- `/dietas-cocina/catalogo/{id}/desactivar`
+- `/dietas-cocina/catalogo/{id}/tarifas`
 - `/dietas-cocina/conciliacion`
 - `/dietas-cocina/conciliacion/{id}`
 - `/dietas-cocina/conciliacion/{id}/conciliado`
 - `/dietas-cocina/conciliacion/{id}/pendiente-revision`
+- `/dietas-cocina/conciliacion/{id}/factura`
 - `/dietas-cocina/conciliacion/kpis`
 - `/dietas-cocina/etiquetas`
 - `/dietas-cocina/etiquetas/buscar`
@@ -555,5 +566,25 @@ PUT /api/v1/dietas-cocina/roles/{rol}/permisos
 - `/dietas-cocina/auditoria`
 - `/dietas-cocina/auditoria/{id}`
 - `/dietas-cocina/usuarios`
+- `/dietas-cocina/usuarios/{id}/restablecer-password`
 - `/dietas-cocina/roles/permisos`
 - `/dietas-cocina/roles/{rol}/permisos`
+
+---
+
+## Changelog 2026-07-27 — Cierre P0/P1
+
+| Cambio | Endpoint | Pantalla desbloqueada |
+|--------|----------|------------------------|
+| Aislamiento/alergias en solicitud | `POST /dietas/{id}/solicitud` | Formulario solicitud dieta |
+| Auto-orden al confirmar | `POST /dietas/{id}/confirmar` | Cocina (bandejas sin workaround) |
+| Checklist persistente | `PATCH /ordenes-cocina/{id}/checklist` | Cocina proveedor |
+| Despacho EnRuta | `PATCH /ordenes-cocina/{id}/estado` (`Despachada`) | Despacho / dashboard proveedor |
+| CRUD catálogo/tarifas | `POST/PATCH /catalogo...` | Dietas y tarifas |
+| Modo carga anticipada | `GET/PUT /parametros/tiempos-comida` (`modoCarga`) | Parámetros tiempos |
+| PDF etiquetas | `GET /etiquetas/pdf?ids=` | Impresión etiquetas |
+| Export CSV | `?formato=csv` en conciliación, auditoría, reportes | Exportaciones |
+| Factura conciliación | `POST /conciliacion/{id}/factura` | Conciliación |
+| Foto devolución real | `POST /etiquetas/{id}/foto-devolucion` | Devolución enfermería |
+| Reset password | `POST /usuarios/{id}/restablecer-password` | Usuarios |
+| Auditoría automática | Servicios Ordenes/Dietas | Auditoría |

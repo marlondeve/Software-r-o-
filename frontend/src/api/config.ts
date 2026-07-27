@@ -1,5 +1,9 @@
-const DEFAULT_API_BASE_URL = "http://186.190.254.230:8080/api/v1"
-const DEFAULT_HEALTH_URL = "http://186.190.254.230:8080/health"
+const DEFAULT_API_BASE_URL = import.meta.env.DEV
+  ? "http://localhost:8080/api/v1"
+  : "http://186.190.254.230:8080/api/v1"
+const DEFAULT_HEALTH_URL = import.meta.env.DEV
+  ? "http://localhost:8080/health"
+  : "http://186.190.254.230:8080/health"
 
 export const apiBaseUrl =
   import.meta.env.VITE_BITAL_API_BASE_URL ?? DEFAULT_API_BASE_URL
