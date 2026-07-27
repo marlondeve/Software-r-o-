@@ -13,12 +13,19 @@ export interface FiltrosReportes {
 }
 
 function paramsReporte(filtros: FiltrosReportes): Record<string, string> {
+  const turno =
+    filtros.horario && filtros.horario !== "todos"
+      ? filtros.horario
+      : filtros.comida
   return {
     desde: filtros.desde,
     hasta: filtros.hasta,
-    ...(filtros.servicio ? { servicio: filtros.servicio } : {}),
-    ...(filtros.horario ? { horario: filtros.horario } : {}),
-    ...(filtros.comida ? { comida: mapearComidaApi(filtros.comida) } : {}),
+    ...(filtros.servicio && filtros.servicio !== "todos"
+      ? { servicio: filtros.servicio }
+      : {}),
+    ...(turno && turno !== "todos"
+      ? { comida: mapearComidaApi(turno as TiempoComida), horario: turno }
+      : {}),
   }
 }
 

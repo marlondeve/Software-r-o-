@@ -217,13 +217,16 @@ function construirSegmentosEstadoEtiquetas(stats: ReturnType<typeof contarPorEst
 function construirHallazgosNutricionista(
   stats: ReturnType<typeof contarPorEstadoLogistico>,
   totalEtiquetas: number,
+  filtros: FiltrosReportes,
 ) {
+  const contexto = contextoFiltroReporte(filtros)
+
   if (totalEtiquetas === 0) {
     return [
       {
         variant: "info" as const,
-        titulo: "Sin actividad en sesión",
-        descripcion: "No hay etiquetas registradas en la sesión actual.",
+        titulo: "Sin actividad en el período",
+        descripcion: `No hay etiquetas registradas para ${contexto}.`,
       },
     ]
   }
@@ -237,15 +240,15 @@ function construirHallazgosNutricionista(
   if (stats.devueltasTotal > 0) {
     hallazgos.push({
       variant: "warning",
-      titulo: "Cierres de bandeja en sesión",
-      descripcion: `${stats.recogidas + stats.devueltasConsumidas} recogida(s), ${stats.devueltas} rechazada(s) de ${totalEtiquetas} en la sesión actual.`,
+      titulo: "Cierres de bandeja",
+      descripcion: `${stats.recogidas + stats.devueltasConsumidas} recogida(s), ${stats.devueltas} rechazada(s) de ${totalEtiquetas} en ${contexto}.`,
     })
   }
 
   hallazgos.push({
     variant: "info",
-    titulo: "Ciclo operativo en vivo",
-    descripcion: `${stats.entregadas} entregadas, ${stats.recogidas + stats.devueltasConsumidas} recogidas, ${stats.devueltas} rechazadas de ${totalEtiquetas} etiquetas en sesión.`,
+    titulo: "Resumen logístico del período",
+    descripcion: `${stats.entregadas} entregadas, ${stats.recogidas + stats.devueltasConsumidas} recogidas, ${stats.devueltas} rechazadas de ${totalEtiquetas} etiquetas (${contexto}).`,
   })
 
   return hallazgos
@@ -285,12 +288,12 @@ export function construirReportesNutricionistaDesdeCiclo(
       })
 
   const hallazgos = soloReal
-    ? construirHallazgosNutricionista(stats, etiquetasFiltradas.length)
+    ? construirHallazgosNutricionista(stats, etiquetasFiltradas.length, filtros)
     : [
         ...base.hallazgos.slice(0, 2),
         {
-          titulo: "Ciclo operativo en vivo",
-          descripcion: `${stats.entregadas} entregadas, ${stats.recogidas + stats.devueltasConsumidas} recogidas, ${stats.devueltas} rechazadas de ${etiquetasFiltradas.length || 0} etiquetas en sesión.`,
+          titulo: "Resumen logístico del período",
+          descripcion: `${stats.entregadas} entregadas, ${stats.recogidas + stats.devueltasConsumidas} recogidas, ${stats.devueltas} rechazadas de ${etiquetasFiltradas.length || 0} etiquetas (${contextoFiltroReporte(filtros)}).`,
           variant: "info" as const,
         },
       ]

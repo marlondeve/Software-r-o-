@@ -24,6 +24,13 @@ export interface FiltrosCocina {
 
 export type ResolverEtiquetaOrden = (ordenId: string) => EtiquetaEnfermera | undefined
 
+export function ordenEnGestion(orden: OrdenCocina): boolean {
+  return (
+    orden.estadoCocina === "por_iniciar" ||
+    orden.estadoCocina === "en_preparacion"
+  )
+}
+
 export function ordenCoincideFiltros(
   orden: OrdenCocina,
   filtros: FiltrosCocina,
@@ -48,11 +55,12 @@ export function ordenCoincideFiltros(
   ) {
     return false
   }
-  if (
-    filtros.estadoCocina !== "Todos" &&
-    orden.estadoCocina !== filtros.estadoCocina
-  ) {
-    return false
+  if (filtros.estadoCocina !== "Todos") {
+    if (filtros.estadoCocina === "en_preparacion") {
+      if (!ordenEnGestion(orden)) return false
+    } else if (orden.estadoCocina !== filtros.estadoCocina) {
+      return false
+    }
   }
   if (filtros.soloAislados && !orden.aislado) return false
   if (!ordenCoincideSeguimiento(orden, filtros.seguimiento, etiqueta)) {
@@ -85,16 +93,10 @@ export function calcularKpisCocina(
   return [
     { id: "total", label: "TOTAL", value: activas.length, variant: "default" as const },
     {
-      id: "por-preparar",
-      label: "POR PREPARAR",
-      value: filtradas.filter((o) => o.estadoCocina === "por_iniciar").length,
+      id: "en-gestion",
+      label: "EN GESTIÓN",
+      value: filtradas.filter((o) => ordenEnGestion(o)).length,
       variant: "warning" as const,
-    },
-    {
-      id: "en-preparacion",
-      label: "EN PREPARACIÓN",
-      value: filtradas.filter((o) => o.estadoCocina === "en_preparacion").length,
-      variant: "default" as const,
     },
     {
       id: "listas",
@@ -153,9 +155,7 @@ export function filtrosDesdeKpiCocina(kpiId: string): Partial<FiltrosCocina> {
   switch (kpiId) {
     case "total":
       return { estadoCocina: "Todos", seguimiento: "Todos" }
-    case "por-preparar":
-      return { estadoCocina: "por_iniciar", seguimiento: "Todos" }
-    case "en-preparacion":
+    case "en-gestion":
       return { estadoCocina: "en_preparacion", seguimiento: "Todos" }
     case "listas":
       return { estadoCocina: "lista", seguimiento: "Todos" }

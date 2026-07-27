@@ -15,7 +15,7 @@ import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/
 import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { mockCancelarDieta, MOTIVOS_CANCELACION } from "@/modules/dietas-cocina/dietas/datos/mockCancelarDieta"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
-import { esCancelacionTardia } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
+import type { TipoCancelacionDieta } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import { cn } from "@/lib/utils"
 
 interface DietasCancelarDialogProps {
@@ -24,10 +24,13 @@ interface DietasCancelarDialogProps {
   fila: FilaDieta | null
   comidaActiva: TiempoComida
   comidas: ComidaTab[]
+  tipoCancelacion?: TipoCancelacionDieta | null
+  cancelacionEnPreparacion?: boolean
   onConfirmar?: (
     fila: FilaDieta,
     motivo: MotivoCancelacionId,
     justificacion: string,
+    aceptaFacturacion?: boolean,
   ) => void
 }
 
@@ -37,6 +40,8 @@ export function DietasCancelarDialog({
   fila,
   comidaActiva,
   comidas,
+  tipoCancelacion = null,
+  cancelacionEnPreparacion = false,
   onConfirmar,
 }: DietasCancelarDialogProps) {
   const [motivo, setMotivo] = useState<MotivoCancelacionId>("otro")
@@ -73,8 +78,14 @@ export function DietasCancelarDialog({
   const comidaLabel =
     comidas.find((c) => c.id === comidaActiva)?.label ?? "Almuerzo"
   const config = mockCancelarDieta
-  const cancelacionTardia = esCancelacionTardia(fila)
-  const requiereAceptacion = cancelacionTardia && !aceptaFacturacion
+  const esCancelacionTardia = tipoCancelacion === "tardia"
+  const requiereAceptacion = esCancelacionTardia && !aceptaFacturacion
+  const avisoCosto = cancelacionEnPreparacion
+    ? config.avisoCancelacionEnPreparacion
+    : config.avisoCancelacionTardia
+  const textoAceptacion = cancelacionEnPreparacion
+    ? config.aceptacionFacturacionEnPreparacion
+    : config.aceptacionFacturacion
   const puedeConfirmar =
     motivo.length > 0 &&
     justificacion.trim().length > 0 &&
@@ -140,10 +151,10 @@ export function DietasCancelarDialog({
         <div className="min-h-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="space-y-5 px-6 py-5 pr-4">
-              {cancelacionTardia && (
+              {esCancelacionTardia && (
                 <div className="space-y-3.5 rounded-lg border border-destructive/25 bg-destructive/5 p-4">
                   <p className="text-sm leading-relaxed text-destructive">
-                    {config.avisoCancelacionTardia}
+                    {avisoCosto}
                   </p>
                   <div className="flex items-start gap-3">
                     <Checkbox
@@ -158,7 +169,7 @@ export function DietasCancelarDialog({
                       htmlFor="acepta-facturacion"
                       className="cursor-pointer text-sm font-normal leading-snug text-destructive"
                     >
-                      {config.aceptacionFacturacion}
+                      {textoAceptacion}
                     </Label>
                   </div>
                 </div>
@@ -204,7 +215,7 @@ export function DietasCancelarDialog({
                   value={justificacion}
                   onChange={(event) => setJustificacion(event.target.value)}
                   placeholder={
-                    cancelacionTardia
+                    esCancelacionTardia
                       ? "Detalle el motivo específico de la cancelación extemporánea..."
                       : "Detalle el motivo específico de la cancelación..."
                   }
@@ -248,7 +259,14 @@ export function DietasCancelarDialog({
               "disabled:bg-destructive/50 disabled:text-destructive-foreground disabled:opacity-100",
             )}
             disabled={!puedeConfirmar}
-            onClick={() => onConfirmar?.(fila, motivo, justificacion.trim())}
+            onClick={() =>
+              onConfirmar?.(
+                fila,
+                motivo,
+                justificacion.trim(),
+                esCancelacionTardia ? aceptaFacturacion : undefined,
+              )
+            }
           >
             <X data-icon="inline-start" />
             Confirmar cancelación

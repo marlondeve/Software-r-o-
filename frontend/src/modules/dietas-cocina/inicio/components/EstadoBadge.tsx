@@ -23,7 +23,7 @@ const ESTADO_CONFIG: Record<
     className: "bg-muted text-muted-foreground border-border",
   },
   "en-preparacion": {
-    label: "En preparación",
+    label: "En gestión",
     className: "bg-accent/30 text-accent-foreground border-accent/40",
   },
   "lista-despacho": {
@@ -31,8 +31,8 @@ const ESTADO_CONFIG: Record<
     className: "bg-primary/10 text-primary border-primary/20",
   },
   "por-iniciar": {
-    label: "Por iniciar",
-    className: "bg-muted text-muted-foreground border-border",
+    label: "En gestión",
+    className: "bg-accent/30 text-accent-foreground border-accent/40",
   },
   recibida: {
     label: "Recibida",

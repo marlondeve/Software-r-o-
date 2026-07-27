@@ -208,6 +208,13 @@ export function mapSolicitudToRequest(
 export function mapCancelarToRequest(
   motivo: string,
   justificacion: string,
-): string {
-  return `[${motivo}] ${justificacion}`.trim()
+  aceptaFacturacion?: boolean,
+  rolUsuario?: string | null,
+): Record<string, unknown> {
+  return {
+    motivo,
+    justificacion,
+    aceptaFacturacion: aceptaFacturacion ?? false,
+    rolUsuario: rolUsuario ?? undefined,
+  }
 }

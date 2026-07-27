@@ -41,6 +41,8 @@ const ESTADOS_EN_COCINA = new Set<EstadoDieta>([
 
 export function mapEstadoDietaToEstadoCocina(estado: EstadoDieta): EstadoCocina {
   switch (estado) {
+    case "confirmada":
+    case "por-iniciar":
     case "preparando":
     case "en-preparacion":
       return "en_preparacion"
@@ -53,7 +55,7 @@ export function mapEstadoDietaToEstadoCocina(estado: EstadoDieta): EstadoCocina 
     case "cancelada":
       return "cancelada"
     default:
-      return "por_iniciar"
+      return "en_preparacion"
   }
 }
 
@@ -147,7 +149,7 @@ function mapEstadoOrdenApi(estado: string): EstadoCocina | undefined {
   if (normalizado === "completada" || normalizado === "lista") return "lista"
   if (normalizado === "cancelada") return "cancelada"
   if (normalizado.includes("ruta") || normalizado.includes("despach")) return "despachada"
-  if (normalizado === "pendiente" || normalizado === "creada") return "por_iniciar"
+  if (normalizado === "pendiente" || normalizado === "creada") return "en_preparacion"
   return undefined
 }
 

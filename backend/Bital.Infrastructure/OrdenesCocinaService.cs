@@ -107,7 +107,7 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             TotalDietas = dietas.Count,
             GeneradoPor = usuario,
             GeneradoEn = DateTime.UtcNow,
-            Estado = "Pendiente",
+            Estado = "EnPreparacion",
             Observaciones = datos.Observaciones,
             CreadoPor = usuario,
             ChecklistJson = ChecklistOperativoHelper.Serializar(ChecklistOperativoHelper.PlantillaInicial()),

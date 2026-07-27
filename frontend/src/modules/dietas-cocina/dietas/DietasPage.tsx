@@ -28,7 +28,9 @@ import {
   filaCoincideBusqueda,
 } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { crearResolverEstadoVisibleFila } from "@/modules/dietas-cocina/lib/estadoVisibleFilaDieta"
+import { evaluarAccionesDietaClinica } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import {
   demoToast,
@@ -69,6 +71,7 @@ export function DietasPage() {
   } = useDietasOperativas()
   const { crearOrdenDesdeDieta, cancelarOrdenCocina, ordenes, etiquetas } =
     useCicloBandejas()
+  const rolActivo = useRolVistaEfectivo()
   const resolverEstadoVisible = useMemo(
     () => crearResolverEstadoVisibleFila(ordenes, etiquetas),
     [ordenes, etiquetas],
@@ -255,7 +258,28 @@ export function DietasPage() {
     }
   }
 
+  const evaluacionCancelar = useMemo(() => {
+    if (!filaCancelar) return null
+    return evaluarFila(filaCancelar)
+  }, [filaCancelar, comidaActiva, rolActivo, resolverEstadoVisible, filas])
+
+  function evaluarFila(fila: FilaDieta) {
+    return evaluarAccionesDietaClinica({
+      fila,
+      estadoVisible: resolverEstadoVisible(fila),
+      comida: comidaActiva,
+      rol: rolActivo,
+    })
+  }
+
   function abrirSheet(tipo: TipoSheetDieta, fila: FilaDieta) {
+    if (tipo === "novedad") {
+      const evaluacion = evaluarFila(fila)
+      if (!evaluacion.mostrarRegistrarNovedad) {
+        demoToast("No se puede registrar novedad en el estado actual de la dieta.", "error")
+        return
+      }
+    }
     setSheet({ tipo, filaId: fila.id })
   }
 
@@ -268,15 +292,22 @@ export function DietasPage() {
   }
 
   function abrirCancelar(fila: FilaDieta) {
+    const evaluacion = evaluarFila(fila)
+    if (!evaluacion.puedeCancelarDieta) {
+      demoToast(
+        evaluacion.motivoBloqueoCancelacion ??
+          "No se puede cancelar la dieta en el estado actual.",
+        "error",
+      )
+      return
+    }
     setFilaCancelarId(fila.id)
     setCancelarAbierto(true)
   }
 
-  function enviarDietaACocina(fila: FilaDieta): string | null {
-    if (apiActiva) return fila.ordenCocinaId ?? null
+  function inputOrdenDesdeFila(fila: FilaDieta) {
     if (!fila.tipoDieta || !fila.consistencia) return null
-    if (fila.ordenCocinaId) return fila.ordenCocinaId
-    return crearOrdenDesdeDieta({
+    return {
       id: fila.id,
       pacienteId: fila.pacienteId,
       paciente: fila.paciente,
@@ -289,14 +320,32 @@ export function DietasPage() {
       aislado: fila.aislado ?? fila.aislamiento !== "Ninguno",
       alergias: fila.alergico ? fila.alergias.split(",").map((a) => a.trim()) : [],
       observaciones: fila.observaciones,
-    })
+      ordenCocinaApiId: fila.ordenCocinaId,
+    }
+  }
+
+  function enviarDietaACocina(fila: FilaDieta): string | null {
+    if (apiActiva) return fila.ordenCocinaId ?? null
+    const input = inputOrdenDesdeFila(fila)
+    if (!input) return null
+    if (fila.ordenCocinaId) return fila.ordenCocinaId
+    return crearOrdenDesdeDieta(input)
   }
 
   function confirmarDieta(fila: FilaDieta) {
     if (apiActiva) {
       void confirmarDietaApi(fila.id)
         .then((actualizada) => {
-          demoToast(`Dieta de ${actualizada.paciente} confirmada.`, "success")
+          const input = inputOrdenDesdeFila(actualizada)
+          if (input) {
+            crearOrdenDesdeDieta(input)
+          }
+          demoToast(
+            input
+              ? `Dieta de ${actualizada.paciente} confirmada y enviada a cocina.`
+              : `Dieta de ${actualizada.paciente} confirmada.`,
+            "success",
+          )
           setSheet(null)
         })
         .catch((error) => {
@@ -486,6 +535,8 @@ export function DietasPage() {
       <DietasTabla
         filas={filasFiltradas}
         seleccionados={seleccionados}
+        comidaActiva={comidaActiva}
+        rolActivo={rolActivo}
         resolverEstadoVisible={resolverEstadoVisible}
         onToggleFila={toggleFila}
         onToggleTodas={toggleTodas}
@@ -501,9 +552,16 @@ export function DietasPage() {
         fila={filaCancelar}
         comidaActiva={comidaActiva}
         comidas={data.comidas}
-        onConfirmar={(fila, motivo, justificacion) => {
+        tipoCancelacion={evaluacionCancelar?.tipoCancelacion ?? null}
+        cancelacionEnPreparacion={evaluacionCancelar?.cancelacionEnPreparacion ?? false}
+        onConfirmar={(fila, motivo, justificacion, aceptaFacturacion) => {
           if (apiActiva) {
-            void cancelarDietaApi(fila.id, { motivo, justificacion })
+            void cancelarDietaApi(fila.id, {
+              motivo,
+              justificacion,
+              aceptaFacturacion,
+              rolUsuario: rolActivo ?? undefined,
+            })
               .then(async () => {
                 if (fila.ordenCocinaId) {
                   await cancelarOrdenCocina(fila.ordenCocinaId, justificacion)

@@ -26,7 +26,15 @@ export const dietasOperativasRepositoryHttp: DietasOperativasRepository = {
     await confirmarDietasMasivo(ids, usuario)
   },
   async cancelar(id, payload) {
-    return cancelarDieta(id, mapCancelarToRequest(payload.motivo, payload.justificacion))
+    return cancelarDieta(
+      id,
+      mapCancelarToRequest(
+        payload.motivo,
+        payload.justificacion,
+        payload.aceptaFacturacion,
+        payload.rolUsuario,
+      ),
+    )
   },
   async registrarNovedad(id, payload) {
     return registrarNovedadDieta(id, payload as unknown as Record<string, unknown>)

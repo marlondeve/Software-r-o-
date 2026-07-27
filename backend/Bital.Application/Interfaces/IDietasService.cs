@@ -35,7 +35,7 @@ public interface IDietasService
     /// <summary>
     /// Cancela una dieta
     /// </summary>
-    Task<bool> CancelarDietaAsync(Guid filaDietaId, string usuario, string motivo, CancellationToken cancellationToken = default);
+    Task<bool> CancelarDietaAsync(Guid filaDietaId, CancelarDietaDto cancelacion, string usuario, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Obtiene el catálogo de dietas activas

@@ -20,6 +20,7 @@ import {
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
@@ -69,6 +70,7 @@ export function CocinaProveedorView() {
     actualizarChecklist,
     getEtiquetaByOrdenId,
   } = useCicloBandejas()
+  const { sincronizarCenso } = useDietasOperativas()
 
   const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
     apiActiva ? obtenerComidaActivaOperativa() : data.comidaActiva,
@@ -354,13 +356,17 @@ export function CocinaProveedorView() {
             size="icon-sm"
             aria-label="Actualizar"
             onClick={() => {
-              rehidratarDesdeStorage()
-              setUltimaActualizacion(new Date())
-              demoToast(
-                apiActiva
-                  ? "Bandejas sincronizadas con el censo."
-                  : "Datos sincronizados desde la sesión guardada.",
-              )
+              void sincronizarCenso(comidaActiva)
+                .catch(() => undefined)
+                .finally(() => {
+                  rehidratarDesdeStorage()
+                  setUltimaActualizacion(new Date())
+                  demoToast(
+                    apiActiva
+                      ? "Bandejas sincronizadas con el censo."
+                      : "Datos sincronizados desde la sesión guardada.",
+                  )
+                })
             }}
           >
             <RefreshCw className="size-4" />

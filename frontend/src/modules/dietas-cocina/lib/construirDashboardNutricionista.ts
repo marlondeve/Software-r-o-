@@ -33,7 +33,7 @@ const LABEL_ESTADO: Record<string, string> = {
   guardado: "Guardado",
   confirmada: "Confirmada",
   "por-iniciar": "Por iniciar",
-  "en-preparacion": "En preparación",
+  "en-preparacion": "En gestión",
   "lista-despacho": "Lista despacho",
   despachada: "Despachada",
   recibida: "Recibida",

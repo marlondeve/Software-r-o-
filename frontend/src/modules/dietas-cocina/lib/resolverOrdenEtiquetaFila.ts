@@ -129,10 +129,18 @@ export function filtrarOrdenesVinculadasAFilas(
   ordenes: OrdenCocina[],
   filas: FilaDieta[],
 ): OrdenCocina[] {
-  const filasPorId = new Map(filas.map((fila) => [fila.id, fila]))
+  if (filas.length === 0) return ordenes
+
   return ordenes.filter((orden) => {
-    const fila = filasPorId.get(orden.id)
-    return Boolean(fila && fila.comida === orden.comida)
+    const fila = filas.find((item) => ordenPerteneceAFila(item, orden))
+    // Conservar órdenes recién cargadas del API hasta que el censo local alcance.
+    if (!fila) return true
+    if (fila.comida !== orden.comida) return false
+    if (fila.estado === "cancelada") return orden.estadoCocina === "cancelada"
+    if (fila.estado === "no-solicitada" || fila.estado === "guardado") {
+      return false
+    }
+    return true
   })
 }
 

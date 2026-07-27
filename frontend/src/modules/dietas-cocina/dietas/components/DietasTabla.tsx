@@ -1,5 +1,5 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
-import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
+import type { EstadoDieta, RolDietas, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
 import { Eye, MoreHorizontal, PencilLine } from "lucide-react"
 
@@ -30,6 +30,8 @@ import {
 interface DietasTablaProps {
   filas: FilaDieta[]
   seleccionados: Set<string>
+  comidaActiva: TiempoComida
+  rolActivo?: RolDietas | null
   resolverEstadoVisible?: (fila: FilaDieta) => EstadoDieta
   onToggleFila: (id: string, checked: boolean) => void
   onToggleTodas: (checked: boolean) => void
@@ -42,6 +44,8 @@ interface DietasTablaProps {
 export function DietasTabla({
   filas,
   seleccionados,
+  comidaActiva,
+  rolActivo,
   resolverEstadoVisible,
   onToggleFila,
   onToggleTodas,
@@ -158,12 +162,22 @@ export function DietasTabla({
         cell: ({ row }) => {
           const fila = row.original
           const puedeEditar = esSolicitudEditable(fila)
-          const acciones = construirAccionesDietaFila(fila, {
-            onAbrirDetalle,
-            onAbrirSolicitud,
-            onRegistrarNovedad,
-            onCancelarDieta,
-          })
+          const estadoVisible =
+            resolverEstadoVisible?.(fila) ?? fila.estado
+          const acciones = construirAccionesDietaFila(
+            fila,
+            {
+              onAbrirDetalle,
+              onAbrirSolicitud,
+              onRegistrarNovedad,
+              onCancelarDieta,
+            },
+            {
+              estadoVisible,
+              comidaActiva,
+              rol: rolActivo,
+            },
+          )
 
           return (
             <div className="flex items-center justify-end gap-0.5">
@@ -231,8 +245,10 @@ export function DietasTabla({
       onCancelarDieta,
       onRegistrarNovedad,
       onToggleFila,
+      comidaActiva,
       onToggleTodas,
       resolverEstadoVisible,
+      rolActivo,
       seleccionados,
       todasSeleccionadas,
     ],

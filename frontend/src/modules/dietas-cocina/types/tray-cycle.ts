@@ -30,6 +30,7 @@ export interface EstadoDietasPersistido {
 
 export interface CrearOrdenDesdeDietaInput {
   id?: string
+  ordenCocinaApiId?: string
   pacienteId: string
   paciente: string
   edad: number

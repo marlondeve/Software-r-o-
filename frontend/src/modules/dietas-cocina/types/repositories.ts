@@ -30,6 +30,7 @@ export interface CancelarDietaPayload {
   motivo: string
   justificacion: string
   aceptaFacturacion?: boolean
+  rolUsuario?: string
 }
 
 export interface NovedadDietaPayload extends DatosSolicitudDietaInput {
