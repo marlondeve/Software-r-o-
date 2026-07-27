@@ -4,7 +4,7 @@ import { createRoot, type Root } from "react-dom/client"
 import html2canvas from "html2canvas"
 import QRCode from "qrcode"
 
-import { EtiquetaLabelFaceImpresion } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaLabelFaceImpresion"
+import { EtiquetaLabelFace } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaLabelFace"
 import { ETIQUETA_QR_RESolucion } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 
@@ -32,14 +32,7 @@ function esperarImagenes(contenedor: HTMLElement): Promise<void> {
   ).then(() => undefined)
 }
 
-function qrDesdeEtiquetaVisible(id: string): string | null {
-  const img = document.querySelector(
-    `[data-etiqueta-id="${id}"] img[alt=""]`,
-  ) as HTMLImageElement | null
-  return img?.src || null
-}
-
-/** Captura solo el componente de impresión (nunca la vista de pantalla). */
+/** Captura el nodo de la etiqueta (115×66 mm) para html2canvas. */
 async function capturarNodoImpresion(nodo: HTMLElement): Promise<HTMLCanvasElement> {
   await esperarImagenes(nodo)
 
@@ -66,7 +59,7 @@ async function capturarEtiquetaImpresion(
   const contenedor = document.createElement("div")
   contenedor.setAttribute("aria-hidden", "true")
   contenedor.style.cssText =
-    "position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;"
+    "position:fixed;left:-9999px;top:0;z-index:-1;pointer-events:none;background:#ffffff;"
   document.body.appendChild(contenedor)
 
   let root: Root | null = null
@@ -75,14 +68,14 @@ async function capturarEtiquetaImpresion(
     root = createRoot(contenedor)
     flushSync(() => {
       root!.render(
-        <EtiquetaLabelFaceImpresion etiqueta={etiqueta} qrSrc={qrSrc} />,
+        <EtiquetaLabelFace etiqueta={etiqueta} qrSrc={qrSrc} modo="impresion" />,
       )
     })
 
     await new Promise((resolve) => setTimeout(resolve, 80))
 
     const nodo = contenedor.querySelector(
-      "[data-etiqueta-capture]",
+      "[data-etiqueta-print]",
     ) as HTMLElement | null
     if (!nodo) {
       throw new Error("No se pudo renderizar la etiqueta para PDF")
@@ -98,9 +91,11 @@ async function capturarEtiquetaImpresion(
 export async function capturarEtiquetaCanvas(
   etiqueta: EtiquetaDieta,
 ): Promise<HTMLCanvasElement> {
+  const qrImg = document.querySelector(
+    `[data-etiqueta-id="${CSS.escape(etiqueta.id)}"] img[alt=""]`,
+  ) as HTMLImageElement | null
   const qrSrc =
-    qrDesdeEtiquetaVisible(etiqueta.id) ??
-    (await generarQrDataUrl(payloadQrEtiqueta(etiqueta.codigo)))
+    qrImg?.src ?? (await generarQrDataUrl(payloadQrEtiqueta(etiqueta.codigo)))
 
   return capturarEtiquetaImpresion(etiqueta, qrSrc)
 }

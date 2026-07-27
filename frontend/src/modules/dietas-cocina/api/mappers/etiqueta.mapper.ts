@@ -1,4 +1,4 @@
-import { mapearComidaInterna } from "@/modules/dietas-cocina/api/utils"
+import { mapearComidaInterna, normalizarClave } from "@/modules/dietas-cocina/api/utils"
 import type { EtiquetaDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type {
   EstadoEtiqueta,
@@ -47,29 +47,78 @@ function normalizarEstadoLogistica(valor: unknown): EstadoLogisticaEtiqueta {
   return mapa[v] ?? "generada"
 }
 
+function resolverAisladoEtiqueta(dto: EtiquetaDto): boolean {
+  const registro = dto as Record<string, unknown>
+  const aisladoRaw = normalizarClave(registro, "aislado", "Aislado")
+  if (typeof aisladoRaw === "boolean") return aisladoRaw
+  if (typeof aisladoRaw === "string") {
+    const valor = aisladoRaw.trim().toLowerCase()
+    return valor === "true" || valor === "si" || valor === "sí"
+  }
+
+  const aislamientoRaw = normalizarClave(registro, "aislamiento", "Aislamiento")
+  if (typeof aislamientoRaw === "boolean") return aislamientoRaw
+  if (typeof aislamientoRaw === "string") {
+    const valor = aislamientoRaw.trim().toLowerCase()
+    return valor !== "" && valor !== "ninguno" && valor !== "no" && valor !== "false"
+  }
+
+  return false
+}
+
+function resolverObservacionesEtiqueta(dto: EtiquetaDto): string {
+  const registro = dto as Record<string, unknown>
+  const observaciones = String(
+    normalizarClave(registro, "observaciones", "Observaciones") ?? "",
+  ).trim()
+  if (observaciones) return observaciones
+
+  const partes: string[] = []
+  const obsAislamiento = String(
+    normalizarClave(registro, "observacionAislamiento", "ObservacionAislamiento") ?? "",
+  ).trim()
+  if (obsAislamiento) partes.push(obsAislamiento)
+
+  const alergiasRaw = normalizarClave(registro, "alergias", "Alergias")
+  const alergico = Boolean(normalizarClave(registro, "alergico", "Alergico"))
+  if (alergico && typeof alergiasRaw === "string" && alergiasRaw.trim()) {
+    partes.push(`Alergias: ${alergiasRaw.trim()}`)
+  }
+
+  return partes.join(" · ")
+}
+
 export function mapEtiquetaDtoToDomain(dto: EtiquetaDto): EtiquetaEnfermera {
-  const aislado = Boolean(dto.aislado ?? dto.aislamiento)
+  const registro = dto as Record<string, unknown>
+  const aislado = resolverAisladoEtiqueta(dto)
   const estadoLogistica = normalizarEstadoLogistica(dto.estadoLogistica ?? dto.estado)
+  const alergiasRaw = normalizarClave(registro, "alergias", "Alergias") ?? dto.alergias
+  const alergiasLista: string[] | undefined = Array.isArray(alergiasRaw)
+    ? alergiasRaw.map(String)
+    : typeof alergiasRaw === "string" && alergiasRaw.trim()
+      ? alergiasRaw.split(/[,;]/).map((s: string) => s.trim()).filter(Boolean)
+      : undefined
+
   return {
     id: String(dto.id ?? ""),
     codigo: String(dto.codigo ?? ""),
     pacienteId: String(dto.pacienteId ?? ""),
     paciente: String(dto.paciente ?? ""),
     documento: String(dto.documento ?? dto.cedula ?? ""),
-    edad: Number(dto.edad ?? 0),
+    edad: Number(normalizarClave(registro, "edad", "Edad") ?? dto.edad ?? 0),
     aislamiento: aislado,
     pabellon: String(dto.pabellon ?? ""),
     habitacion: String(dto.habitacion ?? ""),
     cama: dto.cama,
     tipoDieta: String(dto.tipoDieta ?? ""),
     consistencia: String(dto.consistencia ?? ""),
-    observaciones: String(dto.observaciones ?? ""),
+    observaciones: resolverObservacionesEtiqueta(dto),
     comida: mapearComidaInterna(String(dto.comida ?? "almuerzo")),
     fechaHora: String(dto.fechaHora ?? dto.generadaEn ?? ""),
     estado: resolverEstadoEtiqueta(dto),
     qrPayload: String(dto.qrPayload ?? dto.codigo ?? ""),
     estadoLogistica,
-    alergias: dto.alergias,
+    alergias: alergiasLista,
     horaPreEntrega: dto.horaPreEntrega,
     horaEntrega: dto.horaEntrega,
     horaDevolucion: dto.horaDevolucion,
