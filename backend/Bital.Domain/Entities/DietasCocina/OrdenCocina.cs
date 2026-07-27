@@ -47,6 +47,11 @@ public class OrdenCocina : EntityBase
     /// </summary>
     public string? Observaciones { get; set; }
 
+    /// <summary>
+    /// Estado del checklist operativo serializado (JSON)
+    /// </summary>
+    public string? ChecklistJson { get; set; }
+
     // ============================================================================
     // Navegación
     // ============================================================================

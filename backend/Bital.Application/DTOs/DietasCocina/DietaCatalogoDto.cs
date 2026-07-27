@@ -11,4 +11,13 @@ public class DietaCatalogoDto
     public string Descripcion { get; set; } = string.Empty;
     public decimal? TarifaActual { get; set; }
     public bool Activa { get; set; }
+    public DateTime FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+    public string Usuario { get; set; } = string.Empty;
+    public DateTime? ModificadoEn { get; set; }
+    /// <summary>
+    /// Estado de vigencia: vigente | programada | vencida
+    /// </summary>
+    public string Estado { get; set; } = "vigente";
+    public List<TarifaHistoricoDto> HistoricoTarifas { get; set; } = new();
 }

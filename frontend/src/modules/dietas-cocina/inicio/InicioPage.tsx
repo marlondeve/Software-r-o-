@@ -1,16 +1,12 @@
 import { SectionPage } from "@/components/shared/SectionPage"
-import { useAuth } from "@/features/autenticacion/hooks/useAuth"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { EnfermeraDashboard } from "@/modules/dietas-cocina/inicio/dashboards/EnfermeraDashboard"
 import { NutricionistaDashboard } from "@/modules/dietas-cocina/inicio/dashboards/NutricionistaDashboard"
 import { ProveedorDashboard } from "@/modules/dietas-cocina/inicio/dashboards/ProveedorDashboard"
-import {
-  comparteDashboardNutricion,
-  obtenerRolDietas,
-} from "@/modules/dietas-cocina/lib/roles"
+import { comparteDashboardNutricion } from "@/modules/dietas-cocina/lib/roles"
 
 export function InicioPage() {
-  const { usuario } = useAuth()
-  const rol = obtenerRolDietas(usuario)
+  const rol = useRolVistaEfectivo()
 
   if (comparteDashboardNutricion(rol)) {
     return <NutricionistaDashboard />

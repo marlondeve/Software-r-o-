@@ -1,5 +1,5 @@
+export type { CicloBandejasRepository } from "@/modules/dietas-cocina/types/repositories"
 export type {
-  CicloBandejasRepository,
   CicloBandejasMutations,
   ConfirmarDevolucionInput,
   EstadoCicloBandejas,

@@ -24,6 +24,7 @@ import {
   avatarColorPorIniciales,
   impactoNivelColor,
 } from "@/modules/dietas-cocina/auditoria/lib/auditoriaEstilos"
+import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { cn } from "@/lib/utils"
 
 interface AuditoriaDetalleSheetProps {
@@ -102,7 +103,7 @@ export function AuditoriaDetalleSheet({
                   {detalle.usuario.area}
                 </p>
                 <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-                  {detalle.fechaHora}
+                  {formatearFechaHoraEnCadena(detalle.fechaHora)}
                 </p>
               </div>
             </section>

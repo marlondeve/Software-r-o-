@@ -63,19 +63,13 @@ function formatearDuracionRestante(minutosRestantes: number): string {
 
 export function resolverProximoCierre(fecha = new Date()) {
   const ahora = minutosDelDia(fecha)
-  const comidaActual = resolverComidaOperativaActual(fecha)
   const comidas = comidasActivas()
-  const indiceActual = Math.max(
-    0,
-    comidas.findIndex((comida) => comida.id === comidaActual),
-  )
 
   let proximo:
-    | { comida: TiempoComida; minutosObjetivo: number; hora24: string }
+    | { comida: TiempoComida; minutosObjetivo: number; hora24: string; diaSiguiente: boolean }
     | undefined
 
-  for (let i = indiceActual; i < comidas.length; i++) {
-    const comida = comidas[i]
+  for (const comida of comidas) {
     const finDist = hitoHora(comida.id, "fin-dist")
     if (!finDist) continue
 
@@ -83,25 +77,34 @@ export function resolverProximoCierre(fecha = new Date()) {
     if (minutosObjetivo <= ahora) continue
 
     if (!proximo || minutosObjetivo < proximo.minutosObjetivo) {
-      proximo = { comida: comida.id, minutosObjetivo, hora24: finDist }
+      proximo = { comida: comida.id, minutosObjetivo, hora24: finDist, diaSiguiente: false }
     }
   }
 
   if (!proximo) {
-    const comida = comidas[comidas.length - 1]
-    const finDist = hitoHora(comida.id, "fin-dist") ?? "19:00"
+    const comida = comidas[0]
+    const finDist = hitoHora(comida?.id ?? "desayuno", "fin-dist") ?? "09:30"
     proximo = {
-      comida: comida.id,
+      comida: comida?.id ?? "desayuno",
       minutosObjetivo: parseHora24(finDist),
       hora24: finDist,
+      diaSiguiente: true,
     }
   }
 
+  const minutosRestantes = proximo.diaSiguiente
+    ? 24 * 60 - ahora + proximo.minutosObjetivo
+    : proximo.minutosObjetivo - ahora
+
+  const servicioBase = labelComida(proximo.comida).toUpperCase()
+
   return {
-    servicio: labelComida(proximo.comida).toUpperCase(),
-    hora: `${proximo.hora24} HRS`,
-    tiempoRestante: formatearDuracionRestante(
-      proximo.minutosObjetivo - ahora,
-    ),
+    servicio: proximo.diaSiguiente
+      ? `${servicioBase} (DÍA SIGUIENTE)`
+      : servicioBase,
+    hora: formatearHora12(proximo.hora24),
+    tiempoRestante: formatearDuracionRestante(minutosRestantes),
+    comida: proximo.comida,
+    diaSiguiente: proximo.diaSiguiente,
   }
 }

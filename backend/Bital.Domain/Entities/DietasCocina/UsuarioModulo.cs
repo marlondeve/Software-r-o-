@@ -12,4 +12,5 @@ public class UsuarioModulo : EntityBase
     public bool Activo { get; set; } = true;
     public string? Observaciones { get; set; }
     public DateTime? UltimoAcceso { get; set; }
+    public string? PasswordHash { get; set; }
 }

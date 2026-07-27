@@ -55,15 +55,42 @@ export function puedeMarcarLista(orden: OrdenCocina): boolean {
   )
 }
 
-export function puedeImprimirEtiquetaOrden(orden: OrdenCocina): boolean {
+export function puedeImprimirEtiquetaOrden(
+  orden: OrdenCocina,
+  etiqueta?: EtiquetaEnfermera,
+): boolean {
+  if (puedeGenerarEtiqueta(orden, etiqueta)) return true
   if (orden.estadoCocina !== "lista" && orden.estadoCocina !== "despachada") {
     return false
   }
-  return orden.etiquetaId != null || orden.etiquetaGenerada
+  return orden.etiquetaId != null || orden.etiquetaGenerada || Boolean(etiqueta)
 }
 
-export function puedeGenerarEtiqueta(orden: OrdenCocina): boolean {
-  return orden.estadoCocina === "lista" && !orden.etiquetaGenerada
+export function etiquetaAccionOrden(
+  orden: OrdenCocina,
+  etiqueta?: EtiquetaEnfermera,
+): "generar" | "imprimir" {
+  return puedeGenerarEtiqueta(orden, etiqueta) ? "generar" : "imprimir"
+}
+
+export function motivoNoEtiquetaOrden(orden: OrdenCocina): string | undefined {
+  if (puedeImprimirEtiquetaOrden(orden)) return undefined
+  if (orden.estadoCocina === "por_iniciar") {
+    return "Marca la bandeja en preparación y completa el checklist."
+  }
+  if (orden.estadoCocina === "en_preparacion") {
+    return "Marca la bandeja como lista antes de generar la etiqueta."
+  }
+  return "La bandeja debe estar lista para generar o imprimir la etiqueta."
+}
+
+export function puedeGenerarEtiqueta(
+  orden: OrdenCocina,
+  etiqueta?: EtiquetaEnfermera,
+): boolean {
+  if (orden.estadoCocina !== "lista") return false
+  if (orden.etiquetaGenerada || orden.etiquetaId) return false
+  return !etiqueta
 }
 
 export function puedeDespachar(orden: OrdenCocina, etiqueta?: EtiquetaEnfermera): boolean {
@@ -93,8 +120,14 @@ export function puedeReimprimirEtiqueta(etiqueta: EtiquetaEnfermera): boolean {
 export function puedeConfirmarPreEntrega(
   orden: OrdenCocina | undefined,
   etiqueta: EtiquetaEnfermera,
+  opciones: { apiActiva?: boolean } = {},
 ): boolean {
+  const { apiActiva = false } = opciones
   if (etiqueta.estadoLogistica !== "impresa") return false
+  if (apiActiva) {
+    if (!orden) return true
+    return orden.estadoCocina === "lista" || orden.estadoCocina === "despachada"
+  }
   if (!orden) return false
   return orden.estadoCocina === "despachada"
 }
@@ -102,15 +135,29 @@ export function puedeConfirmarPreEntrega(
 export function motivoNoConfirmarPreEntrega(
   orden: OrdenCocina | undefined,
   etiqueta: EtiquetaEnfermera,
+  opciones: { apiActiva?: boolean } = {},
 ): string | undefined {
+  const { apiActiva = false } = opciones
   if (etiqueta.estadoLogistica !== "impresa") {
     return "Esta bandeja ya fue registrada o no está pendiente de recepción."
   }
-  if (!orden) {
+  if (!orden && !apiActiva) {
     return "No hay una orden de cocina vinculada a esta etiqueta."
   }
-  if (orden.estadoCocina !== "despachada") {
+  if (
+    orden &&
+    !apiActiva &&
+    orden.estadoCocina !== "despachada"
+  ) {
     return "La bandeja aún no fue despachada desde cocina."
+  }
+  if (
+    orden &&
+    apiActiva &&
+    orden.estadoCocina !== "lista" &&
+    orden.estadoCocina !== "despachada"
+  ) {
+    return "La bandeja debe estar lista en cocina antes de confirmar recepción."
   }
   return undefined
 }

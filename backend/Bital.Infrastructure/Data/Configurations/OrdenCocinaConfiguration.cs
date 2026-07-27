@@ -36,6 +36,9 @@ public class OrdenCocinaConfiguration : IEntityTypeConfiguration<OrdenCocina>
         builder.Property(o => o.Observaciones)
             .HasMaxLength(1000);
 
+        builder.Property(o => o.ChecklistJson)
+            .HasColumnType("nvarchar(max)");
+
         builder.Property(o => o.CreadoPor)
             .IsRequired()
             .HasMaxLength(100);

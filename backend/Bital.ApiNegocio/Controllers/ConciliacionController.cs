@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Asp.Versioning;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -42,10 +43,28 @@ public class ConciliacionController : ControllerBase
         [FromQuery] string? periodo,
         [FromQuery] string? proveedor,
         [FromQuery] string? estado,
+        [FromQuery] string? formato,
         CancellationToken cancellationToken)
     {
         var lineas = await _conciliacionService.ObtenerConciliacionAsync(
             busqueda, numeroFactura, periodo, proveedor, estado, cancellationToken);
+
+        if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var csv = CsvExportHelper.Generar(
+                lineas.Select(l => (IReadOnlyList<string?>)[
+                    l.Id.ToString(),
+                    l.NumeroFactura,
+                    l.Paciente,
+                    l.Comida,
+                    l.Estado,
+                    l.CantidadSolicitada.ToString(),
+                    l.CantidadFacturada.ToString(),
+                    l.Diferencia.ToString(),
+                    l.ValorTotal.ToString("F2")]),
+                ["Id", "Factura", "Paciente", "Comida", "Estado", "CantSist", "CantFact", "Dif", "ValorTotal"]);
+            return File(csv, "text/csv", $"conciliacion-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }
 
         // Calcular KPIs si no hay filtros de búsqueda específicos
         var incluirKpis = string.IsNullOrWhiteSpace(busqueda) && string.IsNullOrWhiteSpace(numeroFactura);
@@ -169,5 +188,40 @@ public class ConciliacionController : ControllerBase
     {
         var kpis = await _conciliacionService.ObtenerKpisConciliacionAsync(periodo, proveedor, cancellationToken);
         return Ok(new { data = kpis });
+    }
+
+    /// <summary>
+    /// Carga documento de factura asociado a una línea de conciliación
+    /// </summary>
+    [HttpPost("{id}/factura")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SubirFacturaConciliacion(
+        Guid id,
+        IFormFile factura,
+        CancellationToken cancellationToken)
+    {
+        if (factura == null || factura.Length == 0)
+        {
+            return BadRequest(new { error = "Archivo de factura requerido" });
+        }
+
+        try
+        {
+            var usuario = "TestUser";
+            await using var stream = factura.OpenReadStream();
+            var linea = await _conciliacionService.SubirFacturaAsync(
+                id,
+                stream,
+                factura.FileName,
+                usuario,
+                cancellationToken);
+            return Ok(new { data = linea });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
     }
 }

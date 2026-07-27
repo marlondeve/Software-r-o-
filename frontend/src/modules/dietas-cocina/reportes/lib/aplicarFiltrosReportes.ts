@@ -73,12 +73,14 @@ export function calcularFactor(filtros: FiltrosReportes): number {
   )
 }
 
+import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
+
 export function crearFiltrosReportesIniciales(): FiltrosReportes {
   const hoy = new Date()
   const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
   return {
-    desde: inicioMes.toISOString().slice(0, 10),
-    hasta: hoy.toISOString().slice(0, 10),
+    desde: fechaOperativaHoy(inicioMes),
+    hasta: fechaOperativaHoy(hoy),
     servicio: "todos",
     horario: "todos",
   }

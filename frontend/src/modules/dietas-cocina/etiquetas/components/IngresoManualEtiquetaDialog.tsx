@@ -11,6 +11,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
+import { extraerCodigoDesdeQr } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
+
 interface IngresoManualEtiquetaDialogProps {
   abierto: boolean
   onAbiertoChange: (abierto: boolean) => void
@@ -25,7 +27,7 @@ export function IngresoManualEtiquetaDialog({
   const [codigo, setCodigo] = useState("")
 
   function enviar() {
-    const valor = codigo.trim()
+    const valor = extraerCodigoDesdeQr(codigo)
     if (!valor) return
     onConfirmar(valor)
     setCodigo("")
@@ -42,7 +44,7 @@ export function IngresoManualEtiquetaDialog({
           <Label htmlFor="codigo-manual">Código de etiqueta</Label>
           <Input
             id="codigo-manual"
-            placeholder="Ej. LBL-9021-X"
+            placeholder="Ej. ETQ-20260726-223725-88D6E8AF"
             value={codigo}
             onChange={(e) => setCodigo(e.target.value)}
             onKeyDown={(e) => {
@@ -54,7 +56,7 @@ export function IngresoManualEtiquetaDialog({
           <Button type="button" variant="outline" onClick={() => onAbiertoChange(false)}>
             Cancelar
           </Button>
-          <Button type="button" onClick={enviar} disabled={!codigo.trim()}>
+          <Button type="button" onClick={enviar} disabled={!extraerCodigoDesdeQr(codigo)}>
             Buscar
           </Button>
         </DialogFooter>

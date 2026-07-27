@@ -1,11 +1,13 @@
 import type { CategoriaEdad } from "@/modules/dietas-cocina/types/parameters"
 import { useState } from "react"
-import { Calculator } from "lucide-react"
+import { Calculator, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DatePickerFromString } from "@/components/ui/date-picker"
 import { Label } from "@/components/ui/label"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { clasificarEdad } from "@/modules/dietas-cocina/api/services/parametros.service"
 import {
   clasificarEdadPaciente,
   type ResultadoClasificacion,
@@ -18,29 +20,76 @@ interface SimuladorClasificacionProps {
   categorias: CategoriaEdad[]
 }
 
+function calcularEdadAnios(nacimiento: string, referencia: string): number | null {
+  const nac = new Date(nacimiento)
+  const ref = new Date(referencia)
+  if (Number.isNaN(nac.getTime()) || Number.isNaN(ref.getTime()) || ref < nac) {
+    return null
+  }
+  let anos = ref.getFullYear() - nac.getFullYear()
+  const mes = ref.getMonth() - nac.getMonth()
+  if (mes < 0 || (mes === 0 && ref.getDate() < nac.getDate())) {
+    anos -= 1
+  }
+  return Math.max(0, anos)
+}
+
 export function SimuladorClasificacion({
   fechaNacimiento,
   fechaReferencia,
   resultadoInicial,
   categorias,
 }: SimuladorClasificacionProps) {
+  const apiActiva = usarApiDietasCocina()
   const [nacimiento, setNacimiento] = useState(fechaNacimiento)
   const [referencia, setReferencia] = useState(fechaReferencia)
   const [resultado, setResultado] = useState<ResultadoClasificacion>(
     resultadoInicial,
   )
+  const [simulando, setSimulando] = useState(false)
 
-  function simular() {
-    const calculado = clasificarEdadPaciente(nacimiento, referencia, categorias)
-    if (calculado) {
-      setResultado(calculado)
+  async function simular() {
+    const local = clasificarEdadPaciente(nacimiento, referencia, categorias)
+    if (!local) {
+      setResultado({
+        edadCalculada: "—",
+        categoria: "Sin categoría",
+        regla: "Fechas inválidas o referencia anterior al nacimiento",
+      })
       return
     }
-    setResultado({
-      edadCalculada: "—",
-      categoria: "Sin categoría",
-      regla: "Fechas inválidas o referencia anterior al nacimiento",
-    })
+
+    if (!apiActiva) {
+      setResultado(local)
+      return
+    }
+
+    const edadAnios = calcularEdadAnios(nacimiento, referencia)
+    if (edadAnios === null) {
+      setResultado({
+        edadCalculada: "—",
+        categoria: "Sin categoría",
+        regla: "Fechas inválidas o referencia anterior al nacimiento",
+      })
+      return
+    }
+
+    setSimulando(true)
+    try {
+      const respuesta = await clasificarEdad(edadAnios)
+      setResultado({
+        edadCalculada: local.edadCalculada,
+        categoria: respuesta.categoria || local.categoria,
+        regla:
+          respuesta.edadMinima > 0 || respuesta.edadMaxima > 0
+            ? `${respuesta.edadMinima} - ${respuesta.edadMaxima} años (API)`
+            : local.regla,
+      })
+    } catch {
+      setResultado(local)
+    } finally {
+      setSimulando(false)
+    }
   }
 
   return (
@@ -72,8 +121,21 @@ export function SimuladorClasificacion({
           />
         </div>
 
-        <Button type="button" variant="outline" className="w-full" onClick={simular}>
-          Simular
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={simulando}
+          onClick={() => void simular()}
+        >
+          {simulando ? (
+            <>
+              <Loader2 className="size-4 animate-spin" data-icon="inline-start" />
+              Consultando API…
+            </>
+          ) : (
+            "Simular"
+          )}
         </Button>
 
         <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">

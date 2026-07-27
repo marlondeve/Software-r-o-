@@ -1,6 +1,7 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { AtencionHospitalaria } from "@/api/types"
+import { repararTextoUtf8 } from "@/modules/dietas-cocina/api/utils/texto"
 const DEFAULTS_OPERATIVOS = {
   consistencia: null as string | null,
   tipoDieta: null as string | null,
@@ -69,11 +70,11 @@ export function mapearAtencionHospitalariaAFilaDieta(
     idIngreso: atencion.idIngreso,
     cedula: atencion.cedula,
     tipoDocumento: atencion.tipoDocumento,
-    paciente: atencion.nombreCompleto,
+    paciente: repararTextoUtf8(atencion.nombreCompleto),
     edad: opciones.edad ?? 0,
-    servicio: inferirServicioClinico(atencion.pabellon),
-    pabellon: atencion.pabellon,
-    habitacion: atencion.cama,
+    servicio: inferirServicioClinico(repararTextoUtf8(atencion.pabellon)),
+    pabellon: repararTextoUtf8(atencion.pabellon),
+    habitacion: repararTextoUtf8(atencion.cama),
     comida,
   }
 }

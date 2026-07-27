@@ -1,13 +1,20 @@
-import type { DietasRepository } from "@/modules/dietas-cocina/types/repositories"
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { CrearOrdenDesdeDietaInput } from "@/modules/dietas-cocina/types/tray-cycle"
+import type { DietasRepository } from "@/modules/dietas-cocina/types/repositories"
+import {
+  confirmarDieta,
+  obtenerDetalleDieta,
+} from "@/modules/dietas-cocina/api/services/dietas.service"
 
-/** Stub HTTP — reemplazar cuando exista backend de dietas. */
 export const dietasRepositoryHttp: DietasRepository = {
-  async confirmarDieta(_filaId: string): Promise<void> {
-    // TODO: POST /api/dietas-cocina/dietas/:id/confirmar
+  async confirmarDieta(filaId: string): Promise<FilaDieta> {
+    return confirmarDieta(filaId)
   },
-  async crearOrdenDesdeDieta(_input: CrearOrdenDesdeDietaInput): Promise<string> {
-    // TODO: POST /api/dietas-cocina/ordenes
-    return `ord-api-${Date.now()}`
+  async crearOrdenDesdeDieta(input: CrearOrdenDesdeDietaInput): Promise<string> {
+    if (!input.id) {
+      throw new Error("id de dieta requerido para crear orden de cocina")
+    }
+    const detalle = await obtenerDetalleDieta(input.id)
+    return detalle.ordenCocinaId ?? `ord-api-${input.id}`
   },
 }

@@ -42,6 +42,18 @@ public interface IDietasService
     /// </summary>
     Task<List<DietaCatalogoDto>> ObtenerCatalogoDietasAsync(CancellationToken cancellationToken = default);
 
+    Task<DietaCatalogoDto> ObtenerCatalogoDietaPorIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<DietaCatalogoDto> CrearDietaCatalogoAsync(CrearDietaCatalogoDto dto, string usuario, CancellationToken cancellationToken = default);
+
+    Task<DietaCatalogoDto> ActualizarDietaCatalogoAsync(Guid id, ActualizarDietaCatalogoDto dto, string usuario, CancellationToken cancellationToken = default);
+
+    Task<DietaCatalogoDto> DesactivarDietaCatalogoAsync(Guid id, string usuario, CancellationToken cancellationToken = default);
+
+    Task<List<TarifaHistoricoDto>> ObtenerTarifasDietaAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<TarifaHistoricoDto> RegistrarTarifaDietaAsync(Guid id, NuevaTarifaDto dto, string usuario, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Registra una novedad en una dieta
     /// </summary>

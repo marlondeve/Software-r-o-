@@ -40,5 +40,7 @@ public class FilaDietaDto
     public DateTime? SolicitadoEn { get; set; }
     public bool CancelacionTardia { get; set; }
 
+    public Guid? OrdenCocinaId { get; set; }
+
     public DateTime FechaOperativa { get; set; }
 }

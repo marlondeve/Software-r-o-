@@ -58,7 +58,7 @@ export const mockNutricionista = {
   ],
   proximoCierre: {
     servicio: "CENA",
-    hora: "19:00 HRS",
+    hora: "07:00 p. m.",
     tiempoRestante: "2h 15min",
     pendientes: 45,
   },

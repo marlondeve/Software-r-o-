@@ -15,14 +15,33 @@ export function useEscannerQr({
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const ultimoCodigoRef = useRef<string>("")
   const ultimoTiempoRef = useRef<number>(0)
+  const onCodigoLeidoRef = useRef(onCodigoLeido)
+  const activoRef = useRef(activo)
+  const escaneoPermitidoRef = useRef(false)
+  const iniciandoRef = useRef(false)
   const [iniciando, setIniciando] = useState(false)
   const [errorCamara, setErrorCamara] = useState<string | null>(null)
   const [camaraTrasera, setCamaraTrasera] = useState(true)
   const [linternaActiva, setLinternaActiva] = useState(false)
 
+  onCodigoLeidoRef.current = onCodigoLeido
+  activoRef.current = activo
+
+  const limpiarContenedor = useCallback(() => {
+    const contenedor = document.getElementById(contenedorId)
+    if (contenedor) {
+      contenedor.innerHTML = ""
+    }
+  }, [contenedorId])
+
   const detener = useCallback(async () => {
+    escaneoPermitidoRef.current = false
     const scanner = scannerRef.current
-    if (!scanner) return
+    scannerRef.current = null
+    if (!scanner) {
+      limpiarContenedor()
+      return
+    }
     try {
       if (scanner.isScanning) {
         await scanner.stop()
@@ -31,58 +50,79 @@ export function useEscannerQr({
     } catch {
       // ignorar errores al detener
     }
-    scannerRef.current = null
+    limpiarContenedor()
     setLinternaActiva(false)
-  }, [])
-
-  const iniciar = useCallback(async () => {
-    if (!activo) return
-    await detener()
-    setIniciando(true)
-    setErrorCamara(null)
-
-    const scanner = new Html5Qrcode(contenedorId)
-    scannerRef.current = scanner
-
-    try {
-      await scanner.start(
-        { facingMode: camaraTrasera ? "environment" : "user" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        (decoded) => {
-          const ahora = Date.now()
-          if (
-            decoded === ultimoCodigoRef.current &&
-            ahora - ultimoTiempoRef.current < 2500
-          ) {
-            return
-          }
-          ultimoCodigoRef.current = decoded
-          ultimoTiempoRef.current = ahora
-          onCodigoLeido(decoded)
-        },
-        () => {
-          // sin QR en frame
-        },
-      )
-    } catch {
-      setErrorCamara(
-        "No se pudo acceder a la cámara. Usa el ingreso manual del código.",
-      )
-    } finally {
-      setIniciando(false)
-    }
-  }, [activo, camaraTrasera, contenedorId, detener, onCodigoLeido])
+  }, [limpiarContenedor])
 
   useEffect(() => {
-    if (activo) {
-      void iniciar()
-    } else {
+    if (!activo) {
       void detener()
+      return
     }
+
+    let cancelado = false
+
+    async function iniciarCamara() {
+      if (iniciandoRef.current) return
+      iniciandoRef.current = true
+      setIniciando(true)
+      setErrorCamara(null)
+
+      await detener()
+      if (cancelado) {
+        iniciandoRef.current = false
+        setIniciando(false)
+        return
+      }
+
+      const scanner = new Html5Qrcode(contenedorId)
+      scannerRef.current = scanner
+
+      try {
+        await scanner.start(
+          { facingMode: camaraTrasera ? "environment" : "user" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decoded) => {
+            if (!escaneoPermitidoRef.current || !activoRef.current) return
+            const ahora = Date.now()
+            if (
+              decoded === ultimoCodigoRef.current &&
+              ahora - ultimoTiempoRef.current < 4000
+            ) {
+              return
+            }
+            ultimoCodigoRef.current = decoded
+            ultimoTiempoRef.current = ahora
+            if (!escaneoPermitidoRef.current || !activoRef.current) return
+            onCodigoLeidoRef.current(decoded)
+          },
+          () => {
+            // sin QR en frame
+          },
+        )
+        escaneoPermitidoRef.current = true
+      } catch {
+        if (!cancelado) {
+          setErrorCamara(
+            "No se pudo acceder a la cámara. Usa el ingreso manual del código.",
+          )
+        }
+        await detener()
+      } finally {
+        iniciandoRef.current = false
+        if (!cancelado) {
+          setIniciando(false)
+        }
+      }
+    }
+
+    void iniciarCamara()
+
     return () => {
+      cancelado = true
       void detener()
     }
-  }, [activo, camaraTrasera, iniciar, detener])
+  }, [activo, camaraTrasera, contenedorId, detener])
 
   const alternarCamara = useCallback(() => {
     setCamaraTrasera((prev) => !prev)
@@ -99,7 +139,7 @@ export function useEscannerQr({
       if (!track) return
 
       const capabilities = track.getCapabilities?.() as
-        | MediaTrackCapabilities
+        | (MediaTrackCapabilities & { torch?: boolean })
         | undefined
       if (!capabilities?.torch) return
 

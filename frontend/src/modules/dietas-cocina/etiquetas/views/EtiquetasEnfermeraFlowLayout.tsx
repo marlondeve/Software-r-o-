@@ -34,7 +34,7 @@ export function EtiquetasEnfermeraFlowLayout({
 
 export function AccionesFlujoHub() {
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <Button variant="outline" className="h-auto justify-start gap-3 py-4" asChild>
         <Link to="/dietas-cocina/etiquetas/pre-entrega">
           <Truck className="size-5 shrink-0 text-primary" />
@@ -58,12 +58,23 @@ export function AccionesFlujoHub() {
         </Link>
       </Button>
       <Button variant="outline" className="h-auto justify-start gap-3 py-4" asChild>
-        <Link to="/dietas-cocina/etiquetas/devolucion">
+        <Link to="/dietas-cocina/etiquetas/devolucion/antes-entrega">
+          <RotateCcw className="size-5 shrink-0 text-amber-600" />
+          <span className="text-left">
+            <span className="block font-medium">Rechazo antes de entrega</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              No entregarás la bandeja al paciente
+            </span>
+          </span>
+        </Link>
+      </Button>
+      <Button variant="outline" className="h-auto justify-start gap-3 py-4" asChild>
+        <Link to="/dietas-cocina/etiquetas/devolucion/paciente">
           <RotateCcw className="size-5 shrink-0 text-destructive" />
           <span className="text-left">
-            <span className="block font-medium">Registrar devolución</span>
+            <span className="block font-medium">Recogida de bandeja</span>
             <span className="text-xs font-normal text-muted-foreground">
-              Devolver bandeja a cocina
+              Registra el consumo al recoger la bandeja
             </span>
           </span>
         </Link>

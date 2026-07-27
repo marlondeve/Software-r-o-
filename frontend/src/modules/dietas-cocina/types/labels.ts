@@ -43,6 +43,8 @@ export interface EtiquetaEnfermera extends EtiquetaDieta {
   motivoDevolucion?: MotivoDevolucion
   observacionesDevolucion?: string
   fotoDevolucion?: string
+  ordenCocinaId?: string
+  filaDietaId?: string
 }
 
 export interface KpiEnfermeraEtiqueta {

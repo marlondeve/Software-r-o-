@@ -1,3 +1,5 @@
+import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
+
 function capitalizar(texto: string): string {
   if (!texto) return texto
   return texto.charAt(0).toUpperCase() + texto.slice(1)
@@ -14,14 +16,10 @@ export function formatearFechaOperativa(fecha = new Date()): string {
 }
 
 export function formatearHoraActualizacion(fecha = new Date()): string {
-  return fecha.toLocaleTimeString("es-CO", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
+  return formatearHoraDesdeFecha(fecha)
 }
 
-/** p. ej. "Hoy, 6:15 p. m." — sin mezclar formato 24 h con AM/PM. */
+/** p. ej. "Hoy, 19:21" */
 export function formatearUltimaActualizacionReporte(fecha = new Date()): string {
   const hoy = new Date()
   const hora = formatearHoraActualizacion(fecha)

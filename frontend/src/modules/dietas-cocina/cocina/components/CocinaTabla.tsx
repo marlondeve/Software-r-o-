@@ -218,10 +218,20 @@ export function CocinaTabla({
           </Tooltip>
         ),
         cell: ({ row }) => {
-          const impresa = row.original.etiquetaImpresa
+          const etiqueta = getEtiquetaByOrdenId?.(row.original.id)
+          const generada =
+            row.original.etiquetaGenerada ||
+            Boolean(row.original.etiquetaId ?? etiqueta)
+          const impresa =
+            row.original.etiquetaImpresa ||
+            etiqueta?.estadoLogistica === "impresa" ||
+            etiqueta?.estado === "impresa" ||
+            etiqueta?.estado === "reimpresa"
           const etiquetaLabel = impresa
             ? "Etiqueta impresa"
-            : "Etiqueta pendiente de impresión"
+            : generada
+              ? "Etiqueta generada, pendiente de impresión"
+              : "Etiqueta pendiente de generación"
 
           return (
             <Tooltip>
@@ -236,7 +246,9 @@ export function CocinaTabla({
                       "size-4",
                       impresa
                         ? "fill-teal-600 text-teal-600"
-                        : "text-muted-foreground",
+                        : generada
+                          ? "text-teal-600"
+                          : "text-muted-foreground",
                     )}
                     aria-hidden
                   />
@@ -289,7 +301,11 @@ export function CocinaTabla({
           <span className="font-medium text-foreground">Leyenda etiquetas:</span>
           <span className="inline-flex items-center gap-1.5">
             <Tag className="size-3.5 text-muted-foreground" aria-hidden />
-            Pendiente de impresión
+            Sin generar
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <Tag className="size-3.5 text-teal-600" aria-hidden />
+            Generada, pendiente de impresión
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Tag

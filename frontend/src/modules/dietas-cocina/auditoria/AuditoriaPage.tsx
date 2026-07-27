@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useState } from "react"
 import { Bookmark, CalendarDays, Download } from "lucide-react"
 
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { AuditoriaDetalleSheet } from "@/modules/dietas-cocina/auditoria/components/AuditoriaDetalleSheet"
 import { AuditoriaFiltros } from "@/modules/dietas-cocina/auditoria/components/AuditoriaFiltros"
 import { AuditoriaTabla } from "@/modules/dietas-cocina/auditoria/components/AuditoriaTabla"
 import { mockAuditoria } from "@/modules/dietas-cocina/auditoria/datos/mockAuditoria"
-import { obtenerDetalleAuditoria } from "@/modules/dietas-cocina/auditoria/lib/detalleAuditoria"
+import { obtenerDetalleAuditoria as obtenerDetalleAuditoriaMock } from "@/modules/dietas-cocina/auditoria/lib/detalleAuditoria"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import {
+  listarAuditoria,
+  obtenerDetalleAuditoria,
+} from "@/modules/dietas-cocina/api/services/auditoria.service"
+import type { DetalleAuditoria, FilaAuditoria } from "@/modules/dietas-cocina/types/audit"
 import {
   exportarAuditoriaCsv,
   TAMANO_PAGINA_AUDITORIA,
@@ -18,7 +25,10 @@ import {
 } from "@/modules/dietas-cocina/lib/demoFeedback"
 
 export function AuditoriaPage() {
+  const apiActiva = usarApiDietasCocina()
   const data = mockAuditoria
+  const [filasApi, setFilasApi] = useState<FilaAuditoria[]>([])
+  const [metaApi, setMetaApi] = useState<{ total: number; totalPages: number } | null>(null)
   const [sheetAbierto, setSheetAbierto] = useState(false)
   const [filaSeleccionada, setFilaSeleccionada] = useState<string | null>(null)
   const [busqueda, setBusqueda] = useState("")
@@ -27,9 +37,45 @@ export function AuditoriaPage() {
   const [rol, setRol] = useState("todos")
   const [resultado, setResultado] = useState("todos")
   const [paginaActual, setPaginaActual] = useState(1)
+  const [detalleApi, setDetalleApi] = useState<DetalleAuditoria | null>(null)
+  const [cargandoAuditoria, setCargandoAuditoria] = useState(false)
+  const [errorAuditoria, setErrorAuditoria] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!apiActiva) return
+    setCargandoAuditoria(true)
+    setErrorAuditoria(null)
+    void listarAuditoria({
+      page: paginaActual,
+      pageSize: TAMANO_PAGINA_AUDITORIA,
+      modulo: modulo !== "todos" ? modulo : undefined,
+      resultado: resultado !== "todos" ? resultado : undefined,
+    })
+      .then((res) => {
+        setFilasApi(res.filas)
+        setMetaApi(
+          res.meta
+            ? {
+                total: res.meta.total ?? 0,
+                totalPages: res.meta.totalPages ?? 1,
+              }
+            : null,
+        )
+      })
+      .catch((error) => {
+        setFilasApi([])
+        setMetaApi(null)
+        setErrorAuditoria(
+          error instanceof Error ? error.message : "No se pudo cargar la auditoría.",
+        )
+      })
+      .finally(() => setCargandoAuditoria(false))
+  }, [apiActiva, paginaActual, modulo, resultado])
+
+  const filasBase = apiActiva ? filasApi : data.filas
 
   const filasFiltradas = useMemo(() => {
-    return data.filas.filter((fila) => {
+    return filasBase.filter((fila) => {
       const termino = busqueda.trim().toLowerCase()
       const coincideBusqueda =
         !termino ||
@@ -60,18 +106,18 @@ export function AuditoriaPage() {
         coincideResultado
       )
     })
-  }, [data.filas, busqueda, modulo, accion, rol, resultado])
+  }, [filasBase, busqueda, modulo, accion, rol, resultado])
 
-  const totalFiltradas = filasFiltradas.length
-  const totalPaginas = Math.max(
-    1,
-    Math.ceil(totalFiltradas / TAMANO_PAGINA_AUDITORIA),
-  )
+  const totalFiltradas = apiActiva && metaApi ? metaApi.total : filasFiltradas.length
+  const totalPaginas = apiActiva && metaApi
+    ? Math.max(1, metaApi.totalPages)
+    : Math.max(1, Math.ceil(filasFiltradas.length / TAMANO_PAGINA_AUDITORIA))
 
   const filasPagina = useMemo(() => {
+    if (apiActiva) return filasFiltradas
     const inicio = (paginaActual - 1) * TAMANO_PAGINA_AUDITORIA
     return filasFiltradas.slice(inicio, inicio + TAMANO_PAGINA_AUDITORIA)
-  }, [filasFiltradas, paginaActual])
+  }, [apiActiva, filasFiltradas, paginaActual])
 
   const paginaDesde =
     totalFiltradas === 0 ? 0 : (paginaActual - 1) * TAMANO_PAGINA_AUDITORIA + 1
@@ -90,13 +136,35 @@ export function AuditoriaPage() {
     }
   }, [paginaActual, totalPaginas])
 
-  const detalle = filaSeleccionada
-    ? obtenerDetalleAuditoria(
-        filaSeleccionada,
-        data.filas,
-        data.detalles,
-      )
-    : null
+  useEffect(() => {
+    if (!apiActiva || !filaSeleccionada) {
+      setDetalleApi(null)
+      return
+    }
+
+    let cancelado = false
+    void obtenerDetalleAuditoria(filaSeleccionada)
+      .then((detalle) => {
+        if (!cancelado) setDetalleApi(detalle)
+      })
+      .catch(() => {
+        if (!cancelado) setDetalleApi(null)
+      })
+
+    return () => {
+      cancelado = true
+    }
+  }, [apiActiva, filaSeleccionada])
+
+  const detalle = apiActiva
+    ? detalleApi
+    : filaSeleccionada
+      ? obtenerDetalleAuditoriaMock(
+          filaSeleccionada,
+          data.filas,
+          data.detalles,
+        )
+      : null
 
   function abrirDetalle(id: string) {
     setFilaSeleccionada(id)
@@ -148,6 +216,12 @@ export function AuditoriaPage() {
         }
       />
 
+      {apiActiva && errorAuditoria && (
+        <Alert variant="destructive">
+          <AlertDescription>{errorAuditoria}</AlertDescription>
+        </Alert>
+      )}
+
       <AuditoriaFiltros
         moduloLabel={data.filtros.modulo}
         accionLabel={data.filtros.accion}
@@ -176,6 +250,12 @@ export function AuditoriaPage() {
         onCambiarPagina={setPaginaActual}
         onVerDetalle={abrirDetalle}
       />
+
+      {apiActiva && cargandoAuditoria && filasPagina.length === 0 && (
+        <p className="text-center text-sm text-muted-foreground">
+          Cargando registros de auditoría…
+        </p>
+      )}
 
       <AuditoriaDetalleSheet
         open={sheetAbierto}

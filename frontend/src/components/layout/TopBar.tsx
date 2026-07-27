@@ -13,6 +13,9 @@ import {
   resolverModuloActivo,
   usuarioEsAdministrador,
 } from "@/lib/modulos"
+import { SelectorVistaRolAdmin } from "@/modules/dietas-cocina/components/SelectorVistaRolAdmin"
+import { useVistaRolAdmin } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
+import { ETIQUETAS_VISTA_PREVIEW } from "@/modules/dietas-cocina/lib/vistaRolAdmin"
 import type { ModuloId } from "@/types/module"
 
 interface TopBarProps {
@@ -38,6 +41,7 @@ function resolverPlaceholderBusqueda(
 
 export function TopBar({ module, onMenuClick }: TopBarProps) {
   const { usuario } = useAuth()
+  const { vistaPreviewActiva, rolVistaPreview } = useVistaRolAdmin()
   const location = useLocation()
   const moduloActual =
     esRutaDeModulo(location.pathname) ?? module ?? resolverModuloActivo(usuario)
@@ -68,6 +72,8 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
 
           <ModuleSwitcher moduloActual={moduloActual} />
 
+          {module === "dietas-cocina" && <SelectorVistaRolAdmin />}
+
           <div className="relative hidden min-w-0 flex-1 sm:block lg:max-w-sm xl:max-w-md">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -87,7 +93,9 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
               <div className="mt-0.5 flex justify-end gap-1">
                 {rol && (
                   <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
-                    {rol}
+                    {vistaPreviewActiva && rolVistaPreview
+                      ? ETIQUETAS_VISTA_PREVIEW[rolVistaPreview]
+                      : rol}
                   </Badge>
                 )}
                 {enAdministracion && usuarioEsAdministrador(usuario) && (

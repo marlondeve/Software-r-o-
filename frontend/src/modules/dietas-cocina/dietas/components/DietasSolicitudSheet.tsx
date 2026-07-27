@@ -90,10 +90,14 @@ export function DietasSolicitudSheet({
   const [formulario, setFormulario] = useState<FormularioSolicitud | null>(null)
 
   useEffect(() => {
-    if (fila && open) {
-      setFormulario(crearFormularioDesdeFila(fila, comidaInicial))
+    if (!open) {
+      setFormulario(null)
+      return
     }
-  }, [fila, comidaInicial, open])
+    if (!fila) return
+    setFormulario(crearFormularioDesdeFila(fila, comidaInicial))
+    // Solo reiniciar al abrir/cerrar o al cambiar de paciente; no cuando el censo refresca la misma fila.
+  }, [open, fila?.id, comidaInicial])
 
   if (!fila || !formulario) return null
 

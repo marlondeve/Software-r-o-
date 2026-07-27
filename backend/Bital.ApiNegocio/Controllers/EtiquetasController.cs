@@ -287,9 +287,32 @@ public class EtiquetasController : ControllerBase
     /// <returns>PDF</returns>
     [HttpGet("pdf")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
-    public IActionResult GenerarPdfEtiquetas([FromQuery] string ids)
+    public async Task<IActionResult> GenerarPdfEtiquetas(
+        [FromQuery] string ids,
+        CancellationToken cancellationToken)
     {
-        // TODO: Implementar generación de PDF usando QuestPDF o similar
-        return Ok(new { message = "Endpoint PDF pendiente de implementación", ids });
+        if (string.IsNullOrWhiteSpace(ids))
+        {
+            return BadRequest(new { error = "Parámetro ids requerido" });
+        }
+
+        try
+        {
+            var etiquetaIds = ids
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Select(id => Guid.Parse(id))
+                .ToList();
+
+            var pdf = await _etiquetasService.GenerarPdfEtiquetasAsync(etiquetaIds, cancellationToken);
+            return File(pdf, "application/pdf", $"etiquetas-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf");
+        }
+        catch (FormatException)
+        {
+            return BadRequest(new { error = "IDs de etiqueta inválidos" });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { error = ex.Message });
+        }
     }
 }

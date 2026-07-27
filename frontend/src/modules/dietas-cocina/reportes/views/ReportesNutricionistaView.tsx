@@ -1,5 +1,4 @@
-import type { FiltrosReportes } from "@/modules/dietas-cocina/types/reports"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
@@ -14,23 +13,64 @@ import {
 import { ReportesFiltros } from "@/modules/dietas-cocina/reportes/components/ReportesFiltros"
 import { ReportesKpiGrid } from "@/modules/dietas-cocina/reportes/components/ReportesKpiGrid"
 import { mockReportesNutricionista } from "@/modules/dietas-cocina/reportes/datos/mockReportesNutricionista"
+import { crearFiltrosReportesIniciales } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
 import { construirReportesNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
-
-const FILTROS_INICIALES: FiltrosReportes = {
-  desde: "2023-10-01",
-  hasta: "2023-10-24",
-  servicio: "todos",
-  horario: "todos",
-}
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import {
+  mapReporteDto,
+  reporteViewVacio,
+} from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
+import { obtenerReporteNutricionista } from "@/modules/dietas-cocina/api/services/reportes.service"
+import { REPORTES_FILTROS_UI } from "@/modules/dietas-cocina/config/reportes-ui"
+import { mesclarReporteConCiclo } from "@/modules/dietas-cocina/lib/mesclarDashboardOperativo"
+import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
 
 export function ReportesNutricionistaView() {
   const base = mockReportesNutricionista
   const { ordenes, etiquetas } = useCicloBandejas()
-  const [filtros, setFiltros] = useState<FiltrosReportes>(FILTROS_INICIALES)
+  const apiActiva = usarApiDietasCocina()
+  const [filtros, setFiltros] = useState(crearFiltrosReportesIniciales)
+  const [reporteApi, setReporteApi] = useState<ReturnType<typeof mapReporteDto> | null>(
+    null,
+  )
+  const [cargando, setCargando] = useState(false)
 
-  const data = useMemo(
-    () => construirReportesNutricionistaDesdeCiclo(ordenes, etiquetas, filtros),
-    [ordenes, etiquetas, filtros],
+  useEffect(() => {
+    if (!apiActiva) return
+    setCargando(true)
+    void obtenerReporteNutricionista({
+      desde: filtros.desde,
+      hasta: filtros.hasta,
+      servicio: filtros.servicio !== "todos" ? filtros.servicio : undefined,
+      horario: filtros.horario !== "todos" ? filtros.horario : undefined,
+    })
+      .then((resp) => setReporteApi(mapReporteDto(resp)))
+      .catch(() => setReporteApi(reporteViewVacio()))
+      .finally(() => setCargando(false))
+  }, [apiActiva, filtros])
+
+  const dataCiclo = useMemo(
+    () =>
+      construirReportesNutricionistaDesdeCiclo(ordenes, etiquetas, filtros, {
+        soloDatosReales: apiActiva,
+      }),
+    [ordenes, etiquetas, filtros, apiActiva],
+  )
+
+  const data = useMemo(() => {
+    if (!apiActiva) return dataCiclo
+    const api = reporteApi ?? reporteViewVacio()
+    return mesclarReporteConCiclo(api, dataCiclo, { modoApi: true })
+  }, [apiActiva, reporteApi, dataCiclo])
+
+  const ultimaActualizacion = useMemo(
+    () =>
+      apiActiva
+        ? cargando
+          ? "Actualizando…"
+          : formatearUltimaActualizacionReporte(new Date())
+        : base.filtros.ultimaActualizacion,
+    [apiActiva, cargando, base.filtros.ultimaActualizacion],
   )
 
   return (
@@ -38,8 +78,9 @@ export function ReportesNutricionistaView() {
       <DashboardPageHeader title="Reportes y analítica" />
 
       <ReportesFiltros
-        {...base.filtros}
+        {...(apiActiva ? REPORTES_FILTROS_UI : base.filtros)}
         filtros={filtros}
+        ultimaActualizacion={ultimaActualizacion}
         onFiltrosChange={setFiltros}
       />
 

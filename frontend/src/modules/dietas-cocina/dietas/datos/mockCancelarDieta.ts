@@ -11,6 +11,6 @@ export const mockCancelarDieta = {
   aceptacionFacturacion:
     "Entiendo y acepto la responsabilidad de facturación por cancelación tardía",
   responsable: "Dr. Alberto Martínez (Nutrición)",
-  fechaHora: "16/07/2026 - 09:05 a. m.",
+  fechaHora: "16/07/2026 - 09:05",
   clinica: "Clínica del Río",
 }

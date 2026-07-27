@@ -18,7 +18,7 @@ export const FILTROS_ESTADO_ETIQUETA_INICIAL: FiltrosEstadoEtiqueta = {
   reimpresas: true,
 }
 
-export function etiquetaFueraDeFlujoProveedor(
+export function etiquetaRecibidaEnfermeria(
   estadoLogistica: EstadoLogisticaEtiqueta,
 ): boolean {
   return (
@@ -26,6 +26,12 @@ export function etiquetaFueraDeFlujoProveedor(
     estadoLogistica === "entregada" ||
     estadoLogistica === "devuelta"
   )
+}
+
+export function etiquetaFueraDeFlujoProveedor(
+  estadoLogistica: EstadoLogisticaEtiqueta,
+): boolean {
+  return etiquetaRecibidaEnfermeria(estadoLogistica)
 }
 
 export function claseKpiEtiqueta(kpi: KpiEtiqueta): string {
@@ -102,6 +108,13 @@ export function filtrosDesdeKpiEtiqueta(
       return { pendientes: false, generadas: false, impresas: true, reimpresas: false }
     case "reimpresas":
       return { pendientes: false, generadas: false, impresas: false, reimpresas: true }
+    case "recibidas-enfermeria":
+      return {
+        pendientes: false,
+        generadas: false,
+        impresas: false,
+        reimpresas: false,
+      }
     default:
       return FILTROS_ESTADO_ETIQUETA_INICIAL
   }
@@ -116,11 +129,7 @@ export function calcularKpisEtiquetasProveedor(
       e.comida === comida && !etiquetaFueraDeFlujoProveedor(e.estadoLogistica),
   )
   const recibidas = etiquetas.filter(
-    (e) =>
-      e.comida === comida &&
-      (e.estadoLogistica === "pre_entregada" ||
-        e.estadoLogistica === "entregada" ||
-        e.estadoLogistica === "devuelta"),
+    (e) => e.comida === comida && etiquetaRecibidaEnfermeria(e.estadoLogistica),
   ).length
 
   return [

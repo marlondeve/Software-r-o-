@@ -1,16 +1,21 @@
 import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { obtenerPermisosRoles } from "@/modules/dietas-cocina/api/services/usuarios.service"
+import type { PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
 import {
   EditarPermisosRolDialog,
 } from "@/modules/dietas-cocina/usuarios/components/EditarPermisosRolDialog"
 import { PermisosRolResumen } from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
 import { UsuarioRolBadge } from "@/modules/dietas-cocina/usuarios/components/UsuarioRolBadge"
+import { contarPermisosActivos } from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
+
 interface RolPermisoFila {
   id: string
   rol: RolDietas
@@ -22,16 +27,29 @@ interface RolesPermisosPanelProps {
 }
 
 export function RolesPermisosPanel({ puedeGestionar }: RolesPermisosPanelProps) {
+  const apiActiva = usarApiDietasCocina()
   const { config } = useConfigAccesoModulos()
+  const [permisosApi, setPermisosApi] = useState<PermisoRolDto[]>([])
+
+  useEffect(() => {
+    if (!apiActiva) return
+    void obtenerPermisosRoles()
+      .then(setPermisosApi)
+      .catch(() => setPermisosApi([]))
+  }, [apiActiva])
 
   const filasRoles = useMemo<RolPermisoFila[]>(
     () =>
       ROLES_DIETAS.map((rol) => ({
         id: rol,
         rol,
-        total: config.permisosDietas[rol]?.length ?? 0,
+        total: apiActiva
+          ? contarPermisosActivos(
+              permisosApi.find((entry) => entry.rol === rol)?.permisos,
+            )
+          : config.permisosDietas[rol]?.length ?? 0,
       })),
-    [config],
+    [apiActiva, config.permisosDietas, permisosApi],
   )
 
   const columnas = useMemo<ColumnDef<RolPermisoFila>[]>(
@@ -44,7 +62,12 @@ export function RolesPermisosPanel({ puedeGestionar }: RolesPermisosPanelProps) 
       {
         id: "secciones",
         header: "Secciones del módulo",
-        cell: ({ row }) => <PermisosRolResumen rol={row.original.rol} />,
+        cell: ({ row }) => (
+          <PermisosRolResumen
+            rol={row.original.rol}
+            permisosApi={apiActiva ? permisosApi : undefined}
+          />
+        ),
       },
       {
         accessorKey: "total",
@@ -63,12 +86,15 @@ export function RolesPermisosPanel({ puedeGestionar }: RolesPermisosPanelProps) 
             <EditarPermisosRolDialog
               rol={row.original.rol}
               puedeGestionar={puedeGestionar}
+              apiActiva={apiActiva}
+              permisosApi={permisosApi}
+              onPermisosActualizados={setPermisosApi}
             />
           </div>
         ),
       },
     ],
-    [puedeGestionar],
+    [apiActiva, permisosApi, puedeGestionar],
   )
 
   return (

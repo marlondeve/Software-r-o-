@@ -1,11 +1,9 @@
 import { SectionPage } from "@/components/shared/SectionPage"
-import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { CocinaProveedorView } from "@/modules/dietas-cocina/cocina/views/CocinaProveedorView"
-import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 
 export function CocinaPage() {
-  const { usuario } = useAuth()
-  const rol = obtenerRolDietas(usuario)
+  const rol = useRolVistaEfectivo()
 
   if (rol === "Proveedor" || rol === "Administrador") {
     return <CocinaProveedorView />

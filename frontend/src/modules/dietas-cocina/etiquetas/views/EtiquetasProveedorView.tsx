@@ -2,18 +2,26 @@ import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
 
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { EtiquetaCard } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaCard"
 import { EtiquetasFiltrosPanel } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasFiltrosPanel"
 import { EtiquetasKpiGrid } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasKpiGrid"
 import { EtiquetasToolbar } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasToolbar"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import {
+  COMIDAS_OPERATIVAS,
+  obtenerComidaActivaOperativa,
+  subtituloFechaOperativa,
+} from "@/modules/dietas-cocina/config/operativa-defaults"
 import { mockEtiquetas } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
   calcularKpisEtiquetasProveedor,
   etiquetaCoincideEstados,
   etiquetaCoincideFiltros,
   etiquetaFueraDeFlujoProveedor,
+  etiquetaRecibidaEnfermeria,
   FILTROS_ESTADO_ETIQUETA_INICIAL,
   filtrosDesdeKpiEtiqueta,
   type FiltrosEstadoEtiqueta,
@@ -37,11 +45,14 @@ function opcionesConTodos(
 }
 
 export function EtiquetasProveedorView() {
+  const apiActiva = usarApiDietasCocina()
   const data = mockEtiquetas
   const location = useLocation()
-  const { etiquetas: etiquetasLogistica, marcarEtiquetasImpresas, reimprimirEtiquetas } =
+  const { etiquetas: etiquetasLogistica, marcarEtiquetasImpresas, reimprimirEtiquetas, rehidratarDesdeStorage, hidrato } =
     useCicloBandejas()
-  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(data.comidaActiva)
+  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
+    apiActiva ? obtenerComidaActivaOperativa() : data.comidaActiva,
+  )
   const [filtrosEstado, setFiltrosEstado] = useState<FiltrosEstadoEtiqueta>(
     FILTROS_ESTADO_ETIQUETA_INICIAL,
   )
@@ -54,20 +65,29 @@ export function EtiquetasProveedorView() {
   const [reimprimiendo, setReimprimiendo] = useState(false)
 
   useEffect(() => {
+    if (!apiActiva) return
+    rehidratarDesdeStorage()
+  }, [apiActiva, rehidratarDesdeStorage])
+
+  useEffect(() => {
     const state = location.state as EtiquetasLocationState | null
     if (state?.preseleccion?.length) {
       setSeleccionados(new Set(state.preseleccion))
     }
   }, [location.state])
 
+  const mostrarRecibidasEnfermeria = kpiActivo === "recibidas-enfermeria"
+
   const etiquetasEnCocina = useMemo(
     () =>
-      etiquetasLogistica.filter(
-        (etiqueta) =>
-          etiqueta.comida === comidaActiva &&
-          !etiquetaFueraDeFlujoProveedor(etiqueta.estadoLogistica),
-      ),
-    [etiquetasLogistica, comidaActiva],
+      etiquetasLogistica.filter((etiqueta) => {
+        if (etiqueta.comida !== comidaActiva) return false
+        if (mostrarRecibidasEnfermeria) {
+          return etiquetaRecibidaEnfermeria(etiqueta.estadoLogistica)
+        }
+        return !etiquetaFueraDeFlujoProveedor(etiqueta.estadoLogistica)
+      }),
+    [etiquetasLogistica, comidaActiva, mostrarRecibidasEnfermeria],
   )
 
   const pabellonesDisponibles = useMemo(
@@ -105,19 +125,29 @@ export function EtiquetasProveedorView() {
   }, [tiposDietaDisponibles, tipoDieta])
 
   const kpisConLogistica = useMemo(
-    () => calcularKpisEtiquetasProveedor(etiquetasEnCocina, comidaActiva),
-    [etiquetasEnCocina, comidaActiva],
+    () => calcularKpisEtiquetasProveedor(etiquetasLogistica, comidaActiva),
+    [etiquetasLogistica, comidaActiva],
   )
 
   const etiquetasFiltradas = useMemo(() => {
     return etiquetasEnCocina.filter((etiqueta) => {
+      if (mostrarRecibidasEnfermeria) {
+        return etiquetaCoincideFiltros(etiqueta, pabellon, habitacion, tipoDieta)
+      }
       if (!etiquetaCoincideEstados(etiqueta, filtrosEstado)) return false
       if (!etiquetaCoincideFiltros(etiqueta, pabellon, habitacion, tipoDieta)) {
         return false
       }
       return true
     })
-  }, [etiquetasEnCocina, filtrosEstado, pabellon, habitacion, tipoDieta])
+  }, [
+    etiquetasEnCocina,
+    filtrosEstado,
+    pabellon,
+    habitacion,
+    tipoDieta,
+    mostrarRecibidasEnfermeria,
+  ])
 
   const idsVisibles = useMemo(
     () => new Set(etiquetasFiltradas.map((etiqueta) => etiqueta.id)),
@@ -152,6 +182,10 @@ export function EtiquetasProveedorView() {
   function cambiarComida(id: TiempoComida) {
     setComidaActiva(id)
     setSeleccionados(new Set())
+    setKpiActivo(undefined)
+    if (apiActiva) {
+      rehidratarDesdeStorage()
+    }
   }
 
   function toggleEtiqueta(id: string, checked: boolean) {
@@ -235,11 +269,11 @@ export function EtiquetasProveedorView() {
     <div className="space-y-5 pb-6">
       <DashboardPageHeader
         title="Etiquetas de dietas"
-        subtitle={data.fechaReferencia}
+        subtitle={apiActiva ? subtituloFechaOperativa() : data.fechaReferencia}
       />
 
       <DietasComidaTabs
-        comidas={data.comidas}
+        comidas={apiActiva ? COMIDAS_OPERATIVAS : data.comidas}
         comidaActiva={comidaActiva}
         onComidaChange={cambiarComida}
       />
@@ -249,6 +283,15 @@ export function EtiquetasProveedorView() {
         kpiActivo={kpiActivo}
         onKpiClick={aplicarFiltroKpi}
       />
+
+      {apiActiva && (
+        <Alert>
+          <AlertDescription>
+            La impresión de etiquetas genera PDF en el navegador. El endpoint server-side
+            de PDF aún no está disponible en el API.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <EtiquetasFiltrosPanel
@@ -285,11 +328,14 @@ export function EtiquetasProveedorView() {
           {etiquetasFiltradas.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
               <p className="text-sm font-medium text-foreground">
-                No hay etiquetas para este turno
+                {apiActiva && !hidrato
+                  ? "Cargando etiquetas del turno…"
+                  : "No hay etiquetas para este turno"}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Ajusta los filtros o cambia el tiempo de comida. Las etiquetas ya
-                recibidas por enfermería no se muestran aquí.
+                {mostrarRecibidasEnfermeria
+                  ? "No hay etiquetas recibidas por enfermería para este tiempo de comida."
+                  : "Ajusta los filtros o cambia el tiempo de comida. Para ver las ya entregadas, pulsa el KPI Recibidas Enfermería."}
               </p>
             </div>
           ) : (

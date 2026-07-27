@@ -150,6 +150,28 @@ public class UsuariosPermisosController : ControllerBase
     }
 
     /// <summary>
+    /// Restablece la contraseña de un usuario del módulo
+    /// </summary>
+    [HttpPost("usuarios/{id}/restablecer-password")]
+    public async Task<ActionResult<object>> RestablecerPassword(Guid id)
+    {
+        try
+        {
+            var resultado = await _service.RestablecerPasswordAsync(id, "system");
+            return Ok(new { data = resultado });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al restablecer contraseña del usuario {Id}", id);
+            return StatusCode(500, new { message = "Error al restablecer contraseña" });
+        }
+    }
+
+    /// <summary>
     /// Obtiene la matriz de permisos (rutas permitidas por rol)
     /// </summary>
     [HttpGet("roles/permisos")]

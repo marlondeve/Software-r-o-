@@ -16,7 +16,7 @@ export function payloadQrEtiqueta(codigo: string): string {
 
 /** Normaliza códigos leídos desde QR (URL, LBL:… o código plano). */
 export function extraerCodigoDesdeQr(raw: string): string {
-  const limpio = raw.trim()
+  const limpio = raw.replace(/\s+/g, "").trim()
   const matchConsulta = limpio.match(/\/etiquetas\/consulta\/([^/?#]+)/i)
   if (matchConsulta) {
     return decodeURIComponent(matchConsulta[1]).toUpperCase()

@@ -33,29 +33,35 @@ export function LogisticaTimeline({
         <CardTitle className="text-sm font-semibold">{titulo}</CardTitle>
       </CardHeader>
       <CardContent className="px-4 py-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {hitos.map((hito, index) => (
-            <div key={hito.etapa} className="relative flex items-start gap-2">
-              {index < hitos.length - 1 && (
-                <ArrowRight className="absolute -right-1 top-2 hidden size-3.5 text-muted-foreground xl:block" />
-              )}
-              <div className="min-w-0 flex-1 rounded-lg bg-muted/40 px-3 py-2.5">
-                <p className="text-xs font-medium text-foreground">{hito.etapa}</p>
-                <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-                  {hito.tiempo}
-                </p>
-                <p
-                  className={cn(
-                    "mt-0.5 text-xs font-medium",
-                    tendenciaStyles[hito.tendenciaVariant],
-                  )}
-                >
-                  {hito.tendencia}
-                </p>
+        {hitos.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            Sin datos de tiempos logísticos para el período seleccionado.
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {hitos.map((hito, index) => (
+              <div key={hito.etapa} className="relative flex items-start gap-2">
+                {index < hitos.length - 1 && (
+                  <ArrowRight className="absolute -right-1 top-2 hidden size-3.5 text-muted-foreground xl:block" />
+                )}
+                <div className="min-w-0 flex-1 rounded-lg bg-muted/40 px-3 py-2.5">
+                  <p className="text-xs font-medium text-foreground">{hito.etapa}</p>
+                  <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+                    {hito.tiempo}
+                  </p>
+                  <p
+                    className={cn(
+                      "mt-0.5 text-xs font-medium",
+                      tendenciaStyles[hito.tendenciaVariant],
+                    )}
+                  >
+                    {hito.tendencia}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   )

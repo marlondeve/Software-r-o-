@@ -5,7 +5,7 @@ using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Bital.Shared.Contracts.Responses;
+using Bital.Infrastructure.DietasCocina;
 using Bital.Shared.Contracts.Services;
 
 namespace Bital.Infrastructure.Services;
@@ -17,15 +17,18 @@ public class DietasService : IDietasService
 {
     private readonly BitalNegocioDbContext _context;
     private readonly IAtencionesQueryService _atencionesQueryService;
+    private readonly IOrdenesCocinaService _ordenesCocinaService;
     private readonly ILogger<DietasService> _logger;
 
     public DietasService(
         BitalNegocioDbContext context,
         IAtencionesQueryService atencionesQueryService,
+        IOrdenesCocinaService ordenesCocinaService,
         ILogger<DietasService> logger)
     {
         _context = context;
         _atencionesQueryService = atencionesQueryService;
+        _ordenesCocinaService = ordenesCocinaService;
         _logger = logger;
     }
 
@@ -143,11 +146,7 @@ public class DietasService : IDietasService
             throw new KeyNotFoundException($"FilaDieta con ID {filaDietaId} no encontrada");
         }
 
-        // Actualizar datos de la dieta
-        fila.TipoDietaId = solicitud.TipoDietaId;
-        fila.Consistencia = solicitud.Consistencia;
-        fila.DescripcionDieta = solicitud.DescripcionDieta;
-        fila.Observaciones = solicitud.Observaciones;
+        AplicarSolicitudClinica(fila, solicitud);
         fila.SolicitadoPor = usuario;
         fila.SolicitadoEn = DateTime.UtcNow;
         fila.ModificadoPor = usuario;
@@ -182,26 +181,29 @@ public class DietasService : IDietasService
             throw new InvalidOperationException($"La dieta debe estar en estado Solicitada para ser confirmada. Estado actual: {fila.Estado}");
         }
 
-        // Actualizar datos si vienen en la confirmación
-        if (confirmacion.TipoDietaId.HasValue)
-        {
-            fila.TipoDietaId = confirmacion.TipoDietaId;
-        }
-        if (!string.IsNullOrEmpty(confirmacion.Consistencia))
-        {
-            fila.Consistencia = confirmacion.Consistencia;
-        }
-        if (!string.IsNullOrEmpty(confirmacion.Observaciones))
-        {
-            fila.Observaciones = confirmacion.Observaciones;
-        }
+        AplicarSolicitudClinica(fila, confirmacion, parcial: true);
 
-        // Cambiar estado a Confirmada
         fila.Estado = EstadoDieta.Confirmada;
         fila.ModificadoPor = usuario;
         fila.ModificadoEn = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        if (fila.OrdenCocinaId == null)
+        {
+            await _ordenesCocinaService.CrearOrdenAsync(
+                new CrearOrdenCocinaDto
+                {
+                    FechaOperativa = fila.FechaOperativa,
+                    Comida = fila.Comida.ToString(),
+                    DietasIds = [fila.Id],
+                },
+                usuario,
+                cancellationToken);
+        }
+
+        await _context.Entry(fila).ReloadAsync(cancellationToken);
+        await _context.Entry(fila).Reference(f => f.TipoDieta).LoadAsync(cancellationToken);
 
         _logger.LogInformation("Dieta {DietaId} confirmada por {Usuario}", filaDietaId, usuario);
 
@@ -240,11 +242,12 @@ public class DietasService : IDietasService
 
         foreach (var fila in filas)
         {
-            // Validar que esté en estado Solicitada
             if (fila.Estado != EstadoDieta.Solicitada)
             {
-                _logger.LogWarning("Dieta {DietaId} no está en estado Solicitada (estado actual: {Estado}), no se puede confirmar", 
-                    fila.Id, fila.Estado);
+                _logger.LogWarning(
+                    "Dieta {DietaId} no está en estado Solicitada (estado actual: {Estado}), no se puede confirmar",
+                    fila.Id,
+                    fila.Estado);
                 continue;
             }
 
@@ -257,11 +260,30 @@ public class DietasService : IDietasService
             fila.Estado = EstadoDieta.Confirmada;
             fila.ModificadoPor = confirmacion.Usuario;
             fila.ModificadoEn = DateTime.UtcNow;
-
             confirmadas++;
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        foreach (var fila in filas.Where(f => f.Estado == EstadoDieta.Confirmada && f.OrdenCocinaId == null))
+        {
+            try
+            {
+                await _ordenesCocinaService.CrearOrdenAsync(
+                    new CrearOrdenCocinaDto
+                    {
+                        FechaOperativa = fila.FechaOperativa,
+                        Comida = fila.Comida.ToString(),
+                        DietasIds = [fila.Id],
+                    },
+                    confirmacion.Usuario,
+                    cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "No se pudo crear orden de cocina para dieta {DietaId}", fila.Id);
+            }
+        }
 
         _logger.LogInformation("Confirmadas {Confirmadas} de {Total} dietas por {Usuario}",
             confirmadas, confirmacion.DietasIds.Count, confirmacion.Usuario);
@@ -298,19 +320,343 @@ public class DietasService : IDietasService
         var hoy = DateTime.UtcNow.Date;
 
         var catalogo = await _context.DietasCatalogo
-            .Include(d => d.HistoricoTarifas.Where(t => t.Activa && t.VigenciaDesde <= hoy && t.VigenciaHasta >= hoy))
-            .Where(d => d.Activa && d.FechaInicio <= hoy && (d.FechaFin == null || d.FechaFin >= hoy))
+            .Include(d => d.HistoricoTarifas)
+            .Where(d => d.Activa)
+            .OrderBy(d => d.Codigo)
             .ToListAsync(cancellationToken);
 
-        return catalogo.Select(d => new DietaCatalogoDto
+        return catalogo.Select(d => MapDietaCatalogoDto(d, hoy)).ToList();
+    }
+
+    private static DietaCatalogoDto MapDietaCatalogoDto(DietaCatalogo dieta, DateTime hoy)
+    {
+        var tarifasActivas = dieta.HistoricoTarifas
+            .Where(t => t.Activa)
+            .OrderByDescending(t => t.Anio)
+            .ThenByDescending(t => t.VigenciaDesde)
+            .ToList();
+
+        var tarifaVigente = ResolverTarifaVigente(tarifasActivas, hoy);
+
+        var historico = tarifasActivas
+            .Select(t => new TarifaHistoricoDto
+            {
+                Id = t.Id,
+                Anio = t.Anio,
+                Monto = t.Monto,
+                VigenciaDesde = t.VigenciaDesde,
+                VigenciaHasta = t.VigenciaHasta,
+                Vigente = EsTarifaVigente(t, hoy),
+                RegistradoPor = string.IsNullOrWhiteSpace(t.CreadoPor) ? dieta.Usuario : t.CreadoPor,
+                MotivoCambio = t.Observaciones,
+                CreadoEn = t.CreadoEn
+            })
+            .ToList();
+
+        return new DietaCatalogoDto
         {
-            Id = d.Id,
-            Codigo = d.Codigo,
-            Nombre = d.Nombre,
-            Descripcion = d.Descripcion,
-            TarifaActual = d.HistoricoTarifas.FirstOrDefault()?.Monto,
-            Activa = d.Activa
-        }).ToList();
+            Id = dieta.Id,
+            Codigo = dieta.Codigo,
+            Nombre = dieta.Nombre,
+            Descripcion = dieta.Descripcion,
+            TarifaActual = tarifaVigente?.Monto,
+            Activa = dieta.Activa,
+            FechaInicio = dieta.FechaInicio,
+            FechaFin = dieta.FechaFin,
+            Usuario = dieta.Usuario,
+            ModificadoEn = dieta.ModificadoEn ?? dieta.CreadoEn,
+            Estado = ResolverEstadoCatalogo(dieta, tarifasActivas, hoy),
+            HistoricoTarifas = historico
+        };
+    }
+
+    private static TarifaHistorico? ResolverTarifaVigente(IEnumerable<TarifaHistorico> tarifas, DateTime hoy)
+    {
+        return tarifas
+            .Where(t => EsTarifaVigente(t, hoy))
+            .OrderByDescending(t => t.Anio)
+            .FirstOrDefault()
+            ?? tarifas.OrderByDescending(t => t.Anio).FirstOrDefault();
+    }
+
+    private static bool EsTarifaVigente(TarifaHistorico tarifa, DateTime hoy) =>
+        tarifa.Activa
+        && tarifa.VigenciaDesde.Date <= hoy
+        && tarifa.VigenciaHasta.Date >= hoy;
+
+    private static string ResolverEstadoCatalogo(
+        DietaCatalogo dieta,
+        IReadOnlyCollection<TarifaHistorico> tarifasActivas,
+        DateTime hoy)
+    {
+        if (!dieta.Activa)
+        {
+            return "vencida";
+        }
+
+        if (dieta.FechaInicio.Date > hoy)
+        {
+            return "programada";
+        }
+
+        if (dieta.FechaFin.HasValue && dieta.FechaFin.Value.Date < hoy)
+        {
+            return "vencida";
+        }
+
+        if (tarifasActivas.Any(t => EsTarifaVigente(t, hoy)))
+        {
+            return "vigente";
+        }
+
+        if (tarifasActivas.Any(t => t.VigenciaDesde.Date > hoy))
+        {
+            return "programada";
+        }
+
+        return tarifasActivas.Count > 0 ? "vencida" : "vigente";
+    }
+
+    public async Task<DietaCatalogoDto> ObtenerCatalogoDietaPorIdAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var dieta = await _context.DietasCatalogo
+            .Include(d => d.HistoricoTarifas)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Dieta de catálogo {id} no encontrada");
+
+        return MapDietaCatalogoDto(dieta, DateTime.UtcNow.Date);
+    }
+
+    public async Task<DietaCatalogoDto> CrearDietaCatalogoAsync(
+        CrearDietaCatalogoDto dto,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        var codigo = dto.Codigo.Trim();
+        if (await _context.DietasCatalogo.AnyAsync(d => d.Codigo == codigo, cancellationToken))
+        {
+            throw new InvalidOperationException($"Ya existe una dieta con código {codigo}");
+        }
+
+        var hoy = DateTime.UtcNow.Date;
+        var dieta = new DietaCatalogo
+        {
+            Id = Guid.NewGuid(),
+            Codigo = codigo,
+            Nombre = dto.Nombre.Trim(),
+            Descripcion = dto.Descripcion?.Trim() ?? string.Empty,
+            FechaInicio = (dto.FechaInicio ?? hoy).Date,
+            FechaFin = dto.FechaFin?.Date,
+            Usuario = usuario,
+            Activa = dto.Activa,
+            CreadoPor = usuario,
+        };
+
+        _context.DietasCatalogo.Add(dieta);
+
+        if (dto.TarifaInicial.HasValue && dto.TarifaInicial.Value > 0)
+        {
+            var vigenciaDesde = (dto.VigenciaDesde ?? dto.FechaInicio ?? hoy).Date;
+            var vigenciaHasta = (dto.VigenciaHasta ?? new DateTime(vigenciaDesde.Year, 12, 31)).Date;
+            _context.TarifasHistorico.Add(new TarifaHistorico
+            {
+                Id = Guid.NewGuid(),
+                DietaCatalogoId = dieta.Id,
+                Anio = vigenciaDesde.Year,
+                Monto = dto.TarifaInicial.Value,
+                VigenciaDesde = vigenciaDesde,
+                VigenciaHasta = vigenciaHasta,
+                Activa = true,
+                Observaciones = dto.MotivoTarifa,
+                CreadoPor = usuario,
+            });
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return await ObtenerCatalogoDietaPorIdAsync(dieta.Id, cancellationToken);
+    }
+
+    public async Task<DietaCatalogoDto> ActualizarDietaCatalogoAsync(
+        Guid id,
+        ActualizarDietaCatalogoDto dto,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        var dieta = await _context.DietasCatalogo
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Dieta de catálogo {id} no encontrada");
+
+        if (!string.IsNullOrWhiteSpace(dto.Nombre))
+        {
+            dieta.Nombre = dto.Nombre.Trim();
+        }
+
+        if (dto.Descripcion != null)
+        {
+            dieta.Descripcion = dto.Descripcion.Trim();
+        }
+
+        if (dto.FechaInicio.HasValue)
+        {
+            dieta.FechaInicio = dto.FechaInicio.Value.Date;
+        }
+
+        if (dto.FechaFin.HasValue)
+        {
+            dieta.FechaFin = dto.FechaFin.Value.Date;
+        }
+
+        dieta.Usuario = usuario;
+        dieta.ModificadoPor = usuario;
+        dieta.ModificadoEn = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return await ObtenerCatalogoDietaPorIdAsync(id, cancellationToken);
+    }
+
+    public async Task<DietaCatalogoDto> DesactivarDietaCatalogoAsync(
+        Guid id,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        var dieta = await _context.DietasCatalogo
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Dieta de catálogo {id} no encontrada");
+
+        dieta.Activa = false;
+        dieta.Usuario = usuario;
+        dieta.ModificadoPor = usuario;
+        dieta.ModificadoEn = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+        return await ObtenerCatalogoDietaPorIdAsync(id, cancellationToken);
+    }
+
+    public async Task<List<TarifaHistoricoDto>> ObtenerTarifasDietaAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var dieta = await ObtenerCatalogoDietaPorIdAsync(id, cancellationToken);
+        return dieta.HistoricoTarifas;
+    }
+
+    public async Task<TarifaHistoricoDto> RegistrarTarifaDietaAsync(
+        Guid id,
+        NuevaTarifaDto dto,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        var dieta = await _context.DietasCatalogo
+            .Include(d => d.HistoricoTarifas)
+            .FirstOrDefaultAsync(d => d.Id == id, cancellationToken)
+            ?? throw new KeyNotFoundException($"Dieta de catálogo {id} no encontrada");
+
+        var vigenciaDesde = dto.VigenciaDesde.Date;
+        var vigenciaHasta = dto.VigenciaHasta.Date;
+        if (vigenciaHasta < vigenciaDesde)
+        {
+            throw new InvalidOperationException("La vigencia hasta debe ser posterior a la vigencia desde");
+        }
+
+        var solapa = dieta.HistoricoTarifas.Any(t =>
+            t.Activa
+            && vigenciaDesde <= t.VigenciaHasta.Date
+            && vigenciaHasta >= t.VigenciaDesde.Date);
+        if (solapa)
+        {
+            throw new InvalidOperationException("La vigencia de la tarifa se solapa con una tarifa existente");
+        }
+
+        foreach (var tarifa in dieta.HistoricoTarifas.Where(t =>
+                     t.Activa
+                     && t.VigenciaDesde.Date <= DateTime.UtcNow.Date
+                     && t.VigenciaHasta.Date >= DateTime.UtcNow.Date))
+        {
+            tarifa.Activa = false;
+        }
+
+        var nueva = new TarifaHistorico
+        {
+            Id = Guid.NewGuid(),
+            DietaCatalogoId = id,
+            Anio = vigenciaDesde.Year,
+            Monto = dto.Monto,
+            VigenciaDesde = vigenciaDesde,
+            VigenciaHasta = vigenciaHasta,
+            Activa = true,
+            Observaciones = dto.MotivoCambio,
+            CreadoPor = usuario,
+        };
+
+        _context.TarifasHistorico.Add(nueva);
+        dieta.ModificadoPor = usuario;
+        dieta.ModificadoEn = DateTime.UtcNow;
+        dieta.Usuario = usuario;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var hoy = DateTime.UtcNow.Date;
+        return new TarifaHistoricoDto
+        {
+            Id = nueva.Id,
+            Anio = nueva.Anio,
+            Monto = nueva.Monto,
+            VigenciaDesde = nueva.VigenciaDesde,
+            VigenciaHasta = nueva.VigenciaHasta,
+            Vigente = EsTarifaVigente(nueva, hoy),
+            RegistradoPor = usuario,
+            MotivoCambio = nueva.Observaciones,
+            CreadoEn = nueva.CreadoEn,
+        };
+    }
+
+    private static void AplicarSolicitudClinica(
+        FilaDieta fila,
+        SolicitudDietaDto solicitud,
+        bool parcial = false)
+    {
+        if (!parcial || solicitud.TipoDietaId.HasValue)
+        {
+            fila.TipoDietaId = solicitud.TipoDietaId;
+        }
+
+        if (!parcial || solicitud.Consistencia != null)
+        {
+            fila.Consistencia = solicitud.Consistencia;
+        }
+
+        if (!parcial || solicitud.DescripcionDieta != null)
+        {
+            fila.DescripcionDieta = solicitud.DescripcionDieta;
+        }
+
+        if (!parcial || solicitud.Observaciones != null)
+        {
+            fila.Observaciones = solicitud.Observaciones;
+        }
+
+        if (!parcial || solicitud.Aislado.HasValue)
+        {
+            fila.Aislado = solicitud.Aislado ?? false;
+            if (fila.Aislado)
+            {
+                fila.Aislamiento = solicitud.Aislamiento ?? fila.Aislamiento;
+                fila.ObservacionAislamiento = solicitud.ObservacionAislamiento ?? fila.ObservacionAislamiento;
+            }
+            else
+            {
+                fila.Aislamiento = "Ninguno";
+                fila.ObservacionAislamiento = null;
+            }
+        }
+
+        if (!parcial || solicitud.Alergico.HasValue)
+        {
+            fila.Alergico = solicitud.Alergico ?? false;
+            fila.Alergias = fila.Alergico ? (solicitud.Alergias ?? fila.Alergias ?? string.Empty) : string.Empty;
+        }
     }
 
     public async Task<FilaDietaDto> RegistrarNovedadAsync(Guid filaDietaId, NovedadDietaDto novedad, string usuario, CancellationToken cancellationToken = default)
@@ -459,6 +805,7 @@ public class DietasService : IDietasService
             SolicitadoPor = fila.SolicitadoPor,
             SolicitadoEn = fila.SolicitadoEn,
             CancelacionTardia = fila.CancelacionTardia,
+            OrdenCocinaId = fila.OrdenCocinaId,
             FechaOperativa = fila.FechaOperativa
         };
     }

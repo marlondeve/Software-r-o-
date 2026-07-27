@@ -1,4 +1,5 @@
 import type { DietaCatalogo, TarifaHistorico } from "@/modules/dietas-cocina/types/catalog"
+import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 const formatoMonedaCop = new Intl.NumberFormat("es-CO", {
   style: "currency",
   currency: "COP",
@@ -112,9 +113,6 @@ export function formatearFechaHoraCatalogo(fecha: Date): string {
     month: "short",
     year: "numeric",
   })
-  const h = fecha.toLocaleTimeString("es-CO", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  const h = formatearHoraDesdeFecha(fecha)
   return `${f}, ${h}`
 }

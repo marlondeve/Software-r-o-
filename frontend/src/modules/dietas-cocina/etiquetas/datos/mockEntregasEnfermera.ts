@@ -17,6 +17,8 @@ const logisticaPorId: Record<
       | "cama"
       | "horaPreEntrega"
       | "horaEntrega"
+      | "horaDevolucion"
+      | "recibidoPor"
     >
   >
 > = {

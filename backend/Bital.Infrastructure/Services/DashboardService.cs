@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,13 @@ public class DashboardService : IDashboardService
         _context = context;
     }
 
+    private static bool TryParseTiempoComida(string? comida, out TiempoComida tiempoComida)
+    {
+        tiempoComida = default;
+        return !string.IsNullOrWhiteSpace(comida)
+            && Enum.TryParse<TiempoComida>(comida, ignoreCase: true, out tiempoComida);
+    }
+
     public async Task<DashboardNutricionistaDto> ObtenerDashboardNutricionistaAsync(DateTime? fecha, string? comida)
     {
         var fechaOperativa = fecha ?? DateTime.Today;
@@ -26,8 +34,8 @@ public class DashboardService : IDashboardService
         var dietasQuery = _context.FilasDietas
             .Where(f => f.FechaOperativa.Date == fechaOperativa.Date);
 
-        if (!string.IsNullOrEmpty(comida))
-            dietasQuery = dietasQuery.Where(f => f.Comida.ToString() == comida);
+        if (TryParseTiempoComida(comida, out var tiempoComida))
+            dietasQuery = dietasQuery.Where(f => f.Comida == tiempoComida);
 
         var dietas = await dietasQuery.ToListAsync();
         var totalDietas = dietas.Count;
@@ -37,8 +45,8 @@ public class DashboardService : IDashboardService
         var ordenesQuery = _context.OrdenesCocina
             .Where(o => o.FechaOperativa.Date == fechaOperativa.Date);
 
-        if (!string.IsNullOrEmpty(comida))
-            ordenesQuery = ordenesQuery.Where(o => o.Comida.ToString() == comida);
+        if (TryParseTiempoComida(comida, out var tiempoComidaOrden))
+            ordenesQuery = ordenesQuery.Where(o => o.Comida == tiempoComidaOrden);
 
         var ordenes = await ordenesQuery.ToListAsync();
         var ordenesGeneradas = ordenes.Count;
@@ -48,8 +56,8 @@ public class DashboardService : IDashboardService
         var etiquetasQuery = _context.EtiquetasEnfermeria
             .Where(e => e.GeneradaEn.Date == fechaOperativa.Date);
 
-        if (!string.IsNullOrEmpty(comida))
-            etiquetasQuery = etiquetasQuery.Where(e => e.Comida.ToString() == comida);
+        if (TryParseTiempoComida(comida, out var tiempoComidaEtiqueta))
+            etiquetasQuery = etiquetasQuery.Where(e => e.Comida == tiempoComidaEtiqueta);
 
         var etiquetas = await etiquetasQuery.CountAsync();
 
@@ -131,8 +139,8 @@ public class DashboardService : IDashboardService
         var ordenesQuery = _context.OrdenesCocina
             .Where(o => o.FechaOperativa.Date == fechaHoy);
 
-        if (!string.IsNullOrEmpty(comida))
-            ordenesQuery = ordenesQuery.Where(o => o.Comida.ToString() == comida);
+        if (TryParseTiempoComida(comida, out var tiempoComidaOrden))
+            ordenesQuery = ordenesQuery.Where(o => o.Comida == tiempoComidaOrden);
 
         var ordenes = await ordenesQuery.ToListAsync();
         var totalOrdenes = ordenes.Count;
@@ -143,8 +151,8 @@ public class DashboardService : IDashboardService
         var etiquetasQuery = _context.EtiquetasEnfermeria
             .Where(e => e.GeneradaEn.Date == fechaHoy);
 
-        if (!string.IsNullOrEmpty(comida))
-            etiquetasQuery = etiquetasQuery.Where(e => e.Comida.ToString() == comida);
+        if (TryParseTiempoComida(comida, out var tiempoComidaEtiqueta))
+            etiquetasQuery = etiquetasQuery.Where(e => e.Comida == tiempoComidaEtiqueta);
 
         var etiquetasGeneradas = await etiquetasQuery.CountAsync();
         var etiquetasEntregadas = await etiquetasQuery.CountAsync(e => e.EntregadaEn != null);
@@ -193,8 +201,8 @@ public class DashboardService : IDashboardService
             .Include(e => e.FilaDieta)
             .Where(e => e.GeneradaEn.Date == fechaHoy);
 
-        if (!string.IsNullOrEmpty(comida))
-            etiquetasQuery = etiquetasQuery.Where(e => e.Comida.ToString() == comida);
+        if (TryParseTiempoComida(comida, out var tiempoComidaEtiqueta))
+            etiquetasQuery = etiquetasQuery.Where(e => e.Comida == tiempoComidaEtiqueta);
 
         if (!string.IsNullOrEmpty(pabellon))
             etiquetasQuery = etiquetasQuery.Where(e => e.FilaDieta != null && e.FilaDieta.Servicio == pabellon);
@@ -272,8 +280,8 @@ public class DashboardService : IDashboardService
         if (!string.IsNullOrEmpty(filtros.Servicio))
             dietasQuery = dietasQuery.Where(f => f.Servicio == filtros.Servicio);
 
-        if (!string.IsNullOrEmpty(filtros.Comida))
-            dietasQuery = dietasQuery.Where(f => f.Comida.ToString() == filtros.Comida);
+        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaFiltro))
+            dietasQuery = dietasQuery.Where(f => f.Comida == comidaFiltro);
 
         var dietas = await dietasQuery.ToListAsync();
         var totalDietas = dietas.Count;
@@ -283,8 +291,8 @@ public class DashboardService : IDashboardService
         var ordenesQuery = _context.OrdenesCocina
             .Where(o => o.FechaOperativa >= desde && o.FechaOperativa <= hasta);
 
-        if (!string.IsNullOrEmpty(filtros.Comida))
-            ordenesQuery = ordenesQuery.Where(o => o.Comida.ToString() == filtros.Comida);
+        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaReporteOrden))
+            ordenesQuery = ordenesQuery.Where(o => o.Comida == comidaReporteOrden);
 
         var ordenes = await ordenesQuery.ToListAsync();
         var totalOrdenes = ordenes.Count;
@@ -344,8 +352,8 @@ public class DashboardService : IDashboardService
         var ordenesQuery = _context.OrdenesCocina
             .Where(o => o.FechaOperativa >= desde && o.FechaOperativa <= hasta);
 
-        if (!string.IsNullOrEmpty(filtros.Comida))
-            ordenesQuery = ordenesQuery.Where(o => o.Comida.ToString() == filtros.Comida);
+        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaReporteOrden))
+            ordenesQuery = ordenesQuery.Where(o => o.Comida == comidaReporteOrden);
 
         var ordenes = await ordenesQuery.ToListAsync();
         var totalOrdenes = ordenes.Count;
@@ -355,8 +363,8 @@ public class DashboardService : IDashboardService
         var etiquetasQuery = _context.EtiquetasEnfermeria
             .Where(e => e.GeneradaEn >= desde && e.GeneradaEn <= hasta);
 
-        if (!string.IsNullOrEmpty(filtros.Comida))
-            etiquetasQuery = etiquetasQuery.Where(e => e.Comida.ToString() == filtros.Comida);
+        if (!string.IsNullOrEmpty(filtros.Comida) && TryParseTiempoComida(filtros.Comida, out var comidaReporteEtiqueta))
+            etiquetasQuery = etiquetasQuery.Where(e => e.Comida == comidaReporteEtiqueta);
 
         var totalEtiquetas = await etiquetasQuery.CountAsync();
         var etiquetasEntregadas = await etiquetasQuery.CountAsync(e => e.EntregadaEn != null);

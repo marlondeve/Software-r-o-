@@ -95,10 +95,16 @@ export type RutaDietas =
   | "usuarios"
 
 export const MOTIVOS_DEVOLUCION = [
-  "Rechazo del paciente",
-  "Condición médica",
-  "Error en cocina",
+  "Paciente no estaba en habitación",
+  "Paciente en NPO o ayuno",
+  "Paciente se negó antes de recibir",
+  "Bandeja incorrecta para el paciente",
+  "Bandeja dañada o contaminada",
   "Temperatura inadecuada",
+  "Se consumió",
+  "Consumo parcial",
+  "No se consumió",
+  "Bandeja sin abrir",
 ] as const
 
 export type MotivoDevolucion = (typeof MOTIVOS_DEVOLUCION)[number]

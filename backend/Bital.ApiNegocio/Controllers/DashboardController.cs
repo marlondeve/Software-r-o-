@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -60,7 +61,8 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? hasta,
         [FromQuery] string? servicio,
         [FromQuery] string? horario,
-        [FromQuery] string? comida)
+        [FromQuery] string? comida,
+        [FromQuery] string? formato)
     {
         var filtros = new FiltrosReportesDto
         {
@@ -72,6 +74,15 @@ public class DashboardController : ControllerBase
         };
 
         var reporte = await _dashboardService.ObtenerReporteNutricionistaAsync(filtros);
+
+        if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var csv = CsvExportHelper.Generar(
+                reporte.Kpis.Select(k => (IReadOnlyList<string?>)[k.Etiqueta, k.Valor.ToString(), k.Formato]),
+                ["Indicador", "Valor", "Formato"]);
+            return File(csv, "text/csv", $"reporte-nutricionista-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }
+
         return Ok(new { data = reporte });
     }
 
@@ -84,7 +95,8 @@ public class DashboardController : ControllerBase
         [FromQuery] DateTime? hasta,
         [FromQuery] string? servicio,
         [FromQuery] string? horario,
-        [FromQuery] string? comida)
+        [FromQuery] string? comida,
+        [FromQuery] string? formato)
     {
         var filtros = new FiltrosReportesDto
         {
@@ -96,6 +108,15 @@ public class DashboardController : ControllerBase
         };
 
         var reporte = await _dashboardService.ObtenerReporteProveedorAsync(filtros);
+
+        if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            var csv = CsvExportHelper.Generar(
+                reporte.Kpis.Select(k => (IReadOnlyList<string?>)[k.Etiqueta, k.Valor.ToString(), k.Formato]),
+                ["Indicador", "Valor", "Formato"]);
+            return File(csv, "text/csv", $"reporte-proveedor-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }
+
         return Ok(new { data = reporte });
     }
 }

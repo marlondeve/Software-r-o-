@@ -4,6 +4,7 @@ using Bital.Domain.Entities.DietasCocina;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.Extensions.Logging;
 
 namespace Bital.Infrastructure;
@@ -15,13 +16,23 @@ public class OrdenesCocinaService : IOrdenesCocinaService
 {
     private readonly BitalNegocioDbContext _context;
     private readonly ILogger<OrdenesCocinaService> _logger;
+    private readonly IAuditoriaService? _auditoria;
 
     public OrdenesCocinaService(
         BitalNegocioDbContext context,
-        ILogger<OrdenesCocinaService> logger)
+        ILogger<OrdenesCocinaService> logger,
+        IAuditoriaService? auditoria = null)
     {
         _context = context;
         _logger = logger;
+        _auditoria = auditoria;
+    }
+
+    private static bool TryParseTiempoComida(string? comida, out TiempoComida tiempoComida)
+    {
+        tiempoComida = default;
+        return !string.IsNullOrWhiteSpace(comida)
+            && Enum.TryParse<TiempoComida>(comida, ignoreCase: true, out tiempoComida);
     }
 
     public async Task<List<OrdenCocinaDto>> ObtenerOrdenesAsync(
@@ -37,8 +48,8 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         if (fecha.HasValue)
             query = query.Where(o => o.FechaOperativa.Date == fecha.Value.Date);
 
-        if (!string.IsNullOrEmpty(comida))
-            query = query.Where(o => o.Comida.ToString() == comida);
+        if (TryParseTiempoComida(comida, out var tiempoComida))
+            query = query.Where(o => o.Comida == tiempoComida);
 
         if (!string.IsNullOrEmpty(estado))
             query = query.Where(o => o.Estado == estado);
@@ -77,13 +88,10 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         if (dietasNoConfirmadas.Any())
             throw new InvalidOperationException($"{dietasNoConfirmadas.Count} dietas no están confirmadas");
 
-        // Obtener el siguiente número de orden del día
-        var ultimaOrden = await _context.OrdenesCocina
-            .Where(o => o.FechaOperativa.Date == datos.FechaOperativa.Date)
-            .OrderByDescending(o => o.NumeroOrden)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        var numeroOrden = (ultimaOrden?.NumeroOrden ?? 0) + 1;
+        // El índice IX_OrdenCocina_Numero es único globalmente (no por día).
+        var maxNumero = await _context.OrdenesCocina
+            .MaxAsync(o => (int?)o.NumeroOrden, cancellationToken) ?? 0;
+        var numeroOrden = maxNumero + 1;
 
         // Parsear comida
         if (!Enum.TryParse<TiempoComida>(datos.Comida, out var comida))
@@ -100,7 +108,9 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             GeneradoPor = usuario,
             GeneradoEn = DateTime.UtcNow,
             Estado = "Pendiente",
-            Observaciones = datos.Observaciones
+            Observaciones = datos.Observaciones,
+            CreadoPor = usuario,
+            ChecklistJson = ChecklistOperativoHelper.Serializar(ChecklistOperativoHelper.PlantillaInicial()),
         };
 
         _context.OrdenesCocina.Add(orden);
@@ -123,13 +133,16 @@ public class OrdenesCocinaService : IOrdenesCocinaService
                 EstadoNuevo = EstadoDieta.EnPreparacion,
                 Usuario = usuario,
                 FechaEvento = DateTime.UtcNow,
-                DatosAdicionales = orden.Id.ToString()
+                DatosAdicionales = orden.Id.ToString(),
+                CreadoPor = usuario,
             };
 
             _context.EventosTrazabilidad.Add(evento);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        await _context.Entry(orden).Collection(o => o.Dietas).LoadAsync(cancellationToken);
 
         _logger.LogInformation(
             "Orden de cocina #{NumeroOrden} creada para {Fecha} {Comida} con {Total} dietas por {Usuario}",
@@ -150,6 +163,17 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             ?? throw new KeyNotFoundException($"Orden {ordenId} no encontrada");
 
         var estadoAnterior = orden.Estado;
+
+        if (datos.Estado == "Completada")
+        {
+            var checklist = ChecklistOperativoHelper.DesdeJson(orden.ChecklistJson);
+            if (!ChecklistOperativoHelper.ObligatoriosCompletos(checklist))
+            {
+                throw new InvalidOperationException(
+                    "Complete los ítems obligatorios del checklist antes de marcar la orden como completada");
+            }
+        }
+
         orden.Estado = datos.Estado;
 
         if (!string.IsNullOrEmpty(datos.Observaciones))
@@ -159,7 +183,6 @@ public class OrdenesCocinaService : IOrdenesCocinaService
                 : $"{orden.Observaciones}\n[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] {datos.Observaciones}";
         }
 
-        // Si la orden pasa a "Completada", actualizar las dietas a "ListaEnvio"
         if (datos.Estado == "Completada")
         {
             foreach (var dieta in orden.Dietas)
@@ -183,12 +206,66 @@ public class OrdenesCocinaService : IOrdenesCocinaService
                 _context.EventosTrazabilidad.Add(evento);
             }
         }
+        else if (datos.Estado == "Despachada")
+        {
+            foreach (var dieta in orden.Dietas)
+            {
+                var estadoDietaAnterior = dieta.Estado;
+                dieta.Estado = EstadoDieta.EnRuta;
+
+                var evento = new EventoTrazabilidad
+                {
+                    Id = Guid.NewGuid(),
+                    FilaDietaId = dieta.Id,
+                    TipoEvento = "orden_despachada",
+                    Descripcion = $"Orden #{orden.NumeroOrden} despachada - Dieta en ruta",
+                    EstadoAnterior = estadoDietaAnterior,
+                    EstadoNuevo = EstadoDieta.EnRuta,
+                    Usuario = usuario,
+                    FechaEvento = DateTime.UtcNow,
+                    DatosAdicionales = orden.Id.ToString()
+                };
+
+                _context.EventosTrazabilidad.Add(evento);
+            }
+        }
+        else if (datos.Estado == "EnPreparacion")
+        {
+            foreach (var dieta in orden.Dietas.Where(d => d.Estado == EstadoDieta.Confirmada))
+            {
+                var estadoDietaAnterior = dieta.Estado;
+                dieta.Estado = EstadoDieta.EnPreparacion;
+
+                _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+                {
+                    Id = Guid.NewGuid(),
+                    FilaDietaId = dieta.Id,
+                    TipoEvento = "orden_en_preparacion",
+                    Descripcion = $"Orden #{orden.NumeroOrden} en preparación",
+                    EstadoAnterior = estadoDietaAnterior,
+                    EstadoNuevo = EstadoDieta.EnPreparacion,
+                    Usuario = usuario,
+                    FechaEvento = DateTime.UtcNow,
+                    DatosAdicionales = orden.Id.ToString(),
+                });
+            }
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 
         _logger.LogInformation(
             "Orden #{NumeroOrden} actualizada de {EstadoAnterior} a {EstadoNuevo} por {Usuario}",
             orden.NumeroOrden, estadoAnterior, datos.Estado, usuario);
+
+        AuditoriaOperativaHelper.RegistrarSilencioso(
+            _auditoria,
+            _logger,
+            "Ordenes",
+            "ActualizarEstado",
+            usuario,
+            "OrdenCocina",
+            orden.Id,
+            $"{{\"estado\":\"{datos.Estado}\"}}");
 
         return MapearADto(orden);
     }
@@ -244,6 +321,42 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         return true;
     }
 
+    public async Task<OrdenCocinaDto> ActualizarChecklistOrdenAsync(
+        Guid ordenId,
+        ActualizarChecklistOrdenDto datos,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        var orden = await _context.OrdenesCocina
+            .Include(o => o.Dietas)
+            .FirstOrDefaultAsync(o => o.Id == ordenId, cancellationToken)
+            ?? throw new KeyNotFoundException($"Orden {ordenId} no encontrada");
+
+        var actual = ChecklistOperativoHelper.DesdeJson(orden.ChecklistJson);
+        var actualizado = ChecklistOperativoHelper.AplicarActualizacion(actual, datos.Items);
+        orden.ChecklistJson = ChecklistOperativoHelper.Serializar(actualizado);
+        orden.ModificadoPor = usuario;
+        orden.ModificadoEn = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation(
+            "Checklist de orden #{NumeroOrden} actualizado por {Usuario}",
+            orden.NumeroOrden,
+            usuario);
+
+        AuditoriaOperativaHelper.RegistrarSilencioso(
+            _auditoria,
+            _logger,
+            "Ordenes",
+            "ActualizarChecklist",
+            usuario,
+            "OrdenCocina",
+            orden.Id);
+
+        return MapearADtoConDietas(orden);
+    }
+
     private static OrdenCocinaDto MapearADto(OrdenCocina orden)
     {
         return new OrdenCocinaDto
@@ -256,7 +369,8 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             Estado = orden.Estado,
             GeneradoPor = orden.GeneradoPor,
             GeneradoEn = orden.GeneradoEn,
-            Observaciones = orden.Observaciones
+            Observaciones = orden.Observaciones,
+            Checklist = ChecklistOperativoHelper.DesdeJson(orden.ChecklistJson),
         };
     }
 
@@ -289,6 +403,7 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             SolicitadoPor = d.SolicitadoPor,
             SolicitadoEn = d.SolicitadoEn,
             CancelacionTardia = d.CancelacionTardia,
+            OrdenCocinaId = d.OrdenCocinaId,
             FechaOperativa = d.FechaOperativa
         }).ToList();
 

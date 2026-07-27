@@ -10,13 +10,20 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
+import {
+  dashboardEnfermeraVacio,
+  mapDashboardEnfermeraDto,
+} from "@/modules/dietas-cocina/api/mappers/dashboard-view.mapper"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/DashboardCard"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { KpiCardSimple } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
+import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { construirDashboardEnfermeraDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardEnfermera"
+import { mesclarDashboardEnfermera } from "@/modules/dietas-cocina/lib/mesclarDashboardOperativo"
+import { useDashboardApi } from "@/modules/dietas-cocina/inicio/hooks/useDashboardApi"
 
 type DietaReciente = {
   habitacion: string
@@ -28,11 +35,29 @@ type DietaReciente = {
 export function EnfermeraDashboard() {
   const { ordenes, etiquetas } = useCicloBandejas()
   const { filas } = useDietasOperativas()
+  const comidaActiva = useMemo(() => obtenerComidaActivaOperativa(), [])
+  const dashboardApi = useDashboardApi("enfermera", comidaActiva)
 
-  const data = useMemo(
-    () => construirDashboardEnfermeraDesdeCiclo(filas, ordenes, etiquetas),
-    [filas, ordenes, etiquetas],
-  )
+  const data = useMemo(() => {
+    const ciclo = construirDashboardEnfermeraDesdeCiclo(
+      filas,
+      ordenes,
+      etiquetas,
+      comidaActiva,
+    )
+    if (!dashboardApi.apiActiva || dashboardApi.error || !dashboardApi.data) {
+      return ciclo
+    }
+    return mesclarDashboardEnfermera(
+      mapDashboardEnfermeraDto(dashboardApi.data),
+      ciclo,
+    )
+  }, [filas, ordenes, etiquetas, comidaActiva, dashboardApi.apiActiva, dashboardApi.data, dashboardApi.error])
+
+  const kpis =
+    data.kpis.length >= 3
+      ? data.kpis
+      : dashboardEnfermeraVacio().kpis
 
   const columnasDietas = useMemo<ColumnDef<DietaReciente>[]>(
     () => [
@@ -68,20 +93,30 @@ export function EnfermeraDashboard() {
         }
       />
 
+      {dashboardApi.apiActiva && dashboardApi.cargando && (
+        <p className="text-sm text-muted-foreground">Cargando indicadores…</p>
+      )}
+
+      {dashboardApi.apiActiva && dashboardApi.error && (
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          No se pudieron cargar todos los indicadores del servidor. Mostrando datos operativos locales.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCardSimple
-          label={data.kpis[0].label}
-          value={data.kpis[0].value}
+          label={kpis[0].label}
+          value={kpis[0].value}
           icon={ClipboardList}
         />
         <KpiCardSimple
-          label={data.kpis[1].label}
-          value={data.kpis[1].value}
+          label={kpis[1].label}
+          value={kpis[1].value}
           icon={CheckCircle2}
         />
         <KpiCardSimple
-          label={data.kpis[2].label}
-          value={data.kpis[2].value}
+          label={kpis[2].label}
+          value={kpis[2].value}
           icon={AlertTriangle}
           className="border-l-[3px] border-l-destructive"
         />
@@ -110,19 +145,25 @@ export function EnfermeraDashboard() {
               </h3>
             </div>
             <div className="space-y-3">
-              {data.alertas.map((alerta) => (
-                <div
-                  key={`${alerta.habitacion}-${alerta.titulo}`}
-                  className="rounded-lg bg-card p-3 ring-1 ring-border"
-                >
-                  <p className="text-sm font-medium text-foreground">
-                    Hab {alerta.habitacion}: {alerta.titulo}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {alerta.descripcion}
-                  </p>
-                </div>
-              ))}
+              {data.alertas.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Sin alertas pendientes.
+                </p>
+              ) : (
+                data.alertas.map((alerta) => (
+                  <div
+                    key={`${alerta.habitacion}-${alerta.titulo}`}
+                    className="rounded-lg bg-card p-3 ring-1 ring-border"
+                  >
+                    <p className="text-sm font-medium text-foreground">
+                      Hab {alerta.habitacion}: {alerta.titulo}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {alerta.descripcion}
+                    </p>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
