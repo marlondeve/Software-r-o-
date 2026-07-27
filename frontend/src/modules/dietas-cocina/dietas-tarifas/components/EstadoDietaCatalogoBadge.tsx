@@ -34,7 +34,8 @@ export function EstadoDietaCatalogoBadge({
   estado,
   className,
 }: EstadoDietaCatalogoBadgeProps) {
-  const { label, className: cls, Icon } = CONFIG[estado]
+  const config = CONFIG[estado] ?? CONFIG.vigente
+  const { label, className: cls, Icon } = config
   return (
     <Badge variant="outline" className={cn("gap-1 font-medium", cls, className)}>
       <Icon className="size-3" aria-hidden />

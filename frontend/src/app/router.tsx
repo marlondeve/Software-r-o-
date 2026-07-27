@@ -121,7 +121,7 @@ export const router = createBrowserRouter([
                 ),
               },
               {
-                path: "devolucion",
+                path: "devolucion/:tipo",
                 element: (
                   <RequireEnfermeraEtiquetas>
                     <DevolucionFlowPage />

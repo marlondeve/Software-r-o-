@@ -589,6 +589,9 @@ namespace Bital.Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ChecklistJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("Comida")
                         .HasColumnType("int");
 
@@ -646,6 +649,37 @@ namespace Bital.Infrastructure.Migrations
                         .HasDatabaseName("IX_OrdenCocina_FechaComida");
 
                     b.ToTable("OrdenesCocina", "dietas");
+                });
+
+            modelBuilder.Entity("Bital.Domain.Entities.DietasCocina.ParametrosOperativos", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreadoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreadoPor")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("ModificadoEn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ModificadoPor")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ModoCarga")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ParametrosOperativos", "dietas");
                 });
 
             modelBuilder.Entity("Bital.Domain.Entities.DietasCocina.PermisoRol", b =>
@@ -882,6 +916,9 @@ namespace Bital.Infrastructure.Migrations
                         .HasMaxLength(250)
                         .HasColumnType("nvarchar(250)");
 
+                    b.Property<int?>("Nps")
+                        .HasColumnType("int");
+
                     b.Property<int?>("NumeroAtencion")
                         .HasColumnType("int");
 
@@ -893,6 +930,12 @@ namespace Bital.Infrastructure.Migrations
                     b.Property<string>("Pabellon")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("RequiereSeguimiento")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("Sat")
+                        .HasColumnType("int");
 
                     b.Property<string>("Servicio")
                         .IsRequired()

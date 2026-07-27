@@ -9,12 +9,12 @@ public interface IParametrosService
     /// <summary>
     /// Obtiene la configuración de tiempos de comida
     /// </summary>
-    Task<List<TiempoComidaDto>> ObtenerTiemposComidaAsync();
+    Task<TiemposComidaConfiguracionDto> ObtenerTiemposComidaAsync();
 
     /// <summary>
     /// Actualiza la configuración de tiempos de comida
     /// </summary>
-    Task<List<TiempoComidaDto>> ActualizarTiemposComidaAsync(ActualizarTiemposComidaDto dto);
+    Task<TiemposComidaConfiguracionDto> ActualizarTiemposComidaAsync(ActualizarTiemposComidaDto dto);
 
     /// <summary>
     /// Obtiene las categorías de edad configuradas

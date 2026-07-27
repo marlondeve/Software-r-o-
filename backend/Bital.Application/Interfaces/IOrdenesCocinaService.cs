@@ -31,4 +31,13 @@ public interface IOrdenesCocinaService
     /// Cancela una orden de cocina
     /// </summary>
     Task<bool> CancelarOrdenAsync(Guid ordenId, string motivo, string usuario, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Actualiza el checklist operativo de una orden
+    /// </summary>
+    Task<OrdenCocinaDto> ActualizarChecklistOrdenAsync(
+        Guid ordenId,
+        ActualizarChecklistOrdenDto datos,
+        string usuario,
+        CancellationToken cancellationToken = default);
 }

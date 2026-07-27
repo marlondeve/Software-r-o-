@@ -1,17 +1,15 @@
+import { cargarOrdenesCocinaDesdeCenso } from "@/modules/dietas-cocina/api/services/ordenes-cocina.service"
 import type { EstadoCicloBandejas } from "@/modules/dietas-cocina/types/tray-cycle"
 import type { CicloBandejasRepository } from "@/modules/dietas-cocina/types/repositories"
-import { cargarCicloBandejas, guardarCicloBandejas } from "@/modules/dietas-cocina/lib/cicloBandejasStorage"
 import { buscarEtiquetaPorCodigo } from "@/modules/dietas-cocina/etiquetas/lib/buscarEtiquetaPorCodigo"
 
-/** Stub HTTP con fallback a storage local hasta tener backend real. */
 export const cicloBandejasRepositoryHttp: CicloBandejasRepository = {
   async cargar(): Promise<EstadoCicloBandejas | null> {
-    // TODO: GET /api/dietas-cocina/ciclo-bandejas
-    return cargarCicloBandejas()
+    const { ordenes, etiquetas } = await cargarOrdenesCocinaDesdeCenso()
+    return { ordenes, etiquetas }
   },
-  async guardar(estado: EstadoCicloBandejas): Promise<void> {
-    // TODO: PUT /api/dietas-cocina/ciclo-bandejas
-    guardarCicloBandejas(estado)
+  async guardar(_estado: EstadoCicloBandejas): Promise<void> {
+    // Las mutaciones se persisten vía endpoints de etiquetas individuales.
   },
   buscarEtiquetaPorCodigo(etiquetas, codigo) {
     return buscarEtiquetaPorCodigo(etiquetas, codigo)

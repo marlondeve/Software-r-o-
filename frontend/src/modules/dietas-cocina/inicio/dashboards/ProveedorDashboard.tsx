@@ -25,6 +25,10 @@ import { KpiCardProgress } from "@/modules/dietas-cocina/inicio/components/KpiCa
 import { ProgressStat } from "@/modules/dietas-cocina/inicio/components/ProgressBar"
 import { mockCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import { mockProveedor } from "@/modules/dietas-cocina/inicio/datos/mockProveedor"
+import { mapDashboardProveedorAlertas } from "@/modules/dietas-cocina/api/mappers/dashboard-view.mapper"
+import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { useDashboardApi } from "@/modules/dietas-cocina/inicio/hooks/useDashboardApi"
 import {
   formatearTurnoOperativo,
   labelComida,
@@ -35,69 +39,110 @@ import { cn } from "@/lib/utils"
 
 export function ProveedorDashboard() {
   const navigate = useNavigate()
+  const apiActiva = usarApiDietasCocina()
   const { ordenes, etiquetas, registrarDespacho, getEtiquetaByOrdenId } =
     useCicloBandejas()
-  const data = mockProveedor
-  const comidaActiva = mockCocina.comidaActiva
+  const comidaActiva = useMemo(
+    () => (apiActiva ? obtenerComidaActivaOperativa() : mockCocina.comidaActiva),
+    [apiActiva],
+  )
+  const dashboardApi = useDashboardApi("proveedor", comidaActiva)
+  const alertas = useMemo(() => {
+    if (apiActiva) return mapDashboardProveedorAlertas(dashboardApi.data)
+    return mockProveedor.alertas
+  }, [apiActiva, dashboardApi.data])
   const turnoActual = formatearTurnoOperativo(comidaActiva)
 
-  const ordenesTurno = useMemo(
-    () => ordenes.filter((o) => o.comida === comidaActiva).slice(0, 6),
+  const ordenesComida = useMemo(
+    () => ordenes.filter((o) => o.comida === comidaActiva),
     [ordenes, comidaActiva],
   )
 
+  const ordenesTurno = useMemo(() => ordenesComida.slice(0, 6), [ordenesComida])
+
   const kpisDinamicos = useMemo(() => {
-    const total = ordenes.length || 1
-    const enPrep = ordenes.filter((o) => o.estadoCocina === "en_preparacion").length
-    const listas = ordenes.filter((o) => o.estadoCocina === "lista").length
-    const despachadas = ordenes.filter((o) =>
+    const total = ordenesComida.length || 1
+    const enPrep = ordenesComida.filter((o) => o.estadoCocina === "en_preparacion").length
+    const listas = ordenesComida.filter((o) => o.estadoCocina === "lista").length
+    const despachadas = ordenesComida.filter((o) =>
       ordenEnTransito(o, getEtiquetaByOrdenId(o.id)),
     ).length
     return [
       {
         label: "Raciones programadas",
-        value: String(ordenes.length),
-        subtitle: "Órdenes activas en sesión",
-        progress: Math.min(100, Math.round((ordenes.length / total) * 100)),
-        progressColor: "bg-primary",
-        accentBorder: "border-l-primary",
+        value: String(ordenesComida.length),
+        subtitle: `Órdenes del turno (${labelComida(comidaActiva)})`,
+        progress: Math.min(100, Math.round((ordenesComida.length / total) * 100)),
+        progressColor: "primary" as const,
+        accentBorder: true,
       },
       {
         label: "En preparación",
         value: String(enPrep),
         subtitle: "Bandejas en cocina",
         progress: Math.round((enPrep / total) * 100),
-        progressColor: "bg-amber-500",
-        accentBorder: "border-l-amber-500",
+        progressColor: "secondary" as const,
+        accentBorder: true,
       },
       {
         label: "Listas para despacho",
         value: String(listas),
         subtitle: "Pendientes de salida",
         progress: Math.round((listas / total) * 100),
-        progressColor: "bg-emerald-500",
-        accentBorder: "border-l-emerald-500",
+        progressColor: "primary" as const,
+        accentBorder: false,
       },
       {
         label: "En tránsito",
         value: String(despachadas),
         subtitle: "Despachadas, pendientes recepción",
         progress: Math.round((despachadas / total) * 100),
-        progressColor: "bg-sky-500",
-        accentBorder: "border-l-sky-500",
+        progressColor: "muted" as const,
+        accentBorder: false,
       },
     ]
-  }, [ordenes, getEtiquetaByOrdenId])
+  }, [ordenesComida, comidaActiva, getEtiquetaByOrdenId])
+
+  const kpisMostrar = useMemo(() => {
+    const kpisApiValidos =
+      apiActiva &&
+      !dashboardApi.error &&
+      dashboardApi.kpis.length > 0 &&
+      dashboardApi.kpis.some((kpi) => kpi.value > 0)
+
+    if (kpisApiValidos) {
+      const estilos = [
+        { progressColor: "primary" as const, accentBorder: true },
+        { progressColor: "secondary" as const, accentBorder: true },
+        { progressColor: "primary" as const, accentBorder: false },
+        { progressColor: "muted" as const, accentBorder: false },
+      ] as const
+      return dashboardApi.kpis.slice(0, 4).map((kpi, index) => {
+        const estilo = estilos[index % estilos.length]
+        const valor = Number(kpi.value)
+        return {
+          label: kpi.label,
+          value: String(kpi.value),
+          subtitle: "Indicador operativo del API",
+          progress: Number.isFinite(valor) ? Math.min(100, valor) : 0,
+          progressColor: estilo.progressColor,
+          accentBorder: estilo.accentBorder,
+        }
+      })
+    }
+    return kpisDinamicos
+  }, [apiActiva, dashboardApi.kpis, dashboardApi.error, kpisDinamicos])
 
   const etiquetasStats = useMemo(() => {
-    const impresas = etiquetas.filter(
+    const delTurno = etiquetas.filter((e) => e.comida === comidaActiva)
+    const impresas = delTurno.filter(
       (e) => e.estado === "impresa" || e.estado === "reimpresa",
     ).length
-    const recibidas = etiquetas.filter(
+    const recibidas = delTurno.filter(
       (e) => e.estadoLogistica === "pre_entregada",
     ).length
-    return { impresas, recibidas, total: etiquetas.length || 1 }
-  }, [etiquetas])
+    return { impresas, recibidas, total: delTurno.length || 1 }
+  }, [etiquetas, comidaActiva])
 
   const columnasOrdenes = useMemo<ColumnDef<OrdenCocina>[]>(
     () => [
@@ -187,7 +232,7 @@ export function ProveedorDashboard() {
   )
 
   function despachoMasivo() {
-    const ids = ordenes
+    const ids = ordenesComida
       .filter((o) => {
         const etq = getEtiquetaByOrdenId(o.id)
         return puedeDespachar(o, etq)
@@ -224,8 +269,16 @@ export function ProveedorDashboard() {
         }
       />
 
+      {dashboardApi.apiActiva && dashboardApi.cargando && (
+        <p className="text-sm text-muted-foreground">Cargando indicadores…</p>
+      )}
+
+      {dashboardApi.apiActiva && dashboardApi.error && (
+        <p className="text-sm text-destructive">{dashboardApi.error}</p>
+      )}
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {kpisDinamicos.map((kpi) => (
+        {kpisMostrar.map((kpi) => (
           <KpiCardProgress
             key={kpi.label}
             label={kpi.label}
@@ -254,19 +307,25 @@ export function ProveedorDashboard() {
 
         <div className="space-y-4 lg:col-span-2">
           <AlertaCard title="Atención requerida" icon={UtensilsCrossed}>
-            {data.alertas.map((alerta) => (
-              <AlertaItem
-                key={alerta.title}
-                icon={alerta.title.includes("Entregas") ? Truck : UtensilsCrossed}
-                title={alerta.title}
-                description={alerta.description}
-                iconClassName={
-                  alerta.title.includes("Entregas")
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-muted text-muted-foreground"
-                }
-              />
-            ))}
+            {alertas.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Sin alertas operativas.
+              </p>
+            ) : (
+              alertas.map((alerta) => (
+                <AlertaItem
+                  key={alerta.title}
+                  icon={alerta.title.includes("Entregas") ? Truck : UtensilsCrossed}
+                  title={alerta.title}
+                  description={alerta.description}
+                  iconClassName={
+                    alerta.title.includes("Entregas")
+                      ? "bg-destructive/10 text-destructive"
+                      : "bg-muted text-muted-foreground"
+                  }
+                />
+              ))
+            )}
           </AlertaCard>
 
           <DashboardCard title="Estado de etiquetas">

@@ -1,5 +1,5 @@
 import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
   AlertTriangle,
@@ -16,6 +16,9 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
+import {
+  mapDashboardNutricionistaDto,
+} from "@/modules/dietas-cocina/api/mappers/dashboard-view.mapper"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { AlertaItem } from "@/modules/dietas-cocina/inicio/components/AlertaItem"
@@ -25,8 +28,11 @@ import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/D
 import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { KpiCard } from "@/modules/dietas-cocina/inicio/components/KpiCard"
+import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { construirDashboardNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardNutricionista"
+import { mesclarDashboardNutricionista } from "@/modules/dietas-cocina/lib/mesclarDashboardOperativo"
 import { descargarArchivoDemo } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { useDashboardApi } from "@/modules/dietas-cocina/inicio/hooks/useDashboardApi"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 
 const KPI_ICONS = [
@@ -50,17 +56,30 @@ export function NutricionistaDashboard() {
   const { usuario } = useAuth()
   const { ordenes, etiquetas } = useCicloBandejas()
   const { filas } = useDietasOperativas()
+  const comidaActiva = useMemo(() => obtenerComidaActivaOperativa(), [])
+  const dashboardApi = useDashboardApi("nutricionista", comidaActiva)
+  const [ahora, setAhora] = useState(() => new Date())
 
-  const data = useMemo(
-    () =>
-      construirDashboardNutricionistaDesdeCiclo(
-        filas,
-        ordenes,
-        etiquetas,
-        new Date(),
-      ),
-    [filas, ordenes, etiquetas],
-  )
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setAhora(new Date()), 60_000)
+    return () => window.clearInterval(intervalo)
+  }, [])
+
+  const data = useMemo(() => {
+    const ciclo = construirDashboardNutricionistaDesdeCiclo(
+      filas,
+      ordenes,
+      etiquetas,
+      ahora,
+    )
+    if (!dashboardApi.apiActiva || dashboardApi.error || !dashboardApi.data) {
+      return ciclo
+    }
+    return mesclarDashboardNutricionista(
+      mapDashboardNutricionistaDto(dashboardApi.data),
+      ciclo,
+    )
+  }, [filas, ordenes, etiquetas, ahora, dashboardApi.apiActiva, dashboardApi.data, dashboardApi.error])
 
   const columnasActividad = useMemo<ColumnDef<ActividadReciente>[]>(
     () => [
@@ -143,17 +162,33 @@ export function NutricionistaDashboard() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-        {data.kpis.map((kpi, index) => (
-          <KpiCard
-            key={kpi.label}
-            label={kpi.label}
-            value={kpi.value}
-            icon={KPI_ICONS[index]}
-            variant={kpi.variant}
-          />
-        ))}
-      </div>
+      {dashboardApi.apiActiva && dashboardApi.error && (
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          No se pudieron cargar los indicadores del servidor ({dashboardApi.error}). Mostrando datos operativos locales.
+        </p>
+      )}
+
+      {data.kpis.length === 0 && dashboardApi.apiActiva && dashboardApi.cargando ? (
+        <p className="text-sm text-muted-foreground">
+          Cargando indicadores…
+        </p>
+      ) : data.kpis.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          Sin indicadores disponibles para este periodo.
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+          {data.kpis.map((kpi, index) => (
+            <KpiCard
+              key={kpi.label}
+              label={kpi.label}
+              value={kpi.value}
+              icon={KPI_ICONS[index] ?? ClipboardList}
+              variant={kpi.variant}
+            />
+          ))}
+        </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <DashboardCard
@@ -172,15 +207,21 @@ export function NutricionistaDashboard() {
           className="lg:col-span-2"
         >
           <div className="divide-y divide-border">
-            {data.atencion.map((item) => (
-              <AlertaItem
-                key={item.title}
-                icon={AlertTriangle}
-                title={item.title}
-                description={item.description}
-                iconClassName="bg-destructive/10 text-destructive"
-              />
-            ))}
+            {data.atencion.length === 0 ? (
+              <p className="px-1 py-3 text-sm text-muted-foreground">
+                Sin alertas activas.
+              </p>
+            ) : (
+              data.atencion.map((item) => (
+                <AlertaItem
+                  key={item.title}
+                  icon={AlertTriangle}
+                  title={item.title}
+                  description={item.description}
+                  iconClassName="bg-destructive/10 text-destructive"
+                />
+              ))
+            )}
           </div>
         </DashboardCard>
       </div>

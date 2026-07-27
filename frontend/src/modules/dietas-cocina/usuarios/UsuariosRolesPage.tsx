@@ -12,10 +12,20 @@ import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { CambiarRolDialog } from "@/modules/dietas-cocina/usuarios/components/CambiarRolDialog"
 import { NuevoUsuarioDialog } from "@/modules/dietas-cocina/usuarios/components/NuevoUsuarioDialog"
+import { RestablecerClaveDialog } from "@/modules/dietas-cocina/usuarios/components/RestablecerClaveDialog"
 import { RolesPermisosPanel } from "@/modules/dietas-cocina/usuarios/components/RolesPermisosPanel"
 import { UsuariosFiltros } from "@/modules/dietas-cocina/usuarios/components/UsuariosFiltros"
 import { UsuariosTabla } from "@/modules/dietas-cocina/usuarios/components/UsuariosTabla"
 import { mockUsuariosDietas } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { restablecerPasswordUsuario } from "@/api/authModulo.service"
+import {
+  crearUsuario as crearUsuarioApi,
+  cambiarEstadoUsuario,
+  cambiarRolUsuario,
+  editarUsuario as editarUsuarioApi,
+  listarUsuarios,
+} from "@/modules/dietas-cocina/api/services/usuarios.service"
 import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import { puedeGestionarUsuariosRoles } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
 
@@ -25,8 +35,11 @@ export function UsuariosRolesPage() {
   const { usuario: usuarioActual } = useAuth()
   const rolActual = obtenerRolDietas(usuarioActual)
   const puedeGestionar = puedeGestionarUsuariosRoles(rolActual)
-  const data = mockUsuariosDietas
-  const [usuarios, setUsuarios] = useState<UsuarioModulo[]>(data.usuarios)
+  const apiActiva = usarApiDietasCocina()
+  const filtrosUi = mockUsuariosDietas.filtros
+  const [usuarios, setUsuarios] = useState<UsuarioModulo[]>(() =>
+    apiActiva ? [] : mockUsuariosDietas.usuarios,
+  )
   const [rolFiltro, setRolFiltro] = useState("todos")
   const [estadoFiltro, setEstadoFiltro] = useState("todos")
   const [paginaActual, setPaginaActual] = useState(1)
@@ -36,6 +49,13 @@ export function UsuariosRolesPage() {
   const [dialogRolAbierto, setDialogRolAbierto] = useState(false)
   const [dialogNuevoAbierto, setDialogNuevoAbierto] = useState(false)
   const [usuarioEdit, setUsuarioEdit] = useState<UsuarioModulo | null>(null)
+  const [usuarioClaveRestablecida, setUsuarioClaveRestablecida] =
+    useState<UsuarioModulo | null>(null)
+  const [passwordTemporal, setPasswordTemporal] = useState("")
+  const [mensajeClaveRestablecida, setMensajeClaveRestablecida] = useState("")
+  const [dialogClaveAbierto, setDialogClaveAbierto] = useState(false)
+  const [cargandoUsuarios, setCargandoUsuarios] = useState(false)
+  const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null)
 
   const usuariosFiltrados = useMemo(() => {
     return usuarios.filter((usuario) => {
@@ -67,6 +87,26 @@ export function UsuariosRolesPage() {
   )
 
   useEffect(() => {
+    if (!apiActiva) return
+    setCargandoUsuarios(true)
+    setErrorUsuarios(null)
+    void listarUsuarios({
+      rol: rolFiltro !== "todos" ? (rolFiltro as RolDietas) : undefined,
+      estado: estadoFiltro !== "todos" ? estadoFiltro === "activo" : undefined,
+      page: paginaActual,
+      pageSize: TAMANO_PAGINA_USUARIOS,
+    })
+      .then((res) => setUsuarios(res.usuarios))
+      .catch((error) => {
+        setUsuarios([])
+        setErrorUsuarios(
+          error instanceof Error ? error.message : "No se pudieron cargar los usuarios.",
+        )
+      })
+      .finally(() => setCargandoUsuarios(false))
+  }, [apiActiva, rolFiltro, estadoFiltro, paginaActual])
+
+  useEffect(() => {
     setPaginaActual(1)
   }, [rolFiltro, estadoFiltro])
 
@@ -86,6 +126,21 @@ export function UsuariosRolesPage() {
   }
 
   function confirmarCambioRol(usuarioId: string, rol: RolDietas) {
+    if (apiActiva) {
+      void cambiarRolUsuario(usuarioId, rol)
+        .then(() => listarUsuarios({ page: 1, pageSize: 100 }))
+        .then((res) => {
+          setUsuarios(res.usuarios)
+          demoToast("Rol actualizado correctamente.", "success")
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error ? error.message : "No se pudo cambiar el rol.",
+            "error",
+          )
+        })
+      return
+    }
     setUsuarios((prev) =>
       prev.map((usuario) =>
         usuario.id === usuarioId ? { ...usuario, rol } : usuario,
@@ -94,14 +149,33 @@ export function UsuariosRolesPage() {
   }
 
   function toggleEstado(usuario: UsuarioModulo) {
+    const nuevoEstado = usuario.estado === "activo" ? "inactivo" : "activo"
+    if (apiActiva) {
+      void cambiarEstadoUsuario(usuario.id, nuevoEstado === "activo")
+        .then(() => {
+          setUsuarios((prev) =>
+            prev.map((item) =>
+              item.id === usuario.id ? { ...item, estado: nuevoEstado } : item,
+            ),
+          )
+          demoToast(
+            `Usuario ${usuario.nombre} ${nuevoEstado === "activo" ? "activado" : "desactivado"}.`,
+            "success",
+          )
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error
+              ? error.message
+              : "No se pudo cambiar el estado del usuario.",
+            "error",
+          )
+        })
+      return
+    }
     setUsuarios((prev) =>
       prev.map((item) =>
-        item.id === usuario.id
-          ? {
-              ...item,
-              estado: item.estado === "activo" ? "inactivo" : "activo",
-            }
-          : item,
+        item.id === usuario.id ? { ...item, estado: nuevoEstado } : item,
       ),
     )
   }
@@ -110,7 +184,22 @@ export function UsuariosRolesPage() {
     setUsuarios((prev) => prev.filter((item) => item.id !== usuario.id))
   }
 
-  function crearUsuario(datos: Omit<UsuarioModulo, "id">) {
+  function crearUsuarioHandler(datos: Omit<UsuarioModulo, "id">) {
+    if (apiActiva) {
+      void crearUsuarioApi(datos)
+        .then((creado) => {
+          setUsuarios((prev) => [creado, ...prev])
+          setPaginaActual(1)
+          demoToast(`Usuario "${creado.nombre}" creado correctamente.`, "success")
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error ? error.message : "No se pudo crear el usuario.",
+            "error",
+          )
+        })
+      return
+    }
     const nums = usuarios
       .map((u) => Number.parseInt(u.id, 10))
       .filter((n) => !Number.isNaN(n))
@@ -127,6 +216,22 @@ export function UsuariosRolesPage() {
   }
 
   function actualizarUsuario(id: string, datos: Omit<UsuarioModulo, "id">) {
+    if (apiActiva) {
+      void editarUsuarioApi(id, datos)
+        .then((actualizado) => {
+          setUsuarios((prev) =>
+            prev.map((item) => (item.id === id ? actualizado : item)),
+          )
+          demoToast(`Usuario "${actualizado.nombre}" actualizado.`, "success")
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error ? error.message : "No se pudo actualizar el usuario.",
+            "error",
+          )
+        })
+      return
+    }
     setUsuarios((prev) =>
       prev.map((item) => (item.id === id ? { id, ...datos } : item)),
     )
@@ -134,9 +239,32 @@ export function UsuariosRolesPage() {
   }
 
   function restablecerClave(usuario: UsuarioModulo) {
-    demoToast(
-      `Se envió enlace de restablecimiento a ${usuario.correo} (demo).`,
+    if (apiActiva) {
+      void restablecerPasswordUsuario(usuario.id)
+        .then((resultado) => {
+          setUsuarioClaveRestablecida(usuario)
+          setPasswordTemporal(resultado.passwordTemporal)
+          setMensajeClaveRestablecida(resultado.mensaje)
+          setDialogClaveAbierto(true)
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error
+              ? error.message
+              : "No se pudo restablecer la contraseña.",
+            "error",
+          )
+        })
+      return
+    }
+
+    const temporal = `Tmp${Math.random().toString(36).slice(2, 10)}`
+    setUsuarioClaveRestablecida(usuario)
+    setPasswordTemporal(temporal)
+    setMensajeClaveRestablecida(
+      "Contraseña temporal generada (demo). El usuario debe cambiarla en el login.",
     )
+    setDialogClaveAbierto(true)
   }
 
   return (
@@ -177,10 +305,15 @@ export function UsuariosRolesPage() {
         </TabsList>
 
         <TabsContent value="usuarios" className="mt-4">
+          {apiActiva && errorUsuarios && (
+            <Alert className="mb-4">
+              <AlertDescription>{errorUsuarios}</AlertDescription>
+            </Alert>
+          )}
           <Card className="gap-0 py-0 shadow-none">
             <UsuariosFiltros
-              rolLabel={data.filtros.rol}
-              estadoLabel={data.filtros.estado}
+              rolLabel={filtrosUi.rol}
+              estadoLabel={filtrosUi.estado}
               paginaDesde={paginaDesde}
               paginaHasta={paginaHasta}
               total={totalFiltrados}
@@ -193,6 +326,11 @@ export function UsuariosRolesPage() {
               onCambiarPagina={setPaginaActual}
             />
             <CardContent className="p-0">
+              {apiActiva && cargandoUsuarios ? (
+                <p className="py-12 text-center text-sm text-muted-foreground">
+                  Cargando usuarios…
+                </p>
+              ) : (
               <UsuariosTabla
                 usuarios={usuariosPagina}
                 puedeGestionar={puedeGestionar}
@@ -202,6 +340,7 @@ export function UsuariosRolesPage() {
                 onRestablecerClave={restablecerClave}
                 onEliminar={eliminarUsuario}
               />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -217,6 +356,7 @@ export function UsuariosRolesPage() {
         onOpenChange={setDialogRolAbierto}
         onConfirmar={confirmarCambioRol}
         puedeGestionar={puedeGestionar}
+        apiActiva={apiActiva}
       />
 
       <NuevoUsuarioDialog
@@ -225,9 +365,17 @@ export function UsuariosRolesPage() {
           setDialogNuevoAbierto(open)
           if (!open) setUsuarioEdit(null)
         }}
-        onGuardar={crearUsuario}
+        onGuardar={crearUsuarioHandler}
         usuarioEdit={usuarioEdit}
         onActualizar={actualizarUsuario}
+      />
+
+      <RestablecerClaveDialog
+        open={dialogClaveAbierto}
+        onOpenChange={setDialogClaveAbierto}
+        usuario={usuarioClaveRestablecida}
+        passwordTemporal={passwordTemporal}
+        mensaje={mensajeClaveRestablecida}
       />
     </div>
   )

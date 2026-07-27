@@ -1,3 +1,0 @@
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\bin\Release\net8.0\publish\Bital.Domain.dll
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\bin\Release\net8.0\publish\Bital.Domain.deps.json
-C:\Users\Juan Dev\Desktop\Software-r-o-\backend\Bital.Domain\bin\Release\net8.0\publish\Bital.Domain.pdb

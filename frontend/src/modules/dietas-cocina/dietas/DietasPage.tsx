@@ -1,10 +1,11 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Info, RefreshCw } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DietasAsignarConsistenciaDialog } from "@/modules/dietas-cocina/dietas/components/DietasAsignarConsistenciaDialog"
 import { DietasBarraSeleccion } from "@/modules/dietas-cocina/dietas/components/DietasBarraSeleccion"
@@ -16,8 +17,11 @@ import { DietasKpiGrid } from "@/modules/dietas-cocina/dietas/components/DietasK
 import { DietasNovedadSheet } from "@/modules/dietas-cocina/dietas/components/DietasNovedadSheet"
 import { DietasSolicitudSheet } from "@/modules/dietas-cocina/dietas/components/DietasSolicitudSheet"
 import { DietasTabla } from "@/modules/dietas-cocina/dietas/components/DietasTabla"
+import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { formatearFechaReferenciaDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { buscarDietas, obtenerDietasPaciente } from "@/modules/dietas-cocina/api/services/dietas.service"
+import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
 import {
   calcularKpisDietas,
   ESTADOS_PENDIENTES,
@@ -36,28 +40,36 @@ interface SheetDietaState {
   filaId: string
 }
 
+import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
+
 function formatearSolicitadoEn(): string {
-  const ahora = new Date()
-  return `Hoy, ${ahora.toLocaleTimeString("es-CO", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })}`
+  return `Hoy, ${formatearHoraDesdeFecha()}`
 }
 
 export function DietasPage() {
+  const { usuario } = useAuth()
   const {
     filas,
     ultimaSincronizacion,
     meta: data,
     sincronizandoCenso,
+    errorSincronizacion,
     actualizarFila,
     setFilas,
     sincronizarCenso,
     asignarConsistenciaMasiva,
+    guardarSolicitud,
+    confirmarDietaApi,
+    confirmarMasivoApi,
+    cancelarDietaApi,
+    registrarNovedadApi,
+    obtenerHistorialApi,
+    obtenerDetalleApi,
   } = useDietasOperativas()
   const { crearOrdenDesdeDieta, cancelarOrdenCocina } = useCicloBandejas()
-  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(
-    data.comidaActiva,
+  const apiActiva = usarApiDietasCocina()
+  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
+    apiActiva ? obtenerComidaActivaOperativa() : data.comidaActiva,
   )
   const [busqueda, setBusqueda] = useState("")
   const [servicio, setServicio] = useState("todos")
@@ -68,19 +80,92 @@ export function DietasPage() {
   const [cancelarAbierto, setCancelarAbierto] = useState(false)
   const [filaCancelarId, setFilaCancelarId] = useState<string | null>(null)
   const [consistenciaAbierto, setConsistenciaAbierto] = useState(false)
+  const [filasBusquedaApi, setFilasBusquedaApi] = useState<FilaDieta[] | null>(null)
+  const [buscandoApi, setBuscandoApi] = useState(false)
+  const [errorBusquedaApi, setErrorBusquedaApi] = useState<string | null>(null)
+
+  const filtrosApiActivos =
+    apiActiva &&
+    (servicio !== "todos" ||
+      estado !== "todos" ||
+      busqueda.trim().length >= 2)
+
+  useEffect(() => {
+    if (!filtrosApiActivos) {
+      setFilasBusquedaApi(null)
+      setErrorBusquedaApi(null)
+      setBuscandoApi(false)
+      return
+    }
+
+    const controlador = new AbortController()
+    const timer = window.setTimeout(() => {
+      setBuscandoApi(true)
+      setErrorBusquedaApi(null)
+      void buscarDietas({
+        fecha: fechaOperativaHoy(),
+        comida: comidaActiva,
+        servicio: servicio !== "todos" ? servicio : undefined,
+        estado: estado !== "todos" ? estado : undefined,
+        paciente: busqueda.trim() || undefined,
+      })
+        .then((resultado) => {
+          if (!controlador.signal.aborted) setFilasBusquedaApi(resultado)
+        })
+        .catch((error) => {
+          if (!controlador.signal.aborted) {
+            setFilasBusquedaApi([])
+            setErrorBusquedaApi(
+              error instanceof Error
+                ? error.message
+                : "No se pudo buscar dietas en el servidor.",
+            )
+          }
+        })
+        .finally(() => {
+          if (!controlador.signal.aborted) setBuscandoApi(false)
+        })
+    }, 350)
+
+    return () => {
+      controlador.abort()
+      window.clearTimeout(timer)
+    }
+  }, [
+    filtrosApiActivos,
+    comidaActiva,
+    servicio,
+    estado,
+    busqueda,
+    apiActiva,
+  ])
+
+  const filasBase = filtrosApiActivos ? (filasBusquedaApi ?? []) : filas
 
   const filasFiltradas = useMemo(() => {
-    return filas.filter((fila) => {
+    return filasBase.filter((fila) => {
       if (fila.comida !== comidaActiva) return false
-      if (!filaCoincideBusqueda(fila, busqueda)) return false
-      if (servicio !== "todos" && fila.servicio !== servicio) return false
-      if (estado !== "todos" && fila.estado !== estado) return false
+      if (!filtrosApiActivos && !filaCoincideBusqueda(fila, busqueda)) return false
+      if (!filtrosApiActivos && servicio !== "todos" && fila.servicio !== servicio) {
+        return false
+      }
+      if (!filtrosApiActivos && estado !== "todos" && fila.estado !== estado) {
+        return false
+      }
       if (soloPendientes && !ESTADOS_PENDIENTES.includes(fila.estado)) {
         return false
       }
       return true
     })
-  }, [filas, comidaActiva, busqueda, servicio, estado, soloPendientes])
+  }, [
+    filasBase,
+    comidaActiva,
+    busqueda,
+    servicio,
+    estado,
+    soloPendientes,
+    filtrosApiActivos,
+  ])
 
   const kpis = useMemo(
     () => calcularKpisDietas(filas, comidaActiva),
@@ -130,6 +215,9 @@ export function DietasPage() {
   function cambiarComida(id: TiempoComida) {
     setComidaActiva(id)
     setSeleccionados(new Set())
+    if (apiActiva) {
+      void sincronizarCenso(id).catch(() => {})
+    }
   }
 
   function toggleFila(id: string, checked: boolean) {
@@ -171,9 +259,11 @@ export function DietasPage() {
   }
 
   function enviarDietaACocina(fila: FilaDieta): string | null {
+    if (apiActiva) return fila.ordenCocinaId ?? null
     if (!fila.tipoDieta || !fila.consistencia) return null
     if (fila.ordenCocinaId) return fila.ordenCocinaId
     return crearOrdenDesdeDieta({
+      id: fila.id,
       pacienteId: fila.pacienteId,
       paciente: fila.paciente,
       edad: fila.edad,
@@ -189,6 +279,21 @@ export function DietasPage() {
   }
 
   function confirmarDieta(fila: FilaDieta) {
+    if (apiActiva) {
+      void confirmarDietaApi(fila.id)
+        .then((actualizada) => {
+          demoToast(`Dieta de ${actualizada.paciente} confirmada.`, "success")
+          setSheet(null)
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error ? error.message : "No se pudo confirmar la dieta.",
+            "error",
+          )
+        })
+      return
+    }
+
     const ordenId = enviarDietaACocina(fila)
     actualizarFila(fila.id, {
       estado: "confirmada",
@@ -222,12 +327,27 @@ export function DietasPage() {
   }
 
   function confirmarSeleccionados() {
-    const ids = new Set(idsSeleccionados())
+    const ids = idsSeleccionados()
+    if (apiActiva) {
+      void confirmarMasivoApi(ids, usuario?.nombre ?? usuario?.email ?? "Usuario")
+        .then(() => {
+          demoToast(`${ids.length} dieta(s) confirmada(s).`, "success")
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error ? error.message : "No se pudo confirmar la selección.",
+            "error",
+          )
+        })
+      return
+    }
+
+    const idsSet = new Set(ids)
     let confirmadas = 0
     let enviadasCocina = 0
     setFilas((prev) =>
       prev.map((fila) => {
-        if (!ids.has(fila.id) || fila.estado !== "guardado") return fila
+        if (!idsSet.has(fila.id) || fila.estado !== "guardado") return fila
         confirmadas += 1
         const ordenId = enviarDietaACocina(fila)
         if (ordenId) enviadasCocina += 1
@@ -298,6 +418,19 @@ export function DietasPage() {
         }
       />
 
+      {apiActiva && errorSincronizacion && (
+        <Alert variant="destructive">
+          <AlertDescription>{errorSincronizacion}</AlertDescription>
+        </Alert>
+      )}
+
+      {apiActiva && sincronizandoCenso && filas.length === 0 ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-sm text-muted-foreground">
+          <RefreshCw className="size-4 animate-spin" />
+          Cargando censo desde el API…
+        </div>
+      ) : (
+        <>
       <DietasComidaTabs
         comidas={data.comidas}
         comidaActiva={comidaActiva}
@@ -326,6 +459,16 @@ export function DietasPage() {
         onLimpiar={limpiarFiltros}
       />
 
+      {apiActiva && errorBusquedaApi && (
+        <Alert variant="destructive">
+          <AlertDescription>{errorBusquedaApi}</AlertDescription>
+        </Alert>
+      )}
+
+      {apiActiva && buscandoApi && (
+        <p className="text-sm text-muted-foreground">Buscando dietas en el servidor…</p>
+      )}
+
       <DietasTabla
         filas={filasFiltradas}
         seleccionados={seleccionados}
@@ -344,8 +487,26 @@ export function DietasPage() {
         comidaActiva={comidaActiva}
         comidas={data.comidas}
         onConfirmar={(fila, motivo, justificacion) => {
+          if (apiActiva) {
+            void cancelarDietaApi(fila.id, { motivo, justificacion })
+              .then(async () => {
+                if (fila.ordenCocinaId) {
+                  await cancelarOrdenCocina(fila.ordenCocinaId, justificacion)
+                }
+                demoToast(`Dieta de ${fila.paciente} cancelada.`, "success")
+                setCancelarAbierto(false)
+                setFilaCancelarId(null)
+              })
+              .catch((error) => {
+                demoToast(
+                  error instanceof Error ? error.message : "No se pudo cancelar la dieta.",
+                  "error",
+                )
+              })
+            return
+          }
           if (fila.ordenCocinaId) {
-            cancelarOrdenCocina(fila.ordenCocinaId)
+            void cancelarOrdenCocina(fila.ordenCocinaId, justificacion)
           }
           actualizarFila(fila.id, {
             estado: "cancelada",
@@ -367,6 +528,28 @@ export function DietasPage() {
         consistencias={data.consistencias}
         cierreVentanaMinutos={data.cierreVentanaMinutos}
         onGuardar={(fila, datos) => {
+          if (apiActiva) {
+            void guardarSolicitud(fila.id, {
+              tipoDieta: datos.tipoDieta,
+              consistencia: datos.consistencia,
+              observaciones: datos.observaciones,
+              pacienteAislado: datos.pacienteAislado,
+              observacionAislamiento: datos.observacionAislamiento,
+              alergico: datos.alergico,
+              alergias: datos.alergias,
+            })
+              .then(() => {
+                demoToast(`Solicitud de ${fila.paciente} guardada.`, "success")
+                setSheet(null)
+              })
+              .catch((error) => {
+                demoToast(
+                  error instanceof Error ? error.message : "No se pudo guardar la solicitud.",
+                  "error",
+                )
+              })
+            return
+          }
           actualizarFila(fila.id, {
             comida: datos.comida,
             tipoDieta: datos.tipoDieta,
@@ -391,6 +574,9 @@ export function DietasPage() {
         fila={filaActiva}
         onEditar={(fila) => cambiarSheetDesdeDetalle("solicitud", fila)}
         onConfirmar={confirmarDieta}
+        cargarHistorial={apiActiva ? obtenerHistorialApi : undefined}
+        cargarDetalle={apiActiva ? obtenerDetalleApi : undefined}
+        cargarDietasPaciente={apiActiva ? obtenerDietasPaciente : undefined}
       />
 
       <DietasNovedadSheet
@@ -403,6 +589,30 @@ export function DietasPage() {
         consistencias={data.consistencias}
         cierreVentanaMinutos={data.cierreVentanaMinutos}
         onConfirmar={(fila, datos) => {
+          if (apiActiva) {
+            void registrarNovedadApi(fila.id, {
+              comida: datos.comida,
+              tipoDieta: datos.tipoDieta,
+              consistencia: datos.consistencia,
+              observaciones: datos.observaciones,
+              pacienteAislado: datos.pacienteAislado,
+              observacionAislamiento: datos.observacionAislamiento,
+              alergico: datos.alergico,
+              alergias: datos.alergias,
+              motivo: datos.motivo,
+            })
+              .then((actualizada) => {
+                demoToast(`Novedad registrada para ${actualizada.paciente}.`, "success")
+                setSheet(null)
+              })
+              .catch((error) => {
+                demoToast(
+                  error instanceof Error ? error.message : "No se pudo registrar la novedad.",
+                  "error",
+                )
+              })
+            return
+          }
           const ordenId = enviarDietaACocina({
             ...fila,
             comida: datos.comida,
@@ -460,6 +670,8 @@ export function DietasPage() {
           )
         }}
       />
+        </>
+      )}
     </div>
   )
 }

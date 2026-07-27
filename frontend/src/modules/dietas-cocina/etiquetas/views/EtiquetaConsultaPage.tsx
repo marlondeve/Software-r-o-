@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Check, QrCode } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Check, Loader2, QrCode } from "lucide-react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -7,16 +7,40 @@ import { DetalleAsignacionPanel } from "@/modules/dietas-cocina/etiquetas/compon
 import { EtiquetaDetalleAsignacionLayout } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaDetalleAsignacionLayout"
 import { OrdenCocinaContextoCard } from "@/modules/dietas-cocina/etiquetas/components/OrdenCocinaContextoCard"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { extraerCodigoDesdeQr } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 import { puedeConfirmarEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 
 export function EtiquetaConsultaPage() {
   const { codigo: codigoParam } = useParams<{ codigo: string }>()
   const navigate = useNavigate()
-  const { buscarPorCodigo, confirmarEntrega, getOrdenByEtiquetaId } = useCicloBandejas()
+  const { buscarPorCodigoAsync, confirmarEntrega, getOrdenByEtiquetaId } =
+    useCicloBandejas()
   const [verificado, setVerificado] = useState(false)
+  const [etiqueta, setEtiqueta] = useState<EtiquetaEnfermera | undefined>()
+  const [cargando, setCargando] = useState(true)
 
   const codigo = codigoParam ? extraerCodigoDesdeQr(codigoParam) : ""
-  const etiqueta = codigo ? buscarPorCodigo(codigo) : undefined
+
+  useEffect(() => {
+    if (!codigo) {
+      setEtiqueta(undefined)
+      setCargando(false)
+      return
+    }
+    let cancelado = false
+    setCargando(true)
+    void buscarPorCodigoAsync(codigo).then((encontrada) => {
+      if (!cancelado) {
+        setEtiqueta(encontrada)
+        setCargando(false)
+      }
+    })
+    return () => {
+      cancelado = true
+    }
+  }, [codigo, buscarPorCodigoAsync])
+
   const orden = etiqueta ? getOrdenByEtiquetaId(etiqueta.id) : undefined
   const puedeRegistrar = etiqueta ? puedeConfirmarEntrega(etiqueta) : false
 
@@ -26,6 +50,17 @@ export function EtiquetaConsultaPage() {
     navigate(`/dietas-cocina/etiquetas/exito?modo=entrega&etiquetaId=${encodeURIComponent(etiqueta.id)}`, {
       state: { modo: "entrega", etiquetaId: etiqueta.id },
     })
+  }
+
+  if (cargando) {
+    return (
+      <EtiquetaDetalleAsignacionLayout>
+        <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-12 text-center">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Buscando etiqueta…</p>
+        </div>
+      </EtiquetaDetalleAsignacionLayout>
+    )
   }
 
   if (!etiqueta) {

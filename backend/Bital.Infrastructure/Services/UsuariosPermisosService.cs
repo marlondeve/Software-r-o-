@@ -3,7 +3,11 @@ using Bital.Application.Interfaces;
 using Bital.Domain.Entities.DietasCocina;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Bital.Infrastructure.Services;
 
@@ -218,5 +222,106 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
         _context.PermisosRol.AddRange(nuevosPermisos);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task<RestablecerPasswordResponseDto> RestablecerPasswordAsync(Guid id, string solicitadoPor)
+    {
+        var usuario = await _context.UsuariosModulo.FirstOrDefaultAsync(u => u.Id == id)
+            ?? throw new KeyNotFoundException($"Usuario {id} no encontrado");
+
+        var passwordTemporal = GenerarPasswordTemporal();
+        usuario.PasswordHash = HashPassword(passwordTemporal);
+        usuario.ModificadoEn = DateTime.UtcNow;
+        usuario.ModificadoPor = solicitadoPor;
+        await _context.SaveChangesAsync();
+
+        return new RestablecerPasswordResponseDto
+        {
+            PasswordTemporal = passwordTemporal,
+            Mensaje = "Contraseña restablecida. Comuníquela al usuario por un canal seguro.",
+        };
+    }
+
+    public async Task<LoginModuloResponseDto> LoginAsync(LoginModuloDto dto)
+    {
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.UsuariosModulo
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == email)
+            ?? throw new UnauthorizedAccessException("Credenciales inválidas.");
+
+        if (!usuario.Activo)
+            throw new UnauthorizedAccessException("El usuario está inactivo.");
+
+        if (string.IsNullOrEmpty(usuario.PasswordHash))
+            throw new UnauthorizedAccessException("Debe solicitar un restablecimiento de contraseña al administrador.");
+
+        if (!VerificarPassword(dto.Password, usuario.PasswordHash))
+            throw new UnauthorizedAccessException("Credenciales inválidas.");
+
+        usuario.UltimoAcceso = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return new LoginModuloResponseDto
+        {
+            Id = usuario.Id,
+            Email = usuario.Email,
+            NombreCompleto = usuario.NombreCompleto,
+            Rol = usuario.Rol,
+            RolNombre = usuario.Rol.ToString(),
+        };
+    }
+
+    public async Task<CambiarPasswordResponseDto> CambiarPasswordAsync(CambiarPasswordDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.PasswordNueva) || dto.PasswordNueva.Length < 8)
+            throw new InvalidOperationException("La nueva contraseña debe tener al menos 8 caracteres.");
+
+        if (dto.PasswordActual == dto.PasswordNueva)
+            throw new InvalidOperationException("La nueva contraseña debe ser diferente a la actual.");
+
+        var email = dto.Email.Trim().ToLowerInvariant();
+        var usuario = await _context.UsuariosModulo
+            .FirstOrDefaultAsync(u => u.Email.ToLower() == email)
+            ?? throw new UnauthorizedAccessException("Credenciales inválidas.");
+
+        if (!usuario.Activo)
+            throw new UnauthorizedAccessException("El usuario está inactivo.");
+
+        if (string.IsNullOrEmpty(usuario.PasswordHash) || !VerificarPassword(dto.PasswordActual, usuario.PasswordHash))
+            throw new UnauthorizedAccessException("La contraseña actual es incorrecta.");
+
+        usuario.PasswordHash = HashPassword(dto.PasswordNueva);
+        usuario.ModificadoEn = DateTime.UtcNow;
+        usuario.ModificadoPor = usuario.Email;
+        await _context.SaveChangesAsync();
+
+        return new CambiarPasswordResponseDto
+        {
+            Mensaje = "Contraseña actualizada correctamente. Ya puede iniciar sesión.",
+        };
+    }
+
+    private static bool VerificarPassword(string password, string hash)
+    {
+        return HashPassword(password) == hash;
+    }
+
+    private static string GenerarPasswordTemporal()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+        var bytes = RandomNumberGenerator.GetBytes(10);
+        var sb = new StringBuilder(10);
+        foreach (var b in bytes)
+        {
+            sb.Append(chars[b % chars.Length]);
+        }
+
+        return sb.ToString();
+    }
+
+    private static string HashPassword(string password)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
+        return Convert.ToHexString(bytes);
     }
 }

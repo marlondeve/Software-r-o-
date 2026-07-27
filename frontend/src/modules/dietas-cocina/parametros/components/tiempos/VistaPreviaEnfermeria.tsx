@@ -1,8 +1,9 @@
-import { AlertTriangle } from "lucide-react"
+import { AlertTriangle, CheckCircle2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatearHora12 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
+import { cn } from "@/lib/utils"
 
 interface VistaPreviaEnfermeriaProps {
   pabellon: string
@@ -11,6 +12,8 @@ interface VistaPreviaEnfermeriaProps {
   proximaHora: string
   botonSolicitar: string
   botonDeshabilitado?: boolean
+  ventanaAbierta?: boolean
+  mensajeVentanaAbierta?: string
 }
 
 export function VistaPreviaEnfermeria({
@@ -20,6 +23,8 @@ export function VistaPreviaEnfermeria({
   proximaHora,
   botonSolicitar,
   botonDeshabilitado,
+  ventanaAbierta,
+  mensajeVentanaAbierta,
 }: VistaPreviaEnfermeriaProps) {
   return (
     <Card className="gap-0 py-0 shadow-none">
@@ -34,15 +39,28 @@ export function VistaPreviaEnfermeria({
           <p className="text-sm font-semibold text-foreground">{pabellon}</p>
         </div>
 
-        <div className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          <p>
-            Solicitud cerrada para {comidaCerrada}. Próxima ventana: {proximaComida}{" "}
-            ({formatearHora12(proximaHora)})
-          </p>
-        </div>
+        {ventanaAbierta ? (
+          <div className="flex gap-2 rounded-lg border border-primary/25 bg-primary/5 px-3 py-2.5 text-sm text-primary">
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+            <p>
+              {mensajeVentanaAbierta ??
+                `Ventana abierta para ${comidaCerrada.toLowerCase()}.`}
+            </p>
+          </div>
+        ) : (
+          <div className="flex gap-2 rounded-lg border border-destructive/20 bg-destructive/5 px-3 py-2.5 text-sm text-destructive">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+            <p>
+              Solicitud cerrada para {comidaCerrada}. Próxima ventana: {proximaComida}{" "}
+              ({formatearHora12(proximaHora)})
+            </p>
+          </div>
+        )}
 
-        <Button className="w-full" disabled={botonDeshabilitado}>
+        <Button
+          className={cn("w-full", ventanaAbierta && "bg-primary hover:bg-primary/90")}
+          disabled={botonDeshabilitado}
+        >
           {botonSolicitar}
         </Button>
       </CardContent>

@@ -1,0 +1,144 @@
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+
+export type TipoDevolucionEtiqueta = "antes_entrega" | "post_entrega"
+
+/** Bandeja recibida del proveedor que NO se entregará al paciente. */
+export const MOTIVOS_DEVOLUCION_ANTES_ENTREGA = [
+  "Paciente no estaba en habitación",
+  "Paciente en NPO o ayuno",
+  "Paciente se negó antes de recibir",
+  "Bandeja incorrecta para el paciente",
+  "Bandeja dañada o contaminada",
+  "Temperatura inadecuada",
+] as const
+
+/** Bandeja ya entregada al paciente y recogida por enfermería. */
+export const MOTIVOS_DEVOLUCION_PACIENTE = [
+  "Se consumió",
+  "Consumo parcial",
+  "No se consumió",
+  "Bandeja sin abrir",
+] as const
+
+export type MotivoDevolucionAntesEntrega =
+  (typeof MOTIVOS_DEVOLUCION_ANTES_ENTREGA)[number]
+
+export type MotivoDevolucionPaciente = (typeof MOTIVOS_DEVOLUCION_PACIENTE)[number]
+
+export type MotivoDevolucionFlujo =
+  | MotivoDevolucionAntesEntrega
+  | MotivoDevolucionPaciente
+
+export function motivosDevolucionPorTipo(tipo: TipoDevolucionEtiqueta): readonly string[] {
+  return tipo === "antes_entrega"
+    ? MOTIVOS_DEVOLUCION_ANTES_ENTREGA
+    : MOTIVOS_DEVOLUCION_PACIENTE
+}
+
+export function esDevolucionConsumida(
+  motivo?: MotivoDevolucionFlujo | string,
+): boolean {
+  return motivo === "Se consumió" || motivo === "Consumo parcial"
+}
+
+export function contarDevolucionesEtiquetas(etiquetas: EtiquetaEnfermera[]) {
+  let devueltas = 0
+  let devueltasConsumidas = 0
+
+  for (const etiqueta of etiquetas) {
+    if (etiqueta.estadoLogistica !== "devuelta") continue
+    if (esDevolucionConsumida(etiqueta.motivoDevolucion)) {
+      devueltasConsumidas++
+    } else {
+      devueltas++
+    }
+  }
+
+  return {
+    devueltas,
+    devueltasConsumidas,
+    total: devueltas + devueltasConsumidas,
+  }
+}
+
+export function estadoDietaDevolucionPorMotivo(
+  tipo: TipoDevolucionEtiqueta,
+  motivo: MotivoDevolucionFlujo,
+): string {
+  if (tipo === "antes_entrega") return "No entregada"
+  switch (motivo) {
+    case "Se consumió":
+      return "Consumida"
+    case "Consumo parcial":
+      return "Consumida parcialmente"
+    case "No se consumió":
+    case "Bandeja sin abrir":
+      return "No consumida"
+    default:
+      return "Devuelta por paciente"
+  }
+}
+
+export function configDevolucionPorTipo(tipo: TipoDevolucionEtiqueta) {
+  if (tipo === "antes_entrega") {
+    return {
+      titulo: "Rechazo antes de entrega",
+      guiaEscaneo:
+        "Escanea la bandeja recibida del proveedor que no entregarás al paciente.",
+      descripcionFormulario:
+      "Indica por qué la bandeja no llegará al paciente (aún está en tu custodia).",
+      etiquetaMotivo: "Motivo del rechazo",
+      estadoDietaApi: "No entregada",
+      rutaExito: "/dietas-cocina/etiquetas/devolucion/antes-entrega",
+      mensajeExito:
+        "La bandeja fue registrada como rechazada antes de la entrega al paciente.",
+    }
+  }
+  return {
+    titulo: "Recogida de bandeja",
+    guiaEscaneo:
+      "Escanea la bandeja que recoges del paciente después de la entrega.",
+    descripcionFormulario:
+      "Indica cuánto consumió el paciente al recoger la bandeja.",
+    etiquetaMotivo: "Estado del consumo",
+    estadoDietaApi: "Devuelta por paciente",
+    rutaExito: "/dietas-cocina/etiquetas/devolucion/paciente",
+    mensajeExito:
+      "La recogida de bandeja quedó registrada y cocina podrá conciliarla.",
+  }
+}
+
+export function puedeDevolucionPorTipo(
+  etiqueta: EtiquetaEnfermera,
+  tipo: TipoDevolucionEtiqueta,
+): boolean {
+  if (tipo === "antes_entrega") {
+    return etiqueta.estadoLogistica === "pre_entregada"
+  }
+  return etiqueta.estadoLogistica === "entregada"
+}
+
+export function motivoNoDevolucionPorTipo(
+  etiqueta: EtiquetaEnfermera,
+  tipo: TipoDevolucionEtiqueta,
+): string | undefined {
+  if (puedeDevolucionPorTipo(etiqueta, tipo)) return undefined
+  if (tipo === "antes_entrega") {
+    if (etiqueta.estadoLogistica === "entregada") {
+      return "Esta bandeja ya fue entregada al paciente. Usa «Recogida de bandeja»."
+    }
+    return "Solo puedes rechazar bandejas recibidas del proveedor y aún no entregadas al paciente."
+  }
+  if (etiqueta.estadoLogistica === "pre_entregada") {
+    return "Esta bandeja aún no fue entregada al paciente. Usa «Rechazo antes de entrega»."
+  }
+  return "Solo puedes registrar devoluciones de bandejas ya entregadas al paciente."
+}
+
+export function parseTipoDevolucionParam(
+  valor: string | undefined,
+): TipoDevolucionEtiqueta | null {
+  if (valor === "antes-entrega") return "antes_entrega"
+  if (valor === "paciente") return "post_entrega"
+  return null
+}

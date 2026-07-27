@@ -79,4 +79,8 @@ public interface IEtiquetasService
         Stream fotoStream,
         string nombreArchivo,
         CancellationToken cancellationToken = default);
+
+    Task<byte[]> GenerarPdfEtiquetasAsync(
+        IEnumerable<Guid> etiquetaIds,
+        CancellationToken cancellationToken = default);
 }

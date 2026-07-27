@@ -1,7 +1,7 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
-import { useMemo, useState } from "react"
-import { FileText, RefreshCw, Tag } from "lucide-react"
+import { useMemo, useState, useEffect } from "react"
+import { FileText, Loader2, RefreshCw, Tag } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
@@ -17,6 +17,8 @@ import {
   ordenCoincideFiltros,
   type FiltrosCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaFiltros"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
+import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
@@ -46,11 +48,17 @@ const FILTROS_INICIALES: FiltrosCocina = {
   busqueda: "",
 }
 
+function opcionesConTodos(valores: Iterable<string>, opcionTodos: string): string[] {
+  return [opcionTodos, ...Array.from(new Set(valores)).sort()]
+}
+
 export function CocinaProveedorView() {
+  const apiActiva = usarApiDietasCocina()
   const data = mockCocina
   const navigate = useNavigate()
   const {
     ordenes,
+    hidrato,
     marcarEnPreparacion,
     marcarComoLista,
     registrarDespacho,
@@ -60,13 +68,19 @@ export function CocinaProveedorView() {
     getEtiquetaByOrdenId,
   } = useCicloBandejas()
 
-  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(data.comidaActiva)
+  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
+    apiActiva ? obtenerComidaActivaOperativa() : data.comidaActiva,
+  )
   const [filtros, setFiltros] = useState<FiltrosCocina>(FILTROS_INICIALES)
   const [kpiActivo, setKpiActivo] = useState<string | undefined>()
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [ordenDetalle, setOrdenDetalle] = useState<OrdenCocina | null>(null)
   const [detalleAbierto, setDetalleAbierto] = useState(false)
   const [ultimaActualizacion, setUltimaActualizacion] = useState(() => new Date())
+
+  useEffect(() => {
+    setUltimaActualizacion(new Date())
+  }, [ordenes])
 
   const ordenesFiltradas = useMemo(() => {
     return ordenes.filter(
@@ -80,6 +94,25 @@ export function CocinaProveedorView() {
     () => calcularKpisCocina(ordenes, comidaActiva, getEtiquetaByOrdenId),
     [ordenes, comidaActiva, getEtiquetaByOrdenId],
   )
+
+  const opcionesFiltros = useMemo(() => {
+    if (!apiActiva) {
+      return {
+        pabellones: data.pabellones,
+        habitaciones: data.habitaciones,
+        tiposDieta: data.tiposDieta,
+        consistencias: data.consistencias,
+        estadosCocina: data.estadosCocina,
+      }
+    }
+    return {
+      pabellones: opcionesConTodos(ordenes.map((o) => o.pabellon), "Todos"),
+      habitaciones: opcionesConTodos(ordenes.map((o) => o.habitacion), "Todas"),
+      tiposDieta: opcionesConTodos(ordenes.map((o) => o.tipoDieta), "Todos"),
+      consistencias: opcionesConTodos(ordenes.map((o) => o.consistencia), "Todas"),
+      estadosCocina: data.estadosCocina,
+    }
+  }, [apiActiva, data, ordenes])
 
   const idsVisibles = useMemo(
     () => new Set(ordenesFiltradas.map((o) => o.id)),
@@ -193,7 +226,7 @@ export function CocinaProveedorView() {
   function generarEtiquetasSeleccionadas() {
     const ids = idsSeleccionados().filter((id) => {
       const orden = ordenes.find((o) => o.id === id)
-      return orden && puedeGenerarEtiqueta(orden)
+      return orden && puedeGenerarEtiqueta(orden, getEtiquetaByOrdenId(id))
     })
 
     if (ids.length === 0) {
@@ -201,24 +234,53 @@ export function CocinaProveedorView() {
       return
     }
 
-    const etiquetaIds = generarEtiquetas(ids)
-    navigate("/dietas-cocina/etiquetas", {
-      state: { preseleccion: etiquetaIds },
-    })
+    void generarEtiquetas(ids)
+      .then((etiquetaIds) => {
+        if (etiquetaIds.length === 0) {
+          demoToast("No se generaron etiquetas para las bandejas seleccionadas.", "error")
+          return
+        }
+        navigate("/dietas-cocina/etiquetas", {
+          state: { preseleccion: etiquetaIds },
+        })
+      })
+      .catch((error) => {
+        demoToast(
+          error instanceof Error
+            ? error.message
+            : "No se pudieron generar las etiquetas.",
+          "error",
+        )
+      })
   }
 
   function imprimirEtiqueta(orden: OrdenCocina) {
     const etiquetaId = orden.etiquetaId
-    if (!etiquetaId) {
-      const ids = generarEtiquetas([orden.id])
+    if (etiquetaId) {
       navigate("/dietas-cocina/etiquetas", {
-        state: { preseleccion: ids },
+        state: { preseleccion: [etiquetaId] },
       })
       return
     }
-    navigate("/dietas-cocina/etiquetas", {
-      state: { preseleccion: [etiquetaId] },
-    })
+
+    void generarEtiquetas([orden.id])
+      .then((ids) => {
+        if (ids.length === 0) {
+          demoToast("No se pudo generar la etiqueta para esta bandeja.", "error")
+          return
+        }
+        navigate("/dietas-cocina/etiquetas", {
+          state: { preseleccion: ids },
+        })
+      })
+      .catch((error) => {
+        demoToast(
+          error instanceof Error
+            ? error.message
+            : "No se pudo generar la etiqueta.",
+          "error",
+        )
+      })
   }
 
   return (
@@ -228,6 +290,13 @@ export function CocinaProveedorView() {
         subtitle={`${formatearFechaOperativa(ultimaActualizacion)} · Actualizado ${formatearHoraActualizacion(ultimaActualizacion)}`}
       />
 
+      {apiActiva && !hidrato ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          Cargando bandejas desde el API…
+        </div>
+      ) : (
+        <>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <DietasComidaTabs
           comidas={COMIDAS_TABS}
@@ -261,7 +330,11 @@ export function CocinaProveedorView() {
             onClick={() => {
               rehidratarDesdeStorage()
               setUltimaActualizacion(new Date())
-              demoToast("Datos sincronizados desde la sesión guardada.")
+              demoToast(
+                apiActiva
+                  ? "Bandejas sincronizadas con el censo."
+                  : "Datos sincronizados desde la sesión guardada.",
+              )
             }}
           >
             <RefreshCw className="size-4" />
@@ -277,11 +350,11 @@ export function CocinaProveedorView() {
 
       <CocinaFiltrosBar
         filtros={filtros}
-        pabellones={data.pabellones}
-        habitaciones={data.habitaciones}
-        tiposDieta={data.tiposDieta}
-        consistencias={data.consistencias}
-        estadosCocina={data.estadosCocina}
+        pabellones={opcionesFiltros.pabellones}
+        habitaciones={opcionesFiltros.habitaciones}
+        tiposDieta={opcionesFiltros.tiposDieta}
+        consistencias={opcionesFiltros.consistencias}
+        estadosCocina={opcionesFiltros.estadosCocina}
         onChange={(next) => {
           setFiltros(next)
           setKpiActivo(undefined)
@@ -339,6 +412,8 @@ export function CocinaProveedorView() {
         onChecklistChange={actualizarChecklist}
         getEtiquetaByOrdenId={getEtiquetaByOrdenId}
       />
+        </>
+      )}
     </div>
   )
 }

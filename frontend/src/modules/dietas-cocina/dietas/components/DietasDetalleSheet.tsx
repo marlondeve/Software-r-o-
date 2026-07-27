@@ -1,7 +1,9 @@
-import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { EventoTrazabilidad, FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import { History, PencilLine } from "lucide-react"
+import { useEffect, useState } from "react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import {
@@ -25,6 +27,9 @@ interface DietasDetalleSheetProps {
   fila: FilaDieta | null
   onEditar?: (fila: FilaDieta) => void
   onConfirmar?: (fila: FilaDieta) => void
+  cargarHistorial?: (filaId: string) => Promise<EventoTrazabilidad[]>
+  cargarDetalle?: (filaId: string) => Promise<FilaDieta>
+  cargarDietasPaciente?: (pacienteId: string) => Promise<FilaDieta[]>
 }
 
 function inicialesPaciente(nombre: string): string {
@@ -41,14 +46,61 @@ export function DietasDetalleSheet({
   fila,
   onEditar,
   onConfirmar,
+  cargarHistorial,
+  cargarDetalle,
+  cargarDietasPaciente,
 }: DietasDetalleSheetProps) {
-  if (!fila) return null
+  const [trazabilidad, setTrazabilidad] = useState<EventoTrazabilidad[]>([])
+  const [detalle, setDetalle] = useState<FilaDieta | null>(null)
+  const [dietasPaciente, setDietasPaciente] = useState<FilaDieta[]>([])
+  const [cargandoDetalle, setCargandoDetalle] = useState(false)
 
-  const trazabilidad = obtenerTrazabilidad(fila.id)
-  const tituloDieta = fila.tipoDieta ? `Dieta ${fila.tipoDieta}` : "Sin dieta asignada"
+  useEffect(() => {
+    if (!open || !fila) {
+      setTrazabilidad([])
+      setDetalle(null)
+      setDietasPaciente([])
+      return
+    }
+
+    setCargandoDetalle(Boolean(cargarDetalle))
+    if (cargarDetalle) {
+      void cargarDetalle(fila.id)
+        .then((actualizada) => setDetalle(actualizada))
+        .catch(() => setDetalle(fila))
+        .finally(() => setCargandoDetalle(false))
+    } else {
+      setDetalle(fila)
+    }
+
+    if (cargarHistorial) {
+      void cargarHistorial(fila.id)
+        .then(setTrazabilidad)
+        .catch(() => setTrazabilidad(obtenerTrazabilidad(fila.id)))
+    } else {
+      setTrazabilidad(obtenerTrazabilidad(fila.id))
+    }
+
+    if (cargarDietasPaciente) {
+      void cargarDietasPaciente(fila.pacienteId)
+        .then(setDietasPaciente)
+        .catch(() => setDietasPaciente([]))
+    } else {
+      setDietasPaciente([])
+    }
+  }, [open, fila, cargarHistorial, cargarDetalle, cargarDietasPaciente])
+
+  if (!fila) return null
+  const filaMostrada = detalle ?? fila
+  const tituloDieta = filaMostrada.tipoDieta
+    ? `Dieta ${filaMostrada.tipoDieta}`
+    : "Sin dieta asignada"
   const descripcion =
-    fila.descripcionDieta ?? obtenerDescripcionDieta(fila.tipoDieta)
-  const puedeConfirmar = fila.estado === "guardado"
+    filaMostrada.descripcionDieta ?? obtenerDescripcionDieta(filaMostrada.tipoDieta)
+  const puedeConfirmar = filaMostrada.estado === "guardado"
+  const otrasDietasPaciente = dietasPaciente.filter(
+    (item) => item.id !== filaMostrada.id,
+  )
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -61,13 +113,13 @@ export function DietasDetalleSheet({
           <div className="mt-3 flex items-center gap-3">
             <Avatar className="size-10 bg-primary text-primary-foreground">
               <AvatarFallback className="bg-primary text-sm font-semibold text-primary-foreground">
-                {inicialesPaciente(fila.paciente)}
+                {inicialesPaciente(filaMostrada.paciente)}
               </AvatarFallback>
             </Avatar>
             <div className="min-w-0">
-              <p className="font-semibold text-foreground">{fila.paciente}</p>
+              <p className="font-semibold text-foreground">{filaMostrada.paciente}</p>
               <p className="text-sm text-muted-foreground">
-                {formatearIdentificacionPaciente(fila)}
+                {formatearIdentificacionPaciente(filaMostrada)}
               </p>
             </div>
           </div>
@@ -75,21 +127,24 @@ export function DietasDetalleSheet({
 
         <ScrollAreaFlex>
           <div className="w-full space-y-5 px-5 py-4">
+            {cargandoDetalle && (
+              <p className="text-sm text-muted-foreground">Actualizando detalle…</p>
+            )}
             <section className="rounded-xl border border-border bg-muted/40 p-4">
               <div className="flex items-start justify-between gap-3">
                 <SeccionTitulo>Estado actual</SeccionTitulo>
                 <div className="flex items-center gap-1.5">
                   <EstadoBadge
-                    estado={fila.estado}
+                    estado={filaMostrada.estado}
                     className="shrink-0 font-semibold uppercase tracking-wide"
                   />
-                  {fila.estado === "guardado" && onEditar && (
+                  {filaMostrada.estado === "guardado" && onEditar && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
                       aria-label="Editar solicitud"
-                      onClick={() => onEditar(fila)}
+                      onClick={() => onEditar(filaMostrada)}
                     >
                       <PencilLine className="size-4" />
                     </Button>
@@ -99,14 +154,31 @@ export function DietasDetalleSheet({
               <div className="mt-3 space-y-1">
                 <p className="font-semibold text-foreground">{tituloDieta}</p>
                 <p className="text-sm text-muted-foreground">{descripcion}</p>
-                {fila.solicitadoPor && (
+                {filaMostrada.solicitadoPor && (
                   <p className="text-xs text-muted-foreground">
-                    Solicitado por {fila.solicitadoPor}
-                    {fila.solicitadoEn ? ` · ${fila.solicitadoEn}` : ""}
+                    Solicitado por {filaMostrada.solicitadoPor}
+                    {filaMostrada.solicitadoEn ? ` · ${filaMostrada.solicitadoEn}` : ""}
                   </p>
                 )}
               </div>
             </section>
+
+            {otrasDietasPaciente.length > 0 && (
+              <section className="space-y-2">
+                <SeccionTitulo>Otras dietas del paciente hoy</SeccionTitulo>
+                <ul className="space-y-2">
+                  {otrasDietasPaciente.map((item) => (
+                    <li
+                      key={item.id}
+                      className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium capitalize">{item.comida}</span>
+                      <Badge variant="outline">{item.estado}</Badge>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <section className="space-y-3">
               <div className="flex items-center gap-2">
@@ -147,7 +219,7 @@ export function DietasDetalleSheet({
             <Button
               type="button"
               className="w-full"
-              onClick={() => onConfirmar(fila)}
+              onClick={() => onConfirmar(filaMostrada)}
             >
               Confirmar Dieta
             </Button>

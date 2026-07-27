@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -41,6 +42,7 @@ public class AuditoriaController : ControllerBase
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
         [FromQuery] string? usuario,
+        [FromQuery] string? formato,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
@@ -58,6 +60,21 @@ public class AuditoriaController : ControllerBase
             };
 
             var resultado_query = await _service.ObtenerEventosAsync(filtros);
+
+            if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
+            {
+                var csv = CsvExportHelper.Generar(
+                    resultado_query.Data.Select(e => (IReadOnlyList<string?>)[
+                        e.Id.ToString(),
+                        e.Modulo,
+                        e.Accion,
+                        e.Resultado,
+                        e.Usuario,
+                        CsvExportHelper.FormatearFecha(e.FechaEvento)]),
+                    ["Id", "Modulo", "Accion", "Resultado", "Usuario", "Fecha"]);
+                return File(csv, "text/csv", $"auditoria-{DateTime.UtcNow:yyyyMMdd}.csv");
+            }
+
             return Ok(resultado_query);
         }
         catch (Exception ex)

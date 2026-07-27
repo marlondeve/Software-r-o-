@@ -26,6 +26,7 @@ public class BitalNegocioDbContext : DbContext
     public DbSet<EtiquetaEnfermera> EtiquetasEnfermeria { get; set; }
     public DbSet<FilaConciliacion> FilasConciliacion { get; set; }
     public DbSet<TiempoComidaConfig> TiemposComida { get; set; }
+    public DbSet<ParametrosOperativos> ParametrosOperativos { get; set; }
     public DbSet<CategoriaEdad> CategoriasEdad { get; set; }
     public DbSet<EventoAuditoria> EventosAuditoria { get; set; }
     public DbSet<UsuarioModulo> UsuariosModulo { get; set; }

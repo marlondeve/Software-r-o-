@@ -137,6 +137,11 @@ public class FilaConciliacion
     public EtiquetaEnfermera? Etiqueta { get; set; }
 
     /// <summary>
+    /// Ruta del documento de factura cargado (PDF/imagen)
+    /// </summary>
+    public string? FacturaDocumentoUrl { get; set; }
+
+    /// <summary>
     /// Fecha de creación del registro
     /// </summary>
     public DateTime CreadoEn { get; set; } = DateTime.UtcNow;

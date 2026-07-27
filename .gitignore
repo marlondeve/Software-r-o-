@@ -15,6 +15,14 @@ dist
 dist-ssr
 frontend/dist
 backend/dist
+backend/publish
+
+# .NET build artifacts (no subir DLLs ni compilados)
+**/bin/
+**/obj/
+*.user
+*.userosscache
+*.sln.docstates
 
 # Environment
 .env
@@ -29,7 +37,6 @@ backend/dist
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
 
 # Local
@@ -42,6 +49,6 @@ pnpm-lock.yaml
 /frontend/.claude
 /frontend/CLAUDE.md
 
-# vscode
+# vscode / Visual Studio
 .vs/
 

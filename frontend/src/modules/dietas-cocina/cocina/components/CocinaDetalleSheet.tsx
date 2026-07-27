@@ -3,11 +3,17 @@ import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {
   AlertTriangle,
   ClipboardCheck,
+  Loader2,
   Printer,
   ShieldAlert,
   Truck,
   Utensils,
 } from "lucide-react"
+import { useEffect, useState } from "react"
+
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
+import { obtenerDetalleOrdenCocina } from "@/modules/dietas-cocina/api/services/ordenes-cocina-api.service"
+import type { OrdenCocinaApiDto } from "@/modules/dietas-cocina/types/api-dtos"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -45,6 +51,8 @@ import {
   puedeDespachar,
   puedeEditarChecklist,
   puedeImprimirEtiquetaOrden,
+  etiquetaAccionOrden,
+  motivoNoEtiquetaOrden,
   puedeMarcarLista,
   checklistProgreso,
   motivoNoMarcarLista,
@@ -78,6 +86,23 @@ export function CocinaDetalleSheet({
   onChecklistChange,
   getEtiquetaByOrdenId,
 }: CocinaDetalleSheetProps) {
+  const apiActiva = usarApiDietasCocina()
+  const [detalleApi, setDetalleApi] = useState<OrdenCocinaApiDto | null>(null)
+  const [cargandoDetalleApi, setCargandoDetalleApi] = useState(false)
+
+  useEffect(() => {
+    if (!open || !orden?.ordenCocinaApiId || !apiActiva) {
+      setDetalleApi(null)
+      return
+    }
+
+    setCargandoDetalleApi(true)
+    void obtenerDetalleOrdenCocina(orden.ordenCocinaApiId)
+      .then(setDetalleApi)
+      .catch(() => setDetalleApi(null))
+      .finally(() => setCargandoDetalleApi(false))
+  }, [open, orden?.ordenCocinaApiId, apiActiva])
+
   if (!orden) return null
 
   const etiqueta = getEtiquetaByOrdenId(orden.id)
@@ -86,7 +111,11 @@ export function CocinaDetalleSheet({
   const motivoLista = motivoNoMarcarLista(orden)
   const puedeMarcarListaBtn = puedeMarcarLista(orden)
   const puedeDespacharBtn = puedeDespachar(orden, etiqueta)
-  const puedeImprimirBtn = puedeImprimirEtiquetaOrden(orden)
+  const puedeImprimirBtn = puedeImprimirEtiquetaOrden(orden, etiqueta)
+  const accionEtiqueta = etiquetaAccionOrden(orden, etiqueta)
+  const motivoEtiqueta = motivoNoEtiquetaOrden(orden)
+  const etiquetaBtnLabel =
+    accionEtiqueta === "generar" ? "Generar etiqueta" : "Imprimir etiqueta"
 
   const puedeContinuar = puedeContinuarPreparacion(orden, etiqueta)
   const mostrarImprimirEtiquetaPrincipal =
@@ -132,6 +161,17 @@ export function CocinaDetalleSheet({
 
         <ScrollAreaFlex>
           <div className="w-full space-y-5 px-5 py-4">
+            {cargandoDetalleApi && (
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Sincronizando detalle con el servidor…
+              </p>
+            )}
+            {detalleApi?.observaciones && (
+              <section className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+                {detalleApi.observaciones}
+              </section>
+            )}
             {orden.aislado && (
               <AlertaCriticaCard
                 tipo="aislamiento"
@@ -320,15 +360,11 @@ export function CocinaDetalleSheet({
               variant="outline"
               size="sm"
               disabled={!puedeImprimirBtn}
-              title={
-                puedeImprimirBtn
-                  ? undefined
-                  : "La bandeja debe estar lista para imprimir la etiqueta."
-              }
+              title={motivoEtiqueta}
               onClick={() => onImprimirEtiqueta(orden)}
             >
               <Printer data-icon="inline-start" />
-              Imprimir etiqueta
+              {etiquetaBtnLabel}
             </Button>
             <Button
               type="button"
@@ -357,7 +393,7 @@ export function CocinaDetalleSheet({
               onClick={() => onImprimirEtiqueta(orden)}
             >
               <Printer data-icon="inline-start" />
-              Imprimir etiqueta
+              {etiquetaBtnLabel}
             </Button>
           )}
         </SheetFooter>

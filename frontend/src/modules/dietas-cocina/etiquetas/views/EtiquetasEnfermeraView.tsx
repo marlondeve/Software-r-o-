@@ -8,6 +8,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { RecepcionProveedorPanel } from "@/modules/dietas-cocina/etiquetas/components/RecepcionProveedorPanel"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import {
+  COMIDAS_OPERATIVAS,
+  obtenerComidaActivaOperativa,
+  subtituloFechaOperativa,
+} from "@/modules/dietas-cocina/config/operativa-defaults"
 import { calcularKpisEnfermera } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
 import { mockEtiquetas } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
@@ -20,19 +26,21 @@ import {
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { KpiCardSimple } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
-import { puedeConfirmarPreEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
+import { puedeConfirmarPreEntrega, motivoNoConfirmarPreEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { cn } from "@/lib/utils"
 import { AlertTriangle, ClipboardList, PackageCheck } from "lucide-react"
 
 export function EtiquetasEnfermeraView() {
+  const apiActiva = usarApiDietasCocina()
   const location = useLocation()
   const { etiquetas, confirmarPreEntrega, getOrdenByEtiquetaId } =
     useCicloBandejas()
-  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(
-    mockEtiquetas.comidaActiva,
+  const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
+    apiActiva ? obtenerComidaActivaOperativa() : mockEtiquetas.comidaActiva,
   )
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const [confirmando, setConfirmando] = useState(false)
 
   useEffect(() => {
     const state = location.state as { mensaje?: string } | null
@@ -85,24 +93,34 @@ export function EtiquetasEnfermeraView() {
     }
   }
 
-  function confirmarRecepcion() {
+  async function confirmarRecepcion() {
     const ids = [...seleccionados].filter((id) => {
       const etiqueta = pendientesRecepcion.find((e) => e.id === id)
       if (!etiqueta) return false
       const orden = getOrdenByEtiquetaId(id)
-      return puedeConfirmarPreEntrega(orden, etiqueta)
+      return puedeConfirmarPreEntrega(orden, etiqueta, { apiActiva })
     })
     if (ids.length === 0) {
-      demoToast(
-        "Selecciona bandejas impresas despachadas desde cocina para confirmar recepción.",
-      )
+      const primera = pendientesRecepcion.find((e) => seleccionados.has(e.id))
+      const orden = primera ? getOrdenByEtiquetaId(primera.id) : undefined
+      const motivo = primera
+        ? motivoNoConfirmarPreEntrega(orden, primera, { apiActiva })
+        : "Selecciona bandejas impresas pendientes de recepción."
+      demoToast(motivo ?? "No se pudo confirmar la recepción.", "error")
       return
     }
-    confirmarPreEntrega(ids, "Enfermera de turno")
-    setSeleccionados(new Set())
-    setMensaje(
-      `${ids.length} bandeja${ids.length > 1 ? "s" : ""} recibida${ids.length > 1 ? "s" : ""} — el proveedor puede ver el estado actualizado.`,
-    )
+    setConfirmando(true)
+    try {
+      await confirmarPreEntrega(ids, "Enfermera de turno")
+      setSeleccionados(new Set())
+      setMensaje(
+        `${ids.length} bandeja${ids.length > 1 ? "s" : ""} recibida${ids.length > 1 ? "s" : ""} — el proveedor puede ver el estado actualizado.`,
+      )
+    } catch {
+      // El contexto ya mostró el error del API.
+    } finally {
+      setConfirmando(false)
+    }
   }
 
   const iconosKpi = [ClipboardList, PackageCheck, AlertTriangle]
@@ -111,11 +129,13 @@ export function EtiquetasEnfermeraView() {
     <div className="space-y-5 pb-6">
       <DashboardPageHeader
         title="Recepción y entrega de bandejas"
-        subtitle={mockEtiquetas.fechaReferencia}
+        subtitle={
+          apiActiva ? subtituloFechaOperativa() : mockEtiquetas.fechaReferencia
+        }
       />
 
       <DietasComidaTabs
-        comidas={mockEtiquetas.comidas}
+        comidas={apiActiva ? COMIDAS_OPERATIVAS : mockEtiquetas.comidas}
         comidaActiva={comidaActiva}
         onComidaChange={cambiarComida}
       />
@@ -142,7 +162,8 @@ export function EtiquetasEnfermeraView() {
         seleccionados={seleccionados}
         onToggle={toggleSeleccion}
         onToggleTodas={toggleTodas}
-        onConfirmar={confirmarRecepcion}
+        onConfirmar={() => void confirmarRecepcion()}
+        confirmando={confirmando}
       />
 
       <AccionesFlujoHub />

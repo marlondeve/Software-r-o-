@@ -4,16 +4,19 @@ import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { mockEnfermera } from "@/modules/dietas-cocina/inicio/datos/mockEnfermera"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
-/** Pabellones asociados al piso de enfermería demo. */
-const PABELLONES_ENFERMERIA = ["Pab. Central", "Pab. Norte"]
+import {
+  formatearPeriodoOperativo,
+} from "@/modules/dietas-cocina/lib/resolverPeriodoOperativoNutricionista"
 
 function filasEnfermeria(
   filas: FilaDieta[],
   comida: TiempoComida,
 ): FilaDieta[] {
-  return filas.filter(
-    (f) => f.comida === comida && PABELLONES_ENFERMERIA.includes(f.pabellon),
-  )
+  let filtradas = filas.filter((f) => f.comida === comida)
+  if (filtradas.length === 0 && filas.length > 0) {
+    filtradas = filas
+  }
+  return filtradas
 }
 
 export function construirDashboardEnfermeraDesdeCiclo(
@@ -47,7 +50,6 @@ export function construirDashboardEnfermeraDesdeCiclo(
   ).length
 
   const dietasRecientes = filasPiso
-    .filter((f) => !["no-solicitada", "cancelada"].includes(f.estado))
     .slice(0, 4)
     .map((fila) => {
       const orden = fila.ordenCocinaId
@@ -102,7 +104,7 @@ export function construirDashboardEnfermeraDesdeCiclo(
 
   return {
     piso: mockEnfermera.piso,
-    servicioEnCurso: mockEnfermera.servicioEnCurso,
+    servicioEnCurso: formatearPeriodoOperativo(),
     kpis: [
       { label: "Solicitudes pendientes", value: pendientes },
       { label: "Dietas confirmadas", value: confirmadas },

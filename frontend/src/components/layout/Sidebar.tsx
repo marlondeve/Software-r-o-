@@ -24,7 +24,7 @@ import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { rutaDietasPermitida } from "@/modules/dietas-cocina/lib/permisos"
-import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { cn } from "@/lib/utils"
 import type { ModuloId } from "@/types/module"
 import type { Usuario } from "@/types/user"
@@ -108,18 +108,22 @@ const mainNavItems: Record<ModuleType, NavItem[]> = {
   ],
 }
 
-function filtrarNavDietas(items: NavItem[], rol: ReturnType<typeof obtenerRolDietas>) {
+function filtrarNavDietas(items: NavItem[], rol: ReturnType<typeof useRolVistaEfectivo>) {
   return items.filter((item) => {
     const segmento = item.to.replace("/dietas-cocina/", "")
     return rutaDietasPermitida(rol, segmento)
   })
 }
 
-function bottomNavItems(module: ModuleType, usuario: Usuario | null): NavItem[] {
+function bottomNavItems(
+  module: ModuleType,
+  _usuario: Usuario | null,
+  rolDietas: ReturnType<typeof useRolVistaEfectivo>,
+): NavItem[] {
   const items: NavItem[] = []
 
   if (module === "dietas-cocina") {
-    const rol = obtenerRolDietas(usuario)
+    const rol = rolDietas
     if (rutaDietasPermitida(rol, "parametros")) {
       items.push({
         label: "Parámetros",
@@ -148,7 +152,7 @@ function bottomNavItems(module: ModuleType, usuario: Usuario | null): NavItem[] 
   }
 
   if (module === "dietas-cocina") {
-    const rol = obtenerRolDietas(usuario)
+    const rol = rolDietas
     if (rutaDietasPermitida(rol, "auditoria")) {
       items.push({
         label: "Auditoría",
@@ -202,7 +206,8 @@ export function SidebarContent({
   const { usuario, cerrarSesion } = useAuth()
   useConfigAccesoModulos()
   const branding = moduleBranding[module]
-  const rolDietas = module === "dietas-cocina" ? obtenerRolDietas(usuario) : null
+  const rolVistaEfectivo = useRolVistaEfectivo()
+  const rolDietas = module === "dietas-cocina" ? rolVistaEfectivo : null
   const navItems =
     module === "dietas-cocina"
       ? filtrarNavDietas(mainNavItems[module], rolDietas)
@@ -250,7 +255,7 @@ export function SidebarContent({
       <Separator className="mb-3" />
 
       <nav className="flex flex-col gap-0.5">
-        {bottomNavItems(module, usuario).map((item) => (
+          {bottomNavItems(module, usuario, rolDietas).map((item) => (
           <SidebarNavItem
             key={item.to}
             item={item}

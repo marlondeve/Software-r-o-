@@ -100,19 +100,19 @@ export const mockConciliacion = {
       totalRegistros: 50,
       registros: [
         {
-          fecha: "12 oct, 07:30 a. m.",
+          fecha: "12 oct, 07:30",
           paciente: "García, J.",
           habitacion: "Hab. 304",
           estado: "Confirmada",
         },
         {
-          fecha: "12 oct, 07:32 a. m.",
+          fecha: "12 oct, 07:32",
           paciente: "López, M.",
           habitacion: "Hab. 305",
           estado: "Confirmada",
         },
         {
-          fecha: "12 oct, 07:35 a. m.",
+          fecha: "12 oct, 07:35",
           paciente: "Ruiz, P.",
           habitacion: "Hab. 308",
           estado: "Confirmada",

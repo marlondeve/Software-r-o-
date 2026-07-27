@@ -1,0 +1,259 @@
+import type { DashboardDto } from "@/modules/dietas-cocina/types/api-dtos"
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
+import { normalizarClave } from "@/modules/dietas-cocina/api/utils"
+import {
+  formatearHora12,
+  formatearHoraDesdeFecha,
+  normalizarHoraEnTexto,
+} from "@/modules/dietas-cocina/parametros/lib/formatoHora"
+import { formatearPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverPeriodoOperativoNutricionista"
+
+const SEGMENT_COLORS = ["#006671", "#00818f", "#bbf244", "#7c6ba8", "#94a3b8", "#d8e0e8"]
+
+function leerCampo(item: Record<string, unknown>, ...claves: string[]): unknown {
+  return normalizarClave(item, ...claves)
+}
+
+function mapKpisApi(kpis: unknown) {
+  if (!Array.isArray(kpis)) return []
+  return kpis.map((item) => {
+    const kpi = item as Record<string, unknown>
+    return {
+      label: String(leerCampo(kpi, "label", "etiqueta", "Etiqueta") ?? ""),
+      value: String(leerCampo(kpi, "value", "valor", "Valor") ?? 0),
+      variant: (leerCampo(kpi, "variant") === "alert" ||
+      leerCampo(kpi, "variant") === "destructive"
+        ? "alert"
+        : "default") as "default" | "alert",
+    }
+  })
+}
+
+export function mapKpisDashboardApi(kpis: unknown) {
+  return mapKpisApi(kpis).map((kpi, index) => ({
+    id: `kpi-${index}`,
+    label: kpi.label,
+    value: Number(kpi.value),
+    variant: kpi.variant,
+  }))
+}
+
+export function mapAlertasDashboardApi(alertas: unknown) {
+  if (!Array.isArray(alertas)) return []
+  return alertas.map((item) => {
+    const alerta = item as Record<string, unknown>
+    const mensaje = String(
+      leerCampo(alerta, "mensaje", "Mensaje", "titulo", "Titulo", "descripcion") ?? "",
+    )
+    const accion = String(leerCampo(alerta, "accion", "Accion", "tipo", "Tipo") ?? "")
+    return {
+      titulo: mensaje || "Alerta operativa",
+      descripcion: accion,
+    }
+  })
+}
+
+function mapDistribucionApi(dto: Record<string, unknown>) {
+  const distribuciones = leerCampo(dto, "distribuciones", "distribucion", "Distribuciones")
+  if (Array.isArray(distribuciones)) {
+    const bloqueDietas =
+      distribuciones.find((item) => {
+        const tipo = String(leerCampo(item as Record<string, unknown>, "tipo", "Tipo") ?? "")
+        return tipo.toLowerCase() === "dietas"
+      }) ?? distribuciones[0]
+    const items = leerCampo(
+      bloqueDietas as Record<string, unknown>,
+      "items",
+      "Items",
+    )
+    if (Array.isArray(items)) {
+      const segmentos = items.map((item, index) => {
+        const row = item as Record<string, unknown>
+        return {
+          label: String(
+            leerCampo(row, "label", "categoria", "Categoria") ?? "",
+          ),
+          value: Number(leerCampo(row, "value", "cantidad", "Cantidad") ?? 0),
+          color: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+        }
+      })
+      const total = segmentos.reduce((sum, item) => sum + item.value, 0)
+      return { total, segmentos }
+    }
+  }
+
+  const plano = distribuciones ?? leerCampo(dto, "distribucion")
+  if (Array.isArray(plano)) {
+    const segmentos = plano.map((item, index) => {
+      const row = item as Record<string, unknown>
+      return {
+        label: String(leerCampo(row, "label", "categoria", "Categoria") ?? ""),
+        value: Number(leerCampo(row, "value", "cantidad", "Cantidad") ?? 0),
+        color: SEGMENT_COLORS[index % SEGMENT_COLORS.length],
+      }
+    })
+    const total = segmentos.reduce((sum, item) => sum + item.value, 0)
+    return { total, segmentos }
+  }
+
+  return { total: 0, segmentos: [] as Array<{ label: string; value: number; color: string }> }
+}
+
+function mapActividadApi(dto: Record<string, unknown>) {
+  const actividad =
+    leerCampo(dto, "actividadReciente", "actividad", "ActividadReciente") ?? []
+  if (!Array.isArray(actividad)) return []
+  return actividad.map((item) => {
+    const row = item as Record<string, unknown>
+    const timestamp = leerCampo(row, "timestamp", "Timestamp", "fecha", "Fecha")
+    const horaCampo = String(leerCampo(row, "hora", "Hora") ?? "")
+    const hora =
+      timestamp instanceof Date
+        ? formatearHoraDesdeFecha(timestamp)
+        : typeof timestamp === "string" && timestamp
+          ? formatearHoraDesdeFecha(new Date(timestamp))
+          : horaCampo
+            ? formatearHora12(normalizarHoraEnTexto(horaCampo))
+            : ""
+    return {
+      paciente: String(
+        leerCampo(row, "paciente", "usuario", "Usuario", "descripcion", "Descripcion") ?? "",
+      ),
+      accion: String(
+        leerCampo(row, "accion", "descripcion", "Descripcion", "tipo", "Tipo") ?? "",
+      ),
+      hora,
+      estado: String(leerCampo(row, "estado", "Estado") ?? "guardado") as EstadoDieta,
+    }
+  })
+}
+
+function mapAlertasApi(dto: Record<string, unknown>) {
+  const alertas = leerCampo(dto, "alertas", "Alertas") ?? []
+  if (!Array.isArray(alertas)) return []
+  return alertas.map((item) => {
+    const row = item as Record<string, unknown>
+    return {
+      title: String(
+        leerCampo(row, "titulo", "Titulo", "tipo", "Tipo", "mensaje", "Mensaje") ?? "",
+      ),
+      description: String(
+        leerCampo(row, "descripcion", "Descripcion", "accion", "Accion", "mensaje", "Mensaje") ?? "",
+      ),
+    }
+  })
+}
+
+export function dashboardNutricionistaVacio() {
+  return {
+    periodoOperativo: "—",
+    kpis: [] as Array<{ label: string; value: string; variant: "default" | "alert" }>,
+    distribucion: { total: 0, segmentos: [] as Array<{ label: string; value: number; color: string }> },
+    atencion: [] as Array<{ title: string; description: string }>,
+    actividadReciente: [] as Array<{
+      paciente: string
+      accion: string
+      hora: string
+      estado: EstadoDieta
+    }>,
+    proximoCierre: {
+      servicio: "—",
+      hora: "—",
+      tiempoRestante: "—",
+      pendientes: 0,
+    },
+  }
+}
+
+export function mapDashboardNutricionistaDto(dto: DashboardDto) {
+  const payload = dto as DashboardDto & Record<string, unknown>
+  const distribucion = mapDistribucionApi(payload)
+
+  return {
+    periodoOperativo: formatearPeriodoOperativo(),
+    kpis: mapKpisApi(payload.kpis),
+    distribucion,
+    atencion: mapAlertasApi(payload),
+    actividadReciente: mapActividadApi(payload),
+    proximoCierre: {
+      servicio: String(
+        leerCampo(payload, "proximoCierre", "ProximoCierre") ??
+          leerCampo((payload.progreso?.[0] as Record<string, unknown> | undefined) ?? {}, "label", "Label") ??
+          "Próximo cierre",
+      ),
+      hora: "—",
+      tiempoRestante: "—",
+      pendientes: Number(
+        leerCampo((payload.progreso?.[0] as Record<string, unknown> | undefined) ?? {}, "value", "Value") ?? 0,
+      ),
+    },
+  }
+}
+
+export function mapDashboardProveedorAlertas(dto: DashboardDto | null) {
+  return mapAlertasDashboardApi(dto?.alertas).map((alerta) => ({
+    title: alerta.titulo,
+    description: alerta.descripcion,
+  }))
+}
+
+export function dashboardEnfermeraVacio() {
+  return {
+    piso: "Enfermería",
+    servicioEnCurso: "—",
+    kpis: [
+      { label: "Solicitudes pendientes", value: 0 },
+      { label: "Dietas confirmadas", value: 0 },
+      { label: "Novedades de hoy", value: 0, alert: false },
+    ],
+    dietasRecientes: [] as Array<{
+      habitacion: string
+      paciente: string
+      tipo: string
+      estado: EstadoDieta
+    }>,
+    alertas: [] as Array<{ habitacion: string; titulo: string; descripcion: string }>,
+    contactoNutricion: {
+      descripcion: "Central de nutrición clínica.",
+      extension: "—",
+    },
+  }
+}
+
+export function mapDashboardEnfermeraDto(dto: DashboardDto) {
+  const vacio = dashboardEnfermeraVacio()
+  const payload = dto as DashboardDto & Record<string, unknown>
+  const kpisMapeados = mapKpisDashboardApi(payload.kpis).map((kpi, index) => ({
+    label: kpi.label,
+    value: kpi.value,
+    alert: kpi.variant === "alert" || index === 2,
+  }))
+  const kpis = kpisMapeados.length > 0 ? kpisMapeados : vacio.kpis
+
+  const dietasRecientes = mapActividadApi(payload).map((item) => {
+    const paciente = String(item.paciente ?? "")
+    const [habitacion, nombre] = paciente.includes("/")
+      ? paciente.split("/").map((part) => part.trim())
+      : ["—", paciente]
+    return {
+      habitacion: habitacion || "—",
+      paciente: nombre || paciente,
+      tipo: String(item.accion ?? "—"),
+      estado: (item.estado ?? "guardado") as EstadoDieta,
+    }
+  })
+
+  const alertas = mapAlertasDashboardApi(payload.alertas).map((alerta) => ({
+    habitacion: "—",
+    titulo: alerta.titulo,
+    descripcion: alerta.descripcion,
+  }))
+
+  return {
+    ...vacio,
+    servicioEnCurso: formatearPeriodoOperativo(),
+    kpis,
+    dietasRecientes,
+    alertas,
+  }
+}

@@ -110,10 +110,14 @@ export function DietasNovedadSheet({
   const [formulario, setFormulario] = useState<FormularioNovedad | null>(null)
 
   useEffect(() => {
-    if (fila && open) {
-      setFormulario(crearFormularioNovedad(fila, comidaActiva))
+    if (!open) {
+      setFormulario(null)
+      return
     }
-  }, [fila, comidaActiva, open])
+    if (!fila) return
+    setFormulario(crearFormularioNovedad(fila, comidaActiva))
+    // Solo reiniciar al abrir/cerrar o al cambiar de paciente; no cuando el censo refresca la misma fila.
+  }, [open, fila?.id, comidaActiva])
 
   const cambios = useMemo(() => {
     if (!fila || !formulario) return []

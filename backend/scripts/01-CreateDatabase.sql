@@ -34,6 +34,18 @@ BEGIN
 END
 GO
 
+-- Crear el esquema bital si no existe
+IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'bital')
+BEGIN
+	EXEC('CREATE SCHEMA bital');
+	PRINT 'Esquema bital creado exitosamente.';
+END
+ELSE
+BEGIN
+	PRINT 'El esquema bital ya existe.';
+END
+GO
+
 -- Dar permisos al usuario Dev
 USE BitalNegocio;
 GO

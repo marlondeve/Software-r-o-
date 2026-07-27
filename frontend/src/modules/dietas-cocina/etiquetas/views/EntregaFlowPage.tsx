@@ -9,13 +9,13 @@ import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/
 
 export function EntregaFlowPage() {
   const navigate = useNavigate()
-  const { buscarPorCodigo } = useCicloBandejas()
+  const { buscarPorCodigoAsync } = useCicloBandejas()
   const [error, setError] = useState<string | null>(null)
   const [manualAbierto, setManualAbierto] = useState(false)
 
   const procesarCodigo = useCallback(
-    (codigo: string) => {
-      const encontrada = buscarPorCodigo(codigo)
+    async (codigo: string) => {
+      const encontrada = await buscarPorCodigoAsync(codigo)
       if (!encontrada) {
         setError("No se encontró una etiqueta con ese código.")
         return
@@ -31,7 +31,7 @@ export function EntregaFlowPage() {
         `/dietas-cocina/etiquetas/consulta/${encodeURIComponent(encontrada.codigo)}`,
       )
     },
-    [buscarPorCodigo, navigate],
+    [buscarPorCodigoAsync, navigate],
   )
 
   return (

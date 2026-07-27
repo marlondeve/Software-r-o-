@@ -1,4 +1,4 @@
-import type { EstadoCocina, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { ChecklistItem, OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 
 const checklistBase: ChecklistItem[] = [

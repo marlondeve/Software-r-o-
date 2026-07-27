@@ -1,4 +1,4 @@
-import type { KpiCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { KpiCocina, OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { EstadoCocina } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {

@@ -1,5 +1,9 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
-import type { FilaConciliacion, RegistroSistema } from "@/modules/dietas-cocina/types/reconciliation"
+import type {
+  DetalleConciliacion,
+  FilaConciliacion,
+  RegistroSistema,
+} from "@/modules/dietas-cocina/types/reconciliation"
 import type { EstadoConciliacion, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { crearDietasCatalogoIniciales } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
@@ -7,7 +11,6 @@ import {
   formatearMonedaCOP,
   formatearTarifaCOP,
   normalizarNombreTipoDieta,
-  parseDifEconomica,
   parseMonedaCOP,
   resolverTarifaPorTipoDieta,
 } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
@@ -145,11 +148,8 @@ export function construirConciliacionDesdeCiclo(
 
 export function construirDetallesConciliacionDesdeFilas(
   filas: FilaConciliacion[],
-): Record<string, import("@/modules/dietas-cocina/conciliacion/datos/mockConciliacion").DetalleConciliacion> {
-  const detalles: Record<
-    string,
-    import("@/modules/dietas-cocina/conciliacion/datos/mockConciliacion").DetalleConciliacion
-  > = {}
+): Record<string, DetalleConciliacion> {
+  const detalles: Record<string, DetalleConciliacion> = {}
 
   for (const fila of filas) {
     if (fila.estado === "dif-cantidad" && fila.registros?.length) {

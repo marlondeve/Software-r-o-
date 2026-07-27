@@ -179,5 +179,7 @@ export function useConciliacionFiltrada() {
     actualizarEstadoFila,
     filtros: mockConciliacion.filtros,
     detalles,
+    cargando: false,
+    error: null,
   }
 }

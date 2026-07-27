@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
@@ -15,21 +15,60 @@ import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasC
 import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
 import { mockReportesProveedor } from "@/modules/dietas-cocina/reportes/datos/mockReportesProveedor"
 import { crearFiltrosReportesIniciales } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
+import { mesclarReporteConCiclo } from "@/modules/dietas-cocina/lib/mesclarDashboardOperativo"
 import { construirReportesProveedorDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import {
+  mapReporteDto,
+  reporteViewVacio,
+} from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
+import { obtenerReporteProveedor } from "@/modules/dietas-cocina/api/services/reportes.service"
+import { REPORTES_FILTROS_UI } from "@/modules/dietas-cocina/config/reportes-ui"
 
 export function ReportesProveedorView() {
   const base = mockReportesProveedor
   const { ordenes, etiquetas } = useCicloBandejas()
+  const apiActiva = usarApiDietasCocina()
   const [filtros, setFiltros] = useState(crearFiltrosReportesIniciales)
+  const [reporteApi, setReporteApi] = useState<ReturnType<typeof mapReporteDto> | null>(
+    null,
+  )
+  const [cargando, setCargando] = useState(false)
 
-  const data = useMemo(
+  useEffect(() => {
+    if (!apiActiva) return
+    setCargando(true)
+    void obtenerReporteProveedor({
+      desde: filtros.desde,
+      hasta: filtros.hasta,
+      servicio: filtros.servicio !== "todos" ? filtros.servicio : undefined,
+      horario: filtros.horario !== "todos" ? filtros.horario : undefined,
+      comida: undefined,
+    })
+      .then((resp) => setReporteApi(mapReporteDto(resp)))
+      .catch(() => setReporteApi(reporteViewVacio()))
+      .finally(() => setCargando(false))
+  }, [apiActiva, filtros])
+
+  const dataCiclo = useMemo(
     () => construirReportesProveedorDesdeCiclo(ordenes, etiquetas, filtros),
     [ordenes, etiquetas, filtros],
   )
 
+  const data = useMemo(() => {
+    if (!apiActiva) return dataCiclo
+    const api = reporteApi ?? reporteViewVacio()
+    return mesclarReporteConCiclo(api, dataCiclo, { modoApi: true })
+  }, [apiActiva, reporteApi, dataCiclo])
+
   const subtituloActualizacion = useMemo(
-    () => formatearUltimaActualizacionReporte(new Date()),
-    [ordenes, etiquetas, filtros],
+    () =>
+      apiActiva
+        ? cargando
+          ? "Actualizando…"
+          : formatearUltimaActualizacionReporte(new Date())
+        : formatearUltimaActualizacionReporte(new Date()),
+    [apiActiva, cargando],
   )
 
   return (
@@ -40,7 +79,7 @@ export function ReportesProveedorView() {
       />
 
       <ReportesFiltros
-        {...base.filtros}
+        {...(apiActiva ? REPORTES_FILTROS_UI : base.filtros)}
         filtros={filtros}
         ultimaActualizacion={subtituloActualizacion}
         onFiltrosChange={setFiltros}

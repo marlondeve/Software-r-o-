@@ -1,13 +1,11 @@
 import { Outlet, useMatch } from "react-router-dom"
 
 import { SectionPage } from "@/components/shared/SectionPage"
-import { useAuth } from "@/features/autenticacion/hooks/useAuth"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { EtiquetasProveedorView } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasProveedorView"
-import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
 
 export function EtiquetasPage() {
-  const { usuario } = useAuth()
-  const rol = obtenerRolDietas(usuario)
+  const rol = useRolVistaEfectivo()
   const esConsulta = useMatch("/dietas-cocina/etiquetas/consulta/:codigo")
 
   if (esConsulta) {

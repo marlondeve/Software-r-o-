@@ -1,6 +1,7 @@
 import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
 import type { ReactNode, SVGProps } from "react"
 
+import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import logoClinica from "@/assets/Logo-Clinica-del-Rio.png"
 import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
@@ -258,7 +259,7 @@ export function EtiquetaLabelFace({ etiqueta, qrSrc }: EtiquetaLabelFaceProps) {
                 {comida}
               </p>
               <p style={{ margin: "4px 0 0", fontSize: 10, color: C.black65 }}>
-                {etiqueta.fechaHora}
+                {formatearFechaHoraEnCadena(etiqueta.fechaHora)}
               </p>
             </div>
           </div>

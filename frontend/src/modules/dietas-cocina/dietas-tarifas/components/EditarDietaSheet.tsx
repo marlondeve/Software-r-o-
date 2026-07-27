@@ -54,36 +54,39 @@ export function EditarDietaSheet({
   const puedeGuardar = values.nombre.trim().length > 0
 
   function guardar() {
-    if (!puedeGuardar) return
+    if (!puedeGuardar || !dieta || !values) return
 
+    const dietaActual = dieta
+    const valuesActuales = values
     const ahora = new Date()
-    const tarifa = Number.parseFloat(values.tarifaInicial) || dieta.tarifaVigente
-    const historicoTarifas = dieta.historicoTarifas.map((entrada) => {
+    const tarifa =
+      Number.parseFloat(valuesActuales.tarifaInicial) || dietaActual.tarifaVigente
+    const historicoTarifas = dietaActual.historicoTarifas.map((entrada) => {
       if (!entrada.vigente) return entrada
       return {
         ...entrada,
         monto: tarifa,
-        vigenciaDesde: values.fechaInicio
-          ? formatearFechaCatalogo(new Date(values.fechaInicio))
+        vigenciaDesde: valuesActuales.fechaInicio
+          ? formatearFechaCatalogo(new Date(valuesActuales.fechaInicio))
           : entrada.vigenciaDesde,
-        vigenciaHasta: values.fechaFin
-          ? formatearFechaCatalogo(new Date(values.fechaFin))
+        vigenciaHasta: valuesActuales.fechaFin
+          ? formatearFechaCatalogo(new Date(valuesActuales.fechaFin))
           : entrada.vigenciaHasta,
       }
     })
 
     onGuardar({
-      ...dieta,
-      nombre: values.nombre.trim(),
-      descripcion: values.descripcion.trim(),
-      activa: values.activa,
-      estado: values.activa ? dieta.estado : "vencida",
+      ...dietaActual,
+      nombre: valuesActuales.nombre.trim(),
+      descripcion: valuesActuales.descripcion.trim(),
+      activa: valuesActuales.activa,
+      estado: valuesActuales.activa ? dietaActual.estado : "vencida",
       tarifaVigente: tarifa,
-      fechaInicio: values.fechaInicio
-        ? formatearFechaCatalogo(new Date(values.fechaInicio))
-        : dieta.fechaInicio,
-      fechaFin: values.fechaFin
-        ? formatearFechaCatalogo(new Date(values.fechaFin))
+      fechaInicio: valuesActuales.fechaInicio
+        ? formatearFechaCatalogo(new Date(valuesActuales.fechaInicio))
+        : dietaActual.fechaInicio,
+      fechaFin: valuesActuales.fechaFin
+        ? formatearFechaCatalogo(new Date(valuesActuales.fechaFin))
         : null,
       historicoTarifas,
       ultimaActualizacion: formatearFechaHoraCatalogo(ahora),

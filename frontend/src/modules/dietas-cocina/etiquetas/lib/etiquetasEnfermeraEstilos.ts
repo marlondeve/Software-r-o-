@@ -1,4 +1,6 @@
 import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/types/enums"
+import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
+
 export function etiquetaLogisticaLabel(estado: EstadoLogisticaEtiqueta): string {
   switch (estado) {
     case "generada":
@@ -36,9 +38,5 @@ export function claseChipMotivoDevolucion(activo: boolean): string {
 }
 
 export function formatearHoraActual(): string {
-  const ahora = new Date()
-  return ahora.toLocaleTimeString("es-CO", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  return formatearHoraDesdeFecha()
 }
