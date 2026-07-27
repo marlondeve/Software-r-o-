@@ -40,6 +40,8 @@ import type { EtiquetaDieta, EtiquetaEnfermera } from "@/modules/dietas-cocina/t
 import { formatearHoraActual } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 import {
+  checklistObligatorioCompleto,
+  motivoNoGenerarEtiqueta,
   puedeCancelarOrdenCocina,
   puedeConfirmarDevolucion,
   puedeConfirmarEntrega,
@@ -49,6 +51,10 @@ import {
   puedeMarcarLista,
 } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { crearEstadoInicialCicloBandejas, sincronizarSeedsCocinaEtiquetas } from "@/modules/dietas-cocina/lib/sincronizarSeedsCocinaEtiquetas"
+import {
+  filtrarOrdenesVinculadasAFilas,
+  resolverEtiquetaParaOrden,
+} from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 import {
   guardarOrdenCocinaApiId,
   cargarOrdenCocinaApiId,
@@ -66,14 +72,7 @@ function vincularEtiquetasGeneradas(
 ): OrdenCocina[] {
   if (etiquetasNuevas.length === 0) return ordenes
   return ordenes.map((orden) => {
-    const etiqueta = etiquetasNuevas.find(
-      (item) =>
-        (item.filaDietaId && item.filaDietaId === orden.id) ||
-        (item.ordenCocinaId &&
-          item.ordenCocinaId === orden.ordenCocinaApiId &&
-          item.pacienteId === orden.pacienteId &&
-          item.comida === orden.comida),
-    )
+    const etiqueta = resolverEtiquetaParaOrden(orden, etiquetasNuevas)
     if (!etiqueta) return orden
     return {
       ...orden,
@@ -94,14 +93,7 @@ function idsEtiquetasParaOrdenes(
 ): string[] {
   const ids: string[] = []
   for (const orden of ordenes) {
-    const etiqueta = etiquetas.find(
-      (item) =>
-        (item.filaDietaId && item.filaDietaId === orden.id) ||
-        (item.ordenCocinaId &&
-          item.ordenCocinaId === orden.ordenCocinaApiId &&
-          item.pacienteId === orden.pacienteId &&
-          item.comida === orden.comida),
-    )
+    const etiqueta = resolverEtiquetaParaOrden(orden, etiquetas)
     if (etiqueta) ids.push(etiqueta.id)
   }
   return ids
@@ -150,6 +142,101 @@ function ordenToEtiquetaBase(orden: OrdenCocina, id: string): EtiquetaDieta {
     fechaHora: mockEtiquetas.fechaReferencia,
     estado: "generada",
     qrPayload: payloadQrEtiqueta(codigo),
+  }
+}
+
+function resolverOrdenPorEtiquetaId(
+  etiquetaId: string,
+  ordenes: OrdenCocina[],
+  etiquetas: EtiquetaEnfermera[],
+): OrdenCocina | undefined {
+  const porEtiquetaId = ordenes.find((o) => o.etiquetaId === etiquetaId)
+  if (porEtiquetaId) return porEtiquetaId
+
+  const etiqueta = etiquetas.find((e) => e.id === etiquetaId)
+  if (!etiqueta) return undefined
+
+  if (etiqueta.filaDietaId) {
+    const porFila = ordenes.find((o) => o.id === etiqueta.filaDietaId)
+    if (porFila) return porFila
+  }
+
+  if (etiqueta.ordenCocinaId) {
+    const porApi = ordenes.find((o) => o.ordenCocinaApiId === etiqueta.ordenCocinaId)
+    if (porApi) return porApi
+  }
+
+  return undefined
+}
+
+function ordenConChecklistObligatorioForzado(orden: OrdenCocina): OrdenCocina {
+  if (checklistObligatorioCompleto(orden)) return orden
+  return {
+    ...orden,
+    checklist: orden.checklist.map((item) =>
+      item.obligatorio ? { ...item, completado: true } : item,
+    ),
+  }
+}
+
+/** Sincroniza checklist y marca la orden como Completada en el API. */
+async function completarOrdenesCocinaEnApi(
+  ordenes: OrdenCocina[],
+  opciones?: { forzarChecklistObligatorio?: boolean },
+): Promise<void> {
+  const porApiId = new Map<string, OrdenCocina>()
+  for (const orden of ordenes) {
+    const apiId = orden.ordenCocinaApiId ?? cargarOrdenCocinaApiId(orden.id)
+    if (!apiId) continue
+    const ordenSync = opciones?.forzarChecklistObligatorio
+      ? ordenConChecklistObligatorioForzado(orden)
+      : orden
+    porApiId.set(apiId, ordenSync)
+  }
+
+  for (const [apiId, orden] of porApiId) {
+    if (orden.checklist.length > 0) {
+      await actualizarChecklistOrdenCocina(apiId, {
+        items: orden.checklist.map((item) => ({
+          id: item.id,
+          completado: item.completado,
+        })),
+      })
+    }
+    await actualizarEstadoOrdenCocina(apiId, { estado: "Completada" })
+  }
+}
+
+/** Marca Completada en el API usando el id de orden vinculado a la etiqueta. */
+async function completarOrdenesPorEtiquetaIdsEnApi(
+  etiquetaIds: string[],
+  ordenes: OrdenCocina[],
+  etiquetas: EtiquetaEnfermera[],
+): Promise<void> {
+  const ordenesVinculadas: OrdenCocina[] = []
+  const apiIdsDirectos: string[] = []
+
+  for (const etiquetaId of etiquetaIds) {
+    const orden = resolverOrdenPorEtiquetaId(etiquetaId, ordenes, etiquetas)
+    if (orden) {
+      ordenesVinculadas.push(orden)
+      continue
+    }
+
+    const etiqueta = etiquetas.find((e) => e.id === etiquetaId)
+    if (etiqueta?.ordenCocinaId) {
+      apiIdsDirectos.push(etiqueta.ordenCocinaId)
+    }
+  }
+
+  if (ordenesVinculadas.length > 0) {
+    await completarOrdenesCocinaEnApi(ordenesVinculadas, {
+      forzarChecklistObligatorio: true,
+    })
+  }
+
+  for (const apiId of apiIdsDirectos) {
+    await actualizarEstadoOrdenCocina(apiId, { estado: "Completada" })
   }
 }
 
@@ -206,17 +293,19 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
 
   const syncOrdenesFromEtiquetas = useCallback(
     (prevOrdenes: OrdenCocina[], nextEtiquetas: EtiquetaEnfermera[]) => {
-      const porId = new Map(nextEtiquetas.map((e) => [e.id, e]))
-      const porFila = new Map(
-        nextEtiquetas
-          .filter((e) => e.filaDietaId)
-          .map((e) => [e.filaDietaId!, e]),
-      )
       return prevOrdenes.map((orden) => {
-        const etq =
-          (orden.etiquetaId ? porId.get(orden.etiquetaId) : undefined) ??
-          porFila.get(orden.id)
-        return etq ? sincronizarOrdenConEtiqueta(orden, etq) : orden
+        const etq = resolverEtiquetaParaOrden(orden, nextEtiquetas)
+        if (etq) return sincronizarOrdenConEtiqueta(orden, etq)
+        if (orden.estadoLogistica || orden.etiquetaId) {
+          return {
+            ...orden,
+            estadoLogistica: undefined,
+            etiquetaImpresa: false,
+            etiquetaGenerada: false,
+            etiquetaId: undefined,
+          }
+        }
+        return orden
       })
     },
     [],
@@ -255,11 +344,8 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
     if (!apiActiva) return
     setOrdenes((prev) => {
       const mapped = mapFilasDietasToOrdenesCocina(filas, etiquetasRef.current)
-      const fusionadas = fusionarOrdenesCocina(prev, mapped)
-      setEtiquetas((prevEtiquetas) =>
-        enriquecerEtiquetasConOrdenes(prevEtiquetas, fusionadas),
-      )
-      return fusionadas
+      const merged = fusionarOrdenesCocina(prev, mapped)
+      return filtrarOrdenesVinculadasAFilas(merged, filas)
     })
   }, [apiActiva])
 
@@ -267,8 +353,9 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
     if (!apiActiva || !hidrato) return
     setEtiquetas((prev) => {
       const enriquecidas = enriquecerEtiquetasConOrdenes(prev, ordenes)
-      const cambio = enriquecidas.some((etiqueta, index) => {
-        const anterior = prev[index]
+      const prevById = new Map(prev.map((etiqueta) => [etiqueta.id, etiqueta]))
+      const cambio = enriquecidas.some((etiqueta) => {
+        const anterior = prevById.get(etiqueta.id)
         return (
           !anterior ||
           etiqueta.aislamiento !== anterior.aislamiento ||
@@ -330,11 +417,9 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
 
   const getEtiquetaByOrdenId = useCallback(
     (ordenId: string) => {
-      const porFila = etiquetas.find((etiqueta) => etiqueta.filaDietaId === ordenId)
-      if (porFila) return porFila
       const orden = ordenes.find((o) => o.id === ordenId)
-      if (!orden?.etiquetaId) return undefined
-      return etiquetas.find((e) => e.id === orden.etiquetaId)
+      if (!orden) return undefined
+      return resolverEtiquetaParaOrden(orden, etiquetas)
     },
     [ordenes, etiquetas],
   )
@@ -477,16 +562,21 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      void Promise.all(
-        ordenesApiIds.map((ordenApiId) =>
-          actualizarEstadoOrdenCocina(ordenApiId, { estado: "Completada" }),
-        ),
+      void completarOrdenesCocinaEnApi(
+        ordenesRef.current.filter((orden) => idsValidos.includes(orden.id)),
       )
         .then(() => {
           const primera = ordenesRef.current.find((orden) => idsValidos.includes(orden.id))
           if (primera) solicitarRefreshCenso(primera.comida)
         })
         .catch((error) => {
+          setOrdenes((prev) =>
+            prev.map((orden) =>
+              idsValidos.includes(orden.id)
+                ? { ...orden, estadoCocina: "en_preparacion" as const }
+                : orden,
+            ),
+          )
           void recargarDesdeApi()
           demoToast(
             error instanceof Error
@@ -592,15 +682,11 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
         const pendientes = targetOrdenes.filter(
           (orden) =>
             !orden.etiquetaGenerada &&
-            !etiquetasRef.current.some(
-              (etiqueta) => etiqueta.filaDietaId === orden.id,
-            ),
+            !resolverEtiquetaParaOrden(orden, etiquetasRef.current),
         )
 
         const yaEnApi = targetOrdenes.filter((orden) =>
-          etiquetasRef.current.some(
-            (etiqueta) => etiqueta.filaDietaId === orden.id,
-          ),
+          Boolean(resolverEtiquetaParaOrden(orden, etiquetasRef.current)),
         )
 
         if (pendientes.length === 0) {
@@ -626,6 +712,18 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
             "Marca las bandejas como listas antes de generar etiquetas.",
           )
         }
+
+        const sinChecklist = pendientes.filter(
+          (orden) => !checklistObligatorioCompleto(orden),
+        )
+        if (sinChecklist.length > 0) {
+          throw new Error(
+            motivoNoGenerarEtiqueta(sinChecklist[0]) ??
+              "Complete el checklist obligatorio antes de generar etiquetas.",
+          )
+        }
+
+        await completarOrdenesCocinaEnApi(pendientes)
 
         const nuevas = deduplicarEtiquetasPorFila(
           await etiquetasRepository.generar({ ordenIds: apiIds }),
@@ -828,6 +926,11 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
     async (ids: string[], recibidoPor?: string): Promise<void> => {
       if (apiActiva) {
         try {
+          await completarOrdenesPorEtiquetaIdsEnApi(
+            ids,
+            ordenesRef.current,
+            etiquetasRef.current,
+          )
           await Promise.all(
             ids.map((id) =>
               etiquetasRepository.confirmarPreEntrega(id, recibidoPor),

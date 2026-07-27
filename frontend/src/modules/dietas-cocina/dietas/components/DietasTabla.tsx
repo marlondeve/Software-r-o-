@@ -1,4 +1,5 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
 import { Eye, MoreHorizontal, PencilLine } from "lucide-react"
 
@@ -29,6 +30,7 @@ import {
 interface DietasTablaProps {
   filas: FilaDieta[]
   seleccionados: Set<string>
+  resolverEstadoVisible?: (fila: FilaDieta) => EstadoDieta
   onToggleFila: (id: string, checked: boolean) => void
   onToggleTodas: (checked: boolean) => void
   onAbrirSolicitud: (fila: FilaDieta) => void
@@ -40,6 +42,7 @@ interface DietasTablaProps {
 export function DietasTabla({
   filas,
   seleccionados,
+  resolverEstadoVisible,
   onToggleFila,
   onToggleTodas,
   onAbrirSolicitud,
@@ -82,7 +85,13 @@ export function DietasTabla({
       {
         id: "estado",
         header: "Estado",
-        cell: ({ row }) => <EstadoBadge estado={row.original.estado} />,
+        cell: ({ row }) => (
+          <EstadoBadge
+            estado={
+              resolverEstadoVisible?.(row.original) ?? row.original.estado
+            }
+          />
+        ),
       },
       {
         id: "paciente",
@@ -223,6 +232,7 @@ export function DietasTabla({
       onRegistrarNovedad,
       onToggleFila,
       onToggleTodas,
+      resolverEstadoVisible,
       seleccionados,
       todasSeleccionadas,
     ],

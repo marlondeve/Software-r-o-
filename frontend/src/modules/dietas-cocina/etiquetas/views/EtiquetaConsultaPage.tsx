@@ -7,6 +7,7 @@ import { DetalleAsignacionPanel } from "@/modules/dietas-cocina/etiquetas/compon
 import { EtiquetaDetalleAsignacionLayout } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaDetalleAsignacionLayout"
 import { OrdenCocinaContextoCard } from "@/modules/dietas-cocina/etiquetas/components/OrdenCocinaContextoCard"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { esRecogidaPostEntrega } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import { extraerCodigoDesdeQr } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 import { puedeConfirmarEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
@@ -105,7 +106,9 @@ export function EtiquetaConsultaPage() {
             {etiqueta.estadoLogistica === "entregada"
               ? "Esta bandeja ya fue entregada al paciente."
               : etiqueta.estadoLogistica === "devuelta"
-                ? "Esta bandeja fue devuelta a cocina."
+                ? esRecogidaPostEntrega(etiqueta)
+                  ? "Esta bandeja fue recogida por enfermería."
+                  : "Esta bandeja fue rechazada antes de la entrega al paciente."
                 : "La bandeja debe estar recibida del proveedor antes de registrar la entrega."}
           </p>
         )

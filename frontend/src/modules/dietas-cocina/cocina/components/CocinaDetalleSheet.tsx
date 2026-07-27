@@ -2,11 +2,8 @@ import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {
   AlertTriangle,
-  ClipboardCheck,
   Loader2,
-  Printer,
   ShieldAlert,
-  Truck,
   Utensils,
 } from "lucide-react"
 import { useEffect, useState } from "react"
@@ -36,6 +33,7 @@ import {
 } from "@/components/ui/sheet"
 import { AlertaCriticaCard } from "@/modules/dietas-cocina/etiquetas/components/AlertaCriticaCard"
 import { CocinaSeguimientoTimeline } from "@/modules/dietas-cocina/cocina/components/CocinaSeguimientoTimeline"
+import { resolverAccionPrincipalCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaAccionPrincipal"
 import {
   claseBadgeEstadoVisibleCocina,
   claseTipoDieta,
@@ -44,18 +42,9 @@ import {
 } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
 import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
-  enPasoEtiquetaSeguimiento,
-  puedeContinuarPreparacion,
-} from "@/modules/dietas-cocina/cocina/lib/cocinaSeguimiento"
-import {
-  puedeDespachar,
   puedeEditarChecklist,
-  puedeImprimirEtiquetaOrden,
-  etiquetaAccionOrden,
-  motivoNoEtiquetaOrden,
-  puedeMarcarLista,
   checklistProgreso,
-  motivoNoMarcarLista,
+  enRecuperacionChecklistCocina,
 } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { cn } from "@/lib/utils"
 
@@ -105,22 +94,34 @@ export function CocinaDetalleSheet({
 
   if (!orden) return null
 
-  const etiqueta = getEtiquetaByOrdenId(orden.id)
-  const progresoChecklist = checklistProgreso(orden)
-  const checklistEditable = puedeEditarChecklist(orden)
-  const motivoLista = motivoNoMarcarLista(orden)
-  const puedeMarcarListaBtn = puedeMarcarLista(orden)
-  const puedeDespacharBtn = puedeDespachar(orden, etiqueta)
-  const puedeImprimirBtn = puedeImprimirEtiquetaOrden(orden, etiqueta)
-  const accionEtiqueta = etiquetaAccionOrden(orden, etiqueta)
-  const motivoEtiqueta = motivoNoEtiquetaOrden(orden)
-  const etiquetaBtnLabel =
-    accionEtiqueta === "generar" ? "Generar etiqueta" : "Imprimir etiqueta"
+  const ordenActiva = orden
 
-  const puedeContinuar = puedeContinuarPreparacion(orden, etiqueta)
-  const mostrarImprimirEtiquetaPrincipal =
-    enPasoEtiquetaSeguimiento(orden, etiqueta) && puedeImprimirBtn
-  const descripcionLogistica = descripcionEstadoLogisticaCocina(orden, etiqueta)
+  const etiqueta = getEtiquetaByOrdenId(ordenActiva.id)
+  const progresoChecklist = checklistProgreso(ordenActiva)
+  const checklistEditable = puedeEditarChecklist(ordenActiva)
+  const checklistRecuperacion = enRecuperacionChecklistCocina(ordenActiva)
+  const accionPrincipal = resolverAccionPrincipalCocina(ordenActiva, etiqueta)
+  const descripcionLogistica = descripcionEstadoLogisticaCocina(ordenActiva, etiqueta)
+
+  function ejecutarAccionPrincipal() {
+    switch (accionPrincipal.id) {
+      case "continuar-preparacion":
+        onContinuarPreparacion(ordenActiva.id)
+        break
+      case "marcar-lista":
+        onMarcarComoLista(ordenActiva.id)
+        break
+      case "generar-etiqueta":
+      case "imprimir-etiqueta":
+        onImprimirEtiqueta(ordenActiva)
+        break
+      case "registrar-despacho":
+        onRegistrarDespacho(ordenActiva.id)
+        break
+    }
+  }
+
+  const IconoAccion = accionPrincipal.icon
 
   const ubicacion = [
     orden.pabellon,
@@ -270,7 +271,13 @@ export function CocinaDetalleSheet({
                   Checklist cerrado: la bandeja ya avanzó en el flujo de cocina.
                 </p>
               )}
-              {checklistEditable && !progresoChecklist.completo && (
+              {checklistRecuperacion && checklistEditable && !progresoChecklist.completo && (
+                <p className="text-xs text-amber-700 dark:text-amber-300">
+                  La bandeja quedó como lista sin sincronizar. Completa el
+                  checklist obligatorio para poder generar la etiqueta.
+                </p>
+              )}
+              {checklistEditable && !checklistRecuperacion && !progresoChecklist.completo && (
                 <p className="text-xs text-amber-700 dark:text-amber-300">
                   Completa todos los ítems obligatorios para marcar la bandeja
                   como lista.
@@ -343,59 +350,16 @@ export function CocinaDetalleSheet({
         </ScrollAreaFlex>
 
         <SheetFooter className="shrink-0 flex-col gap-2 border-t px-5 py-4 sm:flex-col">
-          <div className="flex w-full flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!puedeMarcarListaBtn}
-              title={motivoLista}
-              onClick={() => onMarcarComoLista(orden.id)}
-            >
-              <ClipboardCheck data-icon="inline-start" />
-              Marcar como lista
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!puedeImprimirBtn}
-              title={motivoEtiqueta}
-              onClick={() => onImprimirEtiqueta(orden)}
-            >
-              <Printer data-icon="inline-start" />
-              {etiquetaBtnLabel}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!puedeDespacharBtn}
-              onClick={() => onRegistrarDespacho(orden.id)}
-            >
-              <Truck data-icon="inline-start" />
-              Registrar despacho
-            </Button>
-          </div>
-          {puedeContinuar && (
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => onContinuarPreparacion(orden.id)}
-            >
-              Continuar preparación
-            </Button>
-          )}
-          {mostrarImprimirEtiquetaPrincipal && (
-            <Button
-              type="button"
-              className="w-full"
-              onClick={() => onImprimirEtiqueta(orden)}
-            >
-              <Printer data-icon="inline-start" />
-              {etiquetaBtnLabel}
-            </Button>
-          )}
+          <Button
+            type="button"
+            className="w-full"
+            disabled={!accionPrincipal.habilitada}
+            title={accionPrincipal.motivo}
+            onClick={ejecutarAccionPrincipal}
+          >
+            {IconoAccion && <IconoAccion data-icon="inline-start" />}
+            {accionPrincipal.label}
+          </Button>
         </SheetFooter>
       </SheetContent>
     </Sheet>

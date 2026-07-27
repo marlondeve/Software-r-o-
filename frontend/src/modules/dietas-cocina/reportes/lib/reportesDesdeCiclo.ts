@@ -14,6 +14,7 @@ import { reporteViewVacio } from "@/modules/dietas-cocina/api/mappers/reporte-vi
 import {
   contarDevolucionesEtiquetas,
   esDevolucionConsumida,
+  esRechazoAntesEntrega,
 } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import {
   contextoFiltroReporte,
@@ -28,8 +29,9 @@ function contarPorEstadoLogistico(etiquetas: EtiquetaEnfermera[]) {
     entregadas: etiquetas.filter((e) => e.estadoLogistica === "entregada").length,
     preEntregadas: etiquetas.filter((e) => e.estadoLogistica === "pre_entregada")
       .length,
-    devueltas: devoluciones.devueltas,
-    devueltasConsumidas: devoluciones.devueltasConsumidas,
+    devueltas: devoluciones.rechazadas,
+    devueltasConsumidas: devoluciones.recogidasConsumidas,
+    recogidas: devoluciones.recogidas,
     devueltasTotal: devoluciones.total,
     impresas: etiquetas.filter((e) => e.estadoLogistica === "impresa").length,
     generadas: etiquetas.filter((e) => e.estadoLogistica === "generada").length,
@@ -72,18 +74,21 @@ function construirSegmentosEstadoOrdenes(
   let listas = 0
   let despachadas = 0
   let recibidas = 0
-  let devueltas = 0
-  let devueltasConsumidas = 0
+  let recogidas = 0
+  let recogidasConsumidas = 0
+  let rechazadas = 0
 
   for (const orden of activas) {
     const etiqueta = getEtiqueta(orden.id)
     const logistica = resolverEstadoLogisticaOrden(orden, etiqueta)
 
-    if (logistica === "devuelta") {
-      if (esDevolucionConsumida(etiqueta?.motivoDevolucion)) {
-        devueltasConsumidas++
+    if (logistica === "devuelta" && etiqueta) {
+      if (esRechazoAntesEntrega(etiqueta)) {
+        rechazadas++
+      } else if (esDevolucionConsumida(etiqueta.motivoDevolucion)) {
+        recogidasConsumidas++
       } else {
-        devueltas++
+        recogidas++
       }
       continue
     }
@@ -107,12 +112,9 @@ function construirSegmentosEstadoOrdenes(
     { label: "Listas", value: listas, color: "#f59e0b" },
     { label: "Despachadas", value: despachadas, color: "#0ea5e9" },
     { label: "Recibidas", value: recibidas, color: "#8b5cf6" },
-    { label: "Devueltas", value: devueltas, color: "#ef4444" },
-    {
-      label: "Devueltas consumidas",
-      value: devueltasConsumidas,
-      color: "#f97316",
-    },
+    { label: "Recogidas", value: recogidas, color: "#64748b" },
+    { label: "Recogidas (consumidas)", value: recogidasConsumidas, color: "#f97316" },
+    { label: "Rechazadas", value: rechazadas, color: "#ef4444" },
   ].filter((segmento) => segmento.value > 0)
 
   return { segmentos, total: activas.length }
@@ -207,12 +209,8 @@ function construirSegmentosEstadoEtiquetas(stats: ReturnType<typeof contarPorEst
       value: stats.preEntregadas + stats.impresas + stats.generadas,
       color: "#0ea5e9",
     },
-    { label: "Devueltas", value: stats.devueltas, color: "#ef4444" },
-    {
-      label: "Devueltas consumidas",
-      value: stats.devueltasConsumidas,
-      color: "#f97316",
-    },
+    { label: "Recogidas", value: stats.recogidas + stats.devueltasConsumidas, color: "#64748b" },
+    { label: "Rechazadas", value: stats.devueltas, color: "#ef4444" },
   ].filter((segmento) => segmento.value > 0)
 }
 
@@ -239,15 +237,15 @@ function construirHallazgosNutricionista(
   if (stats.devueltasTotal > 0) {
     hallazgos.push({
       variant: "warning",
-      titulo: "Devoluciones en sesión",
-      descripcion: `${stats.devueltas} devuelta(s), ${stats.devueltasConsumidas} devuelta(s) consumida(s) de ${totalEtiquetas} en la sesión actual.`,
+      titulo: "Cierres de bandeja en sesión",
+      descripcion: `${stats.recogidas + stats.devueltasConsumidas} recogida(s), ${stats.devueltas} rechazada(s) de ${totalEtiquetas} en la sesión actual.`,
     })
   }
 
   hallazgos.push({
     variant: "info",
     titulo: "Ciclo operativo en vivo",
-    descripcion: `${stats.entregadas} entregadas, ${stats.devueltas} devueltas, ${stats.devueltasConsumidas} devueltas consumidas de ${totalEtiquetas} etiquetas en sesión.`,
+    descripcion: `${stats.entregadas} entregadas, ${stats.recogidas + stats.devueltasConsumidas} recogidas, ${stats.devueltas} rechazadas de ${totalEtiquetas} etiquetas en sesión.`,
   })
 
   return hallazgos
@@ -264,29 +262,35 @@ export function construirReportesNutricionistaDesdeCiclo(
   const base = soloReal
     ? reporteViewVacio()
     : aplicarFiltrosReportes(mockReportesNutricionista, filtros)
-  const stats = contarPorEstadoLogistico(etiquetas)
+  const ordenesFiltradas = filtrarOrdenesReporte(ordenes, filtros)
+  const etiquetasFiltradas = filtrarEtiquetasReporte(
+    etiquetas,
+    ordenesFiltradas,
+    filtros,
+  )
+  const stats = contarPorEstadoLogistico(etiquetasFiltradas)
   const segmentos = construirSegmentosEstadoEtiquetas(stats)
   const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
 
-  const tiposDieta = contarTiposDieta(ordenes)
-  const motivosDevolucion = contarMotivosDevolucion(etiquetas)
+  const tiposDieta = contarTiposDieta(ordenesFiltradas)
+  const motivosDevolucion = contarMotivosDevolucion(etiquetasFiltradas)
 
   const kpis = soloReal
     ? base.kpis
     : base.kpis.map((kpi, i) => {
-        if (i === 0) return { ...kpi, value: String(ordenes.length) }
+        if (i === 0) return { ...kpi, value: String(ordenesFiltradas.length) }
         if (i === 2) return { ...kpi, value: String(stats.entregadas) }
         if (i === 3) return { ...kpi, value: String(stats.devueltasTotal) }
         return kpi
       })
 
   const hallazgos = soloReal
-    ? construirHallazgosNutricionista(stats, etiquetas.length)
+    ? construirHallazgosNutricionista(stats, etiquetasFiltradas.length)
     : [
         ...base.hallazgos.slice(0, 2),
         {
           titulo: "Ciclo operativo en vivo",
-          descripcion: `${stats.entregadas} entregadas, ${stats.devueltas} devueltas, ${stats.devueltasConsumidas} devueltas consumidas de ${etiquetas.length || 0} etiquetas en sesión.`,
+          descripcion: `${stats.entregadas} entregadas, ${stats.recogidas + stats.devueltasConsumidas} recogidas, ${stats.devueltas} rechazadas de ${etiquetasFiltradas.length || 0} etiquetas en sesión.`,
           variant: "info" as const,
         },
       ]
@@ -321,8 +325,12 @@ export function construirReportesProveedorDesdeCiclo(
 ) {
   const base = aplicarFiltrosReportes(mockReportesProveedor, filtros)
   const ordenesFiltradas = filtrarOrdenesReporte(ordenes, filtros)
-  const etiquetasFiltradas = filtrarEtiquetasReporte(etiquetas, ordenesFiltradas)
-  const getEtiqueta = crearLookupEtiquetaOrden(ordenesFiltradas, etiquetas)
+  const etiquetasFiltradas = filtrarEtiquetasReporte(
+    etiquetas,
+    ordenesFiltradas,
+    filtros,
+  )
+  const getEtiqueta = crearLookupEtiquetaOrden(ordenesFiltradas, etiquetasFiltradas)
   const stats = contarPorEstadoLogistico(etiquetasFiltradas)
   const preparadas = ordenesFiltradas.filter(
     (orden) => orden.estadoCocina !== "cancelada",

@@ -192,8 +192,8 @@ public class EncuestasProxyService : IEncuestasBffService
             query = query.Where(x => x.FechaInicio <= filtros.FechaCitaHasta.Value);
         }
 
-        var total = query.Count();
-        var items = query
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
             .OrderBy(x => x.NombreCompleto)
             .Skip(Math.Max(0, filtros.Page - 1) * filtros.PageSize)
             .Take(filtros.PageSize)
@@ -210,7 +210,7 @@ public class EncuestasProxyService : IEncuestasBffService
                 FechaCita = x.FechaInicio,
                 IntentosLlamada = x.IntentosLlamada.Count
             })
-            .ToList();
+            .ToListAsync(cancellationToken);
 
         return new RespuestaCapturaTelefonicaDto
         {
@@ -224,12 +224,12 @@ public class EncuestasProxyService : IEncuestasBffService
             },
             Kpis = new KpiCapturaTelefonicaDto
             {
-                PacientesPorContactar = query.Count(x => x.Estado == EstadoEncuesta.Pendiente),
-                Contactados = query.Count(x => x.Estado == EstadoEncuesta.EnProceso),
-                ReintentosPendientes = query.Count(x => x.IntentosLlamada.Count < 3),
-                SinRespuesta = query.Count(x => x.Estado == EstadoEncuesta.NoDisponible),
-                Rechazos = query.Count(x => x.Estado == EstadoEncuesta.Rechazada),
-                Completadas = query.Count(x => x.Estado == EstadoEncuesta.Completada)
+                PacientesPorContactar = await query.CountAsync(x => x.Estado == EstadoEncuesta.Pendiente, cancellationToken),
+                Contactados = await query.CountAsync(x => x.Estado == EstadoEncuesta.EnProceso, cancellationToken),
+                ReintentosPendientes = await query.CountAsync(x => x.IntentosLlamada.Count < 3, cancellationToken),
+                SinRespuesta = await query.CountAsync(x => x.Estado == EstadoEncuesta.NoDisponible, cancellationToken),
+                Rechazos = await query.CountAsync(x => x.Estado == EstadoEncuesta.Rechazada, cancellationToken),
+                Completadas = await query.CountAsync(x => x.Estado == EstadoEncuesta.Completada, cancellationToken)
             }
         };
     }
@@ -797,9 +797,9 @@ public class EncuestasProxyService : IEncuestasBffService
             return null;
         }
 
-        var captura = _dbContext.CapturasEncuesta
+        var captura = await _dbContext.CapturasEncuesta
             .Include(x => x.IntentosLlamada)
-            .FirstOrDefault(x => x.Id == capturaId);
+            .FirstOrDefaultAsync(x => x.Id == capturaId, cancellationToken);
 
         if (captura == null)
         {
@@ -823,7 +823,7 @@ public class EncuestasProxyService : IEncuestasBffService
                 ? EstadoEncuesta.NoDisponible
                 : EstadoEncuesta.EnProceso;
 
-        _dbContext.SaveChanges();
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return new FilaCapturaTelefonicaDto
         {
@@ -847,13 +847,14 @@ public class EncuestasProxyService : IEncuestasBffService
             return new RespuestaCapturaTelefonicaInicioDto { Redirect = $"/encuestas/captura-encuesta?origen=telefonica&id={id}" };
         }
 
-        var captura = _dbContext.CapturasEncuesta.FirstOrDefault(x => x.Id == capturaId);
+        var captura = await _dbContext.CapturasEncuesta
+            .FirstOrDefaultAsync(x => x.Id == capturaId, cancellationToken);
         if (captura != null)
         {
             captura.Estado = EstadoEncuesta.EnProceso;
             captura.ModificadoEn = DateTime.UtcNow;
             captura.ModificadoPor = "sistema";
-            _dbContext.SaveChanges();
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
         return new RespuestaCapturaTelefonicaInicioDto

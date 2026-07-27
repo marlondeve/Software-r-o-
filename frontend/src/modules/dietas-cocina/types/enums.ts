@@ -8,6 +8,7 @@ export type EstadoDieta =
   | "por-iniciar"
   | "recibida"
   | "devuelta"
+  | "recogida"
   | "cancelada"
   | "despachada"
 
@@ -74,6 +75,7 @@ export type FiltroSeguimientoCocina =
   | "pre_entregada"
   | "entregada"
   | "devuelta"
+  | "recogida"
 
 export type RolDietas =
   | "Administrador"

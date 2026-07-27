@@ -45,6 +45,9 @@ public record ActividadDto
     public required string Tipo { get; init; } // "orden", "etiqueta", "conciliacion"
     public required string Usuario { get; init; }
     public required string Descripcion { get; init; }
+    public string? Paciente { get; init; }
+    public string? Habitacion { get; init; }
+    public string? Estado { get; init; }
     public string? Entidad { get; init; }
     public string? EntidadId { get; init; }
 }

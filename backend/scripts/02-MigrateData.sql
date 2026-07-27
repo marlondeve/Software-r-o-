@@ -211,10 +211,10 @@ DECLARE @PasswordHash nvarchar(128) = N'3ab36e2aa3c89926e88a03fbfcfc86dc08c7aa3e
 ;WITH UsuariosSeed AS (
     SELECT *
     FROM (VALUES
-        (N'Administrador BITAL',   N'admin@clinicadelrio.com',        N'900000001', 1),
-        (N'Nutricionista Clínica', N'nutricionista@clinicadelrio.com', N'900000002', 2),
-        (N'Jefe de Cocina',        N'cocinero@clinicadelrio.com',     N'900000003', 3),
-        (N'Enfermería Pabellón',   N'enfermera@clinicadelrio.com',    N'900000004', 4)
+        (N'Administrador BITAL',   N'admin@clinicadelrio.com',        N'admin', 1),
+        (N'Nutricionista Clínica', N'nutricionista@clinicadelrio.com', N'nutricionista', 2),
+        (N'Jefe de Cocina',        N'cocinero@clinicadelrio.com',     N'cocinero', 3),
+        (N'Enfermería Pabellón',   N'enfermera@clinicadelrio.com',    N'enfermera', 4)
     ) AS v(NombreCompleto, Email, Identificacion, Rol)
 )
 MERGE bital.UsuariosModulo AS tgt

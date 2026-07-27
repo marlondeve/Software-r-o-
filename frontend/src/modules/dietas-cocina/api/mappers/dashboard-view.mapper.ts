@@ -3,10 +3,14 @@ import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { normalizarClave } from "@/modules/dietas-cocina/api/utils"
 import {
   formatearHora12,
-  formatearHoraDesdeFecha,
+  formatearHoraDesdeIsoApi,
   normalizarHoraEnTexto,
 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { formatearPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverPeriodoOperativoNutricionista"
+import {
+  etiquetaAccionDesdeTipoEvento,
+} from "@/modules/dietas-cocina/lib/construirActividadEnfermeria"
+import { normalizarEstadoDietaDesdeApi } from "@/modules/dietas-cocina/api/mappers/filaDieta.mapper"
 
 const SEGMENT_COLORS = ["#006671", "#00818f", "#bbf244", "#7c6ba8", "#94a3b8", "#d8e0e8"]
 
@@ -108,24 +112,55 @@ function mapActividadApi(dto: Record<string, unknown>) {
     const timestamp = leerCampo(row, "timestamp", "Timestamp", "fecha", "Fecha")
     const horaCampo = String(leerCampo(row, "hora", "Hora") ?? "")
     const hora =
-      timestamp instanceof Date
-        ? formatearHoraDesdeFecha(timestamp)
-        : typeof timestamp === "string" && timestamp
-          ? formatearHoraDesdeFecha(new Date(timestamp))
-          : horaCampo
-            ? formatearHora12(normalizarHoraEnTexto(horaCampo))
-            : ""
+      typeof timestamp === "string" && timestamp
+        ? formatearHoraDesdeIsoApi(timestamp)
+        : horaCampo
+          ? formatearHora12(normalizarHoraEnTexto(horaCampo))
+          : "—"
+
+    const habitacion = String(leerCampo(row, "habitacion", "Habitacion") ?? "").trim()
+    const pacienteNombre = String(leerCampo(row, "paciente", "Paciente") ?? "").trim()
+    const paciente =
+      habitacion && pacienteNombre
+        ? `${habitacion} / ${pacienteNombre}`
+        : pacienteNombre ||
+          String(leerCampo(row, "pacienteContexto", "PacienteContexto") ?? "")
+
+    const descripcion = String(
+      leerCampo(row, "descripcion", "Descripcion", "accion", "Accion") ?? "",
+    )
+    const tipo = String(leerCampo(row, "tipo", "Tipo") ?? "")
+    const accion = etiquetaAccionDesdeTipoEvento(tipo, descripcion)
+
+    const estadoRaw = leerCampo(row, "estado", "Estado")
+    const estado = normalizarEstadoDietaDesdeApi(
+      estadoRaw ?? inferirEstadoDesdeTipoEvento(tipo),
+    )
+
     return {
-      paciente: String(
-        leerCampo(row, "paciente", "usuario", "Usuario", "descripcion", "Descripcion") ?? "",
-      ),
-      accion: String(
-        leerCampo(row, "accion", "descripcion", "Descripcion", "tipo", "Tipo") ?? "",
-      ),
+      paciente: paciente || "—",
+      accion,
       hora,
-      estado: String(leerCampo(row, "estado", "Estado") ?? "guardado") as EstadoDieta,
+      estado,
     }
   })
+}
+
+function inferirEstadoDesdeTipoEvento(tipo: string): EstadoDieta {
+  switch (tipo.toLowerCase()) {
+    case "entrega_confirmada":
+      return "recibida"
+    case "devolucion_registrada":
+      return "devuelta"
+    case "pre_entrega_confirmada":
+      return "confirmada"
+    case "dieta_confirmada":
+      return "confirmada"
+    case "cancelacion":
+      return "cancelada"
+    default:
+      return "guardado"
+  }
 }
 
 function mapAlertasApi(dto: Record<string, unknown>) {

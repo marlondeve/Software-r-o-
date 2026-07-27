@@ -14,13 +14,13 @@ const INTERVALO_SINCRONIZACION_MS = 15_000
 export function SincronizarCocinaDesdeDietas() {
   const apiActiva = usarApiDietasCocina()
   const { filas, sincronizarCenso } = useDietasOperativas()
-  const { sincronizarOrdenesDesdeFilas, rehidratarDesdeStorage, etiquetas } =
+  const { sincronizarOrdenesDesdeFilas, rehidratarDesdeStorage } =
     useCicloBandejas()
 
   useEffect(() => {
     if (!apiActiva) return
     sincronizarOrdenesDesdeFilas(filas)
-  }, [filas, etiquetas, apiActiva, sincronizarOrdenesDesdeFilas])
+  }, [filas, apiActiva, sincronizarOrdenesDesdeFilas])
 
   useEffect(() => {
     if (!apiActiva) return

@@ -29,7 +29,7 @@ import {
   SeccionTitulo,
 } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
 import { MOTIVOS_NOVEDAD } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
-import { obtenerVentanaComida } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
+import { resolverEstadoVentanaComida } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
 import { cn } from "@/lib/utils"
 
 interface FormularioNovedad {
@@ -54,7 +54,6 @@ interface DietasNovedadSheetProps {
   comidas: ComidaTab[]
   tiposDieta: string[]
   consistencias: string[]
-  cierreVentanaMinutos: number
   onConfirmar?: (fila: FilaDieta, datos: DatosNovedadDieta) => void
 }
 
@@ -104,10 +103,17 @@ export function DietasNovedadSheet({
   comidas,
   tiposDieta,
   consistencias,
-  cierreVentanaMinutos,
   onConfirmar,
 }: DietasNovedadSheetProps) {
   const [formulario, setFormulario] = useState<FormularioNovedad | null>(null)
+  const [ahora, setAhora] = useState(() => new Date())
+
+  useEffect(() => {
+    if (!open) return
+    setAhora(new Date())
+    const timer = window.setInterval(() => setAhora(new Date()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [open, formulario?.comida])
 
   useEffect(() => {
     if (!open) {
@@ -136,9 +142,15 @@ export function DietasNovedadSheet({
     ]
   }, [fila, formulario])
 
-  if (!fila || !formulario) return null
+  const estadoVentana = useMemo(
+    () =>
+      formulario
+        ? resolverEstadoVentanaComida(formulario.comida, ahora)
+        : null,
+    [formulario?.comida, ahora],
+  )
 
-  const ventana = obtenerVentanaComida(formulario.comida)
+  if (!fila || !formulario || !estadoVentana) return null
   const hayCambios = cambios.some((c) => c.anterior !== c.nuevo)
   const formularioValido =
     formulario.motivo.trim().length > 0 &&
@@ -169,7 +181,16 @@ export function DietasNovedadSheet({
               <Info className="text-primary" />
               <AlertDescription className="text-foreground/80">
                 La novedad puede registrarse dentro del horario permitido.{" "}
-                Ventana: {ventana}. Cierre en {cierreVentanaMinutos} min.
+                Ventana: {estadoVentana.ventanaTexto}.{" "}
+                <span
+                  className={cn(
+                    "font-medium",
+                    estadoVentana.variante === "destructive" && "text-destructive",
+                    estadoVentana.variante === "muted" && "text-muted-foreground",
+                  )}
+                >
+                  {estadoVentana.mensajeCierre}
+                </span>
               </AlertDescription>
             </Alert>
 

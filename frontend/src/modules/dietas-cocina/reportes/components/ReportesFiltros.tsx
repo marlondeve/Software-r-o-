@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { descargarArchivoDemo } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 interface ReportesFiltrosProps {
   rangoFechas: string
   servicio: string
@@ -78,9 +79,11 @@ export function ReportesFiltros({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos los turnos</SelectItem>
-            <SelectItem value="desayuno">Desayuno</SelectItem>
-            <SelectItem value="almuerzo">Almuerzo</SelectItem>
-            <SelectItem value="cena">Cena</SelectItem>
+            {COMIDAS_TABS.map((comida) => (
+              <SelectItem key={comida.id} value={comida.id}>
+                {comida.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

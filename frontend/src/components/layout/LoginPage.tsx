@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Eye, EyeOff, Lock, Mail, Shield } from "lucide-react"
+import { Eye, EyeOff, Lock, Shield, User } from "lucide-react"
 import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { useLocation, useNavigate } from "react-router-dom"
@@ -32,10 +32,10 @@ import {
 } from "@/lib/modulos"
 
 const loginSchema = z.object({
-  email: z
+  usuario: z
     .string()
-    .min(1, "El correo institucional es obligatorio.")
-    .email("Ingrese un correo institucional válido."),
+    .min(1, "El usuario es obligatorio.")
+    .min(3, "El usuario debe tener al menos 3 caracteres."),
   password: z.string().min(1, "La contraseña es obligatoria."),
 })
 
@@ -56,7 +56,7 @@ export function LoginPage() {
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: "",
+      usuario: "",
       password: "",
     },
   })
@@ -67,7 +67,7 @@ export function LoginPage() {
     setEnviando(true)
 
     try {
-      const sesion = await iniciarSesion(data.email, data.password, modoLogin)
+      const sesion = await iniciarSesion(data.usuario, data.password, modoLogin)
       const origen = (location.state as { from?: string } | null)?.from
       const moduloOrigen = origen ? esRutaDeModulo(origen) : null
       const origenAdministracion =
@@ -146,8 +146,8 @@ export function LoginPage() {
                       <Label htmlFor="login-modo-demo" className="cursor-pointer font-normal">
                         <span className="font-medium">Pruebas (demo)</span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">
-                          Cualquier contraseña. Use prefijos como admin@, nutricionista@,
-                          enfermera@.
+                          Cualquier contraseña. Use usuarios como admin, nutricionista,
+                          enfermera o cocinero.
                         </span>
                       </Label>
                     </div>
@@ -173,21 +173,19 @@ export function LoginPage() {
 
               <FieldGroup className="gap-4">
                 <Controller
-                  name="email"
+                  name="usuario"
                   control={form.control}
                   render={({ field, fieldState }) => (
                     <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor="login-email">
-                        Correo institucional
-                      </FieldLabel>
+                      <FieldLabel htmlFor="login-usuario">Usuario</FieldLabel>
                       <div className="relative">
-                        <Mail className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <User className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                           {...field}
-                          id="login-email"
-                          type="email"
-                          placeholder="nombre@clinicadelrio.com.co"
-                          autoComplete="email"
+                          id="login-usuario"
+                          type="text"
+                          placeholder="admin"
+                          autoComplete="username"
                           aria-invalid={fieldState.invalid}
                           className="h-9 rounded-full pl-10"
                         />

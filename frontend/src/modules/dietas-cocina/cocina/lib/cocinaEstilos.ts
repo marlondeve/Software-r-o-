@@ -5,6 +5,7 @@ import {
   claseBadgeLogistica,
   etiquetaLogisticaLabel,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
+import { labelCierreBandeja } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import { resolverEstadoLogisticaOrden } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
 
 export function claseKpiCocina(kpi: KpiCocina): string {
@@ -59,7 +60,8 @@ export function labelEstadoVisibleCocina(
   const logistica = resolverEstadoLogisticaOrden(orden, etiqueta)
   if (logistica === "pre_entregada") return "Pre-entregada"
   if (logistica === "entregada") return "Entregada"
-  if (logistica === "devuelta") return "Devuelta"
+  if (logistica === "devuelta" && etiqueta) return labelCierreBandeja(etiqueta)
+  if (logistica === "devuelta") return "Recogida"
   return labelEstadoCocina(orden.estadoCocina)
 }
 
@@ -88,7 +90,7 @@ export function descripcionEstadoLogisticaCocina(
   if (!logistica || logistica === "generada" || logistica === "impresa") {
     return undefined
   }
-  return etiquetaLogisticaLabel(logistica)
+  return etiquetaLogisticaLabel(logistica, etiqueta)
 }
 
 export function claseBadgeEstadoCocina(estado: EstadoCocina): string {

@@ -41,23 +41,95 @@ export function esDevolucionConsumida(
   return motivo === "Se consumió" || motivo === "Consumo parcial"
 }
 
+function motivoEsAntesEntrega(motivo?: string): boolean {
+  return (
+    !!motivo &&
+    (MOTIVOS_DEVOLUCION_ANTES_ENTREGA as readonly string[]).includes(motivo)
+  )
+}
+
+function motivoEsPostEntrega(motivo?: string): boolean {
+  return (
+    !!motivo &&
+    (MOTIVOS_DEVOLUCION_PACIENTE as readonly string[]).includes(motivo)
+  )
+}
+
+/** Bandeja rechazada antes de entregarla al paciente. */
+export function esRechazoAntesEntrega(
+  etiqueta: Pick<
+    EtiquetaEnfermera,
+    "estadoLogistica" | "motivoDevolucion" | "horaEntrega"
+  >,
+): boolean {
+  if (etiqueta.estadoLogistica !== "devuelta") return false
+  if (motivoEsAntesEntrega(etiqueta.motivoDevolucion)) return true
+  if (motivoEsPostEntrega(etiqueta.motivoDevolucion)) return false
+  return !etiqueta.horaEntrega
+}
+
+/** Bandeja recogida por enfermería después de la entrega al paciente. */
+export function esRecogidaPostEntrega(
+  etiqueta: Pick<
+    EtiquetaEnfermera,
+    "estadoLogistica" | "motivoDevolucion" | "horaEntrega"
+  >,
+): boolean {
+  return etiqueta.estadoLogistica === "devuelta" && !esRechazoAntesEntrega(etiqueta)
+}
+
+export function labelCierreBandeja(
+  etiqueta: Pick<
+    EtiquetaEnfermera,
+    "estadoLogistica" | "motivoDevolucion" | "horaEntrega"
+  >,
+): string {
+  if (etiqueta.estadoLogistica !== "devuelta") return "Devuelta"
+  return esRecogidaPostEntrega(etiqueta) ? "Recogida" : "Devuelta"
+}
+
+export function labelCierreBandejaDetalle(
+  etiqueta: Pick<
+    EtiquetaEnfermera,
+    "estadoLogistica" | "motivoDevolucion" | "horaEntrega"
+  >,
+): string {
+  if (etiqueta.estadoLogistica !== "devuelta") return "Devuelta a cocina"
+  return esRecogidaPostEntrega(etiqueta)
+    ? "Recogida por enfermería"
+    : "Rechazada antes de entrega"
+}
+
 export function contarDevolucionesEtiquetas(etiquetas: EtiquetaEnfermera[]) {
-  let devueltas = 0
-  let devueltasConsumidas = 0
+  let rechazadas = 0
+  let recogidas = 0
+  let recogidasConsumidas = 0
 
   for (const etiqueta of etiquetas) {
     if (etiqueta.estadoLogistica !== "devuelta") continue
+    if (esRechazoAntesEntrega(etiqueta)) {
+      rechazadas++
+      continue
+    }
     if (esDevolucionConsumida(etiqueta.motivoDevolucion)) {
-      devueltasConsumidas++
+      recogidasConsumidas++
     } else {
-      devueltas++
+      recogidas++
     }
   }
 
   return {
-    devueltas,
-    devueltasConsumidas,
-    total: devueltas + devueltasConsumidas,
+    /** Rechazadas antes de entrega al paciente. */
+    rechazadas,
+    /** Recogidas sin consumo total o parcial registrado. */
+    recogidas,
+    /** Recogidas con consumo total o parcial. */
+    recogidasConsumidas,
+    /** Alias histórico: rechazadas antes de entrega. */
+    devueltas: rechazadas,
+    /** Alias histórico: recogidas con consumo. */
+    devueltasConsumidas: recogidasConsumidas,
+    total: rechazadas + recogidas + recogidasConsumidas,
   }
 }
 
@@ -75,7 +147,7 @@ export function estadoDietaDevolucionPorMotivo(
     case "Bandeja sin abrir":
       return "No consumida"
     default:
-      return "Devuelta por paciente"
+      return "Recogida"
   }
 }
 
@@ -101,7 +173,7 @@ export function configDevolucionPorTipo(tipo: TipoDevolucionEtiqueta) {
     descripcionFormulario:
       "Indica cuánto consumió el paciente al recoger la bandeja.",
     etiquetaMotivo: "Estado del consumo",
-    estadoDietaApi: "Devuelta por paciente",
+    estadoDietaApi: "Recogida",
     rutaExito: "/dietas-cocina/etiquetas/devolucion/paciente",
     mensajeExito:
       "La recogida de bandeja quedó registrada y cocina podrá conciliarla.",

@@ -38,14 +38,17 @@ export function CicloFinalizadoPanel({
   const msg =
     modo === "devolucion" && tipoDevolucion
       ? {
-          titulo: "Devolución registrada",
+          titulo:
+            tipoDevolucion === "post_entrega"
+              ? "Recogida registrada"
+              : "Rechazo registrado",
           subtitulo: configDevolucionPorTipo(tipoDevolucion).mensajeExito,
         }
       : modo === "devolucion"
         ? {
-            titulo: "Devolución registrada",
+            titulo: "Cierre registrado",
             subtitulo:
-              "La bandeja fue registrada como devuelta a cocina exitosamente.",
+              "La bandeja quedó registrada en el sistema.",
           }
         : MENSAJES[modo]
   const hora =

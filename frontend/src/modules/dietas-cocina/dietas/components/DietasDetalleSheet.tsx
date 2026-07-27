@@ -1,9 +1,9 @@
 import type { EventoTrazabilidad, FilaDieta } from "@/modules/dietas-cocina/types/diets"
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { History, PencilLine } from "lucide-react"
 import { useEffect, useState } from "react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import {
@@ -15,16 +15,21 @@ import {
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
 import {
+  tituloTipoDieta,
+} from "@/modules/dietas-cocina/dietas/lib/dietasDetalleUi"
+import {
   obtenerDescripcionDieta,
   obtenerTrazabilidad,
 } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
 import { formatearIdentificacionPaciente } from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
+import { labelComida } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
 import { cn } from "@/lib/utils"
 
 interface DietasDetalleSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   fila: FilaDieta | null
+  resolverEstadoVisible?: (fila: FilaDieta) => EstadoDieta
   onEditar?: (fila: FilaDieta) => void
   onConfirmar?: (fila: FilaDieta) => void
   cargarHistorial?: (filaId: string) => Promise<EventoTrazabilidad[]>
@@ -44,6 +49,7 @@ export function DietasDetalleSheet({
   open,
   onOpenChange,
   fila,
+  resolverEstadoVisible,
   onEditar,
   onConfirmar,
   cargarHistorial,
@@ -92,9 +98,9 @@ export function DietasDetalleSheet({
 
   if (!fila) return null
   const filaMostrada = detalle ?? fila
-  const tituloDieta = filaMostrada.tipoDieta
-    ? `Dieta ${filaMostrada.tipoDieta}`
-    : "Sin dieta asignada"
+  const estadoVisible =
+    resolverEstadoVisible?.(filaMostrada) ?? filaMostrada.estado
+  const tituloDieta = tituloTipoDieta(filaMostrada.tipoDieta)
   const descripcion =
     filaMostrada.descripcionDieta ?? obtenerDescripcionDieta(filaMostrada.tipoDieta)
   const puedeConfirmar = filaMostrada.estado === "guardado"
@@ -135,7 +141,7 @@ export function DietasDetalleSheet({
                 <SeccionTitulo>Estado actual</SeccionTitulo>
                 <div className="flex items-center gap-1.5">
                   <EstadoBadge
-                    estado={filaMostrada.estado}
+                    estado={estadoVisible}
                     className="shrink-0 font-semibold uppercase tracking-wide"
                   />
                   {filaMostrada.estado === "guardado" && onEditar && (
@@ -167,15 +173,19 @@ export function DietasDetalleSheet({
               <section className="space-y-2">
                 <SeccionTitulo>Otras dietas del paciente hoy</SeccionTitulo>
                 <ul className="space-y-2">
-                  {otrasDietasPaciente.map((item) => (
+                  {otrasDietasPaciente.map((item) => {
+                    const estadoItem =
+                      resolverEstadoVisible?.(item) ?? item.estado
+                    return (
                     <li
                       key={item.id}
                       className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
                     >
-                      <span className="font-medium capitalize">{item.comida}</span>
-                      <Badge variant="outline">{item.estado}</Badge>
+                      <span className="font-medium">{labelComida(item.comida)}</span>
+                      <EstadoBadge estado={estadoItem} className="text-[10px]" />
                     </li>
-                  ))}
+                    )
+                  })}
                 </ul>
               </section>
             )}

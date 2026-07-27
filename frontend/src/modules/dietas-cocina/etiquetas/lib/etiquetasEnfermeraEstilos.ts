@@ -1,7 +1,15 @@
 import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/types/enums"
+import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+import { labelCierreBandejaDetalle } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 
-export function etiquetaLogisticaLabel(estado: EstadoLogisticaEtiqueta): string {
+export function etiquetaLogisticaLabel(
+  estado: EstadoLogisticaEtiqueta,
+  etiqueta?: Pick<
+    EtiquetaEnfermera,
+    "estadoLogistica" | "motivoDevolucion" | "horaEntrega"
+  >,
+): string {
   switch (estado) {
     case "generada":
       return "Generada — pendiente impresión"
@@ -12,7 +20,7 @@ export function etiquetaLogisticaLabel(estado: EstadoLogisticaEtiqueta): string 
     case "entregada":
       return "Entregada al paciente"
     case "devuelta":
-      return "Devuelta a cocina"
+      return etiqueta ? labelCierreBandejaDetalle(etiqueta) : "Recogida por enfermería"
   }
 }
 

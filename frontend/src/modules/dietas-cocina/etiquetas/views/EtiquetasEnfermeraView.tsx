@@ -27,6 +27,7 @@ import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/D
 import { KpiCardSimple } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { puedeConfirmarPreEntrega, motivoNoConfirmarPreEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
+import { filtrarEtiquetasDelPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 import { cn } from "@/lib/utils"
 import { AlertTriangle, ClipboardList, PackageCheck } from "lucide-react"
 
@@ -50,14 +51,19 @@ export function EtiquetasEnfermeraView() {
     }
   }, [location.state])
 
+  const etiquetasOperativas = useMemo(
+    () => filtrarEtiquetasDelPeriodoOperativo(etiquetas),
+    [etiquetas],
+  )
+
   const filtradasComida = useMemo(
-    () => etiquetas.filter((e) => e.comida === comidaActiva),
-    [etiquetas, comidaActiva],
+    () => etiquetasOperativas.filter((e) => e.comida === comidaActiva),
+    [etiquetasOperativas, comidaActiva],
   )
 
   const kpis = useMemo(
-    () => calcularKpisEnfermera(etiquetas, comidaActiva),
-    [etiquetas, comidaActiva],
+    () => calcularKpisEnfermera(etiquetasOperativas, comidaActiva),
+    [etiquetasOperativas, comidaActiva],
   )
 
   const pendientesRecepcion = useMemo(
@@ -190,7 +196,7 @@ export function EtiquetasEnfermeraView() {
                     variant="outline"
                     className={cn("text-xs", claseBadgeLogistica(e.estadoLogistica))}
                   >
-                    {etiquetaLogisticaLabel(e.estadoLogistica)}
+                    {etiquetaLogisticaLabel(e.estadoLogistica, e)}
                   </Badge>
                   <Button type="button" size="sm" asChild>
                     <Link

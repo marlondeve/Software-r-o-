@@ -1,6 +1,6 @@
 import type { ComidaTab, FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, CheckCircle2, CircleDot, Shield } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -30,9 +30,9 @@ import {
 import {
   esSolicitudEditable,
   obtenerLineasContextoPaciente,
-  obtenerVentanaComida,
   tituloSolicitudDieta,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
+import { resolverEstadoVentanaComida } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
 import { cn } from "@/lib/utils"
 
 interface FormularioSolicitud {
@@ -56,7 +56,6 @@ interface DietasSolicitudSheetProps {
   comidas: ComidaTab[]
   tiposDieta: string[]
   consistencias: string[]
-  cierreVentanaMinutos: number
   onGuardar?: (fila: FilaDieta, datos: DatosSolicitudDieta) => void
 }
 
@@ -84,10 +83,17 @@ export function DietasSolicitudSheet({
   comidas,
   tiposDieta,
   consistencias,
-  cierreVentanaMinutos,
   onGuardar,
 }: DietasSolicitudSheetProps) {
   const [formulario, setFormulario] = useState<FormularioSolicitud | null>(null)
+  const [ahora, setAhora] = useState(() => new Date())
+
+  useEffect(() => {
+    if (!open) return
+    setAhora(new Date())
+    const timer = window.setInterval(() => setAhora(new Date()), 60_000)
+    return () => window.clearInterval(timer)
+  }, [open, formulario?.comida])
 
   useEffect(() => {
     if (!open) {
@@ -99,10 +105,17 @@ export function DietasSolicitudSheet({
     // Solo reiniciar al abrir/cerrar o al cambiar de paciente; no cuando el censo refresca la misma fila.
   }, [open, fila?.id, comidaInicial])
 
-  if (!fila || !formulario) return null
+  const estadoVentana = useMemo(
+    () =>
+      formulario
+        ? resolverEstadoVentanaComida(formulario.comida, ahora)
+        : null,
+    [formulario?.comida, ahora],
+  )
+
+  if (!fila || !formulario || !estadoVentana) return null
 
   const editable = esSolicitudEditable(fila)
-  const ventana = obtenerVentanaComida(formulario.comida)
   const formularioValido =
     formulario.tipoDieta.trim().length > 0 &&
     formulario.consistencia.trim().length > 0
@@ -154,12 +167,19 @@ export function DietasSolicitudSheet({
                   )
                 })}
               </div>
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between gap-3 text-xs">
                 <span className="text-muted-foreground">
-                  Ventana: {ventana}
+                  Ventana: {estadoVentana.ventanaTexto}
                 </span>
-                <span className="font-medium text-destructive">
-                  Cierre en: {cierreVentanaMinutos} min
+                <span
+                  className={cn(
+                    "shrink-0 font-medium",
+                    estadoVentana.variante === "destructive" && "text-destructive",
+                    estadoVentana.variante === "muted" && "text-muted-foreground",
+                    estadoVentana.variante === "default" && "text-foreground",
+                  )}
+                >
+                  {estadoVentana.mensajeCierre}
                 </span>
               </div>
             </section>

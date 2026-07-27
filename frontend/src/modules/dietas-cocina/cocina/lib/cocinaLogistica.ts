@@ -1,18 +1,27 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { EstadoLogisticaEtiqueta } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+import {
+  esRecogidaPostEntrega,
+  esRechazoAntesEntrega,
+} from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
+import { resolverEtiquetaParaOrden } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 export type FiltroSeguimientoCocina =
   | "Todos"
   | "en_transito"
   | "pre_entregada"
   | "entregada"
   | "devuelta"
+  | "recogida"
 
 export function resolverEstadoLogisticaOrden(
   orden: OrdenCocina,
   etiqueta?: EtiquetaEnfermera,
+  etiquetas?: EtiquetaEnfermera[],
 ): EstadoLogisticaEtiqueta | undefined {
-  return etiqueta?.estadoLogistica ?? orden.estadoLogistica
+  const pool = etiquetas ?? (etiqueta ? [etiqueta] : [])
+  const etiquetaValida = resolverEtiquetaParaOrden(orden, pool)
+  return etiquetaValida?.estadoLogistica
 }
 
 export function ordenEnTransito(orden: OrdenCocina, etiqueta?: EtiquetaEnfermera): boolean {
@@ -38,6 +47,8 @@ export function ordenCoincideSeguimiento(
     case "entregada":
       return logistica === "entregada"
     case "devuelta":
-      return logistica === "devuelta"
+      return logistica === "devuelta" && !!etiqueta && esRechazoAntesEntrega(etiqueta)
+    case "recogida":
+      return logistica === "devuelta" && !!etiqueta && esRecogidaPostEntrega(etiqueta)
   }
 }

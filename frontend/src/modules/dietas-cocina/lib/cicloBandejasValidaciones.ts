@@ -1,7 +1,5 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
-import { estadoEtiquetaImprimible } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEstilos"
-
 export function checklistObligatorioCompleto(orden: OrdenCocina): boolean {
   return orden.checklist
     .filter((item) => item.obligatorio)
@@ -24,11 +22,23 @@ export function checklistProgreso(orden: OrdenCocina): {
   }
 }
 
-export function puedeEditarChecklist(orden: OrdenCocina): boolean {
+/** Lista en UI pero aún sin etiqueta — suele indicar desincronización con el API. */
+export function enRecuperacionChecklistCocina(orden: OrdenCocina): boolean {
   return (
+    orden.estadoCocina === "lista" &&
+    !orden.etiquetaGenerada &&
+    !orden.etiquetaId
+  )
+}
+
+export function puedeEditarChecklist(orden: OrdenCocina): boolean {
+  if (
     orden.estadoCocina === "por_iniciar" ||
     orden.estadoCocina === "en_preparacion"
-  )
+  ) {
+    return true
+  }
+  return enRecuperacionChecklistCocina(orden)
 }
 
 export function motivoNoMarcarLista(orden: OrdenCocina): string | undefined {
@@ -55,11 +65,25 @@ export function puedeMarcarLista(orden: OrdenCocina): boolean {
   )
 }
 
+export function etiquetaImpresaEnOrden(
+  orden: OrdenCocina,
+  etiqueta?: EtiquetaEnfermera,
+): boolean {
+  if (orden.etiquetaImpresa) return true
+  if (!etiqueta) return false
+  return (
+    etiqueta.estado === "impresa" ||
+    etiqueta.estado === "reimpresa" ||
+    etiqueta.estadoLogistica === "impresa"
+  )
+}
+
 export function puedeImprimirEtiquetaOrden(
   orden: OrdenCocina,
   etiqueta?: EtiquetaEnfermera,
 ): boolean {
   if (puedeGenerarEtiqueta(orden, etiqueta)) return true
+  if (etiquetaImpresaEnOrden(orden, etiqueta)) return false
   if (orden.estadoCocina !== "lista" && orden.estadoCocina !== "despachada") {
     return false
   }
@@ -73,8 +97,13 @@ export function etiquetaAccionOrden(
   return puedeGenerarEtiqueta(orden, etiqueta) ? "generar" : "imprimir"
 }
 
-export function motivoNoEtiquetaOrden(orden: OrdenCocina): string | undefined {
-  if (puedeImprimirEtiquetaOrden(orden)) return undefined
+export function motivoNoEtiquetaOrden(
+  orden: OrdenCocina,
+  etiqueta?: EtiquetaEnfermera,
+): string | undefined {
+  if (puedeImprimirEtiquetaOrden(orden, etiqueta)) return undefined
+  const motivoGenerar = motivoNoGenerarEtiqueta(orden, etiqueta)
+  if (motivoGenerar) return motivoGenerar
   if (orden.estadoCocina === "por_iniciar") {
     return "Marca la bandeja en preparación y completa el checklist."
   }
@@ -90,23 +119,36 @@ export function puedeGenerarEtiqueta(
 ): boolean {
   if (orden.estadoCocina !== "lista") return false
   if (orden.etiquetaGenerada || orden.etiquetaId) return false
-  return !etiqueta
+  if (etiqueta) return false
+  return checklistObligatorioCompleto(orden)
+}
+
+export function motivoNoGenerarEtiqueta(
+  orden: OrdenCocina,
+  etiqueta?: EtiquetaEnfermera,
+): string | undefined {
+  if (puedeGenerarEtiqueta(orden, etiqueta)) return undefined
+  if (orden.estadoCocina !== "lista") {
+    return "Marca la bandeja como lista antes de generar la etiqueta."
+  }
+  if (orden.etiquetaGenerada || orden.etiquetaId || etiqueta) {
+    return "Esta bandeja ya tiene etiqueta generada."
+  }
+  if (!checklistObligatorioCompleto(orden)) {
+    const { pendientes } = checklistProgreso(orden)
+    return `Completa ${pendientes} ítem(s) obligatorio(s) del checklist para generar la etiqueta.`
+  }
+  return undefined
 }
 
 export function puedeDespachar(orden: OrdenCocina, etiqueta?: EtiquetaEnfermera): boolean {
   if (orden.estadoCocina !== "lista") return false
   if (!orden.etiquetaGenerada || !orden.etiquetaId) return false
-  const logistica = etiqueta?.estadoLogistica ?? orden.estadoLogistica
-  const estadoEtq = etiqueta?.estado
-  return (
-    logistica === "impresa" ||
-    estadoEtq === "impresa" ||
-    estadoEtq === "reimpresa"
-  )
+  return etiquetaImpresaEnOrden(orden, etiqueta)
 }
 
 export function puedeImprimirEtiqueta(etiqueta: EtiquetaEnfermera): boolean {
-  return estadoEtiquetaImprimible(etiqueta.estado)
+  return etiqueta.estado === "generada" || etiqueta.estado === "pendiente"
 }
 
 export function puedeReimprimirEtiqueta(etiqueta: EtiquetaEnfermera): boolean {

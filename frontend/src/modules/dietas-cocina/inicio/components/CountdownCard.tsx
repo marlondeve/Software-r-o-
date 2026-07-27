@@ -42,8 +42,14 @@ export function CountdownCard({
         </div>
 
         <p className="text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">{pendientes}</span>{" "}
-          pacientes pendientes de confirmación.
+          {pendientes > 0 ? (
+            <>
+              <span className="font-semibold text-foreground">{pendientes}</span>{" "}
+              pacientes pendientes de confirmación.
+            </>
+          ) : (
+            "Sin pacientes pendientes de confirmación."
+          )}
         </p>
 
         <Button asChild className="w-full">

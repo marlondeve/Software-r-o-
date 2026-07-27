@@ -12,6 +12,7 @@ const RANK_ESTADO: Partial<Record<EstadoDieta, number>> = {
   despachada: 60,
   recibida: 70,
   devuelta: 75,
+  recogida: 80,
   cancelada: -10,
 }
 

@@ -35,6 +35,7 @@ import {
 } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
 import { puedeDespachar } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { filtrarEtiquetasDelPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 import { cn } from "@/lib/utils"
 
 export function ProveedorDashboard() {
@@ -134,7 +135,9 @@ export function ProveedorDashboard() {
   }, [apiActiva, dashboardApi.kpis, dashboardApi.error, kpisDinamicos])
 
   const etiquetasStats = useMemo(() => {
-    const delTurno = etiquetas.filter((e) => e.comida === comidaActiva)
+    const delTurno = filtrarEtiquetasDelPeriodoOperativo(etiquetas, {
+      comida: comidaActiva,
+    })
     const impresas = delTurno.filter(
       (e) => e.estado === "impresa" || e.estado === "reimpresa",
     ).length
