@@ -28,6 +28,7 @@ import {
   filaCoincideBusqueda,
 } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { crearResolverEstadoVisibleFila } from "@/modules/dietas-cocina/lib/estadoVisibleFilaDieta"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import {
   demoToast,
@@ -66,7 +67,12 @@ export function DietasPage() {
     obtenerHistorialApi,
     obtenerDetalleApi,
   } = useDietasOperativas()
-  const { crearOrdenDesdeDieta, cancelarOrdenCocina } = useCicloBandejas()
+  const { crearOrdenDesdeDieta, cancelarOrdenCocina, ordenes, etiquetas } =
+    useCicloBandejas()
+  const resolverEstadoVisible = useMemo(
+    () => crearResolverEstadoVisibleFila(ordenes, etiquetas),
+    [ordenes, etiquetas],
+  )
   const apiActiva = usarApiDietasCocina()
   const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
     apiActiva ? obtenerComidaActivaOperativa() : data.comidaActiva,
@@ -149,10 +155,17 @@ export function DietasPage() {
       if (!filtrosApiActivos && servicio !== "todos" && fila.servicio !== servicio) {
         return false
       }
-      if (!filtrosApiActivos && estado !== "todos" && fila.estado !== estado) {
+      if (
+        !filtrosApiActivos &&
+        estado !== "todos" &&
+        resolverEstadoVisible(fila) !== estado
+      ) {
         return false
       }
-      if (soloPendientes && !ESTADOS_PENDIENTES.includes(fila.estado)) {
+      if (
+        soloPendientes &&
+        !ESTADOS_PENDIENTES.includes(resolverEstadoVisible(fila))
+      ) {
         return false
       }
       return true
@@ -165,11 +178,12 @@ export function DietasPage() {
     estado,
     soloPendientes,
     filtrosApiActivos,
+    resolverEstadoVisible,
   ])
 
   const kpis = useMemo(
-    () => calcularKpisDietas(filas, comidaActiva),
-    [filas, comidaActiva],
+    () => calcularKpisDietas(filas, comidaActiva, resolverEstadoVisible),
+    [filas, comidaActiva, resolverEstadoVisible],
   )
 
   const serviciosDisponibles = useMemo(() => {
@@ -472,6 +486,7 @@ export function DietasPage() {
       <DietasTabla
         filas={filasFiltradas}
         seleccionados={seleccionados}
+        resolverEstadoVisible={resolverEstadoVisible}
         onToggleFila={toggleFila}
         onToggleTodas={toggleTodas}
         onAbrirSolicitud={(fila) => abrirSheet("solicitud", fila)}
@@ -526,7 +541,6 @@ export function DietasPage() {
         comidas={data.comidas}
         tiposDieta={data.tiposDieta}
         consistencias={data.consistencias}
-        cierreVentanaMinutos={data.cierreVentanaMinutos}
         onGuardar={(fila, datos) => {
           if (apiActiva) {
             void guardarSolicitud(fila.id, {
@@ -572,6 +586,7 @@ export function DietasPage() {
         open={sheet?.tipo === "detalle"}
         onOpenChange={cerrarSheet}
         fila={filaActiva}
+        resolverEstadoVisible={resolverEstadoVisible}
         onEditar={(fila) => cambiarSheetDesdeDetalle("solicitud", fila)}
         onConfirmar={confirmarDieta}
         cargarHistorial={apiActiva ? obtenerHistorialApi : undefined}
@@ -587,7 +602,6 @@ export function DietasPage() {
         comidas={data.comidas}
         tiposDieta={data.tiposDieta}
         consistencias={data.consistencias}
-        cierreVentanaMinutos={data.cierreVentanaMinutos}
         onConfirmar={(fila, datos) => {
           if (apiActiva) {
             void registrarNovedadApi(fila.id, {

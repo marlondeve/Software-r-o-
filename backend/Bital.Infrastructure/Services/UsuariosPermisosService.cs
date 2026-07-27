@@ -71,12 +71,21 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (existeEmail)
             throw new InvalidOperationException($"Ya existe un usuario con el email {dto.Email}");
 
+        var identificacion = dto.Identificacion?.Trim();
+        if (string.IsNullOrEmpty(identificacion))
+            throw new InvalidOperationException("El nombre de usuario es obligatorio.");
+
+        var existeUsuario = await _context.UsuariosModulo
+            .AnyAsync(u => u.Identificacion != null && u.Identificacion.ToLower() == identificacion.ToLower());
+        if (existeUsuario)
+            throw new InvalidOperationException($"Ya existe un usuario con el nombre {identificacion}");
+
         var usuario = new UsuarioModulo
         {
             Id = Guid.NewGuid(),
             NombreCompleto = dto.NombreCompleto,
             Email = dto.Email,
-            Identificacion = dto.Identificacion,
+            Identificacion = identificacion,
             Rol = dto.Rol,
             Activo = true,
             Observaciones = dto.Observaciones,
@@ -113,9 +122,21 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (existeEmail)
             throw new InvalidOperationException($"Ya existe otro usuario con el email {dto.Email}");
 
+        var identificacion = dto.Identificacion?.Trim();
+        if (string.IsNullOrEmpty(identificacion))
+            throw new InvalidOperationException("El nombre de usuario es obligatorio.");
+
+        var existeUsuario = await _context.UsuariosModulo
+            .AnyAsync(u =>
+                u.Identificacion != null &&
+                u.Identificacion.ToLower() == identificacion.ToLower() &&
+                u.Id != id);
+        if (existeUsuario)
+            throw new InvalidOperationException($"Ya existe otro usuario con el nombre {identificacion}");
+
         usuario.NombreCompleto = dto.NombreCompleto;
         usuario.Email = dto.Email;
-        usuario.Identificacion = dto.Identificacion;
+        usuario.Identificacion = identificacion;
         usuario.Observaciones = dto.Observaciones;
 
         await _context.SaveChangesAsync();
@@ -244,9 +265,14 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
     public async Task<LoginModuloResponseDto> LoginAsync(LoginModuloDto dto)
     {
-        var email = dto.Email.Trim().ToLowerInvariant();
+        var usuarioLogin = dto.Usuario.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(usuarioLogin))
+            throw new UnauthorizedAccessException("Credenciales inválidas.");
+
         var usuario = await _context.UsuariosModulo
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == email)
+            .FirstOrDefaultAsync(u =>
+                u.Identificacion != null &&
+                u.Identificacion.ToLower() == usuarioLogin)
             ?? throw new UnauthorizedAccessException("Credenciales inválidas.");
 
         if (!usuario.Activo)
@@ -264,6 +290,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         return new LoginModuloResponseDto
         {
             Id = usuario.Id,
+            Usuario = usuario.Identificacion ?? string.Empty,
             Email = usuario.Email,
             NombreCompleto = usuario.NombreCompleto,
             Rol = usuario.Rol,
@@ -279,9 +306,14 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (dto.PasswordActual == dto.PasswordNueva)
             throw new InvalidOperationException("La nueva contraseña debe ser diferente a la actual.");
 
-        var email = dto.Email.Trim().ToLowerInvariant();
+        var usuarioLogin = dto.Usuario.Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(usuarioLogin))
+            throw new UnauthorizedAccessException("Credenciales inválidas.");
+
         var usuario = await _context.UsuariosModulo
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == email)
+            .FirstOrDefaultAsync(u =>
+                u.Identificacion != null &&
+                u.Identificacion.ToLower() == usuarioLogin)
             ?? throw new UnauthorizedAccessException("Credenciales inválidas.");
 
         if (!usuario.Activo)
@@ -292,7 +324,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
         usuario.PasswordHash = HashPassword(dto.PasswordNueva);
         usuario.ModificadoEn = DateTime.UtcNow;
-        usuario.ModificadoPor = usuario.Email;
+        usuario.ModificadoPor = usuario.Identificacion ?? usuario.Email;
         await _context.SaveChangesAsync();
 
         return new CambiarPasswordResponseDto

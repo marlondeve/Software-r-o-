@@ -74,6 +74,23 @@ export function formatearHora12(hora24: string): string {
   return `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")} ${periodo}`
 }
 
+/** Interpreta ISO del API como UTC cuando no trae zona horaria. */
+export function parsearFechaApi(iso: string): Date {
+  const trimmed = iso.trim()
+  if (!trimmed) return new Date(Number.NaN)
+  if (/[zZ]$/.test(trimmed) || /[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    return new Date(trimmed)
+  }
+  return new Date(`${trimmed}Z`)
+}
+
+/** Hora en 12 h desde ISO del API (corrige timestamps UTC sin sufijo). */
+export function formatearHoraDesdeIsoApi(iso: string): string {
+  const fecha = parsearFechaApi(iso)
+  if (Number.isNaN(fecha.getTime())) return "—"
+  return formatearHoraDesdeFecha(fecha)
+}
+
 /** Hora actual o de un `Date` en formato 12 h (p. ej. "07:55 p. m."). */
 export function formatearHoraDesdeFecha(fecha = new Date()): string {
   return formatearHora12(

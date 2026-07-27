@@ -1,5 +1,9 @@
 import { mapearComidaInterna, normalizarClave } from "@/modules/dietas-cocina/api/utils"
 import { repararTextoUtf8 } from "@/modules/dietas-cocina/api/utils/texto"
+import {
+  formatearFechaTrazabilidad,
+  formatearSolicitadoEn,
+} from "@/modules/dietas-cocina/dietas/lib/dietasDetalleUi"
 import type { FilaDieta, EventoTrazabilidad } from "@/modules/dietas-cocina/types/diets"
 import type {
   EventoTrazabilidadDto,
@@ -8,7 +12,7 @@ import type {
 } from "@/modules/dietas-cocina/types/api-dtos"
 import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 
-function normalizarEstado(valor: unknown): EstadoDieta {
+export function normalizarEstadoDietaDesdeApi(valor: unknown): EstadoDieta {
   const estado = String(valor ?? "no-solicitada").toLowerCase()
   const mapa: Record<string, EstadoDieta> = {
     confirmada: "confirmada",
@@ -29,6 +33,7 @@ function normalizarEstado(valor: unknown): EstadoDieta {
     entregada: "recibida",
     consumida: "recibida",
     devuelta: "devuelta",
+    recogida: "recogida",
     noconsumida: "devuelta",
     cancelada: "cancelada",
     despachada: "despachada",
@@ -43,12 +48,12 @@ export function mapFilaDietaDtoToDomain(
   nombresCatalogo?: Map<string, string>,
 ): FilaDieta {
   const tipoDietaId = dto.tipoDietaId ?? (dto as { tipoDietaId?: string }).tipoDietaId
-  const tipoDieta =
+  const tipoDietaRaw =
     (dto.tipoDieta ?? dto.dieta ?? dto.descripcionDieta ?? null) as string | null
   const nombreCatalogo =
     tipoDietaId && nombresCatalogo?.get(String(tipoDietaId))
       ? repararTextoUtf8(nombresCatalogo.get(String(tipoDietaId))!)
-      : repararTextoUtf8(tipoDieta)
+      : repararTextoUtf8(tipoDietaRaw)
   const comidaRaw = String(dto.comida ?? "almuerzo")
 
   return {
@@ -70,11 +75,17 @@ export function mapFilaDietaDtoToDomain(
     alergias: String(dto.alergias ?? ""),
     observacionAislamiento: String(dto.observacionAislamiento ?? ""),
     observaciones: String(dto.observaciones ?? ""),
-    descripcionDieta: dto.descripcionDieta,
-    solicitadoPor: dto.solicitadoPor,
-    solicitadoEn: dto.solicitadoEn,
+    descripcionDieta: dto.descripcionDieta
+      ? repararTextoUtf8(String(dto.descripcionDieta))
+      : undefined,
+    solicitadoPor: dto.solicitadoPor
+      ? repararTextoUtf8(String(dto.solicitadoPor))
+      : undefined,
+    solicitadoEn: formatearSolicitadoEn(
+      dto.solicitadoEn != null ? String(dto.solicitadoEn) : undefined,
+    ),
     cancelacionTardia: dto.cancelacionTardia,
-    estado: normalizarEstado(dto.estado),
+    estado: normalizarEstadoDietaDesdeApi(dto.estado),
     comida: mapearComidaInterna(comidaRaw),
     ordenCocinaId: dto.ordenCocinaId ? String(dto.ordenCocinaId) : undefined,
   }
@@ -98,14 +109,69 @@ export function mapFilaDietaList(
   return dtos.map((dto) => mapFilaDietaDtoToDomain(dto, nombresCatalogo))
 }
 
-export function mapEventoTrazabilidadDto(dto: EventoTrazabilidadDto): EventoTrazabilidad {
+export function mapEventoTrazabilidadDto(
+  dto: EventoTrazabilidadDto | Record<string, unknown>,
+  opciones?: { activo?: boolean },
+): EventoTrazabilidad {
+  const registro =
+    dto && typeof dto === "object" ? (dto as Record<string, unknown>) : {}
+
+  const tipoEvento = String(
+    normalizarClave(registro, "tipoEvento", "TipoEvento", "titulo", "Titulo") ??
+      "Evento",
+  )
+  const descripcion = String(
+    normalizarClave(registro, "descripcion", "Descripcion") ?? "",
+  )
+  const usuario = String(
+    normalizarClave(registro, "usuario", "Usuario") ?? "",
+  )
+  const fechaRaw = normalizarClave(
+    registro,
+    "fechaEvento",
+    "FechaEvento",
+    "fecha",
+    "Fecha",
+  )
+
+  const titulo = tituloDesdeTipoEvento(tipoEvento)
+  const detalle =
+    descripcion && descripcion !== titulo
+      ? descripcion
+      : usuario
+        ? `Registrado por ${usuario}`
+        : ""
+
   return {
-    id: String(dto.id ?? crypto.randomUUID()),
-    titulo: String(dto.titulo ?? ""),
-    descripcion: String(dto.descripcion ?? ""),
-    fecha: String(dto.fecha ?? ""),
-    activo: dto.activo,
+    id: String(normalizarClave(registro, "id", "Id") ?? crypto.randomUUID()),
+    titulo,
+    descripcion: detalle,
+    fecha: formatearFechaTrazabilidad(fechaRaw),
+    activo: opciones?.activo ?? Boolean(registro.activo ?? registro.Activo),
   }
+}
+
+const TITULOS_TIPO_EVENTO: Record<string, string> = {
+  orden_cocina_creada: "Inclusión en orden de cocina",
+  orden_completada: "Orden completada",
+  orden_despachada: "Orden despachada",
+  orden_en_preparacion: "Preparación iniciada",
+  solicitud_guardada: "Solicitud guardada",
+  solicitud_confirmada: "Solicitud confirmada",
+  dieta_cancelada: "Dieta cancelada",
+  novedad_registrada: "Novedad registrada",
+}
+
+function tituloDesdeTipoEvento(tipoEvento: string): string {
+  const clave = tipoEvento.trim().toLowerCase()
+  if (TITULOS_TIPO_EVENTO[clave]) return TITULOS_TIPO_EVENTO[clave]
+  if (clave.includes("orden") && clave.includes("complet")) return "Orden completada"
+  if (clave.includes("orden") && clave.includes("cocina")) {
+    return "Inclusión en orden de cocina"
+  }
+  return clave
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letra) => letra.toUpperCase())
 }
 
 export interface DatosSolicitudDietaInput {

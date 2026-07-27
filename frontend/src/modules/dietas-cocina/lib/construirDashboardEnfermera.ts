@@ -5,6 +5,10 @@ import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { mockEnfermera } from "@/modules/dietas-cocina/inicio/datos/mockEnfermera"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
 import {
+  filtrarEtiquetasDelPeriodoOperativo,
+  resolverContextoFilaDieta,
+} from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
+import {
   formatearPeriodoOperativo,
 } from "@/modules/dietas-cocina/lib/resolverPeriodoOperativoNutricionista"
 
@@ -25,40 +29,39 @@ export function construirDashboardEnfermeraDesdeCiclo(
   etiquetas: EtiquetaEnfermera[],
   comida: TiempoComida = "almuerzo",
 ) {
-  const ordenPorId = new Map(ordenes.map((o) => [o.id, o]))
-  const etiquetaPorOrden = new Map<string, EtiquetaEnfermera>()
-  for (const orden of ordenes) {
-    if (!orden.etiquetaId) continue
-    const etiqueta = etiquetas.find((e) => e.id === orden.etiquetaId)
-    if (etiqueta) etiquetaPorOrden.set(orden.id, etiqueta)
+  const filasPiso = filasEnfermeria(filas, comida)
+  const etiquetasPeriodo = filtrarEtiquetasDelPeriodoOperativo(etiquetas, {
+    comida,
+  })
+  const resolverEstado = (fila: FilaDieta) => {
+    const { orden, etiqueta } = resolverContextoFilaDieta(
+      fila,
+      ordenes,
+      etiquetasPeriodo,
+    )
+    return estadoDietaDesdeCiclo(fila, orden, etiqueta)
   }
 
-  const filasPiso = filasEnfermeria(filas, comida)
-
   const pendientes = filasPiso.filter((f) =>
-    ["no-solicitada", "guardado"].includes(f.estado),
+    ["no-solicitada", "guardado"].includes(resolverEstado(f)),
   ).length
 
   const confirmadas = filasPiso.filter((f) =>
-    ["confirmada", "recibida", "por-iniciar", "en-preparacion", "lista-despacho", "despachada"].includes(
-      f.estado,
+    ["confirmada", "recibida", "recogida", "por-iniciar", "en-preparacion", "lista-despacho", "despachada"].includes(
+      resolverEstado(f),
     ),
   ).length
 
   const novedades = filasPiso.filter(
-    (f) => f.estado === "guardado" || (f.alergico && f.estado !== "cancelada"),
+    (f) =>
+      resolverEstado(f) === "guardado" ||
+      (f.alergico && resolverEstado(f) !== "cancelada"),
   ).length
 
   const dietasRecientes = filasPiso
     .slice(0, 4)
     .map((fila) => {
-      const orden = fila.ordenCocinaId
-        ? ordenPorId.get(fila.ordenCocinaId)
-        : undefined
-      const etiqueta = fila.ordenCocinaId
-        ? etiquetaPorOrden.get(fila.ordenCocinaId)
-        : undefined
-      const estado = estadoDietaDesdeCiclo(fila.estado, orden, etiqueta)
+      const estado = resolverEstado(fila)
       return {
         habitacion: fila.habitacion,
         paciente: fila.paciente,

@@ -22,6 +22,7 @@ import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/ope
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import {
   demoToast,
@@ -64,6 +65,7 @@ export function CocinaProveedorView() {
     registrarDespacho,
     rehidratarDesdeStorage,
     generarEtiquetas,
+    marcarEtiquetasImpresas,
     actualizarChecklist,
     getEtiquetaByOrdenId,
   } = useCicloBandejas()
@@ -230,7 +232,9 @@ export function CocinaProveedorView() {
     })
 
     if (ids.length === 0) {
-      demoToast("Selecciona bandejas en estado lista sin etiqueta generada.")
+      demoToast(
+        "Selecciona bandejas en estado lista, con checklist obligatorio completo y sin etiqueta generada.",
+      )
       return
     }
 
@@ -254,8 +258,30 @@ export function CocinaProveedorView() {
       })
   }
 
-  function imprimirEtiqueta(orden: OrdenCocina) {
-    const etiquetaId = orden.etiquetaId
+  async function imprimirEtiqueta(orden: OrdenCocina) {
+    const etiqueta = getEtiquetaByOrdenId(orden.id)
+    const etiquetaId = orden.etiquetaId ?? etiqueta?.id
+
+    if (etiqueta) {
+      try {
+        const fecha = new Date().toISOString().slice(0, 10)
+        await generarPdfEtiquetas(
+          [etiqueta],
+          `etiquetas-${orden.comida}-${fecha}.pdf`,
+        )
+        marcarEtiquetasImpresas([etiqueta.id])
+        demoToast("Etiqueta impresa. Ya puedes registrar el despacho.", "success")
+      } catch (error) {
+        demoToast(
+          error instanceof Error
+            ? error.message
+            : "No se pudo generar el PDF de la etiqueta.",
+          "error",
+        )
+      }
+      return
+    }
+
     if (etiquetaId) {
       navigate("/dietas-cocina/etiquetas", {
         state: { preseleccion: [etiquetaId] },

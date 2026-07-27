@@ -106,7 +106,7 @@ export function RecepcionProveedorPanel({
                     variant="outline"
                     className={cn("shrink-0 text-[10px]", claseBadgeLogistica(bandeja.estadoLogistica))}
                   >
-                    {etiquetaLogisticaLabel(bandeja.estadoLogistica)}
+                    {etiquetaLogisticaLabel(bandeja.estadoLogistica, bandeja)}
                   </Badge>
                 </li>
               ))}

@@ -24,16 +24,18 @@ interface PerfilMock {
   iniciales: string
   accesos: AccesoModulo[]
   esAdministrador: boolean
+  email?: string
 }
 
-function resolverPerfil(email: string): PerfilMock {
-  const correo = email.toLowerCase()
+function resolverPerfil(usuario: string): PerfilMock {
+  const login = usuario.trim().toLowerCase()
 
-  if (correo.startsWith("admin@")) {
+  if (login === "admin" || login.startsWith("admin")) {
     return {
       esAdministrador: true,
       nombre: "Admin",
       iniciales: "AD",
+      email: "admin@clinicadelrio.com",
       accesos: [
         { moduloId: "dietas-cocina", rol: "Administrador" },
         { moduloId: "encuestas", rol: "Administrador" },
@@ -41,56 +43,67 @@ function resolverPerfil(email: string): PerfilMock {
     }
   }
 
-  if (correo.startsWith("nutricionista@")) {
+  if (login === "nutricionista" || login.startsWith("nutricionista")) {
     return {
       esAdministrador: false,
       nombre: "Dra. Elena",
       iniciales: "DE",
+      email: "nutricionista@clinicadelrio.com",
       accesos: [{ moduloId: "dietas-cocina", rol: "Nutricionista" }],
     }
   }
 
-  if (correo.startsWith("doctor@")) {
+  if (login === "doctor" || login.startsWith("doctor")) {
     return {
       esAdministrador: false,
       nombre: "Dr. Ramírez",
       iniciales: "DR",
+      email: "doctor@clinicadelrio.com",
       accesos: [{ moduloId: "dietas-cocina", rol: "Doctor" }],
     }
   }
 
-  if (correo.startsWith("proveedor@") || correo.startsWith("dietas@")) {
+  if (
+    login === "proveedor" ||
+    login === "cocinero" ||
+    login.startsWith("proveedor") ||
+    login.startsWith("cocinero") ||
+    login.startsWith("dietas")
+  ) {
     return {
       esAdministrador: false,
       nombre: "Operador Principal",
       iniciales: "OP",
+      email: "cocinero@clinicadelrio.com",
       accesos: [{ moduloId: "dietas-cocina", rol: "Proveedor" }],
     }
   }
 
-  if (correo.startsWith("enfermera@")) {
+  if (login === "enfermera" || login.startsWith("enfermera")) {
     return {
       esAdministrador: false,
       nombre: "Enf. Laura",
       iniciales: "EL",
+      email: "enfermera@clinicadelrio.com",
       accesos: [{ moduloId: "dietas-cocina", rol: "Enfermera" }],
     }
   }
 
-  if (correo.startsWith("encuestas@")) {
+  if (login === "encuestas" || login.startsWith("encuestas")) {
     return {
       esAdministrador: false,
       nombre: "Analista SIAO",
       iniciales: "AS",
+      email: "encuestas@clinicadelrio.com",
       accesos: [{ moduloId: "encuestas", rol: "Analista SIAO" }],
     }
   }
 
-  const nombre = email.split("@")[0] ?? "Usuario"
   return {
     esAdministrador: false,
-    nombre,
-    iniciales: nombre.slice(0, 2).toUpperCase(),
+    nombre: usuario,
+    iniciales: usuario.slice(0, 2).toUpperCase(),
+    email: `${login}@clinicadelrio.com`,
     accesos: [
       { moduloId: "dietas-cocina", rol: "Proveedor" },
       { moduloId: "encuestas", rol: "Operador de encuestas" },
@@ -147,17 +160,17 @@ export function obtenerSesion(): Usuario | null {
   }
 }
 
-async function iniciarSesionMock(email: string, password: string): Promise<Usuario> {
+async function iniciarSesionMock(usuario: string, password: string): Promise<Usuario> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 
-  if (!email.trim() || !password.trim()) {
+  if (!usuario.trim() || !password.trim()) {
     throw new Error("Credenciales inválidas.")
   }
 
-  const perfil = resolverPerfil(email)
+  const perfil = resolverPerfil(usuario)
   return guardarSesion({
     id: crypto.randomUUID(),
-    email,
+    email: perfil.email ?? `${usuario.trim().toLowerCase()}@clinicadelrio.com`,
     nombre: perfil.nombre,
     iniciales: perfil.iniciales,
     esAdministrador: perfil.esAdministrador,
@@ -166,7 +179,7 @@ async function iniciarSesionMock(email: string, password: string): Promise<Usuar
 }
 
 export async function iniciarSesion(
-  email: string,
+  usuario: string,
   password: string,
   modo: ModoLoginAuth = "demo",
 ): Promise<Usuario> {
@@ -174,24 +187,24 @@ export async function iniciarSesion(
     if (!usarAuthModuloApi()) {
       throw new Error("El login institucional no está disponible en este entorno.")
     }
-    const usuario = await loginModulo(email, password)
-    return guardarSesion(usuario)
+    const sesion = await loginModulo(usuario, password)
+    return guardarSesion(sesion)
   }
 
-  return iniciarSesionMock(email, password)
+  return iniciarSesionMock(usuario, password)
 }
 
 export async function cambiarPasswordSesion(
-  email: string,
+  usuario: string,
   passwordActual: string,
   passwordNueva: string,
 ): Promise<string> {
   if (usarAuthModuloApi()) {
-    return cambiarPasswordModulo({ email, passwordActual, passwordNueva })
+    return cambiarPasswordModulo({ usuario, passwordActual, passwordNueva })
   }
 
   await new Promise((resolve) => setTimeout(resolve, 400))
-  if (!email.trim() || !passwordActual.trim() || passwordNueva.length < 8) {
+  if (!usuario.trim() || !passwordActual.trim() || passwordNueva.length < 8) {
     throw new Error("Revise los datos ingresados.")
   }
   return "Contraseña actualizada correctamente (demo)."

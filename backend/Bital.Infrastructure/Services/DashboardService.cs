@@ -26,6 +26,39 @@ public class DashboardService : IDashboardService
             && Enum.TryParse<TiempoComida>(comida, ignoreCase: true, out tiempoComida);
     }
 
+    private static string MapearEstadoActividad(string tipoEvento, Domain.Enums.EstadoDieta estadoNuevo)
+    {
+        return tipoEvento.ToLowerInvariant() switch
+        {
+            "entrega_confirmada" => "recibida",
+            "devolucion_registrada" => "devuelta",
+            "pre_entrega_confirmada" => "confirmada",
+            "dieta_confirmada" => "confirmada",
+            "cancelacion" => "cancelada",
+            _ => MapearEstadoDieta(estadoNuevo)
+        };
+    }
+
+    private static string MapearEstadoDieta(Domain.Enums.EstadoDieta estado)
+    {
+        return estado switch
+        {
+            Domain.Enums.EstadoDieta.Pendiente => "no-solicitada",
+            Domain.Enums.EstadoDieta.Guardado => "guardado",
+            Domain.Enums.EstadoDieta.Solicitada => "guardado",
+            Domain.Enums.EstadoDieta.Confirmada => "confirmada",
+            Domain.Enums.EstadoDieta.EnPreparacion => "en-preparacion",
+            Domain.Enums.EstadoDieta.ListaEnvio => "lista-despacho",
+            Domain.Enums.EstadoDieta.EnRuta => "despachada",
+            Domain.Enums.EstadoDieta.Entregada => "recibida",
+            Domain.Enums.EstadoDieta.Consumida => "recibida",
+            Domain.Enums.EstadoDieta.Cancelada => "cancelada",
+            Domain.Enums.EstadoDieta.NoConsumida => "devuelta",
+            Domain.Enums.EstadoDieta.Devuelta => "devuelta",
+            _ => "guardado"
+        };
+    }
+
     public async Task<DashboardNutricionistaDto> ObtenerDashboardNutricionistaAsync(DateTime? fecha, string? comida)
     {
         var fechaOperativa = fecha ?? DateTime.Today;
@@ -79,7 +112,7 @@ public class DashboardService : IDashboardService
                 .GroupBy(d => d.TipoDieta!.ToString())
                 .Select(g => new DistribucionItemDto
                 {
-                    Categoria = g.Key,
+                    Categoria = g.Key ?? "Sin categoría",
                     Cantidad = g.Count(),
                     Porcentaje = Math.Round((decimal)g.Count() / totalDietas * 100, 1)
                 })
@@ -92,7 +125,7 @@ public class DashboardService : IDashboardService
                 .GroupBy(d => d.Servicio ?? "Sin servicio")
                 .Select(g => new DistribucionItemDto
                 {
-                    Categoria = g.Key,
+                    Categoria = g.Key ?? "Sin categoría",
                     Cantidad = g.Count(),
                     Porcentaje = Math.Round((decimal)g.Count() / totalDietas * 100, 1)
                 })
@@ -105,17 +138,29 @@ public class DashboardService : IDashboardService
             new() { Tipo = "servicios", Items = distribucionServicios }
         };
 
-        // Actividad reciente (últimas 10 operaciones de trazabilidad del día)
-        var actividad = await _context.EventosTrazabilidad
+        // Actividad reciente de enfermería (excluye eventos de cocina/etiquetas)
+        var actividadQuery = _context.EventosTrazabilidad
+            .Include(e => e.FilaDieta)
             .Where(e => e.FechaEvento.Date == fechaOperativa.Date)
+            .Where(e =>
+                !e.TipoEvento.StartsWith("orden_") &&
+                !e.TipoEvento.StartsWith("etiqueta_"));
+
+        if (TryParseTiempoComida(comida, out var tiempoComidaActividad))
+            actividadQuery = actividadQuery.Where(e => e.FilaDieta.Comida == tiempoComidaActividad);
+
+        var actividad = await actividadQuery
             .OrderByDescending(e => e.FechaEvento)
-            .Take(10)
+            .Take(8)
             .Select(e => new ActividadDto
             {
                 Timestamp = e.FechaEvento,
                 Tipo = e.TipoEvento,
                 Usuario = e.Usuario,
                 Descripcion = e.Descripcion,
+                Paciente = e.FilaDieta != null ? e.FilaDieta.Paciente : null,
+                Habitacion = e.FilaDieta != null ? e.FilaDieta.Habitacion : null,
+                Estado = MapearEstadoActividad(e.TipoEvento, e.EstadoNuevo),
                 Entidad = "FilaDieta",
                 EntidadId = e.FilaDietaId.ToString()
             })

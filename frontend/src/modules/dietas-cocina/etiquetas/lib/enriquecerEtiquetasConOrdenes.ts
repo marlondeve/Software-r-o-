@@ -1,20 +1,24 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
-
-function claveOrden(pacienteId: string, comida: string): string {
-  return `${pacienteId}::${comida}`
-}
+import { etiquetaPerteneceAOrden } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 
 function resolverOrdenParaEtiqueta(
   etiqueta: EtiquetaEnfermera,
-  porFilaId: Map<string, OrdenCocina>,
-  porClave: Map<string, OrdenCocina>,
+  ordenes: OrdenCocina[],
 ): OrdenCocina | undefined {
   if (etiqueta.filaDietaId) {
-    const porFila = porFilaId.get(etiqueta.filaDietaId)
-    if (porFila) return porFila
+    const porFila = ordenes.find((orden) => orden.id === etiqueta.filaDietaId)
+    if (porFila && etiquetaPerteneceAOrden(porFila, etiqueta)) return porFila
   }
-  return porClave.get(claveOrden(etiqueta.pacienteId, etiqueta.comida))
+
+  if (etiqueta.ordenCocinaId) {
+    const porApi = ordenes.find(
+      (orden) => orden.ordenCocinaApiId === etiqueta.ordenCocinaId,
+    )
+    if (porApi && etiquetaPerteneceAOrden(porApi, etiqueta)) return porApi
+  }
+
+  return undefined
 }
 
 /** Completa aislamiento, observaciones y alergias desde la orden de cocina (censo). */
@@ -44,15 +48,10 @@ export function enriquecerEtiquetasConOrdenes(
 ): EtiquetaEnfermera[] {
   if (!ordenes.length) return etiquetas
 
-  const porFilaId = new Map(ordenes.map((orden) => [orden.id, orden]))
-  const porClave = new Map(
-    ordenes.map((orden) => [claveOrden(orden.pacienteId, orden.comida), orden]),
-  )
-
   return etiquetas.map((etiqueta) =>
     enriquecerEtiquetaConOrden(
       etiqueta,
-      resolverOrdenParaEtiqueta(etiqueta, porFilaId, porClave),
+      resolverOrdenParaEtiqueta(etiqueta, ordenes),
     ),
   )
 }

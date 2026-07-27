@@ -3,6 +3,7 @@ import type { mapDashboardNutricionistaDto } from "@/modules/dietas-cocina/api/m
 import type { construirDashboardEnfermeraDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardEnfermera"
 import type { construirDashboardNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardNutricionista"
 import type { reporteViewVacio } from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
+import { actividadApiPareceEnfermeria } from "@/modules/dietas-cocina/lib/construirActividadEnfermeria"
 
 type DashboardNutricionistaCiclo = ReturnType<
   typeof construirDashboardNutricionistaDesdeCiclo
@@ -22,6 +23,15 @@ function preferirLista<T>(api: T[], ciclo: T[]): T[] {
   return api.length > 0 ? api : ciclo
 }
 
+function resolverActividadRecienteEnfermeria(
+  api: DashboardNutricionistaApi["actividadReciente"],
+  ciclo: DashboardNutricionistaCiclo["actividadReciente"],
+): DashboardNutricionistaCiclo["actividadReciente"] {
+  if (actividadApiPareceEnfermeria(api) && api.length > 0) return api
+  if (ciclo.length > 0) return ciclo
+  return api
+}
+
 export function mesclarDashboardNutricionista(
   api: DashboardNutricionistaApi,
   ciclo: DashboardNutricionistaCiclo,
@@ -32,13 +42,13 @@ export function mesclarDashboardNutricionista(
     distribucion:
       api.distribucion.segmentos.length > 0 ? api.distribucion : ciclo.distribucion,
     atencion: preferirLista(api.atencion, ciclo.atencion),
-    actividadReciente: preferirLista(api.actividadReciente, ciclo.actividadReciente),
+    actividadReciente: resolverActividadRecienteEnfermeria(
+      api.actividadReciente,
+      ciclo.actividadReciente,
+    ),
     proximoCierre: {
       ...ciclo.proximoCierre,
-      pendientes:
-        ciclo.proximoCierre.pendientes > 0
-          ? ciclo.proximoCierre.pendientes
-          : api.proximoCierre.pendientes,
+      pendientes: ciclo.proximoCierre.pendientes,
     },
   }
 }
@@ -50,7 +60,10 @@ export function mesclarDashboardEnfermera(
   return {
     ...ciclo,
     kpis: kpisTienenValores(api.kpis) ? api.kpis : ciclo.kpis,
-    dietasRecientes: preferirLista(api.dietasRecientes, ciclo.dietasRecientes),
+    dietasRecientes:
+      ciclo.dietasRecientes.length > 0
+        ? ciclo.dietasRecientes
+        : api.dietasRecientes,
     alertas: preferirLista(api.alertas, ciclo.alertas),
   }
 }

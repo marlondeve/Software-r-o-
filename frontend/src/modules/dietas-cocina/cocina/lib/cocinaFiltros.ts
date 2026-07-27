@@ -2,6 +2,10 @@ import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {
+  esRecogidaPostEntrega,
+  esRechazoAntesEntrega,
+} from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
+import {
   ordenCoincideSeguimiento,
   ordenEnTransito,
   resolverEstadoLogisticaOrden,
@@ -76,6 +80,7 @@ export function calcularKpisCocina(
   const activas = filtradas.filter((o) => o.estadoCocina !== "cancelada")
   const resolver = (orden: OrdenCocina) =>
     resolverEstadoLogisticaOrden(orden, getEtiquetaByOrdenId?.(orden.id))
+  const etiquetaDe = (orden: OrdenCocina) => getEtiquetaByOrdenId?.(orden.id)
 
   return [
     { id: "total", label: "TOTAL", value: activas.length, variant: "default" as const },
@@ -124,9 +129,21 @@ export function calcularKpisCocina(
       variant: "muted" as const,
     },
     {
+      id: "recogidas",
+      label: "RECOGIDAS",
+      value: filtradas.filter((o) => {
+        const etiqueta = etiquetaDe(o)
+        return resolver(o) === "devuelta" && !!etiqueta && esRecogidaPostEntrega(etiqueta)
+      }).length,
+      variant: "muted" as const,
+    },
+    {
       id: "devueltas",
-      label: "DEVUELTAS",
-      value: filtradas.filter((o) => resolver(o) === "devuelta").length,
+      label: "RECHAZADAS",
+      value: filtradas.filter((o) => {
+        const etiqueta = etiquetaDe(o)
+        return resolver(o) === "devuelta" && !!etiqueta && esRechazoAntesEntrega(etiqueta)
+      }).length,
       variant: "destructive" as const,
     },
   ]
@@ -152,6 +169,8 @@ export function filtrosDesdeKpiCocina(kpiId: string): Partial<FiltrosCocina> {
       return { estadoCocina: "cancelada", seguimiento: "Todos" }
     case "devueltas":
       return { estadoCocina: "Todos", seguimiento: "devuelta" }
+    case "recogidas":
+      return { estadoCocina: "Todos", seguimiento: "recogida" }
     default:
       return {}
   }

@@ -28,6 +28,7 @@ import {
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEstilos"
 import { generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { filtrarEtiquetasDelPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 import {
   puedeImprimirEtiqueta,
   puedeReimprimirEtiqueta,
@@ -78,16 +79,23 @@ export function EtiquetasProveedorView() {
 
   const mostrarRecibidasEnfermeria = kpiActivo === "recibidas-enfermeria"
 
+  const etiquetasOperativas = useMemo(
+    () =>
+      filtrarEtiquetasDelPeriodoOperativo(etiquetasLogistica, {
+        comida: comidaActiva,
+      }),
+    [etiquetasLogistica, comidaActiva],
+  )
+
   const etiquetasEnCocina = useMemo(
     () =>
-      etiquetasLogistica.filter((etiqueta) => {
-        if (etiqueta.comida !== comidaActiva) return false
+      etiquetasOperativas.filter((etiqueta) => {
         if (mostrarRecibidasEnfermeria) {
           return etiquetaRecibidaEnfermeria(etiqueta.estadoLogistica)
         }
         return !etiquetaFueraDeFlujoProveedor(etiqueta.estadoLogistica)
       }),
-    [etiquetasLogistica, comidaActiva, mostrarRecibidasEnfermeria],
+    [etiquetasOperativas, mostrarRecibidasEnfermeria],
   )
 
   const pabellonesDisponibles = useMemo(
@@ -125,8 +133,8 @@ export function EtiquetasProveedorView() {
   }, [tiposDietaDisponibles, tipoDieta])
 
   const kpisConLogistica = useMemo(
-    () => calcularKpisEtiquetasProveedor(etiquetasLogistica, comidaActiva),
-    [etiquetasLogistica, comidaActiva],
+    () => calcularKpisEtiquetasProveedor(etiquetasOperativas, comidaActiva),
+    [etiquetasOperativas, comidaActiva],
   )
 
   const etiquetasFiltradas = useMemo(() => {

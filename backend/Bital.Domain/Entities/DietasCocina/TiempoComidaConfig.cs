@@ -46,10 +46,10 @@ public class TiempoComidaConfig : EntityBase
     /// <summary>
     /// Usuario que realizó la última modificación
     /// </summary>
-    public string ModificadoPor { get; set; } = string.Empty;
+    public new string ModificadoPor { get; set; } = string.Empty;
 
     /// <summary>
     /// Fecha de última modificación
     /// </summary>
-    public DateTime ModificadoEn { get; set; } = DateTime.UtcNow;
+    public new DateTime ModificadoEn { get; set; } = DateTime.UtcNow;
 }

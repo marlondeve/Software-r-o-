@@ -9,6 +9,7 @@ export const ESTADO_FILTRO_LABEL: Record<string, string> = {
   confirmada: "Confirmada",
   recibida: "Recibida",
   devuelta: "Devuelta",
+  recogida: "Recogida",
   cancelada: "Cancelada",
 }
 
@@ -85,39 +86,50 @@ export function cnFilaTabla(
 export function calcularKpisDietas(
   filas: FilaDieta[],
   comida: TiempoComida,
+  resolverEstadoVisible?: (fila: FilaDieta) => EstadoDieta,
 ): KpiDieta[] {
   const filtradas = filas.filter((fila) => fila.comida === comida)
+  const estadoVisible = (fila: FilaDieta) =>
+    resolverEstadoVisible?.(fila) ?? fila.estado
 
   return [
     { id: "total", label: "Total", value: filtradas.length, variant: "default" },
     {
       id: "sin-solicitud",
       label: "Sin solicitud",
-      value: filtradas.filter((fila) => fila.estado === "no-solicitada").length,
+      value: filtradas.filter((fila) => estadoVisible(fila) === "no-solicitada")
+        .length,
       variant: "destructive",
     },
     {
       id: "guardado",
       label: "Guardado",
-      value: filtradas.filter((fila) => fila.estado === "guardado").length,
+      value: filtradas.filter((fila) => estadoVisible(fila) === "guardado").length,
       variant: "warning",
     },
     {
       id: "confirmadas",
       label: "Confirmadas",
-      value: filtradas.filter((fila) => fila.estado === "confirmada").length,
+      value: filtradas.filter((fila) => estadoVisible(fila) === "confirmada")
+        .length,
       variant: "success",
     },
     {
       id: "recibidas",
       label: "Recibidas",
-      value: filtradas.filter((fila) => fila.estado === "recibida").length,
+      value: filtradas.filter((fila) => estadoVisible(fila) === "recibida").length,
       variant: "info",
     },
     {
+      id: "recogidas",
+      label: "Recogidas",
+      value: filtradas.filter((fila) => estadoVisible(fila) === "recogida").length,
+      variant: "muted",
+    },
+    {
       id: "devueltas",
-      label: "Devueltas",
-      value: filtradas.filter((fila) => fila.estado === "devuelta").length,
+      label: "Rechazadas",
+      value: filtradas.filter((fila) => estadoVisible(fila) === "devuelta").length,
       variant: "muted",
     },
     {

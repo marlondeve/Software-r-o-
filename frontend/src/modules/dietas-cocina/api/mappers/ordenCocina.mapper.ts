@@ -7,6 +7,10 @@ import {
   cargarChecklistOrden,
   cargarOrdenCocinaApiId,
 } from "@/modules/dietas-cocina/lib/cocinaOverridesStorage"
+import {
+  filtrarEtiquetasDelPeriodoOperativo,
+  resolverEtiquetaParaFila,
+} from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 
 const CHECKLIST_INICIAL: ChecklistItem[] = [
   { id: "ck-1", label: "Receta revisada", obligatorio: false, completado: false },
@@ -95,10 +99,6 @@ export function mapFilaDietaToOrdenCocina(
   }
 }
 
-function claveEtiqueta(pacienteId: string, comida: string): string {
-  return `${pacienteId}::${comida}`
-}
-
 const RANK_ESTADO_COCINA: Record<EstadoCocina, number> = {
   por_iniciar: 0,
   en_preparacion: 1,
@@ -119,7 +119,6 @@ export function fusionarOrdenesCocina(
   incoming: OrdenCocina[],
 ): OrdenCocina[] {
   const prevById = new Map(prev.map((orden) => [orden.id, orden]))
-  const incomingIds = new Set(incoming.map((orden) => orden.id))
 
   const merged = incoming.map((orden) => {
     const existente = prevById.get(orden.id)
@@ -135,15 +134,11 @@ export function fusionarOrdenesCocina(
         existente.etiquetaGenerada ||
         orden.etiquetaGenerada ||
         Boolean(existente.etiquetaId ?? orden.etiquetaId),
-      estadoLogistica: existente.estadoLogistica ?? orden.estadoLogistica,
+      estadoLogistica: orden.estadoLogistica,
     }
   })
 
-  const extras = prev.filter(
-    (orden) => !incomingIds.has(orden.id) && orden.estadoCocina !== "cancelada",
-  )
-
-  return [...merged, ...extras]
+  return merged
 }
 
 function mapEstadoOrdenApi(estado: string): EstadoCocina | undefined {
@@ -208,26 +203,15 @@ export function mapFilasDietasToOrdenesCocina(
   filas: FilaDieta[],
   etiquetas: EtiquetaEnfermera[] = [],
 ): OrdenCocina[] {
-  const etiquetasPorClave = new Map(
-    etiquetas.map((etiqueta) => [
-      claveEtiqueta(etiqueta.pacienteId, etiqueta.comida),
-      etiqueta,
-    ]),
-  )
-  const etiquetasPorFila = new Map(
-    etiquetas
-      .filter((etiqueta) => etiqueta.filaDietaId)
-      .map((etiqueta) => [etiqueta.filaDietaId!, etiqueta]),
-  )
+  const etiquetasPeriodo = filtrarEtiquetasDelPeriodoOperativo(etiquetas)
 
   const ordenes: OrdenCocina[] = []
   for (const fila of filas) {
-    const etiqueta =
-      etiquetasPorFila.get(fila.id) ??
-      (fila.ordenCocinaId
-        ? etiquetas.find((item) => item.filaDietaId === fila.id)
-        : undefined) ??
-      etiquetasPorClave.get(claveEtiqueta(fila.pacienteId, fila.comida))
+    const etiqueta = resolverEtiquetaParaFila(
+      fila,
+      undefined,
+      etiquetasPeriodo.filter((item) => item.comida === fila.comida),
+    )
     const orden = mapFilaDietaToOrdenCocina(fila, etiqueta)
     if (orden) ordenes.push(orden)
   }

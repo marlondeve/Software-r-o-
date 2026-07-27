@@ -1,6 +1,7 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { resolverEstadoLogisticaOrden } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
+import { etiquetaImpresaEnOrden } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 export const PASOS_SEGUIMIENTO = [
   { id: "solicitud", label: "Solicitud" },
   { id: "confirmada", label: "Confirmada" },
@@ -21,7 +22,8 @@ export function indicePasoActivoSeguimiento(
   if (logistica === "entregada") return 6
   if (logistica === "pre_entregada") return 5
   if (orden.estadoCocina === "despachada") return 4
-  if (orden.etiquetaImpresa || orden.etiquetaGenerada) return 3
+  if (etiquetaImpresaEnOrden(orden, etiqueta)) return 4
+  if (orden.etiquetaGenerada || orden.etiquetaId || etiqueta) return 3
   if (orden.estadoCocina === "lista") return 3
   if (orden.estadoCocina === "en_preparacion") return 2
   if (orden.estadoCocina === "por_iniciar") return 1

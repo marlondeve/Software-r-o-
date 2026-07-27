@@ -56,10 +56,16 @@ function factorHorario(horario: string): number {
   switch (horario) {
     case "desayuno":
       return 0.82
+    case "merienda-manana":
+      return 0.45
     case "almuerzo":
       return 1
+    case "merienda-tarde":
+      return 0.48
     case "cena":
       return 0.91
+    case "merienda-noche":
+      return 0.4
     default:
       return 1
   }

@@ -4,6 +4,7 @@ import type {
   EtiquetaEnfermera,
   KpiEnfermeraEtiqueta,
 } from "@/modules/dietas-cocina/types/labels"
+import { esRecogidaPostEntrega } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import { mockEtiquetas } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 
 const logisticaPorId: Record<
@@ -18,6 +19,7 @@ const logisticaPorId: Record<
       | "horaPreEntrega"
       | "horaEntrega"
       | "horaDevolucion"
+      | "motivoDevolucion"
       | "recibidoPor"
     >
   >
@@ -45,7 +47,13 @@ const logisticaPorId: Record<
   "etq-8": { estadoLogistica: "impresa" },
   "etq-9": { estadoLogistica: "pre_entregada", horaPreEntrega: "24/10/2023 09:55" },
   "etq-10": { estadoLogistica: "impresa" },
-  "etq-11": { estadoLogistica: "devuelta", horaDevolucion: "24/10/2023 21:10" },
+  "etq-11": {
+    estadoLogistica: "devuelta",
+    horaPreEntrega: "24/10/2023 12:08",
+    horaEntrega: "24/10/2023 12:35",
+    horaDevolucion: "24/10/2023 21:10",
+    motivoDevolucion: "Se consumió",
+  },
   "etq-12": { estadoLogistica: "impresa" },
 }
 
@@ -64,6 +72,7 @@ function enriquecerEtiqueta(etiqueta: EtiquetaDieta): EtiquetaEnfermera {
     horaPreEntrega: extra.horaPreEntrega,
     horaEntrega: extra.horaEntrega,
     horaDevolucion: extra.horaDevolucion,
+    motivoDevolucion: extra.motivoDevolucion,
     recibidoPor: extra.recibidoPor,
   }
 }
@@ -83,8 +92,8 @@ export function calcularKpisEnfermera(
   const pendientesEntrega = filtradas.filter(
     (e) => e.estadoLogistica === "pre_entregada",
   ).length
-  const devueltas = filtradas.filter(
-    (e) => e.estadoLogistica === "devuelta",
+  const recogidas = filtradas.filter(
+    (e) => e.estadoLogistica === "devuelta" && esRecogidaPostEntrega(e),
   ).length
 
   return [
@@ -101,9 +110,9 @@ export function calcularKpisEnfermera(
       variant: "info",
     },
     {
-      id: "devueltas",
-      label: "DEVUELTAS HOY",
-      value: devueltas,
+      id: "recogidas",
+      label: "RECOGIDAS HOY",
+      value: recogidas,
       variant: "destructive",
     },
   ]

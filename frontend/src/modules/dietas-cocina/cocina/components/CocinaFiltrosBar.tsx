@@ -40,7 +40,8 @@ const SEGUIMIENTO_FILTRO: { value: FiltroSeguimientoCocina; label: string }[] = 
   { value: "en_transito", label: "En tránsito" },
   { value: "pre_entregada", label: "Pre-entregadas" },
   { value: "entregada", label: "Entregadas" },
-  { value: "devuelta", label: "Devueltas" },
+  { value: "recogida", label: "Recogidas" },
+  { value: "devuelta", label: "Rechazadas" },
 ]
 
 export function CocinaFiltrosBar({

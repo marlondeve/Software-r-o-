@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Eye, EyeOff, Lock, Mail } from "lucide-react"
+import { Eye, EyeOff, Lock, User } from "lucide-react"
 import { useState } from "react"
 import { Controller, useForm } from "react-hook-form"
 import { z } from "zod"
@@ -17,10 +17,10 @@ import { cambiarPasswordSesion } from "@/services/authService"
 
 const cambiarPasswordSchema = z
   .object({
-    email: z
+    usuario: z
       .string()
-      .min(1, "El correo institucional es obligatorio.")
-      .email("Ingrese un correo institucional válido."),
+      .min(1, "El usuario es obligatorio.")
+      .min(3, "El usuario debe tener al menos 3 caracteres."),
     passwordActual: z.string().min(1, "La contraseña actual es obligatoria."),
     passwordNueva: z
       .string()
@@ -52,7 +52,7 @@ export function CambiarPasswordForm({ onExito }: CambiarPasswordFormProps) {
   const form = useForm<CambiarPasswordFormValues>({
     resolver: zodResolver(cambiarPasswordSchema),
     defaultValues: {
-      email: "",
+      usuario: "",
       passwordActual: "",
       passwordNueva: "",
       confirmarPassword: "",
@@ -64,7 +64,7 @@ export function CambiarPasswordForm({ onExito }: CambiarPasswordFormProps) {
     setEnviando(true)
     try {
       const mensaje = await cambiarPasswordSesion(
-        data.email,
+        data.usuario,
         data.passwordActual,
         data.passwordNueva,
       )
@@ -89,18 +89,18 @@ export function CambiarPasswordForm({ onExito }: CambiarPasswordFormProps) {
 
       <FieldGroup className="gap-4">
         <Controller
-          name="email"
+          name="usuario"
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor="cambio-email">Correo institucional</FieldLabel>
+              <FieldLabel htmlFor="cambio-usuario">Usuario</FieldLabel>
               <div className="relative">
-                <Mail className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
+                <User className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   {...field}
-                  id="cambio-email"
-                  type="email"
-                  autoComplete="email"
+                  id="cambio-usuario"
+                  type="text"
+                  autoComplete="username"
                   className="h-9 rounded-full pl-10"
                 />
               </div>

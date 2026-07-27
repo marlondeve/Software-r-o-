@@ -1,9 +1,13 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
-import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { mockNutricionista } from "@/modules/dietas-cocina/inicio/datos/mockNutricionista"
+import { construirActividadRecienteEnfermeria } from "@/modules/dietas-cocina/lib/construirActividadEnfermeria"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
+import {
+  filtrarEtiquetasDelPeriodoOperativo,
+  resolverContextoFilaDieta,
+} from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 import {
   formatearPeriodoOperativo,
   resolverComidaOperativaActual,
@@ -20,6 +24,7 @@ const COLORES_ESTADO: Record<string, string> = {
   despachada: "#0369a1",
   recibida: "#00818f",
   devuelta: "#94a3b8",
+  recogida: "#64748b",
   cancelada: "#d8e0e8",
 }
 
@@ -33,32 +38,8 @@ const LABEL_ESTADO: Record<string, string> = {
   despachada: "Despachada",
   recibida: "Recibida",
   devuelta: "Devuelta",
+  recogida: "Recogida",
   cancelada: "Cancelada",
-}
-
-function extraerHora(solicitadoEn?: string): string {
-  if (!solicitadoEn) return "—"
-  const match = solicitadoEn.match(/(\d{1,2}:\d{2})/)
-  return match?.[1] ?? solicitadoEn
-}
-
-function accionDesdeEstado(estado: EstadoDieta): string {
-  switch (estado) {
-    case "no-solicitada":
-      return "Sin solicitud"
-    case "guardado":
-      return "Solicitud nueva"
-    case "confirmada":
-      return "Confirmación"
-    case "cancelada":
-      return "Cancelación"
-    case "recibida":
-      return "Entrega confirmada"
-    case "devuelta":
-      return "Devolución"
-    default:
-      return "Actualización"
-  }
 }
 
 export function construirDashboardNutricionistaDesdeCiclo(
@@ -70,13 +51,9 @@ export function construirDashboardNutricionistaDesdeCiclo(
   const comida = resolverComidaOperativaActual(fechaReferencia)
   const cierreInfo = resolverProximoCierre(fechaReferencia)
   const comidaPendientes = cierreInfo.comida
-  const ordenPorId = new Map(ordenes.map((o) => [o.id, o]))
-  const etiquetaPorOrden = new Map<string, EtiquetaEnfermera>()
-  for (const orden of ordenes) {
-    if (!orden.etiquetaId) continue
-    const etiqueta = etiquetas.find((e) => e.id === orden.etiquetaId)
-    if (etiqueta) etiquetaPorOrden.set(orden.id, etiqueta)
-  }
+  const etiquetasPeriodo = filtrarEtiquetasDelPeriodoOperativo(etiquetas, {
+    comida,
+  })
 
   let filasComida = filas.filter((f) => f.comida === comida)
   if (filasComida.length === 0 && filas.length > 0) {
@@ -89,21 +66,26 @@ export function construirDashboardNutricionistaDesdeCiclo(
   }
 
   const filasConEstado = filasComida.map((fila) => {
-    const orden = fila.ordenCocinaId
-      ? ordenPorId.get(fila.ordenCocinaId)
-      : undefined
-    const etiqueta = fila.ordenCocinaId
-      ? etiquetaPorOrden.get(fila.ordenCocinaId)
-      : undefined
-    const estado = estadoDietaDesdeCiclo(fila.estado, orden, etiqueta)
+    const { orden, etiqueta } = resolverContextoFilaDieta(
+      fila,
+      ordenes,
+      etiquetasPeriodo,
+    )
+    const estado = estadoDietaDesdeCiclo(fila, orden, etiqueta)
     return { fila, estado }
   })
 
   const pacientesActivos = new Set(filasComida.map((f) => f.pacienteId)).size
+  const etiquetasPendientes = filtrarEtiquetasDelPeriodoOperativo(etiquetas, {
+    comida: comidaPendientes,
+  })
   const pendientes = filasPendientesCierre.filter((fila) => {
-    const orden = fila.ordenCocinaId ? ordenPorId.get(fila.ordenCocinaId) : undefined
-    const etiqueta = fila.ordenCocinaId ? etiquetaPorOrden.get(fila.ordenCocinaId) : undefined
-    const estado = estadoDietaDesdeCiclo(fila.estado, orden, etiqueta)
+    const { orden, etiqueta } = resolverContextoFilaDieta(
+      fila,
+      ordenes,
+      etiquetasPendientes,
+    )
+    const estado = estadoDietaDesdeCiclo(fila, orden, etiqueta)
     return ["no-solicitada", "guardado"].includes(estado)
   }).length
   const confirmadas = filasConEstado.filter((f) =>
@@ -115,7 +97,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
       "despachada",
     ].includes(f.estado),
   ).length
-  const novedades = filasComida.filter((f) => f.estado === "guardado").length
+  const novedades = filasConEstado.filter((f) => f.estado === "guardado").length
   const cancelaciones = filasConEstado.filter(
     (f) => f.estado === "cancelada",
   ).length
@@ -137,23 +119,12 @@ export function construirDashboardNutricionistaDesdeCiclo(
   const sinSolicitud = filasComida.filter((f) => f.estado === "no-solicitada").length
   const cambiosPendientes = filasComida.filter((f) => f.estado === "guardado").length
 
-  const actividadReciente = filasComida
-    .slice(0, 5)
-    .map((fila) => {
-      const orden = fila.ordenCocinaId
-        ? ordenPorId.get(fila.ordenCocinaId)
-        : undefined
-      const etiqueta = fila.ordenCocinaId
-        ? etiquetaPorOrden.get(fila.ordenCocinaId)
-        : undefined
-      const estado = estadoDietaDesdeCiclo(fila.estado, orden, etiqueta)
-      return {
-        paciente: `${fila.habitacion} / ${fila.paciente}`,
-        accion: accionDesdeEstado(estado),
-        hora: extraerHora(fila.solicitadoEn),
-        estado,
-      }
-    })
+  const actividadReciente = construirActividadRecienteEnfermeria(
+    filasComida,
+    ordenes,
+    etiquetas,
+    comida,
+  )
 
   const comidaLabel = labelComidaOperativa(comida)
 
@@ -220,7 +191,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
         : mockNutricionista.actividadReciente,
     proximoCierre: {
       ...cierreInfo,
-      pendientes: pendientes || (cierreInfo.diaSiguiente ? 0 : mockNutricionista.proximoCierre.pendientes),
+      pendientes,
     },
   }
 }

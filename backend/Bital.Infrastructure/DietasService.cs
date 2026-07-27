@@ -698,6 +698,7 @@ public class DietasService : IDietasService
     public async Task<FilaDietaDto> ObtenerDetalleDietaAsync(Guid filaDietaId, CancellationToken cancellationToken = default)
     {
         var fila = await _context.FilasDietas
+            .Include(f => f.TipoDieta)
             .FirstOrDefaultAsync(f => f.Id == filaDietaId, cancellationToken)
             ?? throw new KeyNotFoundException($"Dieta {filaDietaId} no encontrada");
 
@@ -745,7 +746,12 @@ public class DietasService : IDietasService
             query = query.Where(f => f.Estado == estadoEnum);
 
         if (!string.IsNullOrEmpty(filtros.Busqueda))
-            query = query.Where(f => f.Paciente.Contains(filtros.Busqueda) || f.Cedula.Contains(filtros.Busqueda));
+        {
+            var busqueda = filtros.Busqueda;
+            query = query.Where(f =>
+                f.Paciente.Contains(busqueda) ||
+                (f.Cedula != null && f.Cedula.Contains(busqueda)));
+        }
 
         if (filtros.SoloPendientes)
             query = query.Where(f => f.Estado == EstadoDieta.Solicitada);
@@ -794,7 +800,7 @@ public class DietasService : IDietasService
             Comida = fila.Comida.ToString(),
             Consistencia = fila.Consistencia,
             TipoDietaId = fila.TipoDietaId,
-            DescripcionDieta = fila.DescripcionDieta,
+            DescripcionDieta = fila.DescripcionDieta ?? fila.TipoDieta?.Nombre,
             Aislado = fila.Aislado,
             Aislamiento = fila.Aislamiento,
             ObservacionAislamiento = fila.ObservacionAislamiento,

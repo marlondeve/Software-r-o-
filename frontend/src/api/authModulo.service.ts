@@ -7,6 +7,7 @@ import type { Usuario } from "@/types/user"
 
 export interface LoginModuloResponse {
   id: string
+  usuario: string
   email: string
   nombreCompleto: string
   rol: RolDietas
@@ -38,7 +39,7 @@ export function mapLoginResponseToUsuario(payload: unknown): Usuario {
   const email = String(normalizarClave(registro, "email", "Email") ?? "")
   const nombre = String(
     normalizarClave(registro, "nombreCompleto", "NombreCompleto", "nombre", "Nombre") ??
-      email.split("@")[0] ??
+      normalizarClave(registro, "usuario", "Usuario", "identificacion", "Identificacion") ??
       "Usuario",
   )
   const rol = mapRolLogin(
@@ -54,7 +55,7 @@ export function mapLoginResponseToUsuario(payload: unknown): Usuario {
 
   return {
     id: String(normalizarClave(registro, "id", "Id") ?? crypto.randomUUID()),
-    email,
+    email: email || `${String(normalizarClave(registro, "usuario", "Usuario") ?? "usuario")}@clinicadelrio.com`,
     nombre,
     iniciales: inicialesDesdeNombre(nombre),
     esAdministrador,
@@ -62,23 +63,23 @@ export function mapLoginResponseToUsuario(payload: unknown): Usuario {
   }
 }
 
-export async function loginModulo(email: string, password: string): Promise<Usuario> {
+export async function loginModulo(usuario: string, password: string): Promise<Usuario> {
   const { data } = await apiClient.post<ApiResponse<unknown>>("/auth/login", {
-    email,
+    usuario,
     password,
   })
   return mapLoginResponseToUsuario(extraerCuerpoApi(data))
 }
 
 export async function cambiarPasswordModulo(input: {
-  email: string
+  usuario: string
   passwordActual: string
   passwordNueva: string
 }): Promise<string> {
   const { data } = await apiClient.post<ApiResponse<{ mensaje?: string; Mensaje?: string }>>(
     "/auth/cambiar-password",
     {
-      email: input.email,
+      usuario: input.usuario,
       passwordActual: input.passwordActual,
       passwordNueva: input.passwordNueva,
     },

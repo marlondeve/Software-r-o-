@@ -42,6 +42,10 @@ const ESTADO_CONFIG: Record<
     label: "Devuelta",
     className: "bg-muted text-muted-foreground border-border",
   },
+  recogida: {
+    label: "Recogida",
+    className: "bg-slate-500/10 text-slate-700 border-slate-500/25 dark:text-slate-300",
+  },
   cancelada: {
     label: "Cancelada",
     className: "bg-muted/80 text-muted-foreground border-border",

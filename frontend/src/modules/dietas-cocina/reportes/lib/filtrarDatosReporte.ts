@@ -3,6 +3,10 @@ import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import type { FiltrosReportes } from "@/modules/dietas-cocina/types/reports"
 import { labelComida } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
+import {
+  filtrarEtiquetasDelPeriodoOperativo,
+  resolverEtiquetaParaOrden,
+} from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 
 const PABELLON_POR_SERVICIO: Record<string, string> = {
   cardiologia: "Pab Central",
@@ -32,25 +36,31 @@ export function filtrarOrdenesReporte(
 export function filtrarEtiquetasReporte(
   etiquetas: EtiquetaEnfermera[],
   ordenesFiltradas: OrdenCocina[],
+  filtros?: FiltrosReportes,
 ): EtiquetaEnfermera[] {
-  const etiquetaIds = new Set(
-    ordenesFiltradas
-      .map((orden) => orden.etiquetaId)
-      .filter((id): id is string => Boolean(id)),
+  const comida =
+    filtros?.horario !== "todos"
+      ? (filtros?.horario as TiempoComida)
+      : undefined
+  const delPeriodo = filtrarEtiquetasDelPeriodoOperativo(etiquetas, { comida })
+
+  return delPeriodo.filter((etiqueta) =>
+    ordenesFiltradas.some(
+      (orden) => resolverEtiquetaParaOrden(orden, [etiqueta])?.id === etiqueta.id,
+    ),
   )
-  return etiquetas.filter((etiqueta) => etiquetaIds.has(etiqueta.id))
 }
 
 export function crearLookupEtiquetaOrden(
   ordenes: OrdenCocina[],
   etiquetas: EtiquetaEnfermera[],
 ) {
-  const etiquetasPorId = new Map(etiquetas.map((etiqueta) => [etiqueta.id, etiqueta]))
+  const etiquetasPeriodo = filtrarEtiquetasDelPeriodoOperativo(etiquetas)
 
   return (ordenId: string) => {
     const orden = ordenes.find((item) => item.id === ordenId)
-    if (!orden?.etiquetaId) return undefined
-    return etiquetasPorId.get(orden.etiquetaId)
+    if (!orden) return undefined
+    return resolverEtiquetaParaOrden(orden, etiquetasPeriodo)
   }
 }
 

@@ -19,7 +19,7 @@ interface AuthContextValue {
   usuario: Usuario | null
   cargando: boolean
   iniciarSesion: (
-    email: string,
+    usuario: string,
     password: string,
     modo?: ModoLoginAuth,
   ) => Promise<Usuario>
@@ -42,8 +42,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const iniciarSesion = useCallback(
-    async (email: string, password: string, modo: ModoLoginAuth = "demo") => {
-      const sesion = await iniciarSesionService(email, password, modo)
+    async (usuario: string, password: string, modo: ModoLoginAuth = "demo") => {
+      const sesion = await iniciarSesionService(usuario, password, modo)
       setUsuario(sesion)
       return sesion
     },

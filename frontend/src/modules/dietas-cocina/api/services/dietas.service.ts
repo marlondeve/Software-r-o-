@@ -87,7 +87,11 @@ export async function obtenerHistorialDieta(
     EventoTrazabilidadDto[] | ApiResponse<EventoTrazabilidadDto[]>
   >(buildDietasCocinaPath(`/dietas/${filaDietaId}/historial`))
   const items = extraerCuerpoApi(data)
-  return Array.isArray(items) ? items.map(mapEventoTrazabilidadDto) : []
+  return Array.isArray(items)
+    ? items.map((item, index) =>
+        mapEventoTrazabilidadDto(item, { activo: index === 0 }),
+      )
+    : []
 }
 
 export async function guardarSolicitudDieta(
