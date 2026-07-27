@@ -125,7 +125,7 @@ export interface EtiquetaDto {
   estado?: string
   estadoLogistica?: string
   qrPayload?: string
-  alergias?: string[]
+  alergias?: string | string[]
   horaPreEntrega?: string
   horaEntrega?: string
   horaDevolucion?: string
@@ -138,6 +138,8 @@ export interface EtiquetaDto {
   cedula?: string
   generadaEn?: string
   impresaEn?: string
+  observacionAislamiento?: string
+  alergico?: boolean
 }
 
 export interface GenerarEtiquetasRequestDto {

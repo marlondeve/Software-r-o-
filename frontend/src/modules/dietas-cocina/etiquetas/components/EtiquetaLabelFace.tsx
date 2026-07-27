@@ -5,13 +5,21 @@ import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/l
 import logoClinica from "@/assets/Logo-Clinica-del-Rio.png"
 import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
+  ETIQUETA_ALTO_PX,
+  ETIQUETA_ANCHO_PX,
   ETIQUETA_QR_COL_RATIO,
   dimensionesEtiquetaPantalla,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
+import {
+  ChipIconoTexto,
+  FilaMetaSvg,
+} from "@/modules/dietas-cocina/etiquetas/components/etiquetaMetaSvg"
 
 export interface EtiquetaLabelFaceProps {
   etiqueta: EtiquetaDieta
   qrSrc: string
+  /** `impresion` usa tamaño real (115×66 mm) para captura PDF. */
+  modo?: "pantalla" | "impresion"
 }
 
 const QR_COL = `${ETIQUETA_QR_COL_RATIO * 100}%`
@@ -182,223 +190,287 @@ function BadgeEscanear() {
   )
 }
 
-/** Vista en pantalla — no modificar para impresión (ver EtiquetaLabelFaceImpresion). */
-export function EtiquetaLabelFace({ etiqueta, qrSrc }: EtiquetaLabelFaceProps) {
-  const comida = etiquetaComidaLabel(etiqueta.comida)
-  const ubicacion = `${etiqueta.pabellon} - Hab ${etiqueta.habitacion}`
-  const { ancho, alto } = dimensionesEtiquetaPantalla()
-  const qrSize = 98
+function MetaPaciente({
+  etiqueta,
+  ubicacion,
+  modo,
+}: {
+  etiqueta: EtiquetaDieta
+  ubicacion: string
+  modo: "pantalla" | "impresion"
+}) {
+  const aislamiento = etiqueta.aislamiento ? "Sí" : "No"
+
+  if (modo === "impresion") {
+    return (
+      <div style={{ paddingBottom: 7, color: C.black85, flexShrink: 0 }}>
+        <div style={{ marginBottom: 5 }}>
+          <FilaMetaSvg
+            chips={[
+              { tipo: "idCard", texto: `ID: ${etiqueta.pacienteId}` },
+              { tipo: "calendar", texto: `Edad: ${etiqueta.edad}` },
+            ]}
+          />
+        </div>
+        <div style={{ marginBottom: 5 }}>
+          <FilaMetaSvg chips={[{ tipo: "mapPin", texto: ubicacion }]} />
+        </div>
+        <FilaMetaSvg
+          chips={[
+            { tipo: "user", texto: `CC: ${etiqueta.documento}` },
+            { tipo: "shield", texto: `Aislamiento: ${aislamiento}` },
+          ]}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
-      data-etiqueta-id={etiqueta.id}
       style={{
-        boxSizing: "border-box",
-        width: ancho,
-        height: alto,
-        border: "2px solid rgba(0, 0, 0, 0.8)",
-        borderRadius: 8,
-        background: C.white,
-        color: C.black,
-        fontFamily:
-          '"Geist Variable", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif',
+        paddingBottom: 6,
+        fontSize: 9.5,
+        lineHeight: 1.45,
+        color: C.black85,
+        flexShrink: 0,
       }}
     >
       <div
         style={{
-          width: "100%",
-          height: "100%",
-          overflow: "hidden",
-          borderRadius: 6,
-          display: "grid",
-          gridTemplateColumns: `minmax(0, 1fr) ${QR_COL}`,
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          columnGap: 2,
+          rowGap: 2,
+          marginBottom: 2,
+        }}
+      >
+        <MetaItem icon={<IconoIdCard />}>ID: {etiqueta.pacienteId}</MetaItem>
+        <Separador />
+        <MetaItem icon={<IconoCalendar />}>Edad: {etiqueta.edad}</MetaItem>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          columnGap: 2,
+          rowGap: 2,
+          marginBottom: 2,
+        }}
+      >
+        <MetaItem icon={<IconoMapPin />}>{ubicacion}</MetaItem>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          columnGap: 2,
+          rowGap: 2,
+        }}
+      >
+        <MetaItem icon={<IconoUser />}>CC: {etiqueta.documento}</MetaItem>
+        <Separador />
+        <MetaItem icon={<IconoShield />}>Aislamiento: {aislamiento}</MetaItem>
+      </div>
+    </div>
+  )
+}
+
+function EtiquetaLabelContenido({
+  etiqueta,
+  qrSrc,
+  qrSize,
+  fontFamily,
+  modo,
+}: {
+  etiqueta: EtiquetaDieta
+  qrSrc: string
+  qrSize: number
+  fontFamily: string
+  modo: "pantalla" | "impresion"
+}) {
+  const esImpresion = modo === "impresion"
+  const comida = etiquetaComidaLabel(etiqueta.comida)
+  const ubicacion = `${etiqueta.pabellon} - Hab ${etiqueta.habitacion}`
+  const padContenido = esImpresion ? "11px 13px 9px" : "9px 11px 7px"
+  const padDieta = esImpresion ? "8px 10px" : "6px 8px"
+  const padObs = esImpresion ? "8px 10px" : "6px 8px"
+  const mtObs = esImpresion ? 8 : 6
+  const mtNombre = esImpresion ? 2 : 6
+  const pbHeader = esImpresion ? 5 : 6
+  const pbQr = esImpresion ? 4 : 2
+
+  return (
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        borderRadius: 6,
+        display: "grid",
+        gridTemplateColumns: `minmax(0, 1fr) ${QR_COL}`,
+        fontFamily,
+      }}
+    >
+      <div
+        style={{
+          minWidth: 0,
+          boxSizing: "border-box",
+          padding: padContenido,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         <div
           style={{
-            minWidth: 0,
-            boxSizing: "border-box",
-            padding: "9px 11px 7px",
             display: "flex",
-            flexDirection: "column",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: 8,
+            borderBottom: `1px solid ${C.black15}`,
+            paddingBottom: pbHeader,
+            flexShrink: 0,
           }}
         >
-          <div
+          <img
+            src={logoClinica}
+            alt="Clínica del Río"
             style={{
-              display: "flex",
-              alignItems: "flex-start",
-              justifyContent: "space-between",
-              gap: 8,
-              borderBottom: `1px solid ${C.black15}`,
-              paddingBottom: 6,
-              flexShrink: 0,
+              display: "block",
+              height: 32,
+              width: "auto",
+              maxWidth: 120,
+              objectFit: "contain",
+              objectPosition: "left center",
             }}
-          >
-            <img
-              src={logoClinica}
-              alt="Clínica del Río"
+          />
+          <div style={{ flexShrink: 0, textAlign: "right", lineHeight: 1 }}>
+            <p
               style={{
-                display: "block",
-                height: 32,
-                width: "auto",
-                maxWidth: 120,
-                objectFit: "contain",
-                objectPosition: "left center",
+                margin: 0,
+                fontSize: 14,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "-0.025em",
               }}
-            />
-            <div style={{ flexShrink: 0, textAlign: "right", lineHeight: 1 }}>
+            >
+              {comida}
+            </p>
+            <p style={{ margin: "4px 0 0", fontSize: 10, color: C.black65 }}>
+              {formatearFechaHoraEnCadena(etiqueta.fechaHora)}
+            </p>
+          </div>
+        </div>
+
+        <h3
+          style={{
+            marginTop: mtNombre,
+            marginBottom: 6,
+            fontSize: 14,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            lineHeight: 1.3,
+            letterSpacing: "-0.025em",
+            flexShrink: 0,
+          }}
+        >
+          {etiqueta.paciente}
+        </h3>
+
+        <MetaPaciente etiqueta={etiqueta} ubicacion={ubicacion} modo={modo} />
+
+        <div
+          style={{
+            border: `1px solid ${C.black}`,
+            borderRadius: 2,
+            overflow: "hidden",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+            <div
+              style={{
+                minWidth: 0,
+                padding: padDieta,
+                borderRight: `1px solid ${C.black}`,
+              }}
+            >
               <p
                 style={{
                   margin: 0,
-                  fontSize: 14,
+                  fontSize: 9,
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  letterSpacing: esImpresion ? undefined : "0.05em",
+                  color: C.black55,
+                  lineHeight: esImpresion ? 1 : undefined,
+                }}
+              >
+                Dieta:
+              </p>
+              <p
+                style={{
+                  margin: "2px 0 0",
+                  fontSize: 11,
                   fontWeight: 700,
                   textTransform: "uppercase",
-                  letterSpacing: "-0.025em",
+                  lineHeight: 1.25,
+                  wordBreak: "break-word",
                 }}
               >
-                {comida}
-              </p>
-              <p style={{ margin: "4px 0 0", fontSize: 10, color: C.black65 }}>
-                {formatearFechaHoraEnCadena(etiqueta.fechaHora)}
+                {etiqueta.tipoDieta}
               </p>
             </div>
-          </div>
-
-          <h3
-            style={{
-              marginTop: 6,
-              marginBottom: 6,
-              fontSize: 14,
-              fontWeight: 700,
-              textTransform: "uppercase",
-              lineHeight: 1.3,
-              letterSpacing: "-0.025em",
-              flexShrink: 0,
-            }}
-          >
-            {etiqueta.paciente}
-          </h3>
-
-          <div
-            style={{
-              paddingBottom: 6,
-              fontSize: 9.5,
-              lineHeight: 1.45,
-              color: C.black85,
-              flexShrink: 0,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                columnGap: 2,
-                rowGap: 2,
-                marginBottom: 2,
-              }}
-            >
-              <MetaItem icon={<IconoIdCard />}>ID: {etiqueta.pacienteId}</MetaItem>
-              <Separador />
-              <MetaItem icon={<IconoCalendar />}>Edad: {etiqueta.edad}</MetaItem>
-              <Separador />
-              <MetaItem icon={<IconoMapPin />}>{ubicacion}</MetaItem>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                alignItems: "center",
-                columnGap: 2,
-                rowGap: 2,
-              }}
-            >
-              <MetaItem icon={<IconoUser />}>CC: {etiqueta.documento}</MetaItem>
-              <Separador />
-              <MetaItem icon={<IconoShield />}>
-                Aislamiento: {etiqueta.aislamiento ? "Sí" : "No"}
-              </MetaItem>
-            </div>
-          </div>
-
-          <div
-            style={{
-              border: `1px solid ${C.black}`,
-              borderRadius: 2,
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr" }}>
-              <div
+            <div style={{ minWidth: 0, padding: padDieta }}>
+              <p
                 style={{
-                  minWidth: 0,
-                  padding: "6px 8px",
-                  borderRight: `1px solid ${C.black}`,
+                  margin: 0,
+                  fontSize: 9,
+                  fontWeight: 500,
+                  textTransform: "uppercase",
+                  letterSpacing: esImpresion ? undefined : "0.05em",
+                  color: C.black55,
+                  lineHeight: esImpresion ? 1 : undefined,
                 }}
               >
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 9,
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    color: C.black55,
-                  }}
-                >
-                  Dieta:
-                </p>
-                <p
-                  style={{
-                    margin: "2px 0 0",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: "uppercase",
-                    lineHeight: 1.25,
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {etiqueta.tipoDieta}
-                </p>
-              </div>
-              <div style={{ minWidth: 0, padding: "6px 8px" }}>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 9,
-                    fontWeight: 500,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.05em",
-                    color: C.black55,
-                  }}
-                >
-                  Consistencia:
-                </p>
-                <p
-                  style={{
-                    margin: "2px 0 0",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    lineHeight: 1.25,
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {etiqueta.consistencia}
-                </p>
-              </div>
+                Consistencia:
+              </p>
+              <p
+                style={{
+                  margin: "2px 0 0",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  lineHeight: 1.25,
+                  wordBreak: "break-word",
+                }}
+              >
+                {etiqueta.consistencia}
+              </p>
             </div>
           </div>
+        </div>
 
-          <div
-            style={{
-              marginTop: 6,
-              border: `1px solid ${C.black}`,
-              borderRadius: 2,
-              padding: "6px 8px",
-              flexShrink: 0,
-            }}
-          >
+        <div
+          style={{
+            marginTop: mtObs,
+            border: `1px solid ${C.black}`,
+            borderRadius: 2,
+            padding: padObs,
+            flexShrink: 0,
+          }}
+        >
+          {esImpresion ? (
+            <ChipIconoTexto
+              tipo="message"
+              texto="Observaciones"
+              fontSize={9}
+              fontWeight={700}
+              color={C.black}
+              stroke={C.black}
+            />
+          ) : (
             <p
               style={{
                 margin: 0,
@@ -415,89 +487,131 @@ export function EtiquetaLabelFace({ etiqueta, qrSrc }: EtiquetaLabelFaceProps) {
               <IconoMessage />
               Observaciones
             </p>
-            <p
-              style={{
-                margin: "4px 0 0",
-                fontSize: 10,
-                lineHeight: 1.375,
-                color: C.black85,
-              }}
-            >
-              {etiqueta.observaciones || "—"}
-            </p>
-          </div>
+          )}
+          <p
+            style={{
+              margin: esImpresion ? "5px 0 0" : "4px 0 0",
+              fontSize: 10,
+              lineHeight: 1.375,
+              color: C.black85,
+            }}
+          >
+            {etiqueta.observaciones || "—"}
+          </p>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          borderLeft: `1px solid ${C.black}`,
+          height: "100%",
+          boxSizing: "border-box",
+          minWidth: 0,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            paddingTop: 10,
+            paddingBottom: pbQr,
+            flexShrink: 0,
+          }}
+        >
+          <BadgeEscanear />
         </div>
 
         <div
           style={{
+            flex: 1,
             display: "flex",
-            flexDirection: "column",
-            borderLeft: `1px solid ${C.black}`,
-            height: "100%",
-            boxSizing: "border-box",
-            minWidth: 0,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0 6px",
+            minHeight: 0,
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              paddingTop: 10,
-              paddingBottom: 2,
-              flexShrink: 0,
-            }}
-          >
-            <BadgeEscanear />
-          </div>
-
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "0 6px",
-              minHeight: 0,
-            }}
-          >
-            {qrSrc ? (
-              <img
-                src={qrSrc}
-                alt=""
-                width={qrSize}
-                height={qrSize}
-                style={{
-                  display: "block",
-                  width: qrSize,
-                  height: qrSize,
-                  objectFit: "contain",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: qrSize,
-                  height: qrSize,
-                  background: C.black15,
-                }}
-              />
-            )}
-          </div>
-
-          <p
-            style={{
-              margin: 0,
-              padding: "0 6px 6px",
-              textAlign: "center",
-              fontSize: 9,
-              color: C.black50,
-              flexShrink: 0,
-            }}
-          >
-            {etiqueta.codigo}
-          </p>
+          {qrSrc ? (
+            <img
+              src={qrSrc}
+              alt=""
+              width={qrSize}
+              height={qrSize}
+              style={{
+                display: "block",
+                width: qrSize,
+                height: qrSize,
+                objectFit: "contain",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: qrSize,
+                height: qrSize,
+                background: C.black15,
+              }}
+            />
+          )}
         </div>
+
+        <p
+          style={{
+            margin: 0,
+            padding: esImpresion ? "0 8px 8px" : "0 6px 6px",
+            textAlign: "center",
+            fontSize: 9,
+            color: C.black50,
+            flexShrink: 0,
+          }}
+        >
+          {etiqueta.codigo}
+        </p>
       </div>
     </div>
   )
+}
+
+export function EtiquetaLabelFace({
+  etiqueta,
+  qrSrc,
+  modo = "pantalla",
+}: EtiquetaLabelFaceProps) {
+  const esImpresion = modo === "impresion"
+  const { ancho: anchoPantalla, alto: altoPantalla } = dimensionesEtiquetaPantalla()
+  const ancho = esImpresion ? ETIQUETA_ANCHO_PX : anchoPantalla
+  const alto = esImpresion ? ETIQUETA_ALTO_PX : altoPantalla
+  const qrSize = esImpresion ? 104 : 98
+  const fontFamily = esImpresion
+    ? "Arial, Helvetica, sans-serif"
+    : '"Geist Variable", "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif'
+
+  const cajaEtiqueta = (
+    <div
+      data-etiqueta-print={esImpresion ? true : undefined}
+      data-etiqueta-id={esImpresion ? undefined : etiqueta.id}
+      style={{
+        boxSizing: "border-box",
+        width: ancho,
+        height: alto,
+        border: esImpresion ? `2px solid ${C.black}` : "2px solid rgba(0, 0, 0, 0.8)",
+        borderRadius: 8,
+        background: C.white,
+        color: C.black,
+        fontFamily,
+      }}
+    >
+      <EtiquetaLabelContenido
+        etiqueta={etiqueta}
+        qrSrc={qrSrc}
+        qrSize={qrSize}
+        fontFamily={fontFamily}
+        modo={modo}
+      />
+    </div>
+  )
+
+  return cajaEtiqueta
 }

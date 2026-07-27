@@ -7,6 +7,7 @@ import {
   ALTO_PAGINA_PDF_MM,
   ANCHO_ETIQUETA_MM,
   ANCHO_PAGINA_PDF_MM,
+  MARGEN_PDF_MM,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
 
 export { ANCHO_ETIQUETA_MM, ALTO_ETIQUETA_MM }
@@ -34,10 +35,10 @@ function agregarCanvasComoPagina(
   doc.addImage(
     imgData,
     "PNG",
-    0,
-    0,
-    ANCHO_PAGINA_PDF_MM,
-    ALTO_PAGINA_PDF_MM,
+    MARGEN_PDF_MM,
+    MARGEN_PDF_MM,
+    ANCHO_ETIQUETA_MM,
+    ALTO_ETIQUETA_MM,
     undefined,
     "NONE",
   )

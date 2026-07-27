@@ -33,4 +33,9 @@ public class EtiquetaEnfermeraDto
     public string? FotoDevolucionUrl { get; set; }
     public DateTime? DevueltaEn { get; set; }
     public string? Observaciones { get; set; }
+    public bool Aislado { get; set; }
+    public int Edad { get; set; }
+    public string? ObservacionAislamiento { get; set; }
+    public bool Alergico { get; set; }
+    public string? Alergias { get; set; }
 }
