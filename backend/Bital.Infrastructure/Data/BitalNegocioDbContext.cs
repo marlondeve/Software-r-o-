@@ -30,6 +30,7 @@ public class BitalNegocioDbContext : DbContext
     public DbSet<CategoriaEdad> CategoriasEdad { get; set; }
     public DbSet<EventoAuditoria> EventosAuditoria { get; set; }
     public DbSet<UsuarioModulo> UsuariosModulo { get; set; }
+    public DbSet<RolModulo> RolesModulo { get; set; }
     public DbSet<PermisoRol> PermisosRol { get; set; }
 
     // ============================================================================

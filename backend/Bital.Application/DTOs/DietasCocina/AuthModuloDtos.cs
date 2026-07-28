@@ -1,5 +1,3 @@
-using Bital.Domain.Enums;
-
 namespace Bital.Application.DTOs.DietasCocina;
 
 public class LoginModuloDto
@@ -14,7 +12,7 @@ public class LoginModuloResponseDto
     public string Usuario { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string NombreCompleto { get; set; } = string.Empty;
-    public RolDietas Rol { get; set; }
+    public Guid RolModuloId { get; set; }
     public string RolNombre { get; set; } = string.Empty;
 }
 

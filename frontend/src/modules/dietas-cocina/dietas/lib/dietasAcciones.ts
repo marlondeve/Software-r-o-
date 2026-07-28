@@ -1,5 +1,5 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
-import type { EstadoDieta, RolDietas, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import {
   esSolicitudEditable,
   evaluarAccionesDietaClinica,
@@ -22,7 +22,7 @@ interface HandlersAccionesDieta {
 interface ContextoAccionesDietaFila {
   estadoVisible: EstadoDieta
   comidaActiva: TiempoComida
-  rol?: RolDietas | null
+  rol?: string | null
 }
 
 /** Acciones de fila deterministas por estado operativo visible. */

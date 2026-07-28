@@ -1,79 +1,10 @@
 import { normalizarClave } from "@/modules/dietas-cocina/api/utils"
 import type { MetaPaginacionDto } from "@/modules/dietas-cocina/types/api-dtos"
-import type { EstadoUsuario, OrigenUsuario, RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { EstadoUsuario, OrigenUsuario } from "@/modules/dietas-cocina/types/enums"
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
-
-const ROLES_DOMINIO: RolDietas[] = [
-  "Administrador",
-  "Nutricionista",
-  "Doctor",
-  "Proveedor",
-  "Enfermera",
-]
-
-/** Roles expuestos por la API .NET (`RolDietas`). */
-const ROL_API_A_DOMINIO: Record<string, RolDietas> = {
-  admin: "Administrador",
-  administrador: "Administrador",
-  nutricionista: "Nutricionista",
-  cocinero: "Proveedor",
-  proveedor: "Proveedor",
-  enfermera: "Enfermera",
-  doctor: "Doctor",
-}
-
-const ROL_DOMINIO_A_API: Record<RolDietas, string> = {
-  Administrador: "Admin",
-  Nutricionista: "Nutricionista",
-  Doctor: "Enfermera",
-  Proveedor: "Cocinero",
-  Enfermera: "Enfermera",
-}
-
-/** Valores numéricos de `RolDietas` en .NET (Admin=1, Nutricionista=2, Cocinero=3, Enfermera=4). */
-const ROL_DOMINIO_A_API_NUM: Record<RolDietas, number> = {
-  Administrador: 1,
-  Nutricionista: 2,
-  Doctor: 4,
-  Proveedor: 3,
-  Enfermera: 4,
-}
-
-const ROL_API_NUM_A_DOMINIO: Record<number, RolDietas> = {
-  1: "Administrador",
-  2: "Nutricionista",
-  3: "Proveedor",
-  4: "Enfermera",
-}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null
-}
-
-function normalizarRol(valor: unknown): RolDietas {
-  if (typeof valor === "number" && valor in ROL_API_NUM_A_DOMINIO) {
-    return ROL_API_NUM_A_DOMINIO[valor]!
-  }
-
-  const clave = String(valor ?? "").trim().toLowerCase()
-  if (clave in ROL_API_A_DOMINIO) return ROL_API_A_DOMINIO[clave]!
-  return ROLES_DOMINIO.find((rol) => rol.toLowerCase() === clave) ?? "Nutricionista"
-}
-
-export function mapRolDominioAApi(rol: RolDietas | string): string {
-  const dominio = normalizarRolDominio(rol)
-  return ROL_DOMINIO_A_API[dominio] ?? "Nutricionista"
-}
-
-export function mapRolDominioAApiNum(rol: RolDietas | string): number {
-  const dominio = normalizarRolDominio(rol)
-  return ROL_DOMINIO_A_API_NUM[dominio] ?? 2
-}
-
-function normalizarRolDominio(rol: RolDietas | string): RolDietas {
-  const clave = String(rol ?? "").trim()
-  if (clave in ROL_DOMINIO_A_API) return clave as RolDietas
-  return normalizarRol(rol)
 }
 
 function normalizarEstado(valor: unknown): EstadoUsuario {
@@ -91,9 +22,9 @@ function formatearUltimoAcceso(valor: unknown): string {
 
 export function mapUsuarioDtoToDomain(dto: unknown): UsuarioModulo {
   const registro = asRecord(dto) ?? {}
-  const rolNombre = normalizarClave(registro, "rolNombre", "RolNombre")
-  const rolCodigo = normalizarClave(registro, "rol", "Rol")
-  const rolRaw = rolNombre ?? rolCodigo ?? "Nutricionista"
+  const rolNombre = String(
+    normalizarClave(registro, "rolNombre", "RolNombre") ?? "Usuario",
+  )
   const observaciones = String(
     normalizarClave(registro, "observaciones", "Observaciones") ?? "",
   )
@@ -109,10 +40,13 @@ export function mapUsuarioDtoToDomain(dto: unknown): UsuarioModulo {
     correo: String(
       normalizarClave(registro, "correo", "Correo", "email", "Email") ?? "",
     ),
-    rol: normalizarRol(rolRaw),
+    rolId: String(
+      normalizarClave(registro, "rolModuloId", "RolModuloId") ?? "",
+    ),
+    rol: rolNombre,
     servicioArea: observaciones || "Sin asignar",
     orgProveedora:
-      normalizarRol(rolRaw) === "Proveedor" ? "Catering Hospitalario SL" : null,
+      rolNombre.toLowerCase() === "proveedor" ? "Catering Hospitalario SL" : null,
     estado: normalizarEstado(normalizarClave(registro, "estado", "Estado", "activo", "Activo")),
     ultimoAcceso: formatearUltimoAcceso(
       normalizarClave(registro, "ultimoAcceso", "UltimoAcceso"),
@@ -138,7 +72,7 @@ export function mapUsuarioToCrearRequest(usuario: Omit<UsuarioModulo, "id">) {
     nombreCompleto: usuario.nombre,
     email: usuario.correo,
     identificacion: usuario.usuario,
-    rol: mapRolDominioAApiNum(usuario.rol),
+    rolModuloId: usuario.rolId,
     observaciones: observaciones || null,
   }
 }
@@ -174,4 +108,21 @@ export function mapListadoUsuariosResponse(payload: unknown): {
         } satisfies MetaPaginacionDto)
       : undefined,
   }
+}
+
+export function mapRolesModuloResponse(payload: unknown) {
+  const registro = asRecord(payload) ?? {}
+  const items = normalizarClave(registro, "data", "Data") ?? payload
+  if (!Array.isArray(items)) return []
+
+  return items.map((item) => {
+    const rol = asRecord(item) ?? {}
+    return {
+      id: String(normalizarClave(rol, "id", "Id") ?? ""),
+      nombre: String(normalizarClave(rol, "nombre", "Nombre") ?? ""),
+      esSistema: Boolean(normalizarClave(rol, "esSistema", "EsSistema")),
+      activo: Boolean(normalizarClave(rol, "activo", "Activo") ?? true),
+      totalPermisos: Number(normalizarClave(rol, "totalPermisos", "TotalPermisos") ?? 0),
+    }
+  })
 }

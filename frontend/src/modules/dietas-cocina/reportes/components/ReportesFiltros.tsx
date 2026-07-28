@@ -31,7 +31,7 @@ export function ReportesFiltros({
 }: ReportesFiltrosProps) {
   function exportar() {
     descargarArchivoDemo(
-      "Reporte demo — módulo Dietas y Cocina\n",
+      "Reporte — módulo Dietas y Cocina\n",
       "reportes-dietas-cocina.txt",
     )
   }

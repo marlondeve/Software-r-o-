@@ -1,5 +1,13 @@
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 
+const ROL_IDS = {
+  Administrador: "11111111-1111-1111-1111-111111000001",
+  Nutricionista: "11111111-1111-1111-1111-111111000002",
+  Proveedor: "11111111-1111-1111-1111-111111000003",
+  Enfermera: "11111111-1111-1111-1111-111111000004",
+  Doctor: "11111111-1111-1111-1111-111111000005",
+} as const
+
 export const mockUsuariosDietas = {
   total: 124,
   pagina: { desde: 1, hasta: 10 },
@@ -13,6 +21,7 @@ export const mockUsuariosDietas = {
       nombre: "Dra. Elena Ramos",
       usuario: "eramos",
       correo: "eramos@clinicadelrio.com",
+      rolId: ROL_IDS.Nutricionista,
       rol: "Nutricionista",
       servicioArea: "Nutrición Clínica",
       orgProveedora: null,
@@ -25,6 +34,7 @@ export const mockUsuariosDietas = {
       nombre: "Admin Sistema",
       usuario: "admin.sys",
       correo: "admin.sys@clinicadelrio.com",
+      rolId: ROL_IDS.Administrador,
       rol: "Administrador",
       servicioArea: "Sistemas",
       orgProveedora: null,
@@ -37,6 +47,7 @@ export const mockUsuariosDietas = {
       nombre: "Operador Logística",
       usuario: "op_logistica",
       correo: "logistica@cateringhospitalario.com",
+      rolId: ROL_IDS.Proveedor,
       rol: "Proveedor",
       servicioArea: "Cocina Externa",
       orgProveedora: "Catering Hospitalario SL",
@@ -49,6 +60,7 @@ export const mockUsuariosDietas = {
       nombre: "Dr. Ramírez",
       usuario: "dramirez",
       correo: "dramirez@clinicadelrio.com",
+      rolId: ROL_IDS.Doctor,
       rol: "Doctor",
       servicioArea: "Medicina Interna",
       orgProveedora: null,
@@ -61,6 +73,7 @@ export const mockUsuariosDietas = {
       nombre: "Enf. Laura Méndez",
       usuario: "lmendez",
       correo: "lmendez@clinicadelrio.com",
+      rolId: ROL_IDS.Enfermera,
       rol: "Enfermera",
       servicioArea: "Piso 3",
       orgProveedora: null,
@@ -73,6 +86,7 @@ export const mockUsuariosDietas = {
       nombre: "Carlos Mendoza",
       usuario: "cmendoza",
       correo: "cmendoza@clinicadelrio.com",
+      rolId: ROL_IDS.Nutricionista,
       rol: "Nutricionista",
       servicioArea: "Nutrición Clínica",
       orgProveedora: null,
@@ -85,6 +99,7 @@ export const mockUsuariosDietas = {
       nombre: "María Gómez",
       usuario: "mgomez",
       correo: "mgomez@cateringhospitalario.com",
+      rolId: ROL_IDS.Proveedor,
       rol: "Proveedor",
       servicioArea: "Despacho",
       orgProveedora: "Catering Hospitalario SL",
@@ -97,6 +112,7 @@ export const mockUsuariosDietas = {
       nombre: "Jorge Pérez",
       usuario: "jperez",
       correo: "jperez@clinicadelrio.com",
+      rolId: ROL_IDS.Enfermera,
       rol: "Enfermera",
       servicioArea: "Piso 5",
       orgProveedora: null,
@@ -109,6 +125,7 @@ export const mockUsuariosDietas = {
       nombre: "Sofía Torres",
       usuario: "storres",
       correo: "storres@clinicadelrio.com",
+      rolId: ROL_IDS.Administrador,
       rol: "Administrador",
       servicioArea: "Dirección Médica",
       orgProveedora: null,
@@ -121,6 +138,7 @@ export const mockUsuariosDietas = {
       nombre: "Operador Principal",
       usuario: "op_dietas",
       correo: "dietas@clinicadelrio.com",
+      rolId: ROL_IDS.Proveedor,
       rol: "Proveedor",
       servicioArea: "Producción",
       orgProveedora: "Catering Hospitalario SL",
@@ -130,3 +148,11 @@ export const mockUsuariosDietas = {
     },
   ] satisfies UsuarioModulo[],
 }
+
+export const mockRolesDietas = Object.entries(ROL_IDS).map(([nombre, id]) => ({
+  id,
+  nombre,
+  esSistema: true,
+  activo: true,
+  totalPermisos: 0,
+}))

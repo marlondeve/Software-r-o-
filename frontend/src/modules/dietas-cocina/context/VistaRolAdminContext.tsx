@@ -9,7 +9,7 @@ import {
 } from "react"
 
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
-import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { obtenerRolDietas, obtenerNombreRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import {
   cargarVistaRolAdmin,
   guardarVistaRolAdmin,
@@ -18,9 +18,9 @@ import {
 
 interface VistaRolAdminContextValue {
   esAdminReal: boolean
-  rolReal: RolDietas | null
+  rolReal: string | null
   rolVistaPreview: RolDietas | null
-  rolVistaEfectivo: RolDietas | null
+  rolVistaEfectivo: string | null
   vistaPreviewActiva: boolean
   setRolVistaPreview: (rol: RolDietas | null) => void
 }
@@ -31,8 +31,8 @@ const VistaRolAdminContext = createContext<VistaRolAdminContextValue | null>(
 
 export function VistaRolAdminProvider({ children }: { children: ReactNode }) {
   const { usuario } = useAuth()
-  const rolReal = obtenerRolDietas(usuario)
-  const esAdminReal = rolReal === "Administrador"
+  const rolReal = obtenerNombreRolDietas(usuario)
+  const esAdminReal = rolReal?.toLowerCase() === "administrador"
   const [rolVistaPreview, setRolVistaPreviewState] = useState<RolDietas | null>(
     () => (esAdminReal ? cargarVistaRolAdmin() : null),
   )
@@ -46,7 +46,10 @@ export function VistaRolAdminProvider({ children }: { children: ReactNode }) {
     [esAdminReal],
   )
 
-  const rolVistaEfectivo = resolverRolVistaEfectivo(rolReal, rolVistaPreview)
+  const rolVistaEfectivo = resolverRolVistaEfectivo(
+    obtenerRolDietas(usuario),
+    rolVistaPreview,
+  ) ?? rolReal
 
   const value = useMemo(
     () => ({
@@ -82,7 +85,7 @@ export function useVistaRolAdmin(): VistaRolAdminContextValue {
   return ctx
 }
 
-export function useRolVistaEfectivo(): RolDietas | null {
+export function useRolVistaEfectivo(): string | null {
   const { rolVistaEfectivo, rolReal } = useVistaRolAdmin()
   return rolVistaEfectivo ?? rolReal
 }

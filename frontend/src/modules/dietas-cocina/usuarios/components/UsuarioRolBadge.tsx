@@ -2,12 +2,14 @@ import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import {
   Headphones,
   HeartPulse,
+  Shield,
   Stethoscope,
   Truck,
   type LucideIcon,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { esRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { rolDietasEstilos } from "@/modules/dietas-cocina/usuarios/lib/usuarioEstilos"
 import { cn } from "@/lib/utils"
 
@@ -20,13 +22,16 @@ const ROL_ICONOS: Record<RolDietas, LucideIcon> = {
 }
 
 interface UsuarioRolBadgeProps {
-  rol: RolDietas
+  rol: string
   className?: string
 }
 
 export function UsuarioRolBadge({ rol, className }: UsuarioRolBadgeProps) {
-  const Icon = ROL_ICONOS[rol]
-  const estilo = rolDietasEstilos[rol]
+  const rolConocido = esRolDietas(rol)
+  const Icon = rolConocido ? ROL_ICONOS[rol] : Shield
+  const estilo = rolConocido
+    ? rolDietasEstilos[rol]
+    : { className: "border-border bg-muted/40 text-foreground" }
 
   return (
     <Badge

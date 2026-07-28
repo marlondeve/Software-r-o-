@@ -182,7 +182,7 @@ export function AuditoriaPage() {
   function exportarCsv() {
     const contenido = exportarAuditoriaCsv(filasFiltradas)
     descargarArchivoDemo(contenido, "auditoria-dietas-cocina.csv", "text/csv")
-    demoToast(`Exportados ${filasFiltradas.length} registros filtrados (demo).`)
+    demoToast(`Exportados ${filasFiltradas.length} registros filtrados.`)
   }
 
   return (
@@ -195,7 +195,7 @@ export function AuditoriaPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => demoToast(`Periodo: ${data.periodo} (demo).`)}
+              onClick={() => demoToast(`Periodo: ${data.periodo}.`)}
             >
               <CalendarDays data-icon="inline-start" />
               {data.periodo}
@@ -203,7 +203,7 @@ export function AuditoriaPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => demoToast("Filtros guardados (demo).")}
+              onClick={() => demoToast("Filtros guardados.")}
             >
               <Bookmark data-icon="inline-start" />
               Filtros guardados

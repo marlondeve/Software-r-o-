@@ -3,7 +3,7 @@
 Guía para desplegar la base de datos operativa **BitalNegocio** e importar datos iniciales desde el HIS Vital (**Hosvital_Pruebas**).
 
 **Audiencia:** DevOps / backend / DBA  
-**Última actualización:** 2026-07-26
+**Última actualización:** 2026-07-28
 
 ---
 
@@ -39,7 +39,8 @@ La migración **no escribe en Vital**. Solo lee el censo hospitalario activo y l
    - Parámetros operativos (`dietas.ParametrosOperativos`)
    - Tiempos de comida (`bital.TiemposComida`)
    - Categorías de edad (`bital.CategoriasEdad`)
-   - Usuarios del módulo + permisos por rol (`bital.UsuariosModulo`, `bital.PermisosRol`)
+   - Roles del sistema (`bital.RolesModulo`) — Administrador, Nutricionista, Proveedor, Enfermera, Doctor
+   - Usuarios del módulo + permisos por rol (`bital.UsuariosModulo`, `bital.PermisosRol` vía `RolModuloId`)
 4. **Sincroniza censo** desde `Hosvital_Pruebas`:
    - Tablas: `INGRESOS`, `CAPBAS`, `MAEPAB`
    - Filtro: ingresos activos en pabellones 3–7 (misma lógica que `GetAtencionesHospitalariasAsync`)
@@ -100,16 +101,17 @@ Parámetros opcionales:
 
 ```powershell
 # 1. Crear base
-sqlcmd -S localhost\SQLEXPRESS -E -f 65001 -i backend\scripts\01-CreateDatabase.sql
+sqlcmd -S localhost\SQLEXPRESS -E -C -f 65001 -i backend\scripts\01-CreateDatabase.sql
 
 # 2. Migraciones EF
 cd backend
 dotnet ef database update `
   --project Bital.Infrastructure `
-  --startup-project Bital.ApiNegocio
+  --startup-project Bital.ApiNegocio `
+  --context BitalNegocioDbContext
 
 # 3. Datos + censo Vital
-sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -E -f 65001 `
+sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -E -C -f 65001 `
   -v VitalDatabase="Hosvital_Pruebas" FechaOperativa="2026-07-26" `
   -i backend\scripts\02-MigrateData.sql
 ```
@@ -123,12 +125,14 @@ sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -E -f 65001 `
 Contraseña temporal para todos: **`Bital2026!`**  
 (Cambiar en el primer acceso vía pestaña *Cambiar contraseña* en login.)
 
-| Email | Rol | Rol (API num) |
-|-------|-----|---------------|
-| `admin@clinicadelrio.com` | Administrador | 1 |
-| `nutricionista@clinicadelrio.com` | Nutricionista | 2 |
-| `cocinero@clinicadelrio.com` | Cocinero | 3 |
-| `enfermera@clinicadelrio.com` | Enfermera | 4 |
+| Email | Rol | RolModuloId |
+|-------|-----|-------------|
+| `admin@clinicadelrio.com` | Administrador | `11111111-1111-1111-1111-111111000001` |
+| `nutricionista@clinicadelrio.com` | Nutricionista | `11111111-1111-1111-1111-111111000002` |
+| `cocinero@clinicadelrio.com` | Proveedor | `11111111-1111-1111-1111-111111000003` |
+| `enfermera@clinicadelrio.com` | Enfermera | `11111111-1111-1111-1111-111111000004` |
+
+Los roles de sistema se crean en la migración EF `AddRolesModuloDinamicos`. El script `02-MigrateData.sql` solo inserta usuarios/permisos faltantes (idempotente).
 
 El hash almacenado es **SHA-256 hex** (mismo algoritmo que `UsuariosPermisosService.HashPassword`).
 
@@ -151,8 +155,9 @@ El hash almacenado es **SHA-256 hex** (mismo algoritmo que `UsuariosPermisosServ
 
 | Tabla | Contenido |
 |-------|-----------|
-| `UsuariosModulo` | Usuarios del módulo dietas-cocina |
-| `PermisosRol` | Matriz rol → rutas |
+| `RolesModulo` | Roles del módulo (sistema + personalizados) |
+| `UsuariosModulo` | Usuarios del módulo dietas-cocina (`RolModuloId`) |
+| `PermisosRol` | Matriz rol → rutas (`RolModuloId`) |
 | `TiemposComida` | Ventanas horarias por comida |
 | `CategoriasEdad` | Clasificación etaria |
 | `EtiquetasEnfermeria` | Etiquetas logísticas |
@@ -189,7 +194,7 @@ El hash almacenado es **SHA-256 hex** (mismo algoritmo que `UsuariosPermisosServ
 Si solo necesitas actualizar pacientes hospitalizados del día:
 
 ```powershell
-sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -E -f 65001 `
+sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -E -C -f 65001 `
   -v VitalDatabase="Hosvital_Pruebas" FechaOperativa="2026-07-26" `
   -i backend\scripts\02-MigrateData.sql
 ```
@@ -207,7 +212,9 @@ En operación normal, la API también sincroniza censo al llamar `GET /censo` (`
 | `La base Vital "..." no existe` | Nombre incorrecto o BD en otro servidor | Ajustar `-VitalDatabase` o usar linked server |
 | Error en `INGRESOS` / `CAPBAS` | Tablas legacy con otro nombre | Revisar esquema Vital con `DiagnosticoController` |
 | Caracteres corruptos (Hipos�dica) | sqlcmd sin UTF-8 | Agregar `-f 65001` |
-| `PasswordHash` column missing | EF migrations no aplicadas | Ejecutar paso 2 antes del SQL de datos |
+| `PasswordHash` column missing | EF migrations no aplicadas | Ejecutar paso 2 con `--context BitalNegocioDbContext` |
+| `RolesModulo` no existe | Falta migración `AddRolesModuloDinamicos` | `dotnet ef database update --context BitalNegocioDbContext` |
+| `Invalid column name 'Rol'` | Script SQL antiguo contra esquema nuevo | Actualizar a `02-MigrateData.sql` con `RolModuloId` |
 | 0 filas de censo | Sin ingresos activos en pabellones 3–7 | Normal si no hay hospitalizados; verificar query Vital |
 | `dotnet ef` falla | SDK 8 no instalado o connection string | Ver [`backend/README.md`](../backend/README.md) |
 
@@ -218,4 +225,4 @@ En operación normal, la API también sincroniza censo al llamar `GET /censo` (`
 - [DEPLOYMENT_PLAN.md](./DEPLOYMENT_PLAN.md) — checklist producción
 - [ARQUITECTURA_DETALLADA.md](./ARQUITECTURA_DETALLADA.md) — modelo de datos Vital vs Bital
 - [GUIA_CONSUMO_FRONTEND.md](./GUIA_CONSUMO_FRONTEND.md) — integración frontend
-- Migración EF más reciente: `20260727013734_AddChecklistAndParametrosOperativos`
+- Migración EF más reciente: `20260728120000_AddRolesModuloDinamicos` (roles dinámicos `RolesModulo`)

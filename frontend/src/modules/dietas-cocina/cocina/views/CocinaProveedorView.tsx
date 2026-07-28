@@ -338,7 +338,7 @@ export function CocinaProveedorView() {
             size="sm"
             onClick={() =>
               descargarArchivoDemo(
-                "Reporte cocina demo\n",
+                "Reporte cocina\n",
                 `reporte-cocina-${comidaActiva}.txt`,
               )
             }

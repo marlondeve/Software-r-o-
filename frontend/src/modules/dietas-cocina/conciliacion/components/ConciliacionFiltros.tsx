@@ -64,7 +64,7 @@ export function ConciliacionFiltros({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="proveedor">{proveedor}</SelectItem>
-              <SelectItem value="otro">Otro proveedor (demo)</SelectItem>
+              <SelectItem value="otro">Otro proveedor</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -84,7 +84,7 @@ export function ConciliacionFiltros({
           <Download data-icon="inline-start" />
           Exportar
         </Button>
-        <Button size="sm" onClick={() => demoToast("Factura cargada (demo).")}>
+        <Button size="sm" onClick={() => demoToast("Factura cargada.")}>
           <FileUp data-icon="inline-start" />
           Cargar Factura
         </Button>

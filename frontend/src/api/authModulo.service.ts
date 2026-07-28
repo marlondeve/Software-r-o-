@@ -1,7 +1,7 @@
 import { apiClient } from "@/api/client"
 import type { ApiResponse } from "@/api/types"
 import { extraerCuerpoApi, normalizarClave } from "@/modules/dietas-cocina/api/utils"
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import { encuestasHabilitado } from "@/lib/modulosFlags"
 import type { AccesoModulo } from "@/types/module"
 import type { Usuario } from "@/types/user"
 
@@ -10,20 +10,7 @@ export interface LoginModuloResponse {
   usuario: string
   email: string
   nombreCompleto: string
-  rol: RolDietas
   rolNombre: string
-}
-
-const ROL_API_A_DOMINIO: Record<string, RolDietas> = {
-  admin: "Administrador",
-  nutricionista: "Nutricionista",
-  cocinero: "Proveedor",
-  enfermera: "Enfermera",
-}
-
-function mapRolLogin(valor: unknown): RolDietas {
-  const clave = String(valor ?? "").trim().toLowerCase()
-  return ROL_API_A_DOMINIO[clave] ?? "Nutricionista"
 }
 
 function inicialesDesdeNombre(nombre: string): string {
@@ -42,16 +29,18 @@ export function mapLoginResponseToUsuario(payload: unknown): Usuario {
       normalizarClave(registro, "usuario", "Usuario", "identificacion", "Identificacion") ??
       "Usuario",
   )
-  const rol = mapRolLogin(
-    normalizarClave(registro, "rolNombre", "RolNombre", "rol", "Rol"),
+  const rolNombre = String(
+    normalizarClave(registro, "rolNombre", "RolNombre") ?? "Usuario",
   )
-  const esAdministrador = rol === "Administrador"
+  const esAdministrador = rolNombre.toLowerCase() === "administrador"
   const accesos: AccesoModulo[] = esAdministrador
     ? [
-        { moduloId: "dietas-cocina", rol: "Administrador" },
-        { moduloId: "encuestas", rol: "Administrador" },
+        { moduloId: "dietas-cocina", rol: rolNombre },
+        ...(encuestasHabilitado()
+          ? [{ moduloId: "encuestas" as const, rol: "Administrador" as const }]
+          : []),
       ]
-    : [{ moduloId: "dietas-cocina", rol }]
+    : [{ moduloId: "dietas-cocina", rol: rolNombre }]
 
   return {
     id: String(normalizarClave(registro, "id", "Id") ?? crypto.randomUUID()),

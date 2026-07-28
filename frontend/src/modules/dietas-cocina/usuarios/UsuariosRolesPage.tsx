@@ -1,5 +1,6 @@
+import type { RolModuloDto, PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Plus, Shield, Users } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -8,15 +9,19 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
-import { obtenerRolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { obtenerNombreRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { CambiarRolDialog } from "@/modules/dietas-cocina/usuarios/components/CambiarRolDialog"
+import { CrearRolDialog } from "@/modules/dietas-cocina/usuarios/components/CrearRolDialog"
 import { NuevoUsuarioDialog } from "@/modules/dietas-cocina/usuarios/components/NuevoUsuarioDialog"
 import { RestablecerClaveDialog } from "@/modules/dietas-cocina/usuarios/components/RestablecerClaveDialog"
 import { RolesPermisosPanel } from "@/modules/dietas-cocina/usuarios/components/RolesPermisosPanel"
 import { UsuariosFiltros } from "@/modules/dietas-cocina/usuarios/components/UsuariosFiltros"
 import { UsuariosTabla } from "@/modules/dietas-cocina/usuarios/components/UsuariosTabla"
-import { mockUsuariosDietas } from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
+import {
+  mockRolesDietas,
+  mockUsuariosDietas,
+} from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { restablecerPasswordUsuario } from "@/api/authModulo.service"
 import {
@@ -24,22 +29,30 @@ import {
   cambiarEstadoUsuario,
   cambiarRolUsuario,
   editarUsuario as editarUsuarioApi,
+  listarRoles,
   listarUsuarios,
+  obtenerPermisosRoles,
 } from "@/modules/dietas-cocina/api/services/usuarios.service"
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import { puedeGestionarUsuariosRoles } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
 
 const TAMANO_PAGINA_USUARIOS = 10
 
+type TabUsuariosRoles = "usuarios" | "roles"
+
 export function UsuariosRolesPage() {
   const { usuario: usuarioActual } = useAuth()
-  const rolActual = obtenerRolDietas(usuarioActual)
+  const rolActual = obtenerNombreRolDietas(usuarioActual)
   const puedeGestionar = puedeGestionarUsuariosRoles(rolActual)
   const apiActiva = usarApiDietasCocina()
   const filtrosUi = mockUsuariosDietas.filtros
+  const [tabActiva, setTabActiva] = useState<TabUsuariosRoles>("usuarios")
   const [usuarios, setUsuarios] = useState<UsuarioModulo[]>(() =>
     apiActiva ? [] : mockUsuariosDietas.usuarios,
   )
+  const [roles, setRoles] = useState<RolModuloDto[]>(() =>
+    apiActiva ? [] : mockRolesDietas,
+  )
+  const [permisosApi, setPermisosApi] = useState<PermisoRolDto[]>([])
   const [rolFiltro, setRolFiltro] = useState("todos")
   const [estadoFiltro, setEstadoFiltro] = useState("todos")
   const [paginaActual, setPaginaActual] = useState(1)
@@ -48,6 +61,8 @@ export function UsuariosRolesPage() {
   )
   const [dialogRolAbierto, setDialogRolAbierto] = useState(false)
   const [dialogNuevoAbierto, setDialogNuevoAbierto] = useState(false)
+  const [dialogCrearRolAbierto, setDialogCrearRolAbierto] = useState(false)
+  const [refrescoRoles, setRefrescoRoles] = useState(0)
   const [usuarioEdit, setUsuarioEdit] = useState<UsuarioModulo | null>(null)
   const [usuarioClaveRestablecida, setUsuarioClaveRestablecida] =
     useState<UsuarioModulo | null>(null)
@@ -57,25 +72,51 @@ export function UsuariosRolesPage() {
   const [cargandoUsuarios, setCargandoUsuarios] = useState(false)
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null)
 
+  const cargarRoles = useCallback(() => {
+    if (!apiActiva) {
+      setRoles(mockRolesDietas)
+      return
+    }
+    void Promise.all([listarRoles(), obtenerPermisosRoles()])
+      .then(([rolesList, permisos]) => {
+        setRoles(rolesList)
+        setPermisosApi(permisos)
+      })
+      .catch(() => {
+        setRoles([])
+        setPermisosApi([])
+      })
+  }, [apiActiva])
+
+  useEffect(() => {
+    cargarRoles()
+  }, [cargarRoles, refrescoRoles])
+
   const usuariosFiltrados = useMemo(() => {
+    if (apiActiva) return usuarios
+
     return usuarios.filter((usuario) => {
-      const coincideRol = rolFiltro === "todos" || usuario.rol === rolFiltro
+      const coincideRol =
+        rolFiltro === "todos" || usuario.rolId === rolFiltro
       const coincideEstado =
         estadoFiltro === "todos" || usuario.estado === estadoFiltro
       return coincideRol && coincideEstado
     })
-  }, [usuarios, rolFiltro, estadoFiltro])
+  }, [usuarios, rolFiltro, estadoFiltro, apiActiva])
 
-  const totalFiltrados = usuariosFiltrados.length
+  const totalFiltrados = apiActiva
+    ? usuarios.length
+    : usuariosFiltrados.length
   const totalPaginas = Math.max(
     1,
     Math.ceil(totalFiltrados / TAMANO_PAGINA_USUARIOS),
   )
 
   const usuariosPagina = useMemo(() => {
+    if (apiActiva) return usuarios
     const inicio = (paginaActual - 1) * TAMANO_PAGINA_USUARIOS
     return usuariosFiltrados.slice(inicio, inicio + TAMANO_PAGINA_USUARIOS)
-  }, [usuariosFiltrados, paginaActual])
+  }, [usuariosFiltrados, paginaActual, apiActiva, usuarios])
 
   const paginaDesde =
     totalFiltrados === 0
@@ -91,7 +132,7 @@ export function UsuariosRolesPage() {
     setCargandoUsuarios(true)
     setErrorUsuarios(null)
     void listarUsuarios({
-      rol: rolFiltro !== "todos" ? (rolFiltro as RolDietas) : undefined,
+      rolModuloId: rolFiltro !== "todos" ? rolFiltro : undefined,
       estado: estadoFiltro !== "todos" ? estadoFiltro === "activo" : undefined,
       page: paginaActual,
       pageSize: TAMANO_PAGINA_USUARIOS,
@@ -125,10 +166,20 @@ export function UsuariosRolesPage() {
     setDialogRolAbierto(true)
   }
 
-  function confirmarCambioRol(usuarioId: string, rol: RolDietas) {
+  function confirmarCambioRol(usuarioId: string, rolModuloId: string) {
+    const rolInfo = roles.find((rol) => rol.id === rolModuloId)
+
     if (apiActiva) {
-      void cambiarRolUsuario(usuarioId, rol)
-        .then(() => listarUsuarios({ page: 1, pageSize: 100 }))
+      void cambiarRolUsuario(usuarioId, rolModuloId)
+        .then(() =>
+          listarUsuarios({
+            rolModuloId: rolFiltro !== "todos" ? rolFiltro : undefined,
+            estado:
+              estadoFiltro !== "todos" ? estadoFiltro === "activo" : undefined,
+            page: paginaActual,
+            pageSize: TAMANO_PAGINA_USUARIOS,
+          }),
+        )
         .then((res) => {
           setUsuarios(res.usuarios)
           demoToast("Rol actualizado correctamente.", "success")
@@ -141,9 +192,16 @@ export function UsuariosRolesPage() {
         })
       return
     }
+
     setUsuarios((prev) =>
       prev.map((usuario) =>
-        usuario.id === usuarioId ? { ...usuario, rol } : usuario,
+        usuario.id === usuarioId
+          ? {
+              ...usuario,
+              rolId: rolModuloId,
+              rol: rolInfo?.nombre ?? usuario.rol,
+            }
+          : usuario,
       ),
     )
   }
@@ -207,7 +265,7 @@ export function UsuariosRolesPage() {
 
     setUsuarios((prev) => [{ id: nextId, ...datos }, ...prev])
     setPaginaActual(1)
-    demoToast(`Usuario "${datos.nombre}" creado correctamente (demo).`)
+    demoToast(`Usuario "${datos.nombre}" creado correctamente.`)
   }
 
   function editarUsuario(usuario: UsuarioModulo) {
@@ -262,22 +320,40 @@ export function UsuariosRolesPage() {
     setUsuarioClaveRestablecida(usuario)
     setPasswordTemporal(temporal)
     setMensajeClaveRestablecida(
-      "Contraseña temporal generada (demo). El usuario debe cambiarla en el login.",
+      "Contraseña temporal generada. El usuario debe cambiarla en el login.",
     )
     setDialogClaveAbierto(true)
   }
+
+  function onRolCreado() {
+    setRefrescoRoles((prev) => prev + 1)
+    cargarRoles()
+  }
+
+  const nombresRoles = useMemo(
+    () => roles.map((rol) => rol.nombre ?? "").filter(Boolean),
+    [roles],
+  )
+
+  const accionesHeader =
+    tabActiva === "usuarios" ? (
+      <Button size="sm" onClick={() => setDialogNuevoAbierto(true)}>
+        <Plus data-icon="inline-start" />
+        Nuevo Usuario
+      </Button>
+    ) : puedeGestionar ? (
+      <Button size="sm" onClick={() => setDialogCrearRolAbierto(true)}>
+        <Plus data-icon="inline-start" />
+        Crear rol
+      </Button>
+    ) : null
 
   return (
     <div className="space-y-5">
       <DashboardPageHeader
         title="Usuarios y roles"
         subtitle="Gestione el acceso y permisos del personal y proveedores dentro del módulo Dietas y Cocina."
-        actions={
-          <Button size="sm" onClick={() => setDialogNuevoAbierto(true)}>
-            <Plus data-icon="inline-start" />
-            Nuevo Usuario
-          </Button>
-        }
+        actions={accionesHeader}
       />
 
       {!puedeGestionar && (
@@ -289,7 +365,10 @@ export function UsuariosRolesPage() {
         </Alert>
       )}
 
-      <Tabs defaultValue="usuarios">
+      <Tabs
+        value={tabActiva}
+        onValueChange={(value) => setTabActiva(value as TabUsuariosRoles)}
+      >
         <TabsList
           variant="line"
           className="w-full justify-start rounded-none border-b bg-transparent px-0"
@@ -321,6 +400,7 @@ export function UsuariosRolesPage() {
               totalPaginas={totalPaginas}
               rolSeleccionado={rolFiltro}
               estadoSeleccionado={estadoFiltro}
+              roles={roles}
               onRolChange={setRolFiltro}
               onEstadoChange={setEstadoFiltro}
               onCambiarPagina={setPaginaActual}
@@ -331,22 +411,25 @@ export function UsuariosRolesPage() {
                   Cargando usuarios…
                 </p>
               ) : (
-              <UsuariosTabla
-                usuarios={usuariosPagina}
-                puedeGestionar={puedeGestionar}
-                onEditar={editarUsuario}
-                onCambiarRol={abrirCambiarRol}
-                onToggleEstado={toggleEstado}
-                onRestablecerClave={restablecerClave}
-                onEliminar={eliminarUsuario}
-              />
+                <UsuariosTabla
+                  usuarios={usuariosPagina}
+                  puedeGestionar={puedeGestionar}
+                  onEditar={editarUsuario}
+                  onCambiarRol={abrirCambiarRol}
+                  onToggleEstado={toggleEstado}
+                  onRestablecerClave={restablecerClave}
+                  onEliminar={eliminarUsuario}
+                />
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="roles" className="mt-4">
-          <RolesPermisosPanel puedeGestionar={puedeGestionar} />
+          <RolesPermisosPanel
+            puedeGestionar={puedeGestionar}
+            refresco={refrescoRoles}
+          />
         </TabsContent>
       </Tabs>
 
@@ -357,6 +440,8 @@ export function UsuariosRolesPage() {
         onConfirmar={confirmarCambioRol}
         puedeGestionar={puedeGestionar}
         apiActiva={apiActiva}
+        roles={roles}
+        permisosApi={permisosApi}
       />
 
       <NuevoUsuarioDialog
@@ -368,6 +453,15 @@ export function UsuariosRolesPage() {
         onGuardar={crearUsuarioHandler}
         usuarioEdit={usuarioEdit}
         onActualizar={actualizarUsuario}
+        roles={roles}
+      />
+
+      <CrearRolDialog
+        open={dialogCrearRolAbierto}
+        onOpenChange={setDialogCrearRolAbierto}
+        nombresExistentes={nombresRoles}
+        apiActiva={apiActiva}
+        onRolCreado={onRolCreado}
       />
 
       <RestablecerClaveDialog

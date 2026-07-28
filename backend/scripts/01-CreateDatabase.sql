@@ -1,6 +1,6 @@
 -- ============================================================================
 -- Script de Creación de Base de Datos BitalNegocio
--- Servidor: DESKTOP-P43447B\SQLEXPRESS
+-- Compatible con SQL Server 2019+ (Express, Standard, Enterprise)
 -- ============================================================================
 
 USE master;

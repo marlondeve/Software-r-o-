@@ -1,4 +1,4 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { RolModuloDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useEffect, useMemo, useState } from "react"
 
@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { ConfirmarAccionDialog } from "@/modules/dietas-cocina/usuarios/components/ConfirmarAccionDialog"
 import { PermisosRolResumen } from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
@@ -28,9 +27,11 @@ interface CambiarRolDialogProps {
   usuario: UsuarioModulo | null
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfirmar: (usuarioId: string, rol: RolDietas) => void
+  onConfirmar: (usuarioId: string, rolModuloId: string) => void
   puedeGestionar: boolean
   apiActiva?: boolean
+  roles: RolModuloDto[]
+  permisosApi?: Array<{ rol?: string; permisos?: Record<string, boolean> }>
 }
 
 export function CambiarRolDialog({
@@ -40,18 +41,22 @@ export function CambiarRolDialog({
   onConfirmar,
   puedeGestionar,
   apiActiva = false,
+  roles,
+  permisosApi,
 }: CambiarRolDialogProps) {
-  const [rolSeleccionado, setRolSeleccionado] = useState<RolDietas>("Nutricionista")
+  const [rolSeleccionadoId, setRolSeleccionadoId] = useState("")
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
 
   useEffect(() => {
-    if (usuario) setRolSeleccionado(usuario.rol)
+    if (usuario) setRolSeleccionadoId(usuario.rolId)
   }, [usuario])
 
+  const rolSeleccionado = roles.find((rol) => rol.id === rolSeleccionadoId)
+
   const validacion = useMemo(() => {
-    if (!usuario) return { valido: false }
-    return validarCambioRol(usuario.rol, rolSeleccionado)
-  }, [usuario, rolSeleccionado])
+    if (!usuario || !rolSeleccionado?.nombre) return { valido: false }
+    return validarCambioRol(usuario.rol, rolSeleccionado.nombre)
+  }, [usuario, rolSeleccionado?.nombre])
 
   function solicitarConfirmacion() {
     if (!usuario || !puedeGestionar) {
@@ -59,7 +64,9 @@ export function CambiarRolDialog({
       return
     }
 
-    const resultado = validarCambioRol(usuario.rol, rolSeleccionado)
+    if (!rolSeleccionado?.nombre) return
+
+    const resultado = validarCambioRol(usuario.rol, rolSeleccionado.nombre)
     if (!resultado.valido) {
       demoToast(resultado.mensaje ?? "Cambio de rol inválido.")
       return
@@ -69,11 +76,11 @@ export function CambiarRolDialog({
   }
 
   function aplicarCambio() {
-    if (!usuario) return
-    onConfirmar(usuario.id, rolSeleccionado)
+    if (!usuario || !rolSeleccionadoId) return
+    onConfirmar(usuario.id, rolSeleccionadoId)
     onOpenChange(false)
     demoToast(
-      `Rol de ${usuario.nombre} actualizado a ${rolSeleccionado}.`,
+      `Rol de ${usuario.nombre} actualizado a ${rolSeleccionado?.nombre ?? "nuevo rol"}.`,
       apiActiva ? "success" : undefined,
     )
   }
@@ -93,17 +100,17 @@ export function CambiarRolDialog({
 
           <div className="space-y-3">
             <Select
-              value={rolSeleccionado}
-              onValueChange={(value) => setRolSeleccionado(value as RolDietas)}
+              value={rolSeleccionadoId}
+              onValueChange={setRolSeleccionadoId}
               disabled={!puedeGestionar}
             >
               <SelectTrigger className="w-full bg-card">
-                <SelectValue />
+                <SelectValue placeholder="Seleccione un rol" />
               </SelectTrigger>
               <SelectContent>
-                {ROLES_DIETAS.map((rol) => (
-                  <SelectItem key={rol} value={rol}>
-                    {rol}
+                {roles.map((rol) => (
+                  <SelectItem key={rol.id} value={rol.id ?? ""}>
+                    {rol.nombre}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -149,18 +156,22 @@ export function CambiarRolDialog({
         advertencia={validacion.advertencia}
         confirmarLabel="Aplicar rol"
         descripcion={
-          usuario ? (
+          usuario && rolSeleccionado?.nombre ? (
             <>
               <p>
                 Cambiará el rol de <strong>{usuario.nombre}</strong> de{" "}
                 <strong>{usuario.rol}</strong> a{" "}
-                <strong>{rolSeleccionado}</strong>.
+                <strong>{rolSeleccionado.nombre}</strong>.
               </p>
               <div className="rounded-lg border bg-muted/30 px-3 py-2">
                 <p className="text-xs font-medium uppercase text-muted-foreground">
                   Permisos del nuevo rol
                 </p>
-                <PermisosRolResumen rol={rolSeleccionado} className="mt-1 block" />
+                <PermisosRolResumen
+                  rol={rolSeleccionado.nombre}
+                  permisosApi={permisosApi}
+                  className="mt-1 block"
+                />
               </div>
             </>
           ) : null

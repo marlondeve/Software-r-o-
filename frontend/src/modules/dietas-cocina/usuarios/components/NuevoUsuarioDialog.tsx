@@ -1,4 +1,4 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { RolModuloDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useEffect, useState } from "react"
 
@@ -20,13 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
+
 interface NuevoUsuarioDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onGuardar: (usuario: Omit<UsuarioModulo, "id">) => void
   usuarioEdit?: UsuarioModulo | null
   onActualizar?: (id: string, usuario: Omit<UsuarioModulo, "id">) => void
+  roles: RolModuloDto[]
 }
 
 export function NuevoUsuarioDialog({
@@ -35,19 +36,22 @@ export function NuevoUsuarioDialog({
   onGuardar,
   usuarioEdit,
   onActualizar,
+  roles,
 }: NuevoUsuarioDialogProps) {
   const [nombre, setNombre] = useState("")
   const [usuario, setUsuario] = useState("")
   const [correo, setCorreo] = useState("")
-  const [rol, setRol] = useState<RolDietas>("Enfermera")
+  const [rolId, setRolId] = useState("")
   const [servicioArea, setServicioArea] = useState("")
+
+  const rolSeleccionado = roles.find((rol) => rol.id === rolId)
 
   useEffect(() => {
     if (!open) {
       setNombre("")
       setUsuario("")
       setCorreo("")
-      setRol("Enfermera")
+      setRolId(roles[0]?.id ?? "")
       setServicioArea("")
       return
     }
@@ -55,21 +59,27 @@ export function NuevoUsuarioDialog({
       setNombre(usuarioEdit.nombre)
       setUsuario(usuarioEdit.usuario)
       setCorreo(usuarioEdit.correo)
-      setRol(usuarioEdit.rol)
+      setRolId(usuarioEdit.rolId)
       setServicioArea(usuarioEdit.servicioArea)
+    } else {
+      setRolId(roles[0]?.id ?? "")
     }
-  }, [open, usuarioEdit])
+  }, [open, usuarioEdit, roles])
 
   function guardar() {
-    if (!nombre.trim() || !usuario.trim() || !correo.trim()) return
+    if (!nombre.trim() || !usuario.trim() || !correo.trim() || !rolId) return
+
+    const nombreRol = rolSeleccionado?.nombre ?? "Usuario"
 
     const payload = {
       nombre: nombre.trim(),
       usuario: usuario.trim(),
       correo: correo.trim(),
-      rol,
+      rolId,
+      rol: nombreRol,
       servicioArea: servicioArea.trim() || "Sin asignar",
-      orgProveedora: rol === "Proveedor" ? "Catering Hospitalario SL" : null,
+      orgProveedora:
+        nombreRol.toLowerCase() === "proveedor" ? "Catering Hospitalario SL" : null,
       estado: usuarioEdit?.estado ?? "activo",
       ultimoAcceso: usuarioEdit?.ultimoAcceso ?? "Recién creado",
       origen: usuarioEdit?.origen ?? "Bital",
@@ -126,14 +136,14 @@ export function NuevoUsuarioDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="nuevo-rol">Rol</Label>
-            <Select value={rol} onValueChange={(v) => setRol(v as RolDietas)}>
+            <Select value={rolId} onValueChange={setRolId}>
               <SelectTrigger id="nuevo-rol" className="w-full bg-card">
-                <SelectValue />
+                <SelectValue placeholder="Seleccione un rol" />
               </SelectTrigger>
               <SelectContent>
-                {ROLES_DIETAS.map((item) => (
-                  <SelectItem key={item} value={item}>
-                    {item}
+                {roles.map((item) => (
+                  <SelectItem key={item.id} value={item.id ?? ""}>
+                    {item.nombre}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -156,7 +166,7 @@ export function NuevoUsuarioDialog({
           </Button>
           <Button
             type="button"
-            disabled={!nombre.trim() || !usuario.trim() || !correo.trim()}
+            disabled={!nombre.trim() || !usuario.trim() || !correo.trim() || !rolId}
             onClick={guardar}
           >
             {usuarioEdit ? "Guardar cambios" : "Crear usuario"}

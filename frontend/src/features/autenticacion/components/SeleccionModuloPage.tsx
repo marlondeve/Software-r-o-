@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
+import { AppLegalFooter } from "@/components/layout/AppLegalFooter"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -56,7 +57,7 @@ export function SeleccionModuloPage() {
   }
 
   return (
-    <main className="relative min-h-screen bg-background px-4 py-6">
+    <main className="relative flex min-h-screen flex-col bg-background px-4 py-6">
       {esAdmin && (
         <div className="absolute top-4 right-4">
           <Tooltip>
@@ -81,7 +82,7 @@ export function SeleccionModuloPage() {
         onOpenChange={setConfigAbierta}
       />
 
-      <div className="mx-auto max-w-3xl">
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
         <div className="mb-6 flex flex-col items-center text-center">
           <ClinicaLogo className="mb-3 h-10" />
           <h1 className="text-xl font-bold text-foreground">BITAL</h1>
@@ -127,6 +128,8 @@ export function SeleccionModuloPage() {
           </Button>
         </div>
       </div>
+
+      <AppLegalFooter className="mx-auto mt-8 max-w-3xl shrink-0 pb-2" />
     </main>
   )
 }

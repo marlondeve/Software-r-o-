@@ -142,7 +142,7 @@ export function TiemposRestriccionesView() {
 
     guardarConfigTiempos(config)
     setConfigGuardada(config)
-    demoToast("Configuración de tiempos guardada correctamente (demo).")
+    demoToast("Configuración de tiempos guardada correctamente.")
   }
 
   function cancelar() {

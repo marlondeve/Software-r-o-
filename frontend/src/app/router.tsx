@@ -48,6 +48,65 @@ import { IndicadoresPage } from "@/modules/encuestas/indicadores/IndicadoresPage
 import { InicioPage as InicioEncuestasPage } from "@/modules/encuestas/inicio/InicioPage"
 import { ParametrosPage as ParametrosEncuestasPage } from "@/modules/encuestas/parametros/ParametrosPage"
 import { UsuariosRolesPage as UsuariosRolesEncuestasPage } from "@/modules/encuestas/usuarios/UsuariosRolesPage"
+import { encuestasHabilitado } from "@/lib/modulosFlags"
+
+const encuestasRoutes = encuestasHabilitado()
+  ? [
+      {
+        path: "/encuestas",
+        element: (
+          <RequireAuth>
+            <RequireModuleAccess moduloId="encuestas">
+              <MainLayout module="encuestas" />
+            </RequireModuleAccess>
+          </RequireAuth>
+        ),
+        children: [
+          { index: true, element: <InicioEncuestasPage /> },
+          { path: "inicio", element: <InicioEncuestasPage /> },
+          { path: "identificacion-paciente", element: <IdentificacionPacientePage /> },
+          { path: "captura-presencial", element: <CapturaPresencialPage /> },
+          { path: "captura-telefonica", element: <CapturaTelefonicaPage /> },
+          { path: "encuestas-realizadas", element: <EncuestasRealizadasPage /> },
+          { path: "cuestionarios", element: <CuestionariosPage /> },
+          {
+            path: "cuestionarios/:cuestionarioId/editor",
+            element: <EditorCuestionarioPage />,
+          },
+          { path: "indicadores", element: <IndicadoresPage /> },
+          { path: "analisis-brechas", element: <AnalisisBrechasPage /> },
+          { path: "parametros", element: <ParametrosEncuestasPage /> },
+          { path: "usuarios", element: <UsuariosRolesEncuestasPage /> },
+          { path: "auditoria", element: <AuditoriaEncuestasPage /> },
+        ],
+      },
+      {
+        path: "/encuestas/captura-encuesta",
+        element: (
+          <RequireAuth>
+            <RequireModuleAccess moduloId="encuestas">
+              <CapturaEncuestaPage />
+            </RequireModuleAccess>
+          </RequireAuth>
+        ),
+      },
+      {
+        path: "/encuestas/captura-encuesta/registrada",
+        element: (
+          <RequireAuth>
+            <RequireModuleAccess moduloId="encuestas">
+              <EncuestaRegistradaPage />
+            </RequireModuleAccess>
+          </RequireAuth>
+        ),
+      },
+    ]
+  : [
+      {
+        path: "/encuestas/*",
+        element: <Navigate to="/modulos" replace />,
+      },
+    ]
 
 export const router = createBrowserRouter([
   {
@@ -157,54 +216,7 @@ export const router = createBrowserRouter([
       },
     ],
   },
-  {
-    path: "/encuestas",
-    element: (
-      <RequireAuth>
-        <RequireModuleAccess moduloId="encuestas">
-          <MainLayout module="encuestas" />
-        </RequireModuleAccess>
-      </RequireAuth>
-    ),
-    children: [
-      { index: true, element: <InicioEncuestasPage /> },
-      { path: "inicio", element: <InicioEncuestasPage /> },
-      { path: "identificacion-paciente", element: <IdentificacionPacientePage /> },
-      { path: "captura-presencial", element: <CapturaPresencialPage /> },
-      { path: "captura-telefonica", element: <CapturaTelefonicaPage /> },
-      { path: "encuestas-realizadas", element: <EncuestasRealizadasPage /> },
-      { path: "cuestionarios", element: <CuestionariosPage /> },
-      {
-        path: "cuestionarios/:cuestionarioId/editor",
-        element: <EditorCuestionarioPage />,
-      },
-      { path: "indicadores", element: <IndicadoresPage /> },
-      { path: "analisis-brechas", element: <AnalisisBrechasPage /> },
-      { path: "parametros", element: <ParametrosEncuestasPage /> },
-      { path: "usuarios", element: <UsuariosRolesEncuestasPage /> },
-      { path: "auditoria", element: <AuditoriaEncuestasPage /> },
-    ],
-  },
-  {
-    path: "/encuestas/captura-encuesta",
-    element: (
-      <RequireAuth>
-        <RequireModuleAccess moduloId="encuestas">
-          <CapturaEncuestaPage />
-        </RequireModuleAccess>
-      </RequireAuth>
-    ),
-  },
-  {
-    path: "/encuestas/captura-encuesta/registrada",
-    element: (
-      <RequireAuth>
-        <RequireModuleAccess moduloId="encuestas">
-          <EncuestaRegistradaPage />
-        </RequireModuleAccess>
-      </RequireAuth>
-    ),
-  },
+  ...encuestasRoutes,
   {
     path: "/administracion",
     element: (

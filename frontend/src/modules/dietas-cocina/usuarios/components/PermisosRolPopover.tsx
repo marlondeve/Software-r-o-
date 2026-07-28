@@ -1,4 +1,4 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import { esRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import type { PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { RUTAS_DIETAS } from "@/lib/configAccesoModulos"
@@ -6,7 +6,7 @@ import { permisosPorRolDesdeApi } from "@/modules/dietas-cocina/usuarios/lib/per
 import { cn } from "@/lib/utils"
 
 interface PermisosRolResumenProps {
-  rol: RolDietas
+  rol: string
   className?: string
   permisosApi?: PermisoRolDto[]
 }
@@ -19,7 +19,9 @@ export function PermisosRolResumen({
   const { config } = useConfigAccesoModulos()
   const rutas = permisosApi
     ? permisosPorRolDesdeApi(permisosApi, rol)
-    : config.permisosDietas[rol] ?? []
+    : esRolDietas(rol)
+      ? config.permisosDietas[rol] ?? []
+      : []
   const etiquetas = rutas
     .map(
       (id) => RUTAS_DIETAS.find((ruta) => ruta.id === id)?.label ?? id,

@@ -4,6 +4,8 @@ import { ClipboardList, UtensilsCrossed } from "lucide-react"
 import type { ModuloId } from "@/types/module"
 import type { Usuario } from "@/types/user"
 
+import { moduloHabilitado } from "@/lib/modulosFlags"
+
 export interface ModuloConfig {
   id: ModuloId
   titulo: string
@@ -35,6 +37,7 @@ export function usuarioTieneAcceso(
   usuario: Usuario | null,
   moduloId: ModuloId,
 ): boolean {
+  if (!moduloHabilitado(moduloId)) return false
   return usuario?.accesos.some((acceso) => acceso.moduloId === moduloId) ?? false
 }
 
@@ -59,6 +62,7 @@ export function obtenerModulosDisponibles(usuario: Usuario | null): ModuloConfig
   if (!usuario) return []
 
   return usuario.accesos
+    .filter((acceso) => moduloHabilitado(acceso.moduloId))
     .map((acceso) => modulosConfig[acceso.moduloId])
     .filter(Boolean)
 }
@@ -73,15 +77,16 @@ export function obtenerDestinoPostLogin(usuario: Usuario): string {
 
 export function esRutaDeModulo(pathname: string): ModuloId | null {
   if (pathname.startsWith("/dietas-cocina")) return "dietas-cocina"
-  if (pathname.startsWith("/encuestas")) return "encuestas"
+  if (pathname.startsWith("/encuestas") && moduloHabilitado("encuestas")) {
+    return "encuestas"
+  }
   return null
 }
 
 export function obtenerModuloActivo(): ModuloId | null {
   const value = sessionStorage.getItem(MODULO_ACTIVO_KEY)
-  if (value === "dietas-cocina" || value === "encuestas") {
-    return value
-  }
+  if (value === "dietas-cocina") return value
+  if (value === "encuestas" && moduloHabilitado("encuestas")) return value
   return null
 }
 

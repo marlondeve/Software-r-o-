@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart3,
+  BookOpen,
   ChefHat,
   FileQuestion,
   FileSearch,
@@ -19,6 +20,7 @@ import {
 import { NavLink, useNavigate } from "react-router-dom"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
+import { AppLegalFooter } from "@/components/layout/AppLegalFooter"
 import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
@@ -64,6 +66,11 @@ const mainNavItems: Record<ModuleType, NavItem[]> = {
       label: "Gestión de dietas",
       to: "/dietas-cocina/dietas",
       icon: UtensilsCrossed,
+    },
+    {
+      label: "Dietas y tarifas",
+      to: "/dietas-cocina/dietas-tarifas",
+      icon: BookOpen,
     },
     {
       label: "Cocina y seguimiento",
@@ -271,6 +278,8 @@ export function SidebarContent({
           <span>Cerrar sesión</span>
         </button>
       </nav>
+
+      <AppLegalFooter variant="compact" className="mt-1 border-t border-sidebar-border" />
     </div>
   )
 }

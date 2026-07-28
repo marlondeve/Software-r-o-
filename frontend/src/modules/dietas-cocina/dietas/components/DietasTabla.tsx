@@ -1,5 +1,5 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
-import type { EstadoDieta, RolDietas, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
 import { Eye, MoreHorizontal, PencilLine } from "lucide-react"
 
@@ -31,7 +31,7 @@ interface DietasTablaProps {
   filas: FilaDieta[]
   seleccionados: Set<string>
   comidaActiva: TiempoComida
-  rolActivo?: RolDietas | null
+  rolActivo?: string | null
   resolverEstadoVisible?: (fila: FilaDieta) => EstadoDieta
   onToggleFila: (id: string, checked: boolean) => void
   onToggleTodas: (checked: boolean) => void

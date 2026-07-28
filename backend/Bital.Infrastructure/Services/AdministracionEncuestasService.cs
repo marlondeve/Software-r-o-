@@ -1,6 +1,7 @@
 using Bital.Application.DTOs.Encuestas;
 using Bital.Application.Interfaces;
 using Bital.Infrastructure.Data;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bital.Infrastructure.Services;
@@ -57,7 +58,6 @@ public class AdministracionEncuestasService : IAdministracionEncuestasService
         {
             Page = filtros.Page,
             PageSize = filtros.PageSize,
-            Rol = Enum.TryParse<Domain.Enums.RolDietas>(filtros.Rol, true, out var rol) ? rol : null,
             Activo = filtros.Activo
         });
 
@@ -69,7 +69,7 @@ public class AdministracionEncuestasService : IAdministracionEncuestasService
                 Nombre = u.NombreCompleto,
                 Usuario = u.Email.Split('@', 2)[0],
                 Correo = u.Email,
-                Rol = u.Rol.ToString(),
+                Rol = u.RolNombre,
                 ServicioArea = u.Identificacion ?? string.Empty,
                 OrgProveedora = null,
                 Estado = u.Activo ? "activo" : "inactivo",
@@ -82,13 +82,14 @@ public class AdministracionEncuestasService : IAdministracionEncuestasService
 
     public async Task<UsuarioEncuestasModuloDto> CrearUsuarioAsync(CrearUsuarioEncuestasDto dto)
     {
-        var rol = Enum.TryParse<Domain.Enums.RolDietas>(dto.Rol, true, out var parsedRol) ? parsedRol : Domain.Enums.RolDietas.Enfermera;
+        var rolModuloId = await _usuariosPermisosService.ResolverRolModuloIdPorNombreAsync(dto.Rol)
+            ?? RolModuloSeed.Enfermera;
         var creado = await _usuariosPermisosService.CrearUsuarioAsync(new Bital.Application.DTOs.DietasCocina.CrearUsuarioDto
         {
             NombreCompleto = dto.Nombre,
             Email = dto.Correo,
             Identificacion = dto.Usuario,
-            Rol = rol,
+            RolModuloId = rolModuloId,
             Observaciones = dto.ServicioArea
         }, "sistema");
 
@@ -98,7 +99,7 @@ public class AdministracionEncuestasService : IAdministracionEncuestasService
             Nombre = creado.NombreCompleto,
             Usuario = creado.Identificacion ?? string.Empty,
             Correo = creado.Email,
-            Rol = creado.Rol.ToString(),
+            Rol = creado.RolNombre,
             ServicioArea = dto.ServicioArea ?? string.Empty,
             OrgProveedora = null,
             Estado = creado.Activo ? "activo" : "inactivo",
@@ -109,8 +110,9 @@ public class AdministracionEncuestasService : IAdministracionEncuestasService
 
     public async Task<UsuarioEncuestasModuloDto> CambiarRolAsync(Guid id, CambiarRolEncuestasDto dto)
     {
-        var rol = Enum.TryParse<Domain.Enums.RolDietas>(dto.Rol, true, out var parsedRol) ? parsedRol : Domain.Enums.RolDietas.Enfermera;
-        var actualizado = await _usuariosPermisosService.CambiarRolAsync(id, new Bital.Application.DTOs.DietasCocina.CambiarRolDto { Rol = rol });
+        var rolModuloId = await _usuariosPermisosService.ResolverRolModuloIdPorNombreAsync(dto.Rol)
+            ?? RolModuloSeed.Enfermera;
+        var actualizado = await _usuariosPermisosService.CambiarRolAsync(id, new Bital.Application.DTOs.DietasCocina.CambiarRolDto { RolModuloId = rolModuloId });
 
         return new UsuarioEncuestasModuloDto
         {
@@ -118,7 +120,7 @@ public class AdministracionEncuestasService : IAdministracionEncuestasService
             Nombre = actualizado.NombreCompleto,
             Usuario = actualizado.Identificacion ?? string.Empty,
             Correo = actualizado.Email,
-            Rol = actualizado.Rol.ToString(),
+            Rol = actualizado.RolNombre,
             ServicioArea = actualizado.Identificacion ?? string.Empty,
             OrgProveedora = null,
             Estado = actualizado.Activo ? "activo" : "inactivo",

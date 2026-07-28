@@ -3,23 +3,24 @@ import type { ApiResponse } from "@/api/types"
 import {
   mapMatrizPermisosResponse,
   mapPermisosUiToActualizarRequest,
-  rolPermisosParaApi,
 } from "@/modules/dietas-cocina/api/mappers/permisos.mapper"
 import {
   mapListadoUsuariosResponse,
-  mapRolDominioAApi,
-  mapRolDominioAApiNum,
+  mapRolesModuloResponse,
   mapUsuarioDtoToDomain,
   mapUsuarioToCrearRequest,
   mapUsuarioToEditarRequest,
 } from "@/modules/dietas-cocina/api/mappers/usuarios.mapper"
 import { buildDietasCocinaPath, extraerCuerpoApi } from "@/modules/dietas-cocina/api/utils"
-import type { MetaPaginacionDto, PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type {
+  MetaPaginacionDto,
+  PermisoRolDto,
+  RolModuloDto,
+} from "@/modules/dietas-cocina/types/api-dtos"
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 
 export interface FiltrosUsuarios {
-  rol?: RolDietas
+  rolModuloId?: string
   estado?: boolean
   page?: number
   pageSize?: number
@@ -38,7 +39,7 @@ export async function listarUsuarios(
       page: filtros.page,
       pageSize: filtros.pageSize,
       estado: filtros.estado,
-      rol: filtros.rol ? mapRolDominioAApi(filtros.rol) : undefined,
+      rolModuloId: filtros.rolModuloId,
     },
   })
 
@@ -66,14 +67,35 @@ export async function editarUsuario(
   return mapUsuarioDtoToDomain(extraerCuerpoApi(data))
 }
 
-export async function cambiarRolUsuario(id: string, rol: RolDietas): Promise<void> {
+export async function cambiarRolUsuario(id: string, rolModuloId: string): Promise<void> {
   await apiClient.patch(buildDietasCocinaPath(`/usuarios/${id}/rol`), {
-    rol: mapRolDominioAApiNum(rol),
+    rolModuloId,
   })
 }
 
 export async function cambiarEstadoUsuario(id: string, activo: boolean): Promise<void> {
   await apiClient.patch(buildDietasCocinaPath(`/usuarios/${id}/estado`), { activo })
+}
+
+export async function listarRoles(): Promise<RolModuloDto[]> {
+  const { data } = await apiClient.get<unknown>(buildDietasCocinaPath("/roles"))
+  return mapRolesModuloResponse(data)
+}
+
+export async function crearRol(input: {
+  nombre: string
+  permisos: Record<string, boolean>
+}): Promise<RolModuloDto> {
+  const { data } = await apiClient.post<ApiResponse<unknown>>(
+    buildDietasCocinaPath("/roles"),
+    {
+      nombre: input.nombre,
+      ...mapPermisosUiToActualizarRequest(input.permisos),
+    },
+  )
+  const body = extraerCuerpoApi(data)
+  const roles = mapRolesModuloResponse({ data: [body] })
+  return roles[0] ?? { nombre: input.nombre }
 }
 
 export async function obtenerPermisosRoles(): Promise<PermisoRolDto[]> {
@@ -84,13 +106,17 @@ export async function obtenerPermisosRoles(): Promise<PermisoRolDto[]> {
 }
 
 export async function actualizarPermisosRol(
-  rol: RolDietas,
+  rolModuloId: string,
   permisos: Record<string, boolean>,
 ): Promise<void> {
   await apiClient.put(
-    buildDietasCocinaPath(`/roles/${rolPermisosParaApi(rol)}/permisos`),
+    buildDietasCocinaPath(`/roles/${rolModuloId}/permisos`),
     mapPermisosUiToActualizarRequest(permisos),
   )
+}
+
+export async function eliminarRol(rolModuloId: string): Promise<void> {
+  await apiClient.delete(buildDietasCocinaPath(`/roles/${rolModuloId}`))
 }
 
 export async function obtenerUsuarioSafe(id: string): Promise<UsuarioModulo | null> {

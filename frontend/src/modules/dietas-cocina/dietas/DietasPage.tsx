@@ -635,7 +635,7 @@ export function DietasPage() {
             solicitadoPor: "Usuario demo",
             solicitadoEn: formatearSolicitadoEn(),
           })
-          demoToast(`Solicitud de ${fila.paciente} guardada (demo).`)
+          demoToast(`Solicitud de ${fila.paciente} guardada correctamente.`)
           setSheet(null)
         }}
       />

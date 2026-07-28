@@ -5,7 +5,7 @@
   Base origen  : Hosvital_Pruebas (HIS Vital, solo lectura)
 
   Ejecutar DESPUÉS de aplicar migraciones EF:
-    dotnet ef database update --project Bital.Infrastructure --startup-project Bital.ApiNegocio
+    dotnet ef database update --project Bital.Infrastructure --startup-project Bital.ApiNegocio --context BitalNegocioDbContext
 
   Uso con sqlcmd (UTF-8):
     sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -f 65001 ^
@@ -199,59 +199,100 @@ PRINT 'Parámetros operativos: OK';
 GO
 
 /* ============================================================================
-   3. USUARIOS INSTITUCIONALES + PERMISOS POR ROL
+   3. USUARIOS INSTITUCIONALES + PERMISOS POR ROL (RolesModulo / RolModuloId)
+   Requiere migración EF 20260728120000_AddRolesModuloDinamicos aplicada.
    Clave temporal por defecto: Bital2026!  (SHA-256 hex, igual que la API)
    ============================================================================ */
 USE [BitalNegocio];
 GO
 
+IF OBJECT_ID(N'bital.RolesModulo', N'U') IS NULL
+BEGIN
+    RAISERROR(N'La tabla bital.RolesModulo no existe. Ejecute primero: dotnet ef database update --context BitalNegocioDbContext', 16, 1);
+    RETURN;
+END
+GO
+
 DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
 DECLARE @PasswordHash nvarchar(128) = N'3ab36e2aa3c89926e88a03fbfcfc86dc08c7aa3e1823781c63e1154f577a22e2';
+
+DECLARE @RolAdmin uniqueidentifier = '11111111-1111-1111-1111-111111000001';
+DECLARE @RolNutricionista uniqueidentifier = '11111111-1111-1111-1111-111111000002';
+DECLARE @RolProveedor uniqueidentifier = '11111111-1111-1111-1111-111111000003';
+DECLARE @RolEnfermera uniqueidentifier = '11111111-1111-1111-1111-111111000004';
+DECLARE @RolDoctor uniqueidentifier = '11111111-1111-1111-1111-111111000005';
+
+;WITH RolesSeed AS (
+    SELECT *
+    FROM (VALUES
+        (@RolAdmin,         N'Administrador', 1),
+        (@RolNutricionista, N'Nutricionista', 1),
+        (@RolProveedor,     N'Proveedor',     1),
+        (@RolEnfermera,     N'Enfermera',     1),
+        (@RolDoctor,        N'Doctor',        1)
+    ) AS v(Id, Nombre, EsSistema)
+)
+MERGE bital.RolesModulo AS tgt
+USING RolesSeed AS src
+    ON tgt.Id = src.Id
+WHEN NOT MATCHED BY TARGET THEN
+    INSERT (Id, Nombre, EsSistema, Activo, CreadoEn, CreadoPor)
+    VALUES (src.Id, src.Nombre, src.EsSistema, 1, @AhoraUtc, N'Migracion');
 
 ;WITH UsuariosSeed AS (
     SELECT *
     FROM (VALUES
-        (N'Administrador BITAL',   N'admin@clinicadelrio.com',        N'admin', 1),
-        (N'Nutricionista Clínica', N'nutricionista@clinicadelrio.com', N'nutricionista', 2),
-        (N'Jefe de Cocina',        N'cocinero@clinicadelrio.com',     N'cocinero', 3),
-        (N'Enfermería Pabellón',   N'enfermera@clinicadelrio.com',    N'enfermera', 4)
-    ) AS v(NombreCompleto, Email, Identificacion, Rol)
+        (N'Administrador BITAL',   N'admin@clinicadelrio.com',         N'admin',         @RolAdmin),
+        (N'Nutricionista Clínica', N'nutricionista@clinicadelrio.com', N'nutricionista', @RolNutricionista),
+        (N'Jefe de Cocina',        N'cocinero@clinicadelrio.com',      N'cocinero',      @RolProveedor),
+        (N'Enfermería Pabellón',   N'enfermera@clinicadelrio.com',     N'enfermera',      @RolEnfermera)
+    ) AS v(NombreCompleto, Email, Identificacion, RolModuloId)
 )
 MERGE bital.UsuariosModulo AS tgt
 USING UsuariosSeed AS src
     ON tgt.Email = src.Email
 WHEN NOT MATCHED BY TARGET THEN
     INSERT (
-        Id, NombreCompleto, Email, Identificacion, Rol, Activo,
+        Id, NombreCompleto, Email, Identificacion, RolModuloId, Activo,
         PasswordHash, CreadoEn, CreadoPor
     )
     VALUES (
-        NEWID(), src.NombreCompleto, src.Email, src.Identificacion, src.Rol, 1,
+        NEWID(), src.NombreCompleto, src.Email, src.Identificacion, src.RolModuloId, 1,
         @PasswordHash, @AhoraUtc, N'Migracion'
     );
 
 -- Permisos: insertar rutas faltantes por rol (no duplicar)
 ;WITH RutasPorRol AS (
-    SELECT 1 AS Rol, r.Ruta
+    SELECT @RolAdmin AS RolModuloId, r.Ruta
     FROM (VALUES
-        (1),(2),(3),(4),(10),(11),(12),(13),(20),(21),(30),(31),(32),(40),(41),(50),(51),(60),(70),(71)
+        (1),(2),(3),(4),(5),(6),(7),(8),(10),(11),(12),(13),(20),(21),(30),(31),(32),(40),(41),(50),(51),(60),(70),(71)
     ) AS r(Ruta)
     UNION ALL
-    SELECT 2, r.Ruta FROM (VALUES (1),(2),(3),(10),(40),(41),(50),(60)) AS r(Ruta)
+    SELECT @RolNutricionista, r.Ruta FROM (VALUES (1),(2),(3),(5),(6),(7),(8),(10),(40),(41),(50),(60)) AS r(Ruta)
     UNION ALL
-    SELECT 3, r.Ruta FROM (VALUES (10),(11),(12),(13),(21),(40)) AS r(Ruta)
+    SELECT @RolProveedor, r.Ruta FROM (VALUES (10),(11),(12),(13),(21),(40)) AS r(Ruta)
     UNION ALL
-    SELECT 4, r.Ruta FROM (VALUES (20),(21),(40)) AS r(Ruta)
+    SELECT @RolEnfermera, r.Ruta FROM (VALUES (20),(21),(40)) AS r(Ruta)
 )
-INSERT INTO bital.PermisosRol (Id, Rol, Ruta, Permitido, CreadoEn, CreadoPor)
-SELECT NEWID(), rr.Rol, rr.Ruta, 1, @AhoraUtc, N'Migracion'
+INSERT INTO bital.PermisosRol (Id, RolModuloId, Ruta, Permitido, CreadoEn, CreadoPor)
+SELECT NEWID(), rr.RolModuloId, rr.Ruta, 1, @AhoraUtc, N'Migracion'
 FROM RutasPorRol rr
 WHERE NOT EXISTS (
     SELECT 1 FROM bital.PermisosRol p
-    WHERE p.Rol = rr.Rol AND p.Ruta = rr.Ruta
+    WHERE p.RolModuloId = rr.RolModuloId AND p.Ruta = rr.Ruta
 );
 
-PRINT 'Usuarios y permisos: OK';
+-- Doctor: mismos permisos que Nutricionista (rol clínico)
+INSERT INTO bital.PermisosRol (Id, RolModuloId, Ruta, Permitido, CreadoEn, CreadoPor)
+SELECT NEWID(), @RolDoctor, p.Ruta, p.Permitido, @AhoraUtc, N'Migracion'
+FROM bital.PermisosRol p
+WHERE p.RolModuloId = @RolNutricionista
+  AND NOT EXISTS (
+    SELECT 1 FROM bital.PermisosRol d
+    WHERE d.RolModuloId = @RolDoctor AND d.Ruta = p.Ruta
+  );
+
+PRINT 'Usuarios, roles y permisos: OK';
 GO
 
 /* ============================================================================
@@ -365,6 +406,8 @@ FROM (
     SELECT N'Dietas catálogo' AS Metrica, CAST(COUNT(*) AS sql_variant) AS Valor FROM dietas.DietasCatalogo
     UNION ALL
     SELECT N'Tarifas histórico', COUNT(*) FROM dietas.TarifasHistorico
+    UNION ALL
+    SELECT N'Roles módulo', COUNT(*) FROM bital.RolesModulo
     UNION ALL
     SELECT N'Usuarios módulo', COUNT(*) FROM bital.UsuariosModulo
     UNION ALL

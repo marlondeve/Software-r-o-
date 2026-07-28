@@ -1,5 +1,5 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
-import { useEffect, useMemo, useState } from "react"
+import type { RolModuloDto, PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -7,8 +7,11 @@ import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
-import { obtenerPermisosRoles } from "@/modules/dietas-cocina/api/services/usuarios.service"
-import type { PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
+import {
+  listarRoles,
+  obtenerPermisosRoles,
+} from "@/modules/dietas-cocina/api/services/usuarios.service"
+import { establecerMatrizPermisosApi } from "@/modules/dietas-cocina/lib/permisosMatrizCache"
 import {
   EditarPermisosRolDialog,
 } from "@/modules/dietas-cocina/usuarios/components/EditarPermisosRolDialog"
@@ -18,53 +21,74 @@ import { contarPermisosActivos } from "@/modules/dietas-cocina/usuarios/lib/perm
 
 interface RolPermisoFila {
   id: string
-  rol: RolDietas
+  nombre: string
+  esSistema: boolean
   total: number
 }
 
 interface RolesPermisosPanelProps {
   puedeGestionar: boolean
+  refresco?: number
 }
 
-export function RolesPermisosPanel({ puedeGestionar }: RolesPermisosPanelProps) {
+export function RolesPermisosPanel({
+  puedeGestionar,
+  refresco = 0,
+}: RolesPermisosPanelProps) {
   const apiActiva = usarApiDietasCocina()
   const { config } = useConfigAccesoModulos()
+  const [rolesApi, setRolesApi] = useState<RolModuloDto[]>([])
   const [permisosApi, setPermisosApi] = useState<PermisoRolDto[]>([])
 
-  useEffect(() => {
+  const cargarRoles = useCallback(() => {
     if (!apiActiva) return
-    void obtenerPermisosRoles()
-      .then(setPermisosApi)
-      .catch(() => setPermisosApi([]))
+    void Promise.all([listarRoles(), obtenerPermisosRoles()])
+      .then(([roles, permisos]) => {
+        setRolesApi(roles)
+        setPermisosApi(permisos)
+        establecerMatrizPermisosApi(permisos)
+      })
+      .catch(() => {
+        setRolesApi([])
+        setPermisosApi([])
+      })
   }, [apiActiva])
 
-  const filasRoles = useMemo<RolPermisoFila[]>(
-    () =>
-      ROLES_DIETAS.map((rol) => ({
-        id: rol,
-        rol,
-        total: apiActiva
-          ? contarPermisosActivos(
-              permisosApi.find((entry) => entry.rol === rol)?.permisos,
-            )
-          : config.permisosDietas[rol]?.length ?? 0,
-      })),
-    [apiActiva, config.permisosDietas, permisosApi],
-  )
+  useEffect(() => {
+    cargarRoles()
+  }, [cargarRoles, refresco])
+
+  const filasRoles = useMemo<RolPermisoFila[]>(() => {
+    if (apiActiva) {
+      return rolesApi.map((rol) => ({
+        id: rol.id ?? "",
+        nombre: rol.nombre ?? "",
+        esSistema: rol.esSistema ?? false,
+        total: rol.totalPermisos ?? 0,
+      }))
+    }
+
+    return ROLES_DIETAS.map((rol) => ({
+      id: rol,
+      nombre: rol,
+      esSistema: true,
+      total: config.permisosDietas[rol]?.length ?? 0,
+    }))
+  }, [apiActiva, config.permisosDietas, rolesApi])
 
   const columnas = useMemo<ColumnDef<RolPermisoFila>[]>(
     () => [
       {
-        accessorKey: "rol",
+        accessorKey: "nombre",
         header: "Rol",
-        cell: ({ row }) => <UsuarioRolBadge rol={row.original.rol} />,
+        cell: ({ row }) => <UsuarioRolBadge rol={row.original.nombre} />,
       },
       {
         id: "secciones",
         header: "Secciones del módulo",
         cell: ({ row }) => (
           <PermisosRolResumen
-            rol={row.original.rol}
+            rol={row.original.nombre}
             permisosApi={apiActiva ? permisosApi : undefined}
           />
         ),
@@ -74,7 +98,13 @@ export function RolesPermisosPanel({ puedeGestionar }: RolesPermisosPanelProps) 
         header: () => <span className="float-right">Total</span>,
         cell: ({ row }) => (
           <div className="text-right">
-            <Badge variant="outline">{row.original.total}</Badge>
+            <Badge variant="outline">
+              {apiActiva
+                ? row.original.total
+                : contarPermisosActivos(
+                    permisosApi.find((entry) => entry.rol === row.original.nombre)?.permisos,
+                  ) || row.original.total}
+            </Badge>
           </div>
         ),
       },
@@ -84,17 +114,22 @@ export function RolesPermisosPanel({ puedeGestionar }: RolesPermisosPanelProps) 
         cell: ({ row }) => (
           <div className="text-right">
             <EditarPermisosRolDialog
-              rol={row.original.rol}
+              rolId={row.original.id}
+              rolNombre={row.original.nombre}
               puedeGestionar={puedeGestionar}
               apiActiva={apiActiva}
               permisosApi={permisosApi}
-              onPermisosActualizados={setPermisosApi}
+              onPermisosActualizados={(permisos) => {
+                setPermisosApi(permisos)
+                establecerMatrizPermisosApi(permisos)
+                cargarRoles()
+              }}
             />
           </div>
         ),
       },
     ],
-    [apiActiva, permisosApi, puedeGestionar],
+    [apiActiva, permisosApi, puedeGestionar, cargarRoles],
   )
 
   return (

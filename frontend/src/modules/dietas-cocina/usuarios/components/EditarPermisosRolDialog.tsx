@@ -1,6 +1,6 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import type { PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
-import { useEffect, useMemo, useState } from "react"
+import type { RutaDietasConfig } from "@/lib/configAccesoModulos"
+import { useMemo, useState } from "react"
 import { Settings2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -13,16 +13,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Switch } from "@/components/ui/switch"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
-import {
-  RUTAS_DIETAS,
-  alternarPermisoRutaDietas,
-  type RutaDietasConfig,
-} from "@/lib/configAccesoModulos"
+import { alternarPermisoRutaDietas } from "@/lib/configAccesoModulos"
 import { actualizarPermisosRol, obtenerPermisosRoles } from "@/modules/dietas-cocina/api/services/usuarios.service"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { ConfirmarAccionDialog } from "@/modules/dietas-cocina/usuarios/components/ConfirmarAccionDialog"
+import {
+  alternarRutaPermiso,
+  PermisosRolForm,
+} from "@/modules/dietas-cocina/usuarios/components/PermisosRolForm"
 import {
   diffPermisosRol,
   etiquetaRuta,
@@ -32,49 +31,20 @@ import {
   permisosPorRolDesdeApi,
   rutasToPermisosRecord,
 } from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
+import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 
 interface EditarPermisosRolDialogProps {
-  rol: RolDietas
+  rolId: string
+  rolNombre: string
   puedeGestionar: boolean
   apiActiva?: boolean
   permisosApi?: PermisoRolDto[]
   onPermisosActualizados?: (permisos: PermisoRolDto[]) => void
 }
 
-function SwitchPermiso({
-  id,
-  label,
-  checked,
-  onChange,
-  disabled,
-}: {
-  id: string
-  label: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-2">
-      <label
-        htmlFor={id}
-        className="min-w-0 flex-1 cursor-pointer text-sm"
-      >
-        {label}
-      </label>
-      <Switch
-        id={id}
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onChange}
-        aria-label={label}
-      />
-    </div>
-  )
-}
-
 export function EditarPermisosRolDialog({
-  rol,
+  rolId,
+  rolNombre,
   puedeGestionar,
   apiActiva = false,
   permisosApi = [],
@@ -85,15 +55,20 @@ export function EditarPermisosRolDialog({
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [rutasPendientes, setRutasPendientes] = useState<RutaDietasConfig[]>([])
 
-  const rutasActuales = apiActiva
-    ? permisosPorRolDesdeApi(permisosApi, rol)
-    : config.permisosDietas[rol] ?? []
+  const rolConfig = rolNombre as RolDietas
 
-  useEffect(() => {
-    if (dialogAbierto) {
-      setRutasPendientes([...rutasActuales])
-    }
-  }, [dialogAbierto, rutasActuales])
+  const rutasActuales = useMemo(
+    () =>
+      apiActiva
+        ? permisosPorRolDesdeApi(permisosApi, rolNombre)
+        : config.permisosDietas[rolConfig] ?? [],
+    [apiActiva, permisosApi, rolNombre, rolConfig, config.permisosDietas],
+  )
+
+  function abrirDialogo() {
+    setRutasPendientes([...rutasActuales])
+    setDialogAbierto(true)
+  }
 
   const diff = useMemo(
     () => diffPermisosRol(rutasActuales, rutasPendientes),
@@ -104,16 +79,6 @@ export function EditarPermisosRolDialog({
     () => validarPermisosRol(rutasPendientes),
     [rutasPendientes],
   )
-
-  function alternarRuta(ruta: RutaDietasConfig, activo: boolean) {
-    if (ruta === "inicio" && !activo) return
-    setRutasPendientes((prev) => {
-      const set = new Set(prev)
-      if (activo) set.add(ruta)
-      else set.delete(ruta)
-      return Array.from(set) as RutaDietasConfig[]
-    })
-  }
 
   function solicitarConfirmacion() {
     if (diff.sinCambios) {
@@ -132,12 +97,12 @@ export function EditarPermisosRolDialog({
 
   function aplicarCambios() {
     if (apiActiva) {
-      void actualizarPermisosRol(rol, rutasToPermisosRecord(rutasPendientes))
+      void actualizarPermisosRol(rolId, rutasToPermisosRecord(rutasPendientes))
         .then(() => obtenerPermisosRoles())
         .then((actualizados) => {
           onPermisosActualizados?.(actualizados)
           setDialogAbierto(false)
-          demoToast(`Permisos del rol ${rol} actualizados.`, "success")
+          demoToast(`Permisos del rol ${rolNombre} actualizados.`, "success")
         })
         .catch((error) => {
           demoToast(
@@ -152,14 +117,14 @@ export function EditarPermisosRolDialog({
 
     let nextConfig = config
     for (const ruta of diff.agregadas) {
-      nextConfig = alternarPermisoRutaDietas(nextConfig, rol, ruta, true)
+      nextConfig = alternarPermisoRutaDietas(nextConfig, rolConfig, ruta, true)
     }
     for (const ruta of diff.removidas) {
-      nextConfig = alternarPermisoRutaDietas(nextConfig, rol, ruta, false)
+      nextConfig = alternarPermisoRutaDietas(nextConfig, rolConfig, ruta, false)
     }
     actualizar(nextConfig)
     setDialogAbierto(false)
-    demoToast(`Permisos del rol ${rol} actualizados.`)
+    demoToast(`Permisos del rol ${rolNombre} actualizados.`)
   }
 
   if (!puedeGestionar) {
@@ -177,7 +142,7 @@ export function EditarPermisosRolDialog({
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => setDialogAbierto(true)}
+        onClick={abrirDialogo}
       >
         <Settings2 data-icon="inline-start" />
         Editar
@@ -186,7 +151,7 @@ export function EditarPermisosRolDialog({
       <Dialog open={dialogAbierto} onOpenChange={setDialogAbierto}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Permisos — {rol}</DialogTitle>
+            <DialogTitle>Permisos — {rolNombre}</DialogTitle>
             <DialogDescription>
               Configure las secciones habilitadas. Los cambios requieren
               confirmación.
@@ -194,16 +159,13 @@ export function EditarPermisosRolDialog({
           </DialogHeader>
 
           <ScrollArea className="max-h-72 rounded-lg border px-4 py-2">
-            {RUTAS_DIETAS.map((ruta) => (
-              <SwitchPermiso
-                key={ruta.id}
-                id={`${rol}-${ruta.id}-dialog`}
-                label={ruta.label}
-                checked={rutasPendientes.includes(ruta.id)}
-                disabled={ruta.id === "inicio"}
-                onChange={(activo) => alternarRuta(ruta.id, activo)}
-              />
-            ))}
+            <PermisosRolForm
+              rutas={rutasPendientes}
+              idPrefix={`${rolId}-dialog`}
+              onAlternar={(ruta, activo) =>
+                setRutasPendientes((prev) => alternarRutaPermiso(prev, ruta, activo))
+              }
+            />
           </ScrollArea>
 
           {!validacion.valido && validacion.mensaje && (
@@ -239,7 +201,7 @@ export function EditarPermisosRolDialog({
           <>
             <p>
               Está a punto de modificar los permisos del rol{" "}
-              <strong>{rol}</strong>.
+              <strong>{rolNombre}</strong>.
             </p>
             {diff.agregadas.length > 0 && (
               <div>

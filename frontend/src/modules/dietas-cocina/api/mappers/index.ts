@@ -25,9 +25,15 @@ export {
 export {
   mapMatrizPermisosResponse,
   mapPermisosUiToActualizarRequest,
-  rolPermisosParaApi,
 } from "@/modules/dietas-cocina/api/mappers/permisos.mapper"
-export { mapUsuarioDtoToDomain, mapUsuarioList, mapRolDominioAApi, mapRolDominioAApiNum } from "@/modules/dietas-cocina/api/mappers/usuarios.mapper"
+export {
+  mapUsuarioDtoToDomain,
+  mapUsuarioList,
+  mapListadoUsuariosResponse,
+  mapRolesModuloResponse,
+  mapUsuarioToCrearRequest,
+  mapUsuarioToEditarRequest,
+} from "@/modules/dietas-cocina/api/mappers/usuarios.mapper"
 export {
   mapTiempoComidaDto,
   mapTiemposComidaList,

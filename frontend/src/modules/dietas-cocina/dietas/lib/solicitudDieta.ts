@@ -1,5 +1,6 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
-import type { EstadoDieta, RolDietas, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import { esRolAdministrador } from "@/modules/dietas-cocina/lib/roles"
 import {
   formatearIdentificacionPaciente,
   formatearReferenciaIngreso,
@@ -30,7 +31,7 @@ export const ESTADOS_CANCELAR_EN_PREPARACION = new Set<EstadoDieta>([
   "lista-despacho",
 ])
 
-export const ROLES_CANCELAR_TARDIA = new Set<RolDietas>(["Administrador"])
+export const ROLES_CANCELAR_TARDIA = new Set(["Administrador"])
 
 export type TipoCancelacionDieta = "normal" | "tardia"
 
@@ -38,7 +39,7 @@ export interface ContextoAccionesDietaClinica {
   fila: FilaDieta
   estadoVisible: EstadoDieta
   comida: TiempoComida
-  rol?: RolDietas | null
+  rol?: string | null
   fecha?: Date
 }
 
@@ -83,13 +84,13 @@ export function evaluarAccionesDietaClinica(
   } else if (
     ESTADOS_CANCELAR_TARDIA.has(estadoVisible) &&
     rol &&
-    ROLES_CANCELAR_TARDIA.has(rol)
+    esRolAdministrador(rol)
   ) {
     tipoCancelacion = "tardia"
   } else if (
     ESTADOS_CANCELAR_TARDIA.has(estadoVisible) &&
     rol &&
-    !ROLES_CANCELAR_TARDIA.has(rol)
+    !esRolAdministrador(rol)
   ) {
     motivoBloqueoCancelacion =
       "Solo un Administrador puede cancelar una dieta ya confirmada o en cocina."
@@ -128,11 +129,11 @@ export function puedeRegistrarNovedad(
 export function puedeCancelarDieta(
   fila: FilaDieta,
   estadoVisible?: EstadoDieta,
-  rol?: RolDietas | null,
+  rol?: string | null,
 ): boolean {
   const estado = estadoVisible ?? fila.estado
   if (ESTADOS_CANCELAR_NORMAL.has(estado)) return true
-  if (ESTADOS_CANCELAR_TARDIA.has(estado) && rol && ROLES_CANCELAR_TARDIA.has(rol)) {
+  if (ESTADOS_CANCELAR_TARDIA.has(estado) && rol && esRolAdministrador(rol)) {
     return true
   }
   return false

@@ -365,7 +365,17 @@ export interface MetaPaginacionDto {
   totalPages?: number
 }
 
+export interface RolModuloDto {
+  id?: string
+  nombre?: string
+  esSistema?: boolean
+  activo?: boolean
+  totalPermisos?: number
+}
+
 export interface PermisoRolDto {
+  rolId?: string
   rol?: string
   permisos?: Record<string, boolean>
+  rutas?: number[]
 }

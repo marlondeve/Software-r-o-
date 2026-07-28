@@ -32,6 +32,7 @@ import {
   type RolEncuestas,
 } from "@/lib/configAccesoModulos"
 import { modulosConfig } from "@/lib/modulos"
+import { encuestasHabilitado } from "@/lib/modulosFlags"
 import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { cn } from "@/lib/utils"
 
@@ -138,9 +139,11 @@ export function ConfiguracionAccesoModulosDialog({
             <TabsTrigger value="dietas-cocina" className="flex-1">
               {modulosConfig["dietas-cocina"].titulo}
             </TabsTrigger>
-            <TabsTrigger value="encuestas" className="flex-1">
-              {modulosConfig.encuestas.titulo}
-            </TabsTrigger>
+            {encuestasHabilitado() && (
+              <TabsTrigger value="encuestas" className="flex-1">
+                {modulosConfig.encuestas.titulo}
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="dietas-cocina" className="overflow-hidden">
@@ -223,6 +226,7 @@ export function ConfiguracionAccesoModulosDialog({
             </TabPanelScroll>
           </TabsContent>
 
+          {encuestasHabilitado() && (
           <TabsContent value="encuestas" className="overflow-hidden">
             <TabPanelScroll>
             <section>
@@ -302,6 +306,7 @@ export function ConfiguracionAccesoModulosDialog({
             </section>
             </TabPanelScroll>
           </TabsContent>
+          )}
         </Tabs>
 
         <DialogFooter className="gap-2 sm:justify-between">

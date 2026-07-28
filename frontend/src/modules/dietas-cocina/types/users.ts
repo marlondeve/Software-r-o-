@@ -1,7 +1,6 @@
 import type {
   EstadoUsuario,
   OrigenUsuario,
-  RolDietas,
 } from "@/modules/dietas-cocina/types/enums"
 
 export interface UsuarioModulo {
@@ -9,7 +8,8 @@ export interface UsuarioModulo {
   nombre: string
   usuario: string
   correo: string
-  rol: RolDietas
+  rolId: string
+  rol: string
   servicioArea: string
   orgProveedora: string | null
   estado: EstadoUsuario

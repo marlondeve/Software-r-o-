@@ -16,6 +16,7 @@ dist-ssr
 frontend/dist
 backend/dist
 backend/publish
+**/publish/
 
 # .NET build artifacts (no subir DLLs ni compilados)
 **/bin/

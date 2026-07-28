@@ -5,7 +5,8 @@ namespace Bital.Domain.Entities.DietasCocina;
 
 public class PermisoRol : EntityBase
 {
-    public RolDietas Rol { get; set; }
+    public Guid RolModuloId { get; set; }
+    public RolModulo RolModulo { get; set; } = null!;
     public RutaDietas Ruta { get; set; }
     public bool Permitido { get; set; } = true;
 }

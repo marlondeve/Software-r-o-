@@ -5,7 +5,7 @@ namespace Bital.Application.DTOs.DietasCocina;
 // Filtros para listado de usuarios
 public class FiltrosUsuariosDto
 {
-    public RolDietas? Rol { get; set; }
+    public Guid? RolModuloId { get; set; }
     public bool? Activo { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 10;
@@ -18,7 +18,7 @@ public class UsuarioModuloDto
     public string NombreCompleto { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Identificacion { get; set; }
-    public RolDietas Rol { get; set; }
+    public Guid RolModuloId { get; set; }
     public string RolNombre { get; set; } = string.Empty;
     public bool Activo { get; set; }
     public DateTime? UltimoAcceso { get; set; }
@@ -31,7 +31,7 @@ public class CrearUsuarioDto
     public string NombreCompleto { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string? Identificacion { get; set; }
-    public RolDietas Rol { get; set; }
+    public Guid RolModuloId { get; set; }
     public string? Observaciones { get; set; }
 }
 
@@ -47,7 +47,7 @@ public class EditarUsuarioDto
 // DTO para cambiar rol
 public class CambiarRolDto
 {
-    public RolDietas Rol { get; set; }
+    public Guid RolModuloId { get; set; }
 }
 
 // DTO para cambiar estado
@@ -63,10 +63,33 @@ public class ListaUsuariosDto
     public MetaPaginacionDto Meta { get; set; } = new();
 }
 
+public class RolModuloDto
+{
+    public Guid Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public bool EsSistema { get; set; }
+    public bool Activo { get; set; }
+    public int TotalPermisos { get; set; }
+}
+
+public class CrearRolDto
+{
+    public string Nombre { get; set; } = string.Empty;
+    public List<RutaDietas> Rutas { get; set; } = new();
+}
+
+public class RolPermisosDetalleDto
+{
+    public Guid Id { get; set; }
+    public string Nombre { get; set; } = string.Empty;
+    public bool EsSistema { get; set; }
+    public List<RutaDietas> Rutas { get; set; } = new();
+}
+
 // Matriz de permisos por rol
 public class MatrizPermisosDto
 {
-    public Dictionary<RolDietas, List<RutaDietas>> Data { get; set; } = new();
+    public List<RolPermisosDetalleDto> Data { get; set; } = new();
 }
 
 // DTO para actualizar permisos de un rol

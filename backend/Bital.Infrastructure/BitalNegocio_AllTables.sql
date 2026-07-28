@@ -1,4 +1,9 @@
-﻿IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
+﻿-- BITAL Negocio — script consolidado de tablas (referencia historica).
+-- El esquema vigente se genera con migraciones EF Core.
+-- Incluye bital.RolesModulo y RolModuloId (migracion AddRolesModuloDinamicos).
+-- Preferir: dotnet ef database update --context BitalNegocioDbContext
+
+IF OBJECT_ID(N'[__EFMigrationsHistory]') IS NULL
 BEGIN
     CREATE TABLE [__EFMigrationsHistory] (
         [MigrationId] nvarchar(150) NOT NULL,

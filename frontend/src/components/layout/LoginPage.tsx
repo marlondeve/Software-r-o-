@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { z } from "zod"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
+import { AppLegalFooter } from "@/components/layout/AppLegalFooter"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,15 +16,9 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CambiarPasswordForm } from "@/features/autenticacion/components/CambiarPasswordForm"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
-import {
-  authInstitucionalDisponible,
-  type ModoLoginAuth,
-} from "@/services/authService"
 import {
   esRutaDeModulo,
   obtenerDestinoPostLogin,
@@ -50,8 +45,6 @@ export function LoginPage() {
   const [mensajeExito, setMensajeExito] = useState<string | null>(null)
   const [enviando, setEnviando] = useState(false)
   const [tabActiva, setTabActiva] = useState("login")
-  const [modoLogin, setModoLogin] = useState<ModoLoginAuth>("demo")
-  const loginInstitucionalDisponible = authInstitucionalDisponible()
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -67,7 +60,7 @@ export function LoginPage() {
     setEnviando(true)
 
     try {
-      const sesion = await iniciarSesion(data.usuario, data.password, modoLogin)
+      const sesion = await iniciarSesion(data.usuario, data.password)
       const origen = (location.state as { from?: string } | null)?.from
       const moduloOrigen = origen ? esRutaDeModulo(origen) : null
       const origenAdministracion =
@@ -94,7 +87,8 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
+    <main className="flex min-h-screen flex-col bg-background px-4 py-8">
+      <div className="flex flex-1 items-center justify-center">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-5 flex justify-center">
           <ClinicaLogo className="h-11" />
@@ -133,44 +127,6 @@ export function LoginPage() {
                 </Alert>
               )}
 
-              {loginInstitucionalDisponible && (
-                <div className="space-y-2 rounded-lg border border-border bg-muted/30 p-3">
-                  <Label className="text-sm font-medium">Tipo de acceso</Label>
-                  <RadioGroup
-                    value={modoLogin}
-                    onValueChange={(value) => setModoLogin(value as ModoLoginAuth)}
-                    className="gap-2"
-                  >
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem value="demo" id="login-modo-demo" className="mt-0.5" />
-                      <Label htmlFor="login-modo-demo" className="cursor-pointer font-normal">
-                        <span className="font-medium">Pruebas (demo)</span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          Cualquier contraseña. Use usuarios como admin, nutricionista,
-                          enfermera o cocinero.
-                        </span>
-                      </Label>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <RadioGroupItem
-                        value="institucional"
-                        id="login-modo-institucional"
-                        className="mt-0.5"
-                      />
-                      <Label
-                        htmlFor="login-modo-institucional"
-                        className="cursor-pointer font-normal"
-                      >
-                        <span className="font-medium">Institucional (API)</span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          Valida contra usuarios del módulo con contraseña real.
-                        </span>
-                      </Label>
-                    </div>
-                  </RadioGroup>
-                </div>
-              )}
-
               <FieldGroup className="gap-4">
                 <Controller
                   name="usuario"
@@ -184,7 +140,7 @@ export function LoginPage() {
                           {...field}
                           id="login-usuario"
                           type="text"
-                          placeholder="admin"
+                          placeholder="Ingrese su usuario"
                           autoComplete="username"
                           aria-invalid={fieldState.invalid}
                           className="h-9 rounded-full pl-10"
@@ -243,37 +199,23 @@ export function LoginPage() {
                 disabled={enviando}
                 className="h-9 w-full rounded-full text-sm font-semibold"
               >
-                {enviando
-                  ? "Iniciando sesión…"
-                  : modoLogin === "institucional"
-                    ? "Iniciar sesión (API)"
-                    : "Iniciar sesión (demo)"}
+                {enviando ? "Iniciando sesión…" : "Iniciar sesión"}
               </Button>
             </form>
           </TabsContent>
 
           <TabsContent value="cambiar" className="mt-0 space-y-4">
-            {loginInstitucionalDisponible ? (
-              <>
-                {mensajeExito && (
-                  <Alert>
-                    <AlertDescription>{mensajeExito}</AlertDescription>
-                  </Alert>
-                )}
-                <CambiarPasswordForm
-                  onExito={(mensaje) => {
-                    setMensajeExito(mensaje)
-                    setError(null)
-                  }}
-                />
-              </>
-            ) : (
+            {mensajeExito && (
               <Alert>
-                <AlertDescription className="text-sm">
-                  Cambiar contraseña requiere login institucional (API activa).
-                </AlertDescription>
+                <AlertDescription>{mensajeExito}</AlertDescription>
               </Alert>
             )}
+            <CambiarPasswordForm
+              onExito={(mensaje) => {
+                setMensajeExito(mensaje)
+                setError(null)
+              }}
+            />
           </TabsContent>
         </Tabs>
 
@@ -285,6 +227,9 @@ export function LoginPage() {
           </AlertDescription>
         </Alert>
       </div>
+      </div>
+
+      <AppLegalFooter className="mt-6 shrink-0 pb-2" />
     </main>
   )
 }

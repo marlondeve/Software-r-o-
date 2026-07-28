@@ -103,7 +103,7 @@ El paquete `backend` del monorepo pnpm incluye un servidor Node mínimo (`src/in
 
 ## Migración SQL Server (BitalNegocio)
 
-Scripts y guía completa para crear la base operativa e importar datos desde Vital:
+Scripts y guía completa para crear la base operativa e importar datos desde Vital (incluye roles dinámicos `RolesModulo`):
 
 - **Guía:** [docs/MIGRACION_SQL_SERVER.md](../docs/MIGRACION_SQL_SERVER.md)
 - **Orquestador:** `backend/scripts/Migrate-BitalNegocio.ps1`

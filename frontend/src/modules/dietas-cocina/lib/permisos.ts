@@ -4,6 +4,7 @@ import {
 } from "@/modules/dietas-cocina/lib/roles"
 import type { RolDietas, RutaDietas } from "@/modules/dietas-cocina/types/enums"
 import { cargarConfigAccesoModulos } from "@/lib/configAccesoModulos"
+import { obtenerRutasPermitidasDesdeApi } from "@/modules/dietas-cocina/lib/permisosMatrizCache"
 
 export type { RutaDietas }
 
@@ -74,6 +75,11 @@ function extraerRutaDietas(pathname: string): RutaDietas | null {
 }
 
 export function obtenerRutasPermitidas(rol: RolDietas | string | null): RutaDietas[] {
+  if (!rol) return []
+
+  const rutasApi = obtenerRutasPermitidasDesdeApi(rol)
+  if (rutasApi) return rutasApi
+
   const rolNormalizado = normalizarRolDietas(rol)
   if (!rolNormalizado) return []
   const rolPermisos = resolverRolPermisos(rolNormalizado)

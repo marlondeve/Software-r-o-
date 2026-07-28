@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ROLES_DIETAS } from "@/lib/configAccesoModulos"
+import type { RolModuloDto } from "@/modules/dietas-cocina/types/api-dtos"
 
 interface UsuariosFiltrosProps {
   rolLabel: string
@@ -20,6 +20,7 @@ interface UsuariosFiltrosProps {
   totalPaginas: number
   rolSeleccionado: string
   estadoSeleccionado: string
+  roles: RolModuloDto[]
   onRolChange: (value: string) => void
   onEstadoChange: (value: string) => void
   onCambiarPagina: (pagina: number) => void
@@ -35,6 +36,7 @@ export function UsuariosFiltros({
   totalPaginas,
   rolSeleccionado,
   estadoSeleccionado,
+  roles,
   onRolChange,
   onEstadoChange,
   onCambiarPagina,
@@ -49,9 +51,9 @@ export function UsuariosFiltros({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">{rolLabel}</SelectItem>
-            {ROLES_DIETAS.map((rol) => (
-              <SelectItem key={rol} value={rol}>
-                {rol}
+            {roles.map((rol) => (
+              <SelectItem key={rol.id} value={rol.id ?? ""}>
+                {rol.nombre}
               </SelectItem>
             ))}
           </SelectContent>

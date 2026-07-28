@@ -4,6 +4,7 @@ import { Navigate } from "react-router-dom"
 
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { guardarModuloActivo } from "@/lib/modulos"
+import { moduloHabilitado } from "@/lib/modulosFlags"
 import type { ModuloId } from "@/types/module"
 
 interface RequireModuleAccessProps {
@@ -33,6 +34,10 @@ export function RequireModuleAccess({
 
   if (!usuario) {
     return <Navigate to="/login" replace />
+  }
+
+  if (!moduloHabilitado(moduloId)) {
+    return <Navigate to="/modulos" replace />
   }
 
   if (!usuario.accesos.some((acceso) => acceso.moduloId === moduloId)) {

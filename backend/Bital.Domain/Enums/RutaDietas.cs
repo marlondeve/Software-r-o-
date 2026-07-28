@@ -8,6 +8,12 @@ public enum RutaDietas
     EditarDieta = 3,
     EliminarDieta = 4,
 
+    // Catálogo dietas y tarifas
+    ListarCatalogoDietas = 5,
+    CrearCatalogoDieta = 6,
+    EditarCatalogoDieta = 7,
+    EliminarCatalogoDieta = 8,
+
     // Órdenes de cocina
     ListarOrdenes = 10,
     CrearOrden = 11,

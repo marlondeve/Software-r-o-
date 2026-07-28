@@ -5,7 +5,6 @@ using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -22,10 +21,12 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
     public async Task<ListaUsuariosDto> ObtenerUsuariosAsync(FiltrosUsuariosDto filtros)
     {
-        var query = _context.UsuariosModulo.AsQueryable();
+        var query = _context.UsuariosModulo
+            .Include(u => u.RolModulo)
+            .AsQueryable();
 
-        if (filtros.Rol.HasValue)
-            query = query.Where(u => u.Rol == filtros.Rol.Value);
+        if (filtros.RolModuloId.HasValue)
+            query = query.Where(u => u.RolModuloId == filtros.RolModuloId.Value);
 
         if (filtros.Activo.HasValue)
             query = query.Where(u => u.Activo == filtros.Activo.Value);
@@ -37,18 +38,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             .OrderBy(u => u.NombreCompleto)
             .Skip((filtros.Page - 1) * filtros.PageSize)
             .Take(filtros.PageSize)
-            .Select(u => new UsuarioModuloDto
-            {
-                Id = u.Id,
-                NombreCompleto = u.NombreCompleto,
-                Email = u.Email,
-                Identificacion = u.Identificacion,
-                Rol = u.Rol,
-                RolNombre = u.Rol.ToString(),
-                Activo = u.Activo,
-                UltimoAcceso = u.UltimoAcceso,
-                CreadoEn = u.CreadoEn
-            })
+            .Select(u => MapUsuarioToDto(u))
             .ToListAsync();
 
         return new ListaUsuariosDto
@@ -66,7 +56,6 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
     public async Task<UsuarioModuloDto> CrearUsuarioAsync(CrearUsuarioDto dto, string creadoPor)
     {
-        // Validar email único
         var existeEmail = await _context.UsuariosModulo.AnyAsync(u => u.Email == dto.Email);
         if (existeEmail)
             throw new InvalidOperationException($"Ya existe un usuario con el email {dto.Email}");
@@ -80,13 +69,16 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (existeUsuario)
             throw new InvalidOperationException($"Ya existe un usuario con el nombre {identificacion}");
 
+        var rol = await _context.RolesModulo.FirstOrDefaultAsync(r => r.Id == dto.RolModuloId && r.Activo)
+            ?? throw new InvalidOperationException("El rol seleccionado no existe o está inactivo.");
+
         var usuario = new UsuarioModulo
         {
             Id = Guid.NewGuid(),
             NombreCompleto = dto.NombreCompleto,
             Email = dto.Email,
             Identificacion = identificacion,
-            Rol = dto.Rol,
+            RolModuloId = rol.Id,
             Activo = true,
             Observaciones = dto.Observaciones,
             CreadoEn = DateTime.UtcNow,
@@ -96,27 +88,17 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         _context.UsuariosModulo.Add(usuario);
         await _context.SaveChangesAsync();
 
-        return new UsuarioModuloDto
-        {
-            Id = usuario.Id,
-            NombreCompleto = usuario.NombreCompleto,
-            Email = usuario.Email,
-            Identificacion = usuario.Identificacion,
-            Rol = usuario.Rol,
-            RolNombre = usuario.Rol.ToString(),
-            Activo = usuario.Activo,
-            UltimoAcceso = usuario.UltimoAcceso,
-            CreadoEn = usuario.CreadoEn
-        };
+        usuario.RolModulo = rol;
+        return MapUsuarioToDto(usuario);
     }
 
     public async Task<UsuarioModuloDto> EditarUsuarioAsync(Guid id, EditarUsuarioDto dto)
     {
-        var usuario = await _context.UsuariosModulo.FindAsync(id);
-        if (usuario == null)
-            throw new KeyNotFoundException($"Usuario con ID {id} no encontrado");
+        var usuario = await _context.UsuariosModulo
+            .Include(u => u.RolModulo)
+            .FirstOrDefaultAsync(u => u.Id == id)
+            ?? throw new KeyNotFoundException($"Usuario con ID {id} no encontrado");
 
-        // Validar email único (excepto el actual)
         var existeEmail = await _context.UsuariosModulo
             .AnyAsync(u => u.Email == dto.Email && u.Id != id);
         if (existeEmail)
@@ -140,109 +122,186 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         usuario.Observaciones = dto.Observaciones;
 
         await _context.SaveChangesAsync();
-
-        return new UsuarioModuloDto
-        {
-            Id = usuario.Id,
-            NombreCompleto = usuario.NombreCompleto,
-            Email = usuario.Email,
-            Identificacion = usuario.Identificacion,
-            Rol = usuario.Rol,
-            RolNombre = usuario.Rol.ToString(),
-            Activo = usuario.Activo,
-            UltimoAcceso = usuario.UltimoAcceso,
-            CreadoEn = usuario.CreadoEn
-        };
+        return MapUsuarioToDto(usuario);
     }
 
     public async Task<UsuarioModuloDto> CambiarRolAsync(Guid id, CambiarRolDto dto)
     {
-        var usuario = await _context.UsuariosModulo.FindAsync(id);
-        if (usuario == null)
-            throw new KeyNotFoundException($"Usuario con ID {id} no encontrado");
+        var usuario = await _context.UsuariosModulo
+            .Include(u => u.RolModulo)
+            .FirstOrDefaultAsync(u => u.Id == id)
+            ?? throw new KeyNotFoundException($"Usuario con ID {id} no encontrado");
 
-        usuario.Rol = dto.Rol;
+        var rol = await _context.RolesModulo.FirstOrDefaultAsync(r => r.Id == dto.RolModuloId && r.Activo)
+            ?? throw new InvalidOperationException("El rol seleccionado no existe o está inactivo.");
+
+        usuario.RolModuloId = rol.Id;
+        usuario.RolModulo = rol;
         await _context.SaveChangesAsync();
 
-        return new UsuarioModuloDto
-        {
-            Id = usuario.Id,
-            NombreCompleto = usuario.NombreCompleto,
-            Email = usuario.Email,
-            Identificacion = usuario.Identificacion,
-            Rol = usuario.Rol,
-            RolNombre = usuario.Rol.ToString(),
-            Activo = usuario.Activo,
-            UltimoAcceso = usuario.UltimoAcceso,
-            CreadoEn = usuario.CreadoEn
-        };
+        return MapUsuarioToDto(usuario);
     }
 
     public async Task<UsuarioModuloDto> CambiarEstadoAsync(Guid id, CambiarEstadoDto dto)
     {
-        var usuario = await _context.UsuariosModulo.FindAsync(id);
-        if (usuario == null)
-            throw new KeyNotFoundException($"Usuario con ID {id} no encontrado");
+        var usuario = await _context.UsuariosModulo
+            .Include(u => u.RolModulo)
+            .FirstOrDefaultAsync(u => u.Id == id)
+            ?? throw new KeyNotFoundException($"Usuario con ID {id} no encontrado");
 
         usuario.Activo = dto.Activo;
         await _context.SaveChangesAsync();
 
-        return new UsuarioModuloDto
+        return MapUsuarioToDto(usuario);
+    }
+
+    public async Task<List<RolModuloDto>> ListarRolesAsync()
+    {
+        var roles = await _context.RolesModulo
+            .Where(r => r.Activo)
+            .OrderBy(r => r.Nombre)
+            .ToListAsync();
+
+        var permisos = await _context.PermisosRol
+            .Where(p => p.Permitido)
+            .ToListAsync();
+
+        return roles.Select(rol => new RolModuloDto
         {
-            Id = usuario.Id,
-            NombreCompleto = usuario.NombreCompleto,
-            Email = usuario.Email,
-            Identificacion = usuario.Identificacion,
-            Rol = usuario.Rol,
-            RolNombre = usuario.Rol.ToString(),
-            Activo = usuario.Activo,
-            UltimoAcceso = usuario.UltimoAcceso,
-            CreadoEn = usuario.CreadoEn
+            Id = rol.Id,
+            Nombre = rol.Nombre,
+            EsSistema = rol.EsSistema,
+            Activo = rol.Activo,
+            TotalPermisos = permisos.Count(p => p.RolModuloId == rol.Id),
+        }).ToList();
+    }
+
+    public async Task<RolModuloDto> CrearRolAsync(CrearRolDto dto, string creadoPor)
+    {
+        var nombre = dto.Nombre.Trim();
+        if (nombre.Length < 3)
+            throw new InvalidOperationException("El nombre del rol debe tener al menos 3 caracteres.");
+
+        var existe = await _context.RolesModulo
+            .AnyAsync(r => r.Nombre.ToLower() == nombre.ToLower());
+        if (existe)
+            throw new InvalidOperationException($"Ya existe un rol con el nombre {nombre}.");
+
+        var rutas = NormalizarRutasPermiso(dto.Rutas);
+
+        var rol = new RolModulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = nombre,
+            EsSistema = false,
+            Activo = true,
+            CreadoEn = DateTime.UtcNow,
+            CreadoPor = creadoPor,
+        };
+
+        _context.RolesModulo.Add(rol);
+        _context.PermisosRol.AddRange(rutas.Select(ruta => new PermisoRol
+        {
+            Id = Guid.NewGuid(),
+            RolModuloId = rol.Id,
+            Ruta = ruta,
+            Permitido = true,
+            CreadoEn = DateTime.UtcNow,
+            CreadoPor = creadoPor,
+        }));
+
+        await _context.SaveChangesAsync();
+
+        return new RolModuloDto
+        {
+            Id = rol.Id,
+            Nombre = rol.Nombre,
+            EsSistema = rol.EsSistema,
+            Activo = rol.Activo,
+            TotalPermisos = rutas.Count,
         };
     }
 
     public async Task<MatrizPermisosDto> ObtenerMatrizPermisosAsync()
     {
+        var roles = await _context.RolesModulo
+            .Where(r => r.Activo)
+            .OrderBy(r => r.Nombre)
+            .ToListAsync();
+
         var permisos = await _context.PermisosRol
             .Where(p => p.Permitido)
             .ToListAsync();
 
-        var matriz = new Dictionary<RolDietas, List<RutaDietas>>();
-
-        foreach (RolDietas rol in Enum.GetValues(typeof(RolDietas)))
+        return new MatrizPermisosDto
         {
-            matriz[rol] = permisos
-                .Where(p => p.Rol == rol)
-                .Select(p => p.Ruta)
-                .OrderBy(r => r)
-                .ToList();
-        }
-
-        return new MatrizPermisosDto { Data = matriz };
+            Data = roles.Select(rol => new RolPermisosDetalleDto
+            {
+                Id = rol.Id,
+                Nombre = rol.Nombre,
+                EsSistema = rol.EsSistema,
+                Rutas = permisos
+                    .Where(p => p.RolModuloId == rol.Id)
+                    .Select(p => p.Ruta)
+                    .OrderBy(r => r)
+                    .ToList(),
+            }).ToList(),
+        };
     }
 
-    public async Task ActualizarPermisosRolAsync(RolDietas rol, ActualizarPermisosRolDto dto)
+    public async Task ActualizarPermisosRolAsync(Guid rolModuloId, ActualizarPermisosRolDto dto)
     {
-        // Eliminar permisos anteriores del rol
+        var rol = await _context.RolesModulo.FindAsync(rolModuloId)
+            ?? throw new KeyNotFoundException($"Rol con ID {rolModuloId} no encontrado");
+
+        var rutas = NormalizarRutasPermiso(dto.Rutas);
+
         var permisosAnteriores = await _context.PermisosRol
-            .Where(p => p.Rol == rol)
+            .Where(p => p.RolModuloId == rol.Id)
             .ToListAsync();
 
         _context.PermisosRol.RemoveRange(permisosAnteriores);
 
-        // Crear nuevos permisos
-        var nuevosPermisos = dto.Rutas.Select(ruta => new PermisoRol
+        _context.PermisosRol.AddRange(rutas.Select(ruta => new PermisoRol
         {
             Id = Guid.NewGuid(),
-            Rol = rol,
+            RolModuloId = rol.Id,
             Ruta = ruta,
             Permitido = true,
             CreadoEn = DateTime.UtcNow,
-            CreadoPor = "system"
-        }).ToList();
+            CreadoPor = "system",
+        }));
 
-        _context.PermisosRol.AddRange(nuevosPermisos);
         await _context.SaveChangesAsync();
+    }
+
+    public async Task EliminarRolAsync(Guid rolModuloId)
+    {
+        var rol = await _context.RolesModulo.FindAsync(rolModuloId)
+            ?? throw new KeyNotFoundException($"Rol con ID {rolModuloId} no encontrado");
+
+        if (rol.EsSistema)
+            throw new InvalidOperationException("No se pueden eliminar roles del sistema.");
+
+        var tieneUsuarios = await _context.UsuariosModulo.AnyAsync(u => u.RolModuloId == rolModuloId);
+        if (tieneUsuarios)
+            throw new InvalidOperationException("No se puede eliminar un rol con usuarios asignados.");
+
+        var permisos = await _context.PermisosRol.Where(p => p.RolModuloId == rolModuloId).ToListAsync();
+        _context.PermisosRol.RemoveRange(permisos);
+        _context.RolesModulo.Remove(rol);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<Guid?> ResolverRolModuloIdPorNombreAsync(string nombreRol)
+    {
+        var nombre = nombreRol.Trim();
+        if (string.IsNullOrEmpty(nombre)) return null;
+
+        var rol = await _context.RolesModulo
+            .FirstOrDefaultAsync(r => r.Activo && r.Nombre.ToLower() == nombre.ToLower());
+
+        return rol?.Id;
     }
 
     public async Task<RestablecerPasswordResponseDto> RestablecerPasswordAsync(Guid id, string solicitadoPor)
@@ -270,6 +329,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             throw new UnauthorizedAccessException("Credenciales inválidas.");
 
         var usuario = await _context.UsuariosModulo
+            .Include(u => u.RolModulo)
             .FirstOrDefaultAsync(u =>
                 u.Identificacion != null &&
                 u.Identificacion.ToLower() == usuarioLogin)
@@ -293,8 +353,8 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             Usuario = usuario.Identificacion ?? string.Empty,
             Email = usuario.Email,
             NombreCompleto = usuario.NombreCompleto,
-            Rol = usuario.Rol,
-            RolNombre = usuario.Rol.ToString(),
+            RolModuloId = usuario.RolModuloId,
+            RolNombre = usuario.RolModulo.Nombre,
         };
     }
 
@@ -331,6 +391,26 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         {
             Mensaje = "Contraseña actualizada correctamente. Ya puede iniciar sesión.",
         };
+    }
+
+    private static UsuarioModuloDto MapUsuarioToDto(UsuarioModulo usuario) => new()
+    {
+        Id = usuario.Id,
+        NombreCompleto = usuario.NombreCompleto,
+        Email = usuario.Email,
+        Identificacion = usuario.Identificacion,
+        RolModuloId = usuario.RolModuloId,
+        RolNombre = usuario.RolModulo?.Nombre ?? string.Empty,
+        Activo = usuario.Activo,
+        UltimoAcceso = usuario.UltimoAcceso,
+        CreadoEn = usuario.CreadoEn,
+    };
+
+    private static List<RutaDietas> NormalizarRutasPermiso(IEnumerable<RutaDietas> rutas)
+    {
+        var set = new HashSet<RutaDietas>(rutas);
+        set.Add(RutaDietas.VerDashboard);
+        return set.OrderBy(r => r).ToList();
     }
 
     private static bool VerificarPassword(string password, string hash)

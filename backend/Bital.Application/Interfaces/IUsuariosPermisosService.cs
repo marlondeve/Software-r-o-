@@ -1,5 +1,4 @@
 using Bital.Application.DTOs.DietasCocina;
-using Bital.Domain.Enums;
 
 namespace Bital.Application.Interfaces;
 
@@ -12,9 +11,14 @@ public interface IUsuariosPermisosService
     Task<UsuarioModuloDto> CambiarRolAsync(Guid id, CambiarRolDto dto);
     Task<UsuarioModuloDto> CambiarEstadoAsync(Guid id, CambiarEstadoDto dto);
 
-    // Gestión de permisos
+    // Gestión de roles y permisos
+    Task<List<RolModuloDto>> ListarRolesAsync();
+    Task<RolModuloDto> CrearRolAsync(CrearRolDto dto, string creadoPor);
     Task<MatrizPermisosDto> ObtenerMatrizPermisosAsync();
-    Task ActualizarPermisosRolAsync(RolDietas rol, ActualizarPermisosRolDto dto);
+    Task ActualizarPermisosRolAsync(Guid rolModuloId, ActualizarPermisosRolDto dto);
+    Task EliminarRolAsync(Guid rolModuloId);
+    Task<Guid?> ResolverRolModuloIdPorNombreAsync(string nombreRol);
+
     Task<RestablecerPasswordResponseDto> RestablecerPasswordAsync(Guid id, string solicitadoPor);
     Task<LoginModuloResponseDto> LoginAsync(LoginModuloDto dto);
     Task<CambiarPasswordResponseDto> CambiarPasswordAsync(CambiarPasswordDto dto);

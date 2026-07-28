@@ -1,6 +1,6 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import type { RutaDietasConfig } from "@/lib/configAccesoModulos"
 import { RUTAS_DIETAS } from "@/lib/configAccesoModulos"
+import { permisosPorRolNombreDesdeApi } from "@/modules/dietas-cocina/lib/permisosMatrizCache"
 
 export function permisosRecordToRutas(
   permisos: Record<string, boolean> | undefined,
@@ -26,8 +26,11 @@ export function contarPermisosActivos(
 
 export function permisosPorRolDesdeApi(
   permisosApi: Array<{ rol?: string; permisos?: Record<string, boolean> }>,
-  rol: RolDietas,
+  rol: string,
 ): RutaDietasConfig[] {
-  const entry = permisosApi.find((item) => item.rol === rol)
-  return permisosRecordToRutas(entry?.permisos)
+  const entry = permisosApi.find(
+    (item) => item.rol?.toLowerCase() === rol.trim().toLowerCase(),
+  )
+  if (entry?.permisos) return permisosRecordToRutas(entry.permisos)
+  return permisosPorRolNombreDesdeApi(permisosApi, rol) as RutaDietasConfig[]
 }

@@ -82,7 +82,7 @@ export function SimuladorClasificacion({
         categoria: respuesta.categoria || local.categoria,
         regla:
           respuesta.edadMinima > 0 || respuesta.edadMaxima > 0
-            ? `${respuesta.edadMinima} - ${respuesta.edadMaxima} años (API)`
+            ? `${respuesta.edadMinima} - ${respuesta.edadMaxima} años`
             : local.regla,
       })
     } catch {

@@ -18,8 +18,8 @@ export function puedeGestionarUsuariosRoles(
 }
 
 export function validarCambioRol(
-  rolActual: RolDietas,
-  rolNuevo: RolDietas,
+  rolActual: string,
+  rolNuevo: string,
 ): ResultadoValidacion {
   if (rolActual === rolNuevo) {
     return {

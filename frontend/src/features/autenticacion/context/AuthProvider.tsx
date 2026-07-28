@@ -11,18 +11,13 @@ import {
   cerrarSesion as cerrarSesionService,
   iniciarSesion as iniciarSesionService,
   obtenerSesion,
-  type ModoLoginAuth,
 } from "@/services/authService"
 import type { Usuario } from "@/types/user"
 
 interface AuthContextValue {
   usuario: Usuario | null
   cargando: boolean
-  iniciarSesion: (
-    usuario: string,
-    password: string,
-    modo?: ModoLoginAuth,
-  ) => Promise<Usuario>
+  iniciarSesion: (usuario: string, password: string) => Promise<Usuario>
   cerrarSesion: () => void
 }
 
@@ -42,8 +37,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [])
 
   const iniciarSesion = useCallback(
-    async (usuario: string, password: string, modo: ModoLoginAuth = "demo") => {
-      const sesion = await iniciarSesionService(usuario, password, modo)
+    async (usuario: string, password: string) => {
+      const sesion = await iniciarSesionService(usuario, password)
       setUsuario(sesion)
       return sesion
     },

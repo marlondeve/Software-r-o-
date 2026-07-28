@@ -182,7 +182,7 @@ export function ConciliacionDetalleSheet({
                 type="button"
                 className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                 onClick={() =>
-                  demoToast(`Mostrando ${detalle.totalRegistros} registros (demo).`)
+                  demoToast(`Mostrando ${detalle.totalRegistros} registros.`)
                 }
               >
                 Ver los {detalle.totalRegistros} registros
@@ -234,7 +234,7 @@ export function ConciliacionDetalleSheet({
             onClick={() => {
               onPendienteRevision(filaId)
               if (!apiActiva) {
-                demoToast("Fila marcada como pendiente de revisión (demo).")
+                demoToast("Fila marcada como pendiente de revisión.")
               }
             }}
           >

@@ -31,9 +31,21 @@ export function obtenerRolDietas(usuario: Usuario | null): RolDietas | null {
   return normalizarRolDietas(rol)
 }
 
-export function comparteDashboardNutricion(rol: RolDietas | null): boolean {
+export function obtenerNombreRolDietas(usuario: Usuario | null): string | null {
+  return obtenerRolEnModulo(usuario, "dietas-cocina")
+}
+
+export function esRolAdministrador(rol: string | null | undefined): boolean {
+  return rol?.trim().toLowerCase() === "administrador"
+}
+
+export function comparteDashboardNutricion(rol: RolDietas | string | null): boolean {
+  if (!rol) return false
+  const clave = rol.toLowerCase()
   return (
-    rol === "Nutricionista" || rol === "Doctor" || rol === "Administrador"
+    clave === "nutricionista" ||
+    clave === "doctor" ||
+    clave === "administrador"
   )
 }
 
