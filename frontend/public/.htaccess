@@ -1,0 +1,19 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Proxy del API hacia la clínica (HTTP). El navegador solo habla HTTPS con este subdominio.
+  RewriteRule ^api/v1/(.*)$ http://186.190.254.230:8080/api/v1/$1 [P,L]
+  RewriteRule ^health$ http://186.190.254.230:8080/health [P,L]
+
+  # SPA fallback (React Router)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Tipos MIME usados por el build de Vite
+<IfModule mod_mime.c>
+  AddType image/webp .webp
+  AddType font/woff2 .woff2
+</IfModule>

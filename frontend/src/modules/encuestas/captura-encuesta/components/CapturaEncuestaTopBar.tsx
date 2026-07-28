@@ -1,5 +1,6 @@
 import { CircleCheck, Mic, Phone, X } from "lucide-react"
 
+import { AppBrandName } from "@/components/layout/AppBrandName"
 import { Badge } from "@/components/ui/badge"
 import type { PacienteContextoEncuesta } from "@/modules/encuestas/types/patients"
 
@@ -12,7 +13,7 @@ export function CapturaEncuestaTopBar({ paciente, onSalir }: CapturaEncuestaTopB
   return (
     <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-5 py-3">
       <div className="flex flex-wrap items-center gap-6">
-        <span className="text-xl font-bold text-primary">Bital</span>
+        <AppBrandName className="text-xl font-bold" />
 
         <div>
           <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">

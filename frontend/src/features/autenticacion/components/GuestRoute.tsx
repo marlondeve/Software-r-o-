@@ -1,6 +1,7 @@
 import { Navigate } from "react-router-dom"
 
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
+import { obtenerDestinoPostLogin } from "@/lib/modulos"
 
 interface GuestRouteProps {
   children: React.ReactNode
@@ -18,7 +19,7 @@ export function GuestRoute({ children }: GuestRouteProps) {
   }
 
   if (usuario) {
-    return <Navigate to="/modulos" replace />
+    return <Navigate to={obtenerDestinoPostLogin(usuario)} replace />
   }
 
   return children

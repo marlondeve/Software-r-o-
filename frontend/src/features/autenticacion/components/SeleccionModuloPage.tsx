@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
+import { AppBrandName } from "@/components/layout/AppBrandName"
 import { AppLegalFooter } from "@/components/layout/AppLegalFooter"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -87,7 +88,9 @@ export function SeleccionModuloPage() {
       <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col">
         <div className="mb-6 flex flex-col items-center text-center">
           <ClinicaLogo className="mb-3 h-10" />
-          <h1 className="text-xl font-bold text-foreground">BITAL</h1>
+          <h1 className="text-xl font-bold text-foreground">
+            <AppBrandName as="span" />
+          </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Hola, {usuario.nombre}. Selecciona el módulo al que deseas ingresar.
           </p>

@@ -20,6 +20,7 @@ import {
 import { NavLink, useNavigate } from "react-router-dom"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
+import { AppBrandName } from "@/components/layout/AppBrandName"
 import { AppLegalFooter } from "@/components/layout/AppLegalFooter"
 import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
@@ -45,16 +46,11 @@ interface SidebarContentProps {
   onNavigate?: () => void
 }
 
-const moduleBranding: Record<
-  ModuleType,
-  { titulo: string; subtitulo: string }
-> = {
+const moduleBranding: Record<ModuleType, { subtitulo: string }> = {
   "dietas-cocina": {
-    titulo: "Bital",
     subtitulo: "Gestión de Dietas",
   },
   encuestas: {
-    titulo: "Bital",
     subtitulo: "Encuestas",
   },
 }
@@ -238,8 +234,8 @@ export function SidebarContent({
       <div className="mb-3 flex items-start gap-2.5">
         <ClinicaLogo className="h-9 w-auto" />
         <div className="min-w-0 pt-0.5">
-          <p className="text-base leading-none font-bold text-primary">
-            {branding.titulo}
+          <p className="text-base leading-none font-bold">
+            <AppBrandName />
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             {branding.subtitulo}

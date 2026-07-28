@@ -36,6 +36,11 @@ public class JwtTokenService : IJwtTokenService
             new("rol_nombre", usuario.RolNombre),
         };
 
+        if (usuario.DebeCambiarPassword)
+        {
+            claims.Add(new Claim("debe_cambiar_password", "true"));
+        }
+
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_options.Key));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expires = DateTime.UtcNow.AddMinutes(_options.ExpirationMinutes);

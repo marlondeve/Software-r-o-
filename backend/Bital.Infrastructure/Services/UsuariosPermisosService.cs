@@ -78,6 +78,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             NombreCompleto = dto.NombreCompleto,
             Email = dto.Email,
             Identificacion = identificacion,
+            PasswordHash = HashPassword(identificacion),
             RolModuloId = rol.Id,
             Activo = true,
             Observaciones = dto.Observaciones,
@@ -116,10 +117,18 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (existeUsuario)
             throw new InvalidOperationException($"Ya existe otro usuario con el nombre {identificacion}");
 
+        var identificacionAnterior = usuario.Identificacion?.Trim();
+
         usuario.NombreCompleto = dto.NombreCompleto;
         usuario.Email = dto.Email;
         usuario.Identificacion = identificacion;
         usuario.Observaciones = dto.Observaciones;
+
+        if (!string.Equals(identificacionAnterior, identificacion, StringComparison.OrdinalIgnoreCase)
+            && UsaPasswordPorDefecto(usuario, identificacionAnterior))
+        {
+            EstablecerPasswordDesdeIdentificacion(usuario, identificacion);
+        }
 
         await _context.SaveChangesAsync();
         return MapUsuarioToDto(usuario);
@@ -309,16 +318,20 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         var usuario = await _context.UsuariosModulo.FirstOrDefaultAsync(u => u.Id == id)
             ?? throw new KeyNotFoundException($"Usuario {id} no encontrado");
 
-        var passwordTemporal = GenerarPasswordTemporal();
-        usuario.PasswordHash = HashPassword(passwordTemporal);
+        var identificacion = usuario.Identificacion?.Trim();
+        if (string.IsNullOrEmpty(identificacion))
+            throw new InvalidOperationException("El usuario no tiene nombre de usuario configurado.");
+
+        usuario.PasswordHash = HashPassword(identificacion);
         usuario.ModificadoEn = DateTime.UtcNow;
         usuario.ModificadoPor = solicitadoPor;
         await _context.SaveChangesAsync();
 
         return new RestablecerPasswordResponseDto
         {
-            PasswordTemporal = passwordTemporal,
-            Mensaje = "Contraseña restablecida. Comuníquela al usuario por un canal seguro.",
+            Identificacion = identificacion,
+            PasswordTemporal = identificacion,
+            Mensaje = "Contraseña restablecida al nombre de usuario. Debe cambiarla en «Cambiar contraseña» del login.",
         };
     }
 
@@ -347,14 +360,17 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         usuario.UltimoAcceso = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
+        var identificacion = usuario.Identificacion?.Trim() ?? string.Empty;
+
         return new LoginModuloResponseDto
         {
             Id = usuario.Id,
-            Usuario = usuario.Identificacion ?? string.Empty,
+            Usuario = identificacion,
             Email = usuario.Email,
             NombreCompleto = usuario.NombreCompleto,
             RolModuloId = usuario.RolModuloId,
             RolNombre = usuario.RolModulo.Nombre,
+            DebeCambiarPassword = UsaPasswordPorDefecto(usuario, identificacion),
         };
     }
 
@@ -415,20 +431,20 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
     private static bool VerificarPassword(string password, string hash)
     {
-        return HashPassword(password) == hash;
+        return string.Equals(HashPassword(password), hash, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static string GenerarPasswordTemporal()
+    private static void EstablecerPasswordDesdeIdentificacion(UsuarioModulo usuario, string identificacion)
     {
-        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-        var bytes = RandomNumberGenerator.GetBytes(10);
-        var sb = new StringBuilder(10);
-        foreach (var b in bytes)
-        {
-            sb.Append(chars[b % chars.Length]);
-        }
+        usuario.PasswordHash = HashPassword(identificacion.Trim());
+    }
 
-        return sb.ToString();
+    private static bool UsaPasswordPorDefecto(UsuarioModulo usuario, string? identificacionReferencia = null)
+    {
+        var identificacion = identificacionReferencia?.Trim() ?? usuario.Identificacion?.Trim();
+        return !string.IsNullOrEmpty(identificacion)
+            && !string.IsNullOrEmpty(usuario.PasswordHash)
+            && VerificarPassword(identificacion, usuario.PasswordHash);
     }
 
     private static string HashPassword(string password)

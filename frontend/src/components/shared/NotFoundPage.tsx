@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom"
 
+import { AppBrandName } from "@/components/layout/AppBrandName"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
+import { obtenerDestinoPostLogin } from "@/lib/modulos"
 
 export function NotFoundPage() {
   const { usuario } = useAuth()
@@ -13,11 +15,11 @@ export function NotFoundPage() {
         Página no encontrada
       </h1>
       <p className="max-w-md text-muted-foreground">
-        La ruta solicitada no existe en BITAL o ya no está disponible.
+        La ruta solicitada no existe en <AppBrandName /> o ya no está disponible.
       </p>
       <Button asChild>
-        <Link to={usuario ? "/modulos" : "/login"}>
-          {usuario ? "Volver a módulos" : "Ir al inicio de sesión"}
+        <Link to={usuario ? obtenerDestinoPostLogin(usuario) : "/login"}>
+          {usuario ? "Volver al inicio" : "Ir al inicio de sesión"}
         </Link>
       </Button>
     </main>

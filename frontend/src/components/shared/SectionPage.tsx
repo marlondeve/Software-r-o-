@@ -1,3 +1,5 @@
+import { AppBrandName } from "@/components/layout/AppBrandName"
+
 interface SectionPageProps {
   title: string
   description?: string
@@ -8,8 +10,12 @@ export function SectionPage({ title, description }: SectionPageProps) {
     <section>
       <h1 className="text-lg font-semibold text-foreground">{title}</h1>
       <p className="mt-1.5 text-sm text-muted-foreground">
-        {description ??
-          "Sección en preparación. El frontend BITAL fue inicializado correctamente."}
+        {description ?? (
+          <>
+            Sección en preparación. El frontend <AppBrandName /> fue inicializado
+            correctamente.
+          </>
+        )}
       </p>
     </section>
   )

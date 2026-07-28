@@ -10,14 +10,10 @@ public static class AuthCookieExtensions
         JwtOptions options,
         IWebHostEnvironment environment)
     {
-        response.Cookies.Append(options.CookieName, token, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = !environment.IsDevelopment(),
-            SameSite = environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict,
-            MaxAge = TimeSpan.FromMinutes(options.ExpirationMinutes),
-            Path = "/",
-        });
+        var cookieOptions = BuildCookieOptions(options, environment);
+        cookieOptions.MaxAge = TimeSpan.FromMinutes(options.ExpirationMinutes);
+
+        response.Cookies.Append(options.CookieName, token, cookieOptions);
     }
 
     public static void DeleteAuthCookie(
@@ -25,11 +21,21 @@ public static class AuthCookieExtensions
         JwtOptions options,
         IWebHostEnvironment environment)
     {
-        response.Cookies.Delete(options.CookieName, new CookieOptions
+        response.Cookies.Delete(options.CookieName, BuildCookieOptions(options, environment));
+    }
+
+    private static CookieOptions BuildCookieOptions(JwtOptions options, IWebHostEnvironment environment)
+    {
+        var crossOrigin = options.CrossOriginCookies;
+
+        return new CookieOptions
         {
+            HttpOnly = true,
+            Secure = crossOrigin || !environment.IsDevelopment(),
+            SameSite = crossOrigin
+                ? SameSiteMode.None
+                : environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict,
             Path = "/",
-            Secure = !environment.IsDevelopment(),
-            SameSite = environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict,
-        });
+        };
     }
 }
