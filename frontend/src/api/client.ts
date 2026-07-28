@@ -63,7 +63,9 @@ function extraerMensajeError(
   }
   if (body?.error) return body.error
   if (error.response?.status === 404) {
-    return "Servicio no disponible. Reinicie el backend (AuthController) e intente de nuevo."
+    return import.meta.env.DEV
+      ? "Servicio no disponible. Verifique que el backend esté en ejecución."
+      : "Servicio no disponible. Intente de nuevo más tarde."
   }
   return error.message || "Error desconocido en la API"
 }

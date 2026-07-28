@@ -1,6 +1,4 @@
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
-import { Copy, Check } from "lucide-react"
-import { useState } from "react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -12,14 +10,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 
 interface RestablecerClaveDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   usuario: UsuarioModulo | null
-  passwordTemporal: string
   mensaje?: string
 }
 
@@ -27,21 +22,8 @@ export function RestablecerClaveDialog({
   open,
   onOpenChange,
   usuario,
-  passwordTemporal,
   mensaje,
 }: RestablecerClaveDialogProps) {
-  const [copiado, setCopiado] = useState(false)
-
-  async function copiarClave() {
-    try {
-      await navigator.clipboard.writeText(passwordTemporal)
-      setCopiado(true)
-      window.setTimeout(() => setCopiado(false), 2000)
-    } catch {
-      setCopiado(false)
-    }
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -55,30 +37,17 @@ export function RestablecerClaveDialog({
         </DialogHeader>
 
         <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="password-temporal">Contraseña (nombre de usuario)</Label>
-            <div className="flex gap-2">
-              <Input
-                id="password-temporal"
-                readOnly
-                value={passwordTemporal}
-                className="font-mono"
-              />
-              <Button type="button" variant="outline" onClick={() => void copiarClave()}>
-                {copiado ? (
-                  <Check data-icon="inline-start" className="size-4" />
-                ) : (
-                  <Copy data-icon="inline-start" className="size-4" />
-                )}
-                {copiado ? "Copiado" : "Copiar"}
-              </Button>
-            </div>
-          </div>
+          {usuario && (
+            <p className="text-sm text-muted-foreground">
+              Usuario de acceso:{" "}
+              <span className="font-medium text-foreground">{usuario.usuario}</span>
+            </p>
+          )}
 
           <Alert>
             <AlertDescription className="text-sm">
               {mensaje ??
-                "El usuario debe iniciar sesión con su nombre de usuario como contraseña y cambiarla en «Cambiar contraseña» del login."}
+                "Indique al usuario que inicie sesión con su nombre de usuario como contraseña y la cambie en «Cambiar contraseña» del login. No comparta credenciales por canales inseguros."}
             </AlertDescription>
           </Alert>
         </div>

@@ -18,10 +18,8 @@ import { RestablecerClaveDialog } from "@/modules/dietas-cocina/usuarios/compone
 import { RolesPermisosPanel } from "@/modules/dietas-cocina/usuarios/components/RolesPermisosPanel"
 import { UsuariosFiltros } from "@/modules/dietas-cocina/usuarios/components/UsuariosFiltros"
 import { UsuariosTabla } from "@/modules/dietas-cocina/usuarios/components/UsuariosTabla"
-import {
-  mockRolesDietas,
-  mockUsuariosDietas,
-} from "@/modules/dietas-cocina/usuarios/datos/mockUsuarios"
+import { cargarMockUsuarios } from "@/modules/dietas-cocina/usuarios/datos/cargarMockUsuarios"
+import { USUARIOS_FILTROS_UI } from "@/modules/dietas-cocina/usuarios/datos/usuariosFiltrosUi"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { restablecerPasswordUsuario } from "@/api/authModulo.service"
 import {
@@ -44,14 +42,10 @@ export function UsuariosRolesPage() {
   const rolActual = obtenerNombreRolDietas(usuarioActual)
   const puedeGestionar = puedeGestionarUsuariosRoles(rolActual)
   const apiActiva = usarApiDietasCocina()
-  const filtrosUi = mockUsuariosDietas.filtros
+  const filtrosUi = USUARIOS_FILTROS_UI
   const [tabActiva, setTabActiva] = useState<TabUsuariosRoles>("usuarios")
-  const [usuarios, setUsuarios] = useState<UsuarioModulo[]>(() =>
-    apiActiva ? [] : mockUsuariosDietas.usuarios,
-  )
-  const [roles, setRoles] = useState<RolModuloDto[]>(() =>
-    apiActiva ? [] : mockRolesDietas,
-  )
+  const [usuarios, setUsuarios] = useState<UsuarioModulo[]>([])
+  const [roles, setRoles] = useState<RolModuloDto[]>([])
   const [permisosApi, setPermisosApi] = useState<PermisoRolDto[]>([])
   const [rolFiltro, setRolFiltro] = useState("todos")
   const [estadoFiltro, setEstadoFiltro] = useState("todos")
@@ -66,7 +60,6 @@ export function UsuariosRolesPage() {
   const [usuarioEdit, setUsuarioEdit] = useState<UsuarioModulo | null>(null)
   const [usuarioClaveRestablecida, setUsuarioClaveRestablecida] =
     useState<UsuarioModulo | null>(null)
-  const [passwordTemporal, setPasswordTemporal] = useState("")
   const [mensajeClaveRestablecida, setMensajeClaveRestablecida] = useState("")
   const [dialogClaveAbierto, setDialogClaveAbierto] = useState(false)
   const [cargandoUsuarios, setCargandoUsuarios] = useState(false)
@@ -106,7 +99,7 @@ export function UsuariosRolesPage() {
 
   const cargarRoles = useCallback(() => {
     if (!apiActiva) {
-      setRoles(mockRolesDietas)
+      void cargarMockUsuarios().then((demo) => setRoles(demo.roles))
       return
     }
     void Promise.all([listarRoles(), obtenerPermisosRoles()])
@@ -123,6 +116,11 @@ export function UsuariosRolesPage() {
   useEffect(() => {
     cargarRoles()
   }, [cargarRoles, refrescoRoles])
+
+  useEffect(() => {
+    if (apiActiva || !import.meta.env.DEV) return
+    void cargarMockUsuarios().then((demo) => setUsuarios(demo.usuarios))
+  }, [apiActiva])
 
   const usuariosFiltrados = useMemo(() => {
     if (apiActiva) return usuarios
@@ -309,7 +307,6 @@ export function UsuariosRolesPage() {
       void restablecerPasswordUsuario(usuario.id)
         .then((resultado) => {
           setUsuarioClaveRestablecida(usuario)
-          setPasswordTemporal(resultado.passwordTemporal)
           setMensajeClaveRestablecida(resultado.mensaje)
           setDialogClaveAbierto(true)
         })
@@ -324,9 +321,7 @@ export function UsuariosRolesPage() {
       return
     }
 
-    const temporal = usuario.usuario
     setUsuarioClaveRestablecida(usuario)
-    setPasswordTemporal(temporal)
     setMensajeClaveRestablecida(
       "Contraseña restablecida al nombre de usuario. Debe cambiarla en «Cambiar contraseña» del login.",
     )
@@ -476,7 +471,6 @@ export function UsuariosRolesPage() {
         open={dialogClaveAbierto}
         onOpenChange={setDialogClaveAbierto}
         usuario={usuarioClaveRestablecida}
-        passwordTemporal={passwordTemporal}
         mensaje={mensajeClaveRestablecida}
       />
     </div>

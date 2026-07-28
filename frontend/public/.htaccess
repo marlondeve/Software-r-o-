@@ -2,14 +2,18 @@
   RewriteEngine On
   RewriteBase /
 
-  # Proxy del API hacia la clínica (HTTP). El navegador solo habla HTTPS con este subdominio.
-  RewriteRule ^api/v1/(.*)$ http://186.190.254.230:8080/api/v1/$1 [P,L]
-  RewriteRule ^health$ http://186.190.254.230:8080/health [P,L]
+  # Reglas de proxy del API: se inyectan en build:hostinger (HOSTINGER_API_PROXY en .env.hostinger)
 
   # SPA fallback (React Router)
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
 # Tipos MIME usados por el build de Vite
