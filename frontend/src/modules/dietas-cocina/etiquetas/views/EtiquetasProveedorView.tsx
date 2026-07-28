@@ -27,6 +27,7 @@ import {
   type FiltrosEstadoEtiqueta,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEstilos"
 import { generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
+import { devLog } from "@/lib/devLog"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { filtrarEtiquetasDelPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 import {
@@ -236,7 +237,7 @@ export function EtiquetasProveedorView() {
       )
       reimprimirEtiquetas(etiquetas.map((e) => e.id))
     } catch (error) {
-      console.error("Error al reimprimir etiquetas:", error)
+      devLog.error("Error al reimprimir etiquetas:", error)
       window.alert("No se pudo generar el PDF de reimpresión.")
     } finally {
       setReimprimiendo(false)
@@ -264,7 +265,7 @@ export function EtiquetasProveedorView() {
       )
       marcarEtiquetasImpresas(etiquetas.map((e) => e.id))
     } catch (error) {
-      console.error("Error al generar PDF de etiquetas:", error)
+      devLog.error("Error al generar PDF de etiquetas:", error)
       window.alert(
         "No se pudo generar el PDF. Selecciona al menos una etiqueta e inténtalo de nuevo.",
       )
