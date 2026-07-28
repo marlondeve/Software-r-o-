@@ -201,7 +201,8 @@ GO
 /* ============================================================================
    3. USUARIOS INSTITUCIONALES + PERMISOS POR ROL (RolesModulo / RolModuloId)
    Requiere migración EF 20260728120000_AddRolesModuloDinamicos aplicada.
-   Clave temporal por defecto: Bital2026!  (SHA-256 hex, igual que la API)
+   Contraseña inicial por defecto: igual al nombre de usuario (Identificacion)
+   Hash: SHA-256 en hex mayúsculas, igual que la API (.NET Convert.ToHexString)
    ============================================================================ */
 USE [BitalNegocio];
 GO
@@ -214,7 +215,6 @@ END
 GO
 
 DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
-DECLARE @PasswordHash nvarchar(128) = N'3ab36e2aa3c89926e88a03fbfcfc86dc08c7aa3e1823781c63e1154f577a22e2';
 
 DECLARE @RolAdmin uniqueidentifier = '11111111-1111-1111-1111-111111000001';
 DECLARE @RolNutricionista uniqueidentifier = '11111111-1111-1111-1111-111111000002';
@@ -258,8 +258,31 @@ WHEN NOT MATCHED BY TARGET THEN
     )
     VALUES (
         NEWID(), src.NombreCompleto, src.Email, src.Identificacion, src.RolModuloId, 1,
-        @PasswordHash, @AhoraUtc, N'Migracion'
+        UPPER(CONVERT(varchar(64), HASHBYTES('SHA2_256', CAST(src.Identificacion AS varchar(100))), 2)),
+        @AhoraUtc, N'Migracion'
     );
+
+-- Usuarios seed ya existentes: alinear contraseña al nombre de usuario si aún no la cambiaron
+UPDATE u
+SET
+    PasswordHash = UPPER(CONVERT(varchar(64), HASHBYTES('SHA2_256', CAST(u.Identificacion AS varchar(100))), 2)),
+    ModificadoEn = @AhoraUtc,
+    ModificadoPor = N'Migracion'
+FROM bital.UsuariosModulo u
+INNER JOIN (
+    SELECT Email FROM (VALUES
+        (N'admin@clinicadelrio.com'),
+        (N'nutricionista@clinicadelrio.com'),
+        (N'cocinero@clinicadelrio.com'),
+        (N'enfermera@clinicadelrio.com')
+    ) AS v(Email)
+) seed ON seed.Email = u.Email
+WHERE u.Identificacion IS NOT NULL
+  AND (
+        u.PasswordHash IS NULL
+        OR u.PasswordHash = N'3ab36e2aa3c89926e88a03fbfcfc86dc08c7aa3e1823781c63e1154f577a22e2'
+        OR u.PasswordHash = UPPER(N'3ab36e2aa3c89926e88a03fbfcfc86dc08c7aa3e1823781c63e1154f577a22e2')
+      );
 
 -- Permisos: insertar rutas faltantes por rol (no duplicar)
 ;WITH RutasPorRol AS (
@@ -424,6 +447,6 @@ FROM (
 
 PRINT '============================================================';
 PRINT 'BITAL — Migración de datos completada';
-PRINT 'Clave temporal usuarios: Bital2026! (cambiar en primer acceso)';
+PRINT 'Contraseña inicial usuarios seed: igual al nombre de usuario (Identificacion). Cambiar en «Cambiar contraseña» del login.';
 PRINT '============================================================';
 GO

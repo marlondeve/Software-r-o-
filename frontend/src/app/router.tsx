@@ -10,7 +10,7 @@ import { RequireAdmin } from "@/features/autenticacion/components/RequireAdmin"
 import { RequireAuth } from "@/features/autenticacion/components/RequireAuth"
 import { RequireDietasRuta } from "@/features/autenticacion/components/RequireDietasRuta"
 import { RequireModuleAccess } from "@/features/autenticacion/components/RequireModuleAccess"
-import { SeleccionModuloPage } from "@/features/autenticacion/components/SeleccionModuloPage"
+import { ModulosEntry } from "@/features/autenticacion/components/ModulosEntry"
 import { PermisosPage } from "@/features/administracion/permisos/PermisosPage"
 import { RolesPage } from "@/features/administracion/roles/RolesPage"
 import { UsuariosPage } from "@/features/administracion/usuarios/UsuariosPage"
@@ -104,7 +104,7 @@ const encuestasRoutes = encuestasHabilitado()
   : [
       {
         path: "/encuestas/*",
-        element: <Navigate to="/modulos" replace />,
+        element: <Navigate to="/dietas-cocina/inicio" replace />,
       },
     ]
 
@@ -125,7 +125,7 @@ export const router = createBrowserRouter([
     path: "/modulos",
     element: (
       <RequireAuth>
-        <SeleccionModuloPage />
+        <ModulosEntry />
       </RequireAuth>
     ),
   },

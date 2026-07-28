@@ -1,7 +1,7 @@
 import { Navigate } from "react-router-dom"
 
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
-import { usuarioEsAdministrador } from "@/lib/modulos"
+import { usuarioEsAdministrador, obtenerDestinoPostLogin } from "@/lib/modulos"
 
 interface RequireAdminProps {
   children: React.ReactNode
@@ -23,7 +23,7 @@ export function RequireAdmin({ children }: RequireAdminProps) {
   }
 
   if (!usuarioEsAdministrador(usuario)) {
-    return <Navigate to="/modulos" replace />
+    return <Navigate to={obtenerDestinoPostLogin(usuario)} replace />
   }
 
   return children

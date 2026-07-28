@@ -2,6 +2,7 @@ import type { DetalleConciliacion, RegistroSistema } from "@/modules/dietas-coci
 import { AlertTriangle, ArrowRight, CheckCircle2, Database } from "lucide-react"
 import { useEffect, useState } from "react"
 
+import { AppBrandName } from "@/components/layout/AppBrandName"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -132,7 +133,7 @@ export function ConciliacionDetalleSheet({
                 <div className="min-w-0 rounded-lg border border-border bg-muted/30 p-3">
                   <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
                     <Database className="size-3.5 shrink-0 text-primary" />
-                    Sistema Bital
+                    Sistema <AppBrandName />
                   </div>
                   <p className="text-xl font-semibold wrap-break-word tabular-nums text-primary sm:text-2xl">
                     {detalle.bital.unidades} Unidades
@@ -167,7 +168,7 @@ export function ConciliacionDetalleSheet({
             <section>
               <div className="mb-2 flex min-w-0 items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold text-foreground">
-                  Registros del sistema (Bital)
+                  Registros del sistema (<AppBrandName />)
                 </h3>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   Total: {detalle.totalRegistros} registros

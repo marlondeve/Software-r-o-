@@ -1,10 +1,9 @@
 import {
   APP_DEVELOPER,
-  APP_NAME,
   APP_VERSION,
   obtenerTextoCopyright,
-  obtenerTextoCopyrightCorto,
 } from "@/lib/appInfo"
+import { AppBrandName } from "@/components/layout/AppBrandName"
 import { cn } from "@/lib/utils"
 
 interface AppLegalFooterProps {
@@ -27,9 +26,6 @@ export function AppLegalFooter({
         title={`${obtenerTextoCopyright()} Desarrollado por ${APP_DEVELOPER}`}
       >
         <p className="text-wrap wrap-break-words">
-          {obtenerTextoCopyrightCorto()}
-        </p>
-        <p className="text-wrap wrap-break-words">
           Versión {APP_VERSION}
         </p>
       </footer>
@@ -41,7 +37,9 @@ export function AppLegalFooter({
       className={cn("space-y-1 text-center text-xs text-muted-foreground", className)}
       aria-label="Información legal del software"
     >
-      <p className="font-medium text-foreground/80">{APP_NAME}</p>
+      <p className="font-medium text-foreground/80">
+        <AppBrandName />
+      </p>
       <p>{obtenerTextoCopyright()}</p>
       <p>Desarrollado por {APP_DEVELOPER}</p>
       <p className="text-[11px]">Versión {APP_VERSION}</p>

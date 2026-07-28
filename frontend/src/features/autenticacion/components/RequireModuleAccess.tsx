@@ -3,7 +3,7 @@ import { useEffect } from "react"
 import { Navigate } from "react-router-dom"
 
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
-import { guardarModuloActivo } from "@/lib/modulos"
+import { guardarModuloActivo, obtenerDestinoPostLogin } from "@/lib/modulos"
 import { moduloHabilitado } from "@/lib/modulosFlags"
 import type { ModuloId } from "@/types/module"
 
@@ -37,11 +37,11 @@ export function RequireModuleAccess({
   }
 
   if (!moduloHabilitado(moduloId)) {
-    return <Navigate to="/modulos" replace />
+    return <Navigate to={obtenerDestinoPostLogin(usuario)} replace />
   }
 
   if (!usuario.accesos.some((acceso) => acceso.moduloId === moduloId)) {
-    return <Navigate to="/modulos" replace />
+    return <Navigate to={obtenerDestinoPostLogin(usuario)} replace />
   }
 
   return children

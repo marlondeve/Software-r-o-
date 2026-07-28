@@ -31,6 +31,7 @@ public static class ClaimsPrincipalExtensions
             NombreCompleto = user.FindFirstValue(ClaimTypes.Name) ?? string.Empty,
             RolModuloId = Guid.Parse(rolModuloIdClaim),
             RolNombre = user.FindFirstValue("rol_nombre") ?? string.Empty,
+            DebeCambiarPassword = user.FindFirstValue("debe_cambiar_password") == "true",
         };
     }
 }

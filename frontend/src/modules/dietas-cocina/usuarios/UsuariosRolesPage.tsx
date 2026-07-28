@@ -1,4 +1,4 @@
-import type { RolModuloDto, PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
+import type { RolModuloDto, PermisoRolDto, MetaPaginacionDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Plus, Shield, Users } from "lucide-react"
@@ -71,6 +71,38 @@ export function UsuariosRolesPage() {
   const [dialogClaveAbierto, setDialogClaveAbierto] = useState(false)
   const [cargandoUsuarios, setCargandoUsuarios] = useState(false)
   const [errorUsuarios, setErrorUsuarios] = useState<string | null>(null)
+  const [metaUsuarios, setMetaUsuarios] = useState<MetaPaginacionDto | null>(null)
+
+  const cargarUsuarios = useCallback(
+    (paginaOverride?: number) => {
+      if (!apiActiva) return Promise.resolve()
+
+      const pagina = paginaOverride ?? paginaActual
+
+      setCargandoUsuarios(true)
+      setErrorUsuarios(null)
+
+      return listarUsuarios({
+        rolModuloId: rolFiltro !== "todos" ? rolFiltro : undefined,
+        estado: estadoFiltro !== "todos" ? estadoFiltro === "activo" : undefined,
+        page: pagina,
+        pageSize: TAMANO_PAGINA_USUARIOS,
+      })
+        .then((res) => {
+          setUsuarios(res.usuarios)
+          setMetaUsuarios(res.meta ?? null)
+        })
+        .catch((error) => {
+          setUsuarios([])
+          setMetaUsuarios(null)
+          setErrorUsuarios(
+            error instanceof Error ? error.message : "No se pudieron cargar los usuarios.",
+          )
+        })
+        .finally(() => setCargandoUsuarios(false))
+    },
+    [apiActiva, rolFiltro, estadoFiltro, paginaActual],
+  )
 
   const cargarRoles = useCallback(() => {
     if (!apiActiva) {
@@ -105,12 +137,11 @@ export function UsuariosRolesPage() {
   }, [usuarios, rolFiltro, estadoFiltro, apiActiva])
 
   const totalFiltrados = apiActiva
-    ? usuarios.length
+    ? (metaUsuarios?.total ?? 0)
     : usuariosFiltrados.length
-  const totalPaginas = Math.max(
-    1,
-    Math.ceil(totalFiltrados / TAMANO_PAGINA_USUARIOS),
-  )
+  const totalPaginas = apiActiva
+    ? Math.max(1, metaUsuarios?.totalPages ?? 1)
+    : Math.max(1, Math.ceil(totalFiltrados / TAMANO_PAGINA_USUARIOS))
 
   const usuariosPagina = useMemo(() => {
     if (apiActiva) return usuarios
@@ -128,24 +159,8 @@ export function UsuariosRolesPage() {
   )
 
   useEffect(() => {
-    if (!apiActiva) return
-    setCargandoUsuarios(true)
-    setErrorUsuarios(null)
-    void listarUsuarios({
-      rolModuloId: rolFiltro !== "todos" ? rolFiltro : undefined,
-      estado: estadoFiltro !== "todos" ? estadoFiltro === "activo" : undefined,
-      page: paginaActual,
-      pageSize: TAMANO_PAGINA_USUARIOS,
-    })
-      .then((res) => setUsuarios(res.usuarios))
-      .catch((error) => {
-        setUsuarios([])
-        setErrorUsuarios(
-          error instanceof Error ? error.message : "No se pudieron cargar los usuarios.",
-        )
-      })
-      .finally(() => setCargandoUsuarios(false))
-  }, [apiActiva, rolFiltro, estadoFiltro, paginaActual])
+    void cargarUsuarios()
+  }, [cargarUsuarios])
 
   useEffect(() => {
     setPaginaActual(1)
@@ -171,17 +186,8 @@ export function UsuariosRolesPage() {
 
     if (apiActiva) {
       void cambiarRolUsuario(usuarioId, rolModuloId)
-        .then(() =>
-          listarUsuarios({
-            rolModuloId: rolFiltro !== "todos" ? rolFiltro : undefined,
-            estado:
-              estadoFiltro !== "todos" ? estadoFiltro === "activo" : undefined,
-            page: paginaActual,
-            pageSize: TAMANO_PAGINA_USUARIOS,
-          }),
-        )
-        .then((res) => {
-          setUsuarios(res.usuarios)
+        .then(() => cargarUsuarios())
+        .then(() => {
           demoToast("Rol actualizado correctamente.", "success")
         })
         .catch((error) => {
@@ -245,10 +251,12 @@ export function UsuariosRolesPage() {
   function crearUsuarioHandler(datos: Omit<UsuarioModulo, "id">) {
     if (apiActiva) {
       void crearUsuarioApi(datos)
-        .then((creado) => {
-          setUsuarios((prev) => [creado, ...prev])
+        .then(() => {
           setPaginaActual(1)
-          demoToast(`Usuario "${creado.nombre}" creado correctamente.`, "success")
+          return cargarUsuarios(1)
+        })
+        .then(() => {
+          demoToast(`Usuario "${datos.nombre}" creado correctamente.`, "success")
         })
         .catch((error) => {
           demoToast(
@@ -316,11 +324,11 @@ export function UsuariosRolesPage() {
       return
     }
 
-    const temporal = `Tmp${Math.random().toString(36).slice(2, 10)}`
+    const temporal = usuario.usuario
     setUsuarioClaveRestablecida(usuario)
     setPasswordTemporal(temporal)
     setMensajeClaveRestablecida(
-      "Contraseña temporal generada. El usuario debe cambiarla en el login.",
+      "Contraseña restablecida al nombre de usuario. Debe cambiarla en «Cambiar contraseña» del login.",
     )
     setDialogClaveAbierto(true)
   }

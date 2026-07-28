@@ -14,6 +14,7 @@ public class LoginModuloResponseDto
     public string NombreCompleto { get; set; } = string.Empty;
     public Guid RolModuloId { get; set; }
     public string RolNombre { get; set; } = string.Empty;
+    public bool DebeCambiarPassword { get; set; }
 }
 
 public class CambiarPasswordDto

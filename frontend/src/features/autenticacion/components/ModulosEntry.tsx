@@ -1,9 +1,10 @@
 import { Navigate } from "react-router-dom"
 
+import { SeleccionModuloPage } from "@/features/autenticacion/components/SeleccionModuloPage"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { obtenerDestinoPostLogin } from "@/lib/modulos"
 
-export function RootRedirect() {
+export function ModulosEntry() {
   const { usuario, cargando } = useAuth()
 
   if (cargando) {
@@ -18,5 +19,10 @@ export function RootRedirect() {
     return <Navigate to="/login" replace />
   }
 
-  return <Navigate to={obtenerDestinoPostLogin(usuario)} replace />
+  const destino = obtenerDestinoPostLogin(usuario)
+  if (destino !== "/modulos") {
+    return <Navigate to={destino} replace />
+  }
+
+  return <SeleccionModuloPage />
 }

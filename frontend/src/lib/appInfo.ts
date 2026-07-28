@@ -1,4 +1,8 @@
-export const APP_NAME = "BITAL"
+export const APP_NAME = "RIOSOFT"
+
+export const APP_NAME_STEM = "RIO"
+
+export const APP_NAME_ACCENT = "SOFT"
 
 export const APP_OWNER = "Fundación Clínica del Río"
 

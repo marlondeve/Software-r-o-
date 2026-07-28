@@ -49,14 +49,14 @@ export function RestablecerClaveDialog({
           <DialogTitle>Contraseña restablecida</DialogTitle>
           <DialogDescription>
             {usuario
-              ? `Nueva contraseña temporal para ${usuario.nombre}. Cópiela y compártala por un canal seguro.`
-              : "Nueva contraseña temporal generada."}
+              ? `La contraseña de ${usuario.nombre} quedó igual a su nombre de usuario.`
+              : "Contraseña restablecida al nombre de usuario."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label htmlFor="password-temporal">Contraseña temporal</Label>
+            <Label htmlFor="password-temporal">Contraseña (nombre de usuario)</Label>
             <div className="flex gap-2">
               <Input
                 id="password-temporal"
@@ -78,7 +78,7 @@ export function RestablecerClaveDialog({
           <Alert>
             <AlertDescription className="text-sm">
               {mensaje ??
-                "El usuario debe iniciar sesión con esta clave y cambiarla en «Cambiar contraseña» del login."}
+                "El usuario debe iniciar sesión con su nombre de usuario como contraseña y cambiarla en «Cambiar contraseña» del login."}
             </AlertDescription>
           </Alert>
         </div>

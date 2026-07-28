@@ -6,6 +6,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { z } from "zod"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
+import { AppBrandName } from "@/components/layout/AppBrandName"
 import { AppLegalFooter } from "@/components/layout/AppLegalFooter"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -95,7 +96,9 @@ export function LoginPage() {
         </div>
 
         <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-foreground">BITAL</h1>
+          <h1 className="text-2xl font-bold text-foreground">
+            <AppBrandName as="span" />
+          </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Acceso seguro para personal autorizado
           </p>

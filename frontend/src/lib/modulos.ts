@@ -4,7 +4,7 @@ import { ClipboardList, UtensilsCrossed } from "lucide-react"
 import type { ModuloId } from "@/types/module"
 import type { Usuario } from "@/types/user"
 
-import { moduloHabilitado } from "@/lib/modulosFlags"
+import { moduloHabilitado, omitirSeleccionModulo } from "@/lib/modulosFlags"
 
 export interface ModuloConfig {
   id: ModuloId
@@ -68,11 +68,20 @@ export function obtenerModulosDisponibles(usuario: Usuario | null): ModuloConfig
 }
 
 export function obtenerDestinoPostLogin(usuario: Usuario): string {
-  if (usuario.accesos.length === 1) {
-    return modulosConfig[usuario.accesos[0].moduloId].rutaInicio
+  const modulos = obtenerModulosDisponibles(usuario)
+  if (modulos.length === 0) return "/login"
+
+  if (modulos.length === 1 || omitirSeleccionModulo()) {
+    const modulo = modulos[0]
+    guardarModuloActivo(modulo.id)
+    return modulo.rutaInicio
   }
 
   return "/modulos"
+}
+
+export function requiereSeleccionModulo(usuario: Usuario): boolean {
+  return obtenerDestinoPostLogin(usuario) === "/modulos"
 }
 
 export function esRutaDeModulo(pathname: string): ModuloId | null {
