@@ -4,10 +4,10 @@ import type { Usuario } from "@/types/user"
 import {
   cambiarPasswordModulo,
   loginModulo,
+  logoutModulo,
+  obtenerSesionModulo,
 } from "@/api/authModulo.service"
-import {
-  limpiarModuloActivo,
-} from "@/lib/modulos"
+import { limpiarModuloActivo } from "@/lib/modulos"
 import { moduloHabilitado } from "@/lib/modulosFlags"
 
 const SESSION_KEY = "bital:session"
@@ -45,6 +45,11 @@ function guardarSesion(usuario: Usuario): Usuario {
   return normalizado
 }
 
+function limpiarSesionLocal(): void {
+  sessionStorage.removeItem(SESSION_KEY)
+  limpiarModuloActivo()
+}
+
 export function obtenerSesion(): Usuario | null {
   const raw = sessionStorage.getItem(SESSION_KEY)
   if (!raw) return null
@@ -52,12 +57,22 @@ export function obtenerSesion(): Usuario | null {
   try {
     const usuario = normalizarUsuario(JSON.parse(raw) as Usuario)
     if (!usuario) {
-      sessionStorage.removeItem(SESSION_KEY)
+      limpiarSesionLocal()
       return null
     }
     return usuario
   } catch {
-    sessionStorage.removeItem(SESSION_KEY)
+    limpiarSesionLocal()
+    return null
+  }
+}
+
+export async function rehidratarSesion(): Promise<Usuario | null> {
+  try {
+    const sesion = await obtenerSesionModulo()
+    return guardarSesion(sesion)
+  } catch {
+    limpiarSesionLocal()
     return null
   }
 }
@@ -78,7 +93,11 @@ export async function cambiarPasswordSesion(
   return cambiarPasswordModulo({ usuario, passwordActual, passwordNueva })
 }
 
-export function cerrarSesion(): void {
-  sessionStorage.removeItem(SESSION_KEY)
-  limpiarModuloActivo()
+export async function cerrarSesion(): Promise<void> {
+  try {
+    await logoutModulo()
+  } catch {
+    // Si el token ya expiró, igual limpiamos el estado local.
+  }
+  limpiarSesionLocal()
 }

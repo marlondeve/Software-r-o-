@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Bital.Application.DTOs.Encuestas;
 using Bital.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -8,6 +9,7 @@ namespace Bital.ApiNegocio.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/encuestas/cuestionarios")]
+[Authorize]
 public class CuestionariosController : ControllerBase
 {
     private readonly ICuestionariosService _service;

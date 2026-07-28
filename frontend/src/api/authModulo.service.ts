@@ -60,6 +60,15 @@ export async function loginModulo(usuario: string, password: string): Promise<Us
   return mapLoginResponseToUsuario(extraerCuerpoApi(data))
 }
 
+export async function obtenerSesionModulo(): Promise<Usuario> {
+  const { data } = await apiClient.get<ApiResponse<unknown>>("/auth/me")
+  return mapLoginResponseToUsuario(extraerCuerpoApi(data))
+}
+
+export async function logoutModulo(): Promise<void> {
+  await apiClient.post("/auth/logout")
+}
+
 export async function cambiarPasswordModulo(input: {
   usuario: string
   passwordActual: string

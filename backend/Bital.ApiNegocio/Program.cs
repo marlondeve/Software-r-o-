@@ -1,6 +1,12 @@
+using System.Text;
 using Asp.Versioning;
+using Bital.Application.Interfaces;
+using Bital.Application.Options;
 using Bital.Infrastructure.Extensions;
+using Bital.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 
@@ -76,6 +82,47 @@ try
         }
     });
 
+    // JWT
+    builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+    var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
+                     ?? new JwtOptions();
+    if (string.IsNullOrWhiteSpace(jwtOptions.Key) || jwtOptions.Key.Length < 32)
+    {
+        throw new InvalidOperationException(
+            "Configure Jwt:Key con al menos 32 caracteres en appsettings o la variable Jwt__Key.");
+    }
+
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtOptions.Issuer,
+                ValidAudience = jwtOptions.Audience,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtOptions.Key)),
+                ClockSkew = TimeSpan.FromMinutes(1),
+            };
+
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    if (context.Request.Cookies.TryGetValue(jwtOptions.CookieName, out var token))
+                    {
+                        context.Token = token;
+                    }
+
+                    return Task.CompletedTask;
+                },
+            };
+        });
+
+    builder.Services.AddAuthorization();
+
     // CORS
     var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                       ?? builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
@@ -109,6 +156,7 @@ try
     builder.Services.AddScoped<Bital.Application.Interfaces.IParametrosService, Bital.Infrastructure.Services.ParametrosService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IAuditoriaService, Bital.Infrastructure.Services.AuditoriaService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IUsuariosPermisosService, Bital.Infrastructure.Services.UsuariosPermisosService>();
+    builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IAdministracionEncuestasService, Bital.Infrastructure.Services.AdministracionEncuestasService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IEncuestasBffService, Bital.Infrastructure.Services.EncuestasProxyService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.ICuestionariosService, Bital.Infrastructure.Services.CuestionariosService>();
@@ -150,8 +198,8 @@ try
 
     app.UseCors("AllowFrontend");
 
-    // app.UseAuthentication(); // TODO: Habilitar cuando se implemente JWT
-    // app.UseAuthorization();
+    app.UseAuthentication();
+    app.UseAuthorization();
 
     app.MapControllers();
 

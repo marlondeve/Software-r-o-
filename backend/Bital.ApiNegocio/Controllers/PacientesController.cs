@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Bital.Shared.Contracts.Responses;
 using Bital.Shared.Contracts.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
@@ -13,6 +14,7 @@ namespace Bital.ApiNegocio.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/[controller]")]
+[Authorize]
 [Produces("application/json")]
 public class PacientesController : ControllerBase
 {

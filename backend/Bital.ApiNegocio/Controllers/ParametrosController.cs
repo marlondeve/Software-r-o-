@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -8,6 +9,7 @@ namespace Bital.ApiNegocio.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/dietas-cocina/parametros")]
+[Authorize]
 public class ParametrosController : ControllerBase
 {
     private readonly IParametrosService _service;

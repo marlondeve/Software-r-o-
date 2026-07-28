@@ -1,10 +1,9 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using Asp.Versioning;
+using Bital.ApiNegocio.Extensions;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
 using Bital.Infrastructure.DietasCocina;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,6 +14,7 @@ namespace Bital.ApiNegocio.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/dietas-cocina/conciliacion")]
+[Authorize]
 [ApiVersion("1.0")]
 public class ConciliacionController : ControllerBase
 {
@@ -126,7 +126,7 @@ public class ConciliacionController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var linea = await _conciliacionService.MarcarConciliadoAsync(id, datos, usuario, cancellationToken);
             return Ok(new { data = linea });
         }
@@ -158,7 +158,7 @@ public class ConciliacionController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var linea = await _conciliacionService.MarcarPendienteRevisionAsync(id, datos, usuario, cancellationToken);
             return Ok(new { data = linea });
         }
@@ -209,7 +209,7 @@ public class ConciliacionController : ControllerBase
 
         try
         {
-            var usuario = "TestUser";
+            var usuario = User.GetUsuarioIdentificacion();
             await using var stream = factura.OpenReadStream();
             var linea = await _conciliacionService.SubirFacturaAsync(
                 id,

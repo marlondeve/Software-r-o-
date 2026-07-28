@@ -1,8 +1,10 @@
 using Asp.Versioning;
+using Bital.ApiNegocio.Extensions;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.DietasCocina;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -10,6 +12,7 @@ namespace Bital.ApiNegocio.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/dietas-cocina")]
+[Authorize]
 public class UsuariosPermisosController : ControllerBase
 {
     private readonly IUsuariosPermisosService _service;
@@ -55,7 +58,7 @@ public class UsuariosPermisosController : ControllerBase
     {
         try
         {
-            var resultado = await _service.CrearUsuarioAsync(dto, "system");
+            var resultado = await _service.CrearUsuarioAsync(dto, User.GetUsuarioIdentificacion());
             return Ok(new { data = resultado });
         }
         catch (InvalidOperationException ex)
@@ -144,7 +147,7 @@ public class UsuariosPermisosController : ControllerBase
     {
         try
         {
-            var resultado = await _service.RestablecerPasswordAsync(id, "system");
+            var resultado = await _service.RestablecerPasswordAsync(id, User.GetUsuarioIdentificacion());
             return Ok(new { data = resultado });
         }
         catch (KeyNotFoundException ex)
@@ -178,7 +181,7 @@ public class UsuariosPermisosController : ControllerBase
     {
         try
         {
-            var rol = await _service.CrearRolAsync(dto, "system");
+            var rol = await _service.CrearRolAsync(dto, User.GetUsuarioIdentificacion());
             return Ok(new { data = rol });
         }
         catch (InvalidOperationException ex)
@@ -262,7 +265,7 @@ public class UsuariosPermisosController : ControllerBase
                 Identificacion = "1000123456",
                 RolModuloId = RolModuloSeed.Administrador,
                 Observaciones = "Usuario administrador de prueba"
-            }, "system");
+            }, User.GetUsuarioIdentificacion());
 
             await _service.CrearUsuarioAsync(new CrearUsuarioDto
             {
@@ -271,7 +274,7 @@ public class UsuariosPermisosController : ControllerBase
                 Identificacion = "1000234567",
                 RolModuloId = RolModuloSeed.Nutricionista,
                 Observaciones = "Nutricionista de prueba"
-            }, "system");
+            }, User.GetUsuarioIdentificacion());
 
             await _service.CrearUsuarioAsync(new CrearUsuarioDto
             {
@@ -280,7 +283,7 @@ public class UsuariosPermisosController : ControllerBase
                 Identificacion = "1000345678",
                 RolModuloId = RolModuloSeed.Proveedor,
                 Observaciones = "Cocinero de prueba"
-            }, "system");
+            }, User.GetUsuarioIdentificacion());
 
             await _service.CrearUsuarioAsync(new CrearUsuarioDto
             {
@@ -289,7 +292,7 @@ public class UsuariosPermisosController : ControllerBase
                 Identificacion = "1000456789",
                 RolModuloId = RolModuloSeed.Enfermera,
                 Observaciones = "Enfermera de prueba"
-            }, "system");
+            }, User.GetUsuarioIdentificacion());
 
             await _service.ActualizarPermisosRolAsync(RolModuloSeed.Administrador, new ActualizarPermisosRolDto
             {

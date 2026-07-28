@@ -52,8 +52,10 @@ export function SeleccionModuloPage() {
   }
 
   function handleLogout() {
-    cerrarSesion()
-    navigate("/login", { replace: true })
+    void (async () => {
+      await cerrarSesion()
+      navigate("/login", { replace: true })
+    })()
   }
 
   return (
