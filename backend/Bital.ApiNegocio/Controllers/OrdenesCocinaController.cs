@@ -1,6 +1,8 @@
 using Asp.Versioning;
+using Bital.ApiNegocio.Extensions;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -10,6 +12,7 @@ namespace Bital.ApiNegocio.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/ordenes-cocina")]
+[Authorize]
 [ApiVersion("1.0")]
 public class OrdenesCocinaController : ControllerBase
 {
@@ -79,7 +82,7 @@ public class OrdenesCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var orden = await _ordenesService.CrearOrdenAsync(datos, usuario, cancellationToken);
             return CreatedAtAction(nameof(ObtenerDetalleOrden), new { ordenId = orden.Id }, orden);
         }
@@ -106,7 +109,7 @@ public class OrdenesCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var orden = await _ordenesService.ActualizarEstadoOrdenAsync(ordenId, datos, usuario, cancellationToken);
             return Ok(orden);
         }
@@ -133,7 +136,7 @@ public class OrdenesCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser";
+            var usuario = User.GetUsuarioIdentificacion();
             var orden = await _ordenesService.ActualizarChecklistOrdenAsync(
                 ordenId,
                 datos,
@@ -165,7 +168,7 @@ public class OrdenesCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             await _ordenesService.CancelarOrdenAsync(ordenId, motivo, usuario, cancellationToken);
             return Ok(new { message = "Orden cancelada exitosamente", ordenId });
         }

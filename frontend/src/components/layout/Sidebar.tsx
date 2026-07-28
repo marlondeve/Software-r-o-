@@ -221,9 +221,11 @@ export function SidebarContent({
       : mainNavItems[module]
 
   function handleLogout() {
-    cerrarSesion()
-    navigate("/login", { replace: true })
-    onNavigate?.()
+    void (async () => {
+      await cerrarSesion()
+      navigate("/login", { replace: true })
+      onNavigate?.()
+    })()
   }
 
   return (

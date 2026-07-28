@@ -2,6 +2,7 @@ using Asp.Versioning;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.DTOs.Encuestas;
 using Bital.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -9,6 +10,7 @@ namespace Bital.ApiNegocio.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/encuestas")]
+[Authorize]
 public class PacientesEncuestasController : ControllerBase
 {
     private readonly IEncuestasBffService _service;

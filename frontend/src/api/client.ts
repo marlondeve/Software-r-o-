@@ -3,6 +3,8 @@ import axios, { type AxiosError } from "axios"
 import { apiBaseUrl } from "@/api/config"
 import type { ApiErrorBody } from "@/api/types"
 
+const SESSION_KEY = "bital:session"
+
 export class BitalApiError extends Error {
   status?: number
 
@@ -15,11 +17,17 @@ export class BitalApiError extends Error {
 
 export const apiClient = axios.create({
   baseURL: apiBaseUrl,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 })
+
+function limpiarSesionLocal(): void {
+  sessionStorage.removeItem(SESSION_KEY)
+  sessionStorage.removeItem("bital:modulo-activo")
+}
 
 function extraerMensajeError(
   error: AxiosError<
@@ -63,8 +71,23 @@ function extraerMensajeError(
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorBody>) => {
+    const status = error.response?.status
+    const requestUrl = error.config?.url ?? ""
+
+    if (
+      status === 401 &&
+      !requestUrl.includes("/auth/login") &&
+      !requestUrl.includes("/auth/cambiar-password") &&
+      !requestUrl.includes("/auth/me")
+    ) {
+      limpiarSesionLocal()
+      if (window.location.pathname !== "/login") {
+        window.location.assign("/login")
+      }
+    }
+
     return Promise.reject(
-      new BitalApiError(extraerMensajeError(error), error.response?.status),
+      new BitalApiError(extraerMensajeError(error), status),
     )
   },
 )

@@ -1,6 +1,8 @@
 using Asp.Versioning;
+using Bital.ApiNegocio.Extensions;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -10,6 +12,7 @@ namespace Bital.ApiNegocio.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v{version:apiVersion}/dietas-cocina/etiquetas")]
+[Authorize]
 [ApiVersion("1.0")]
 public class EtiquetasController : ControllerBase
 {
@@ -77,7 +80,7 @@ public class EtiquetasController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var etiquetaIds = await _etiquetasService.GenerarEtiquetasAsync(datos, usuario, cancellationToken);
             return StatusCode(StatusCodes.Status201Created, new { etiquetaIds, totalGeneradas = etiquetaIds.Count });
         }
@@ -161,7 +164,7 @@ public class EtiquetasController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var etiqueta = await _etiquetasService.ConfirmarPreEntregaAsync(etiquetaId, datos, usuario, cancellationToken);
             return Ok(etiqueta);
         }
@@ -191,7 +194,7 @@ public class EtiquetasController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var etiqueta = await _etiquetasService.ConfirmarEntregaAsync(etiquetaId, usuario, cancellationToken);
             return Ok(etiqueta);
         }
@@ -223,7 +226,7 @@ public class EtiquetasController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var etiqueta = await _etiquetasService.ConfirmarDevolucionAsync(etiquetaId, datos, usuario, cancellationToken);
             return Ok(etiqueta);
         }

@@ -1,6 +1,8 @@
 using Asp.Versioning;
+using Bital.ApiNegocio.Extensions;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -11,6 +13,7 @@ namespace Bital.ApiNegocio.Controllers;
 [ApiController]
 [ApiVersion("1.0")]
 [Route("api/v{version:apiVersion}/dietas-cocina")]
+[Authorize]
 [Produces("application/json")]
 public class DietasCocinaController : ControllerBase
 {
@@ -87,7 +90,7 @@ public class DietasCocinaController : ControllerBase
         try
         {
             // TODO: Obtener usuario del token JWT
-            var usuario = "TestUser";
+            var usuario = User.GetUsuarioIdentificacion();
 
             var resultado = await _dietasService.SolicitarDietaAsync(filaDietaId, solicitud, usuario, cancellationToken);
             return Ok(resultado);
@@ -120,7 +123,7 @@ public class DietasCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
 
             // Si no viene body, crear uno vacío
             confirmacion ??= new SolicitudDietaDto();
@@ -151,7 +154,7 @@ public class DietasCocinaController : ControllerBase
         [FromBody] ConfirmacionMasivaDto confirmacion,
         CancellationToken cancellationToken)
     {
-        confirmacion.Usuario = "TestUser"; // TODO: JWT
+        confirmacion.Usuario = User.GetUsuarioIdentificacion();
 
         var confirmadas = await _dietasService.ConfirmarDietasMasivasAsync(confirmacion, cancellationToken);
 
@@ -178,7 +181,7 @@ public class DietasCocinaController : ControllerBase
         [FromBody] CancelarDietaDto cancelacion,
         CancellationToken cancellationToken)
     {
-        var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
 
         var resultado = await _dietasService.CancelarDietaAsync(
             filaDietaId,
@@ -228,7 +231,7 @@ public class DietasCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser";
+            var usuario = User.GetUsuarioIdentificacion();
             var dieta = await _dietasService.CrearDietaCatalogoAsync(dto, usuario, cancellationToken);
             return CreatedAtAction(nameof(ObtenerCatalogoPorId), new { id = dieta.Id }, dieta);
         }
@@ -248,7 +251,7 @@ public class DietasCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser";
+            var usuario = User.GetUsuarioIdentificacion();
             var dieta = await _dietasService.ActualizarDietaCatalogoAsync(id, dto, usuario, cancellationToken);
             return Ok(dieta);
         }
@@ -267,7 +270,7 @@ public class DietasCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser";
+            var usuario = User.GetUsuarioIdentificacion();
             var dieta = await _dietasService.DesactivarDietaCatalogoAsync(id, usuario, cancellationToken);
             return Ok(dieta);
         }
@@ -306,7 +309,7 @@ public class DietasCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser";
+            var usuario = User.GetUsuarioIdentificacion();
             var tarifa = await _dietasService.RegistrarTarifaDietaAsync(id, dto, usuario, cancellationToken);
             return CreatedAtAction(nameof(ObtenerTarifasCatalogo), new { id }, tarifa);
         }
@@ -337,7 +340,7 @@ public class DietasCocinaController : ControllerBase
     {
         try
         {
-            var usuario = "TestUser"; // TODO: JWT
+            var usuario = User.GetUsuarioIdentificacion();
             var resultado = await _dietasService.RegistrarNovedadAsync(filaDietaId, novedad, usuario, cancellationToken);
             return Ok(resultado);
         }
