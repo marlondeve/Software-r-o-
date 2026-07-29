@@ -29,6 +29,7 @@ backend/publish
 .env
 .env.*
 !.env.example
+!.env.hostinger.example
 
 # Editor directories and files
 .vscode/*

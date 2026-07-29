@@ -8,7 +8,8 @@ Monorepo con frontend React y backend .NET 8, gestionado con **pnpm workspaces**
 
 | Documento | Contenido |
 |---|---|
-| [frontend/README.md](./frontend/README.md) | Stack, módulos, auth mock, despliegue IIS, variables de entorno |
+| [frontend/README.md](./frontend/README.md) | Stack, módulos, despliegue Hostinger e IIS, variables de entorno |
+| [docs/DEPLOYMENT-HOSTINGER.md](./docs/DEPLOYMENT-HOSTINGER.md) | Frontend en Hostinger + API en servidor clínica |
 | [backend/README.md](./backend/README.md) | Arquitectura .NET, ejecución local, configuración |
 | [backend/FRONTEND-API-GUIDE.md](./backend/FRONTEND-API-GUIDE.md) | Referencia de endpoints de ApiConsultas (Vital HIS) |
 
