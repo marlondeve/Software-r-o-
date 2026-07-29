@@ -23,7 +23,7 @@ function hostingerHtaccessPlugin(mode: string, apiProxy?: string): Plugin {
   RewriteEngine On
   RewriteBase /
 
-  # Proxy del API (generado en build; la URL no se versiona en el repositorio)
+  # Proxy del API (generado en build:hostinger → HOSTINGER_API_PROXY en .env.hostinger)
   RewriteRule ^api/v1/(.*)$ ${base}/api/v1/$1 [P,L]
   RewriteRule ^health$ ${base}/health [P,L]
 
@@ -31,6 +31,11 @@ function hostingerHtaccessPlugin(mode: string, apiProxy?: string): Plugin {
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_proxy.c>
+  ProxyPreserveHost Off
+  ProxyPassReverse / ${base}/
 </IfModule>
 
 <IfModule mod_headers.c>

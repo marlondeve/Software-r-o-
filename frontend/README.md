@@ -36,12 +36,16 @@ frontend/
 # Desde la raíz del monorepo
 pnpm dev
 pnpm build
+pnpm build:hostinger
+pnpm build:iis
 pnpm lint
 pnpm preview
 
 # Desde esta carpeta
 pnpm dev
 pnpm build
+pnpm build:hostinger
+pnpm build:iis
 pnpm lint
 pnpm preview
 ```
@@ -113,22 +117,55 @@ import.meta.env.VITE_DIETAS_COCINA_API === "true" ? censoRepositoryHttp : censoR
 | `VITE_DIETAS_COCINA_API=true` | Censo y ciclo bandejas usan HTTP (vía `@/api`) |
 | `VITE_ENCUESTAS_API=true` | Repositorio de pacientes Encuestas usa HTTP (vía `@/api`) |
 
-Copiar [`frontend/.env.example`](.env.example) a `.env.local` para desarrollo.
+Copiar [`frontend/.env.example`](.env.example) a `.env.local` para desarrollo. Para Hostinger: `.env.hostinger.example` → `.env.hostinger`.
 
 ## Integración con backend
 
-Integración HIS vía **Bital.ApiConsultas** (producción: `http://186.190.254.230:8080/api/v1`). Primera integración operativa: **Actualizar censo** en Dietas-Cocina (`GET /atenciones/hospitalarias`).
+Integración vía **Bital.ApiNegocio** en producción:
+
+- API directa: `http://api.clinicadelriomonteria.com:8080`
+- Health: `http://api.clinicadelriomonteria.com:8080/health`
 
 Documentación: [backend/API-FRONTEND-PRODUCCION.md](../backend/API-FRONTEND-PRODUCCION.md)
 
 Encuestas tiene repositorio HTTP preparado (`modules/encuestas/api/`); las pantallas siguen en mock hasta conectar identificación de paciente.
 
-## Despliegue IIS
+## Despliegue Hostinger (recomendado)
+
+Frontend en **Hostinger** (`https://riosoft.clinicadelriomonteria.com`) y API en el **servidor de la clínica** (`http://api.clinicadelriomonteria.com:8080`). El navegador usa rutas relativas; Apache en Hostinger hace proxy al API.
+
+### DNS
+
+| Subdominio | Apunta a |
+|---|---|
+| `riosoft.clinicadelriomonteria.com` | Hostinger (frontend) |
+| `api.clinicadelriomonteria.com` | `186.190.254.230` (API, puerto 8080) |
+
+### Build y subida
+
+```bash
+cp .env.hostinger.example .env.hostinger
+pnpm build:hostinger
+```
+
+Subir el contenido de `frontend/dist/` a la carpeta del subdominio `riosoft` en Hostinger.
+
+### Verificación
+
+1. `https://riosoft.clinicadelriomonteria.com/health` → debe responder `Healthy` (proxy OK)
+2. `https://riosoft.clinicadelriomonteria.com/login` → recarga directa (SPA)
+3. Login y llamadas a `/api/v1/...`
+
+Si `/health` falla, el plan de Hostinger puede no tener `mod_proxy` habilitado (flag `[P]` en `.htaccess`). Contactar soporte Hostinger.
+
+Guía completa: [docs/DEPLOYMENT-HOSTINGER.md](../docs/DEPLOYMENT-HOSTINGER.md)
+
+## Despliegue IIS (clínica, frontend + API en el mismo servidor)
 
 1. Generar build de producción:
 
 ```bash
-pnpm build
+pnpm build:iis
 ```
 
 2. Copiar el contenido de `frontend/dist/` al sitio IIS.
