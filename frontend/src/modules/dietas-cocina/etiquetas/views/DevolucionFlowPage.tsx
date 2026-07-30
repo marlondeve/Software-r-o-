@@ -144,9 +144,9 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
         <>
           <EscannerEtiquetaPanel
             modo="devolucion"
-            titulo={config.titulo}
             guia={config.guiaEscaneo}
             activo={escaneando}
+            mostrarEncabezado={false}
             onCodigoLeido={procesarCodigo}
             onIngresoManual={() => setManualAbierto(true)}
           />

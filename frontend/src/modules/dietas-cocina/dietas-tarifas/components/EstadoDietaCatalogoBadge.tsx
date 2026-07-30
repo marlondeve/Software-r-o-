@@ -1,5 +1,5 @@
 import type { EstadoDietaCatalogo } from "@/modules/dietas-cocina/types/enums"
-import { Check, Clock, X } from "lucide-react"
+import { Check, Clock, Power, X } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -22,6 +22,11 @@ const CONFIG: Record<
     label: "Vencida",
     className: "bg-destructive/10 text-destructive border-destructive/25",
     Icon: X,
+  },
+  inactiva: {
+    label: "Inactiva",
+    className: "bg-muted text-muted-foreground border-border",
+    Icon: Power,
   },
 }
 

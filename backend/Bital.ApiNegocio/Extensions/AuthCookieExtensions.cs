@@ -10,7 +10,7 @@ public static class AuthCookieExtensions
         JwtOptions options,
         IWebHostEnvironment environment)
     {
-        var cookieOptions = BuildCookieOptions(options, environment);
+        var cookieOptions = BuildCookieOptions(options, environment, response.HttpContext.Request.IsHttps);
         cookieOptions.MaxAge = TimeSpan.FromMinutes(options.ExpirationMinutes);
 
         response.Cookies.Append(options.CookieName, token, cookieOptions);
@@ -21,17 +21,23 @@ public static class AuthCookieExtensions
         JwtOptions options,
         IWebHostEnvironment environment)
     {
-        response.Cookies.Delete(options.CookieName, BuildCookieOptions(options, environment));
+        response.Cookies.Delete(
+            options.CookieName,
+            BuildCookieOptions(options, environment, response.HttpContext.Request.IsHttps));
     }
 
-    private static CookieOptions BuildCookieOptions(JwtOptions options, IWebHostEnvironment environment)
+    private static CookieOptions BuildCookieOptions(
+        JwtOptions options,
+        IWebHostEnvironment environment,
+        bool isHttps)
     {
         var crossOrigin = options.CrossOriginCookies;
+        var secure = crossOrigin ? true : isHttps;
 
         return new CookieOptions
         {
             HttpOnly = true,
-            Secure = crossOrigin || !environment.IsDevelopment(),
+            Secure = secure,
             SameSite = crossOrigin
                 ? SameSiteMode.None
                 : environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict,

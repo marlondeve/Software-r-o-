@@ -49,7 +49,7 @@ export type EstadoConciliacion =
   | "pendiente"
   | "conciliado-manual"
 
-export type EstadoDietaCatalogo = "vigente" | "programada" | "vencida"
+export type EstadoDietaCatalogo = "vigente" | "programada" | "vencida" | "inactiva"
 
 export type EstadoCategoria = "activo" | "borrador"
 

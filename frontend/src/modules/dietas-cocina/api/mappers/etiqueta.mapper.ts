@@ -114,7 +114,9 @@ export function mapEtiquetaDtoToDomain(dto: EtiquetaDto): EtiquetaEnfermera {
     consistencia: String(dto.consistencia ?? ""),
     observaciones: resolverObservacionesEtiqueta(dto),
     comida: mapearComidaInterna(String(dto.comida ?? "almuerzo")),
-    fechaHora: String(dto.fechaHora ?? dto.generadaEn ?? ""),
+    fechaHora: String(
+      dto.fechaOperativa ?? dto.fechaHora ?? dto.generadaEn ?? "",
+    ),
     estado: resolverEstadoEtiqueta(dto),
     qrPayload: String(dto.qrPayload ?? dto.codigo ?? ""),
     estadoLogistica,

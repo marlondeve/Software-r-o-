@@ -125,9 +125,10 @@ export function fusionarOrdenesCocina(
   const merged = incoming.map((orden) => {
     const existente = prevById.get(orden.id)
     if (!existente) return orden
+    const checklist = checklistMasCompleto(existente.checklist, orden.checklist)
     return {
       ...orden,
-      checklist: existente.checklist,
+      checklist,
       ordenCocinaApiId: existente.ordenCocinaApiId ?? orden.ordenCocinaApiId,
       estadoCocina: preferirEstadoCocina(existente.estadoCocina, orden.estadoCocina),
       etiquetaId: existente.etiquetaId ?? orden.etiquetaId,
@@ -163,6 +164,16 @@ function mapChecklistFromApi(items?: ChecklistItemApiDto[]): ChecklistItem[] {
   }))
 }
 
+function checklistMasCompleto(a: ChecklistItem[], b: ChecklistItem[]): ChecklistItem[] {
+  return a.map((item) => {
+    const otro = b.find((c) => c.id === item.id)
+    return {
+      ...item,
+      completado: item.completado || otro?.completado || false,
+    }
+  })
+}
+
 /** Enlaza IDs y estados reales del API de órdenes de cocina con las filas del censo. */
 export function enriquecerOrdenesConApi(
   ordenes: OrdenCocina[],
@@ -173,6 +184,9 @@ export function enriquecerOrdenesConApi(
 
   for (const ordenApi of ordenesApi) {
     const apiId = String(ordenApi.id)
+    for (const filaId of ordenApi.dietasIds ?? []) {
+      if (filaId) filaIdPorOrdenApi.set(String(filaId), apiId)
+    }
     for (const dieta of ordenApi.dietas ?? []) {
       const filaId = String((dieta as { id?: string }).id ?? "")
       if (filaId) filaIdPorOrdenApi.set(filaId, apiId)
@@ -219,3 +233,5 @@ export function mapFilasDietasToOrdenesCocina(
   }
   return ordenes
 }
+
+export { mapChecklistFromApi, checklistMasCompleto }

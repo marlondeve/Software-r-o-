@@ -51,6 +51,11 @@ public class OrdenCocinaDto
     public string? Observaciones { get; set; }
 
     /// <summary>
+    /// IDs de filas de dieta incluidas (listado; evita payload completo)
+    /// </summary>
+    public List<Guid>? DietasIds { get; set; }
+
+    /// <summary>
     /// Lista de dietas incluidas (opcional, para detalle)
     /// </summary>
     public List<FilaDietaDto>? Dietas { get; set; }

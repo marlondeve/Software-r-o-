@@ -65,6 +65,44 @@ export function esSolicitudEditable(fila: FilaDieta): boolean {
   return fila.estado === "no-solicitada" || fila.estado === "guardado"
 }
 
+export interface CondicionesClinicasFormulario {
+  pacienteAislado: boolean
+  observacionAislamiento: string
+  alergico: boolean
+  alergias: string
+}
+
+export function validarCondicionesClinicasFormulario(
+  datos: CondicionesClinicasFormulario,
+): { valido: boolean; mensaje?: string } {
+  if (datos.pacienteAislado && !datos.observacionAislamiento.trim()) {
+    return {
+      valido: false,
+      mensaje: "Indique la observación de aislamiento para que cocina pueda preparar la bandeja.",
+    }
+  }
+  if (datos.alergico && !datos.alergias.trim()) {
+    return {
+      valido: false,
+      mensaje: "Indique a qué es alérgico el paciente.",
+    }
+  }
+  return { valido: true }
+}
+
+export function esFormularioSolicitudDietaValido(
+  datos: CondicionesClinicasFormulario & {
+    tipoDieta: string
+    consistencia: string
+  },
+): boolean {
+  return (
+    datos.tipoDieta.trim().length > 0 &&
+    datos.consistencia.trim().length > 0 &&
+    validarCondicionesClinicasFormulario(datos).valido
+  )
+}
+
 export function evaluarAccionesDietaClinica(
   ctx: ContextoAccionesDietaClinica,
 ): EvaluacionAccionesDietaClinica {

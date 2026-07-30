@@ -85,10 +85,12 @@ export function mesclarReporteConCiclo(
         api.estadoDietas.segmentos.length > 0 ? api.estadoDietas : ciclo.estadoDietas,
       tiposDieta: preferirLista(api.tiposDieta, ciclo.tiposDieta),
       motivosDevolucion: preferirLista(api.motivosDevolucion, ciclo.motivosDevolucion),
+      motivosRecogida: preferirLista(api.motivosRecogida, ciclo.motivosRecogida),
       distribucionServicio: preferirLista(
         api.distribucionServicio,
         ciclo.distribucionServicio,
       ),
+      distribucionTurno: preferirLista(api.distribucionTurno, ciclo.distribucionTurno),
       mostrarDistribucionTurno:
         api.mostrarDistribucionTurno || ciclo.mostrarDistribucionTurno,
     }
@@ -102,10 +104,12 @@ export function mesclarReporteConCiclo(
       api.estadoDietas.segmentos.length > 0 ? api.estadoDietas : ciclo.estadoDietas,
     tiposDieta: preferirLista(api.tiposDieta, ciclo.tiposDieta),
     motivosDevolucion: preferirLista(api.motivosDevolucion, ciclo.motivosDevolucion),
+    motivosRecogida: preferirLista(api.motivosRecogida, ciclo.motivosRecogida),
     distribucionServicio: preferirLista(
       api.distribucionServicio,
       ciclo.distribucionServicio,
     ),
+    distribucionTurno: preferirLista(api.distribucionTurno, ciclo.distribucionTurno),
     mostrarDistribucionTurno:
       api.mostrarDistribucionTurno || ciclo.mostrarDistribucionTurno,
   }

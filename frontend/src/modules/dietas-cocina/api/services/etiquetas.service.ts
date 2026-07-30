@@ -52,14 +52,20 @@ export async function generarEtiquetas(
     etiquetaIds?: string[]
     EtiquetaIds?: string[]
     totalGeneradas?: number
-  }>(buildDietasCocinaPath("/etiquetas/generar"), body)
+  } | ApiResponse<{
+    etiquetaIds?: string[]
+    EtiquetaIds?: string[]
+    totalGeneradas?: number
+  }>>(buildDietasCocinaPath("/etiquetas/generar"), body)
 
-  const idsGenerados = (data.etiquetaIds ?? data.EtiquetaIds ?? []).map(String)
+  const payload = extraerCuerpoApi(data)
+  const idsGenerados = (payload.etiquetaIds ?? payload.EtiquetaIds ?? []).map(String)
   const etiquetas = deduplicarEtiquetasPorFila(await listarEtiquetas())
 
   if (idsGenerados.length > 0) {
     const idsSet = new Set(idsGenerados)
-    return etiquetas.filter((etiqueta) => idsSet.has(etiqueta.id))
+    const porId = etiquetas.filter((etiqueta) => idsSet.has(etiqueta.id))
+    if (porId.length > 0) return porId
   }
 
   const ordenIds = (body.ordenIds ?? []).map(String)
@@ -69,6 +75,12 @@ export async function generarEtiquetas(
       (etiqueta) => etiqueta.ordenCocinaId && ordenSet.has(etiqueta.ordenCocinaId),
     )
     if (porOrden.length > 0) return porOrden
+  }
+
+  if (idsGenerados.length > 0) {
+    throw new Error(
+      "Las etiquetas se generaron en el servidor, pero no se pudieron sincronizar en pantalla. Actualiza la página.",
+    )
   }
 
   return etiquetas

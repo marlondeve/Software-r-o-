@@ -22,6 +22,14 @@ export function checklistProgreso(orden: OrdenCocina): {
   }
 }
 
+/** Bandeja en cocina antes de quedar lista (incluye “En gestión” en UI). */
+export function estaEnGestionCocina(orden: OrdenCocina): boolean {
+  return (
+    orden.estadoCocina === "por_iniciar" ||
+    orden.estadoCocina === "en_preparacion"
+  )
+}
+
 /** Lista en UI pero aún sin etiqueta — suele indicar desincronización con el API. */
 export function enRecuperacionChecklistCocina(orden: OrdenCocina): boolean {
   return (
@@ -32,10 +40,7 @@ export function enRecuperacionChecklistCocina(orden: OrdenCocina): boolean {
 }
 
 export function puedeEditarChecklist(orden: OrdenCocina): boolean {
-  if (
-    orden.estadoCocina === "por_iniciar" ||
-    orden.estadoCocina === "en_preparacion"
-  ) {
+  if (estaEnGestionCocina(orden)) {
     return true
   }
   return enRecuperacionChecklistCocina(orden)
@@ -48,8 +53,8 @@ export function motivoNoMarcarLista(orden: OrdenCocina): string | undefined {
   if (orden.estadoCocina === "lista") {
     return "La bandeja ya está marcada como lista."
   }
-  if (orden.estadoCocina === "por_iniciar") {
-    return "Inicia la preparación antes de marcar como lista."
+  if (!estaEnGestionCocina(orden)) {
+    return "La bandeja no está en preparación en cocina."
   }
   if (!checklistObligatorioCompleto(orden)) {
     const { pendientes } = checklistProgreso(orden)
@@ -59,10 +64,7 @@ export function motivoNoMarcarLista(orden: OrdenCocina): string | undefined {
 }
 
 export function puedeMarcarLista(orden: OrdenCocina): boolean {
-  return (
-    orden.estadoCocina === "en_preparacion" &&
-    checklistObligatorioCompleto(orden)
-  )
+  return estaEnGestionCocina(orden) && checklistObligatorioCompleto(orden)
 }
 
 export function etiquetaImpresaEnOrden(
@@ -104,10 +106,11 @@ export function motivoNoEtiquetaOrden(
   if (puedeImprimirEtiquetaOrden(orden, etiqueta)) return undefined
   const motivoGenerar = motivoNoGenerarEtiqueta(orden, etiqueta)
   if (motivoGenerar) return motivoGenerar
-  if (orden.estadoCocina === "por_iniciar") {
-    return "Marca la bandeja en preparación y completa el checklist."
-  }
-  if (orden.estadoCocina === "en_preparacion") {
+  if (estaEnGestionCocina(orden)) {
+    if (!checklistObligatorioCompleto(orden)) {
+      const { pendientes } = checklistProgreso(orden)
+      return `Completa ${pendientes} ítem(s) obligatorio(s) del checklist.`
+    }
     return "Marca la bandeja como lista antes de generar la etiqueta."
   }
   return "La bandeja debe estar lista para generar o imprimir la etiqueta."

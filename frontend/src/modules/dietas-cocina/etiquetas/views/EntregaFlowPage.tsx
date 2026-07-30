@@ -39,6 +39,7 @@ export function EntregaFlowPage() {
       <EscannerEtiquetaPanel
         modo="entrega"
         activo
+        mostrarEncabezado={false}
         onCodigoLeido={procesarCodigo}
         onIngresoManual={() => setManualAbierto(true)}
       />

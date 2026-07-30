@@ -1,6 +1,6 @@
 import { apiClient } from "@/api/client"
 import type { ApiResponse } from "@/api/types"
-import { buildDietasCocinaPath, mapearComidaApi } from "@/modules/dietas-cocina/api/utils"
+import { buildDietasCocinaPath, extraerCuerpoApi, mapearComidaApi } from "@/modules/dietas-cocina/api/utils"
 import type { ReporteDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 
@@ -36,7 +36,7 @@ export async function obtenerReporteNutricionista(
     buildDietasCocinaPath("/reportes/nutricionista"),
     { params: paramsReporte(filtros) },
   )
-  return data.data ?? {}
+  return extraerCuerpoApi(data)
 }
 
 export async function obtenerReporteProveedor(filtros: FiltrosReportes): Promise<ReporteDto> {
@@ -44,5 +44,5 @@ export async function obtenerReporteProveedor(filtros: FiltrosReportes): Promise
     buildDietasCocinaPath("/reportes/proveedor"),
     { params: paramsReporte(filtros) },
   )
-  return data.data ?? {}
+  return extraerCuerpoApi(data)
 }

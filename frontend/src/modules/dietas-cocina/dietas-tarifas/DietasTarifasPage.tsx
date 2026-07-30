@@ -4,6 +4,7 @@ import { Plus } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { ActivarDietaDialog } from "@/modules/dietas-cocina/dietas-tarifas/components/ActivarDietaDialog"
 import { CrearDietaSheet } from "@/modules/dietas-cocina/dietas-tarifas/components/CrearDietaSheet"
 import { DesactivarDietaDialog } from "@/modules/dietas-cocina/dietas-tarifas/components/DesactivarDietaDialog"
 import { DietasTarifasTabla } from "@/modules/dietas-cocina/dietas-tarifas/components/DietasTarifasTabla"
@@ -23,6 +24,7 @@ import {
   registrarTarifaDieta,
 } from "@/modules/dietas-cocina/api/services/dietas.service"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { fechaCatalogoAISO } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
 
 export function DietasTarifasPage() {
   const apiActiva = usarApiDietasCocina()
@@ -37,6 +39,7 @@ export function DietasTarifasPage() {
   const [historicoDieta, setHistoricoDieta] = useState<DietaCatalogo | null>(null)
   const [tarifaDieta, setTarifaDieta] = useState<DietaCatalogo | null>(null)
   const [desactivarDieta, setDesactivarDieta] = useState<DietaCatalogo | null>(null)
+  const [activarDieta, setActivarDieta] = useState<DietaCatalogo | null>(null)
   const [cargandoCatalogo, setCargandoCatalogo] = useState(false)
 
   const recargarCatalogo = useCallback(async () => {
@@ -85,17 +88,31 @@ export function DietasTarifasPage() {
     )
   }
 
-  async function guardarDietaApi(actualizada: DietaCatalogo) {
+  async function guardarDietaApi(
+    actualizada: DietaCatalogo,
+    fechasIso?: { fechaInicio?: string; fechaFin?: string },
+  ) {
     if (!apiActiva) {
       actualizarDietaLocal(actualizada)
       return
     }
     try {
-      const dto = await actualizarDietaCatalogo(actualizada.id, {
+      const fechaInicio =
+        fechasIso?.fechaInicio ?? fechaCatalogoAISO(actualizada.fechaInicio)
+      const fechaFin =
+        fechasIso?.fechaFin ??
+        (actualizada.fechaFin
+          ? fechaCatalogoAISO(actualizada.fechaFin)
+          : undefined)
+
+      await actualizarDietaCatalogo(actualizada.id, {
         nombre: actualizada.nombre,
         descripcion: actualizada.descripcion,
+        activa: actualizada.activa,
+        ...(fechaInicio ? { fechaInicio } : {}),
+        ...(fechaFin ? { fechaFin } : {}),
       })
-      actualizarDietaLocal(mapCatalogoDtoToDieta(dto, 0))
+      await recargarCatalogo()
       invalidarCacheCatalogoDietas()
       demoToast("Dieta actualizada correctamente.", "success")
     } catch (error) {
@@ -103,6 +120,7 @@ export function DietasTarifasPage() {
         error instanceof Error ? error.message : "No se pudo actualizar la dieta.",
         "error",
       )
+      throw error
     }
   }
 
@@ -139,6 +157,7 @@ export function DietasTarifasPage() {
         onHistorico={setHistoricoDieta}
         onNuevaTarifa={abrirNuevaTarifa}
         onDesactivar={setDesactivarDieta}
+        onActivar={setActivarDieta}
       />
 
       {apiActiva && cargandoCatalogo && dietas.length === 0 && (
@@ -158,12 +177,21 @@ export function DietasTarifasPage() {
             return
           }
           try {
+            const fechaInicio = fechaCatalogoAISO(dieta.fechaInicio)
+            const fechaFin = dieta.fechaFin
+              ? fechaCatalogoAISO(dieta.fechaFin)
+              : undefined
+
             const dto = await crearDietaCatalogo({
               codigo: dieta.codigo,
               nombre: dieta.nombre,
               descripcion: dieta.descripcion,
               activa: dieta.activa,
               tarifaInicial: dieta.tarifaVigente,
+              ...(fechaInicio
+                ? { fechaInicio, vigenciaDesde: fechaInicio }
+                : {}),
+              ...(fechaFin ? { fechaFin, vigenciaHasta: fechaFin } : {}),
             })
             setDietas((prev) => [mapCatalogoDtoToDieta(dto, 0), ...prev])
             setPaginaActual(1)
@@ -174,6 +202,7 @@ export function DietasTarifasPage() {
               error instanceof Error ? error.message : "No se pudo crear la dieta.",
               "error",
             )
+            throw error
           }
         }}
       />
@@ -197,13 +226,11 @@ export function DietasTarifasPage() {
         open={tarifaDieta !== null}
         onOpenChange={(open) => !open && setTarifaDieta(null)}
         dieta={tarifaDieta}
-        onConfirmar={async (dieta) => {
+        onConfirmar={async (dieta, tarifa) => {
           if (!apiActiva) {
             actualizarDietaLocal(dieta)
             return
           }
-          const tarifa = dieta.historicoTarifas.find((item) => item.vigente)
-          if (!tarifa) return
           try {
             await registrarTarifaDieta(dieta.id, {
               monto: tarifa.monto,
@@ -212,12 +239,14 @@ export function DietasTarifasPage() {
               motivoCambio: tarifa.motivoCambio,
             })
             await recargarCatalogo()
+            invalidarCacheCatalogoDietas()
             demoToast("Tarifa registrada correctamente.", "success")
           } catch (error) {
             demoToast(
               error instanceof Error ? error.message : "No se pudo registrar la tarifa.",
               "error",
             )
+            throw error
           }
         }}
       />
@@ -228,12 +257,12 @@ export function DietasTarifasPage() {
         dieta={desactivarDieta}
         onConfirmar={async (dieta) => {
           if (!apiActiva) {
-            actualizarDietaLocal(dieta)
+            actualizarDietaLocal({ ...dieta, activa: false, estado: "inactiva" })
             return
           }
           try {
-            const dto = await desactivarDietaCatalogo(dieta.id)
-            actualizarDietaLocal(mapCatalogoDtoToDieta(dto, 0))
+            await desactivarDietaCatalogo(dieta.id)
+            await recargarCatalogo()
             invalidarCacheCatalogoDietas()
             demoToast("Dieta desactivada correctamente.", "success")
           } catch (error) {
@@ -241,6 +270,31 @@ export function DietasTarifasPage() {
               error instanceof Error ? error.message : "No se pudo desactivar la dieta.",
               "error",
             )
+            throw error
+          }
+        }}
+      />
+
+      <ActivarDietaDialog
+        open={activarDieta !== null}
+        onOpenChange={(open) => !open && setActivarDieta(null)}
+        dieta={activarDieta}
+        onConfirmar={async (dieta) => {
+          if (!apiActiva) {
+            actualizarDietaLocal({ ...dieta, activa: true, estado: "vigente" })
+            return
+          }
+          try {
+            await actualizarDietaCatalogo(dieta.id, { activa: true })
+            await recargarCatalogo()
+            invalidarCacheCatalogoDietas()
+            demoToast("Dieta activada correctamente.", "success")
+          } catch (error) {
+            demoToast(
+              error instanceof Error ? error.message : "No se pudo activar la dieta.",
+              "error",
+            )
+            throw error
           }
         }}
       />

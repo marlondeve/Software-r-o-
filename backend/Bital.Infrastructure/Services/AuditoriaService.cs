@@ -42,7 +42,7 @@ public class AuditoriaService : IAuditoriaService
         var total = await query.CountAsync();
 
         // Paginar
-        var eventos = await query
+        var eventosRaw = await query
             .OrderByDescending(e => e.CreadoEn)
             .Skip((filtros.Page - 1) * filtros.PageSize)
             .Take(filtros.PageSize)
@@ -57,9 +57,27 @@ public class AuditoriaService : IAuditoriaService
                 TipoEntidad = e.TipoEntidad,
                 EntidadId = e.EntidadId,
                 DireccionIp = e.DireccionIp,
-                DuracionMs = e.DuracionMs
+                DuracionMs = e.DuracionMs,
+                DatosAntes = e.DatosAntes,
+                DatosDespues = e.DatosDespues,
             })
             .ToListAsync();
+
+        var eventos = eventosRaw.Select(e => new EventoAuditoriaDto
+        {
+            Id = e.Id,
+            Modulo = e.Modulo,
+            Accion = e.Accion,
+            Resultado = e.Resultado,
+            Usuario = e.Usuario,
+            FechaEvento = e.FechaEvento,
+            TipoEntidad = e.TipoEntidad,
+            EntidadId = e.EntidadId,
+            DireccionIp = e.DireccionIp,
+            DuracionMs = e.DuracionMs,
+            DatosAntes = TruncarTexto(e.DatosAntes, 500),
+            DatosDespues = TruncarTexto(e.DatosDespues, 500),
+        }).ToList();
 
         var totalPages = (int)Math.Ceiling(total / (double)filtros.PageSize);
 
@@ -137,5 +155,11 @@ public class AuditoriaService : IAuditoriaService
 
         _context.EventosAuditoria.Add(evento);
         await _context.SaveChangesAsync();
+    }
+
+    private static string? TruncarTexto(string? valor, int maxLen)
+    {
+        if (string.IsNullOrEmpty(valor) || valor.Length <= maxLen) return valor;
+        return valor[..maxLen] + "…";
     }
 }

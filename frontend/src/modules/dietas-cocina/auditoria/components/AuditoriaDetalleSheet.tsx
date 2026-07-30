@@ -66,8 +66,11 @@ export function AuditoriaDetalleSheet({
 }: AuditoriaDetalleSheetProps) {
   if (!detalle) return null
 
-  const muestraForense =
-    detalle.parametro && detalle.valorAnterior && detalle.valorNuevo
+  const muestraForense = Boolean(detalle.valorAnterior || detalle.valorNuevo)
+  const metadatosVisibles =
+    (detalle.metadatos.ip && detalle.metadatos.ip !== "—") ||
+    (detalle.metadatos.dispositivo && detalle.metadatos.dispositivo !== "—") ||
+    (detalle.metadatos.sistema && detalle.metadatos.sistema !== "—")
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -143,10 +146,16 @@ export function AuditoriaDetalleSheet({
               <section className="space-y-2">
                 <SeccionTitulo>Análisis forense del cambio</SeccionTitulo>
                 <p className="text-xs text-muted-foreground">
-                  Parámetro:{" "}
-                  <span className="font-medium text-foreground">
-                    {detalle.parametro}
-                  </span>
+                  {detalle.parametro ? (
+                    <>
+                      Parámetro:{" "}
+                      <span className="font-medium text-foreground">
+                        {detalle.parametro}
+                      </span>
+                    </>
+                  ) : (
+                    "Cambios registrados en la operación"
+                  )}
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="min-w-0 rounded-lg border border-border bg-muted/30 p-3">
@@ -154,7 +163,7 @@ export function AuditoriaDetalleSheet({
                       Valor anterior
                     </p>
                     <p className="text-sm leading-snug text-muted-foreground line-through">
-                      {detalle.valorAnterior}
+                      {detalle.valorAnterior ?? "—"}
                     </p>
                   </div>
                   <div className="min-w-0 rounded-lg border border-primary/25 bg-primary/5 p-3">
@@ -162,7 +171,7 @@ export function AuditoriaDetalleSheet({
                       Valor nuevo
                     </p>
                     <p className="text-sm leading-snug font-semibold text-primary">
-                      {detalle.valorNuevo}
+                      {detalle.valorNuevo ?? "—"}
                     </p>
                   </div>
                 </div>
@@ -218,26 +227,34 @@ export function AuditoriaDetalleSheet({
               </section>
             )}
 
+            {metadatosVisibles && (
             <section className="space-y-2">
               <SeccionTitulo>Metadatos técnicos</SeccionTitulo>
               <div className="space-y-2">
-                <MetadatoItem
-                  icon={Globe}
-                  label="Dirección IP"
-                  value={detalle.metadatos.ip}
-                />
-                <MetadatoItem
-                  icon={Laptop}
-                  label="Dispositivo"
-                  value={detalle.metadatos.dispositivo}
-                />
-                <MetadatoItem
-                  icon={Server}
-                  label="Sistema origen"
-                  value={detalle.metadatos.sistema}
-                />
+                {detalle.metadatos.ip && detalle.metadatos.ip !== "—" && (
+                  <MetadatoItem
+                    icon={Globe}
+                    label="Dirección IP"
+                    value={detalle.metadatos.ip}
+                  />
+                )}
+                {detalle.metadatos.dispositivo && detalle.metadatos.dispositivo !== "—" && (
+                  <MetadatoItem
+                    icon={Laptop}
+                    label="Dispositivo"
+                    value={detalle.metadatos.dispositivo}
+                  />
+                )}
+                {detalle.metadatos.sistema && detalle.metadatos.sistema !== "—" && (
+                  <MetadatoItem
+                    icon={Server}
+                    label="Sistema origen"
+                    value={detalle.metadatos.sistema}
+                  />
+                )}
               </div>
             </section>
+            )}
 
             {detalle.historial.length > 0 && (
               <section className="space-y-3 pb-1">

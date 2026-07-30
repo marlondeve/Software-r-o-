@@ -15,13 +15,19 @@ namespace Bital.Infrastructure.Services;
 public class EtiquetasService : IEtiquetasService
 {
     private readonly BitalNegocioDbContext _context;
+    private readonly IAuditoriaService _auditoria;
+    private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<EtiquetasService> _logger;
 
     public EtiquetasService(
         BitalNegocioDbContext context,
+        IAuditoriaService auditoria,
+        IAuditoriaContextoRequest contextoAuditoria,
         ILogger<EtiquetasService> logger)
     {
         _context = context;
+        _auditoria = auditoria;
+        _contextoAuditoria = contextoAuditoria;
         _logger = logger;
     }
 
@@ -143,6 +149,10 @@ public class EtiquetasService : IEtiquetasService
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Generar, usuario,
+            AuditoriaCatalogo.Entidades.EtiquetaEnfermera, null, null,
+            new { count = etiquetasIds.Count, ordenIds = datos.OrdenIds, etiquetasIds });
+
         _logger.LogInformation(
             "Generadas {Count} etiquetas por {Usuario}",
             etiquetasIds.Count, usuario);
@@ -181,6 +191,10 @@ public class EtiquetasService : IEtiquetasService
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Imprimir, "system",
+            AuditoriaCatalogo.Entidades.EtiquetaEnfermera, null, null,
+            new { count = etiquetas.Count, ids = datos.EtiquetaIds });
+
         _logger.LogInformation("Marcadas {Count} etiquetas como impresas", etiquetas.Count);
 
         return etiquetas.Select(MapearADto).ToList();
@@ -211,6 +225,10 @@ public class EtiquetasService : IEtiquetasService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Reimprimir, "system",
+            AuditoriaCatalogo.Entidades.EtiquetaEnfermera, null, null,
+            new { count = etiquetas.Count, ids = datos.EtiquetaIds });
 
         _logger.LogInformation("Reimpresas {Count} etiquetas", etiquetas.Count);
 
@@ -260,6 +278,11 @@ public class EtiquetasService : IEtiquetasService
         _context.EventosTrazabilidad.Add(evento);
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.PreEntrega, usuario,
+            AuditoriaCatalogo.Entidades.EtiquetaEnfermera, etiquetaId,
+            new { estadoLogistica = "impresa" },
+            new { estadoLogistica = etiqueta.EstadoLogistica, etiqueta.RecibidoPor, etiqueta.Codigo });
 
         _logger.LogInformation(
             "Pre-entrega confirmada para etiqueta {Codigo} por {Usuario}",
@@ -313,6 +336,11 @@ public class EtiquetasService : IEtiquetasService
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Entrega, usuario,
+            AuditoriaCatalogo.Entidades.EtiquetaEnfermera, etiquetaId,
+            new { estadoLogistica = "pre_entregada" },
+            new { estadoLogistica = etiqueta.EstadoLogistica, etiqueta.EntregadoPor, etiqueta.Codigo });
+
         _logger.LogInformation(
             "Entrega confirmada para etiqueta {Codigo} por {Usuario}",
             etiqueta.Codigo, usuario);
@@ -337,6 +365,7 @@ public class EtiquetasService : IEtiquetasService
             throw new InvalidOperationException("Solo se pueden devolver etiquetas pre-entregadas o entregadas");
 
         var ahora = DateTime.UtcNow;
+        var estadoLogisticaAnterior = etiqueta.EstadoLogistica;
 
         etiqueta.EstadoLogistica = "devuelta";
         etiqueta.MotivoDevolucion = datos.Motivo;
@@ -368,6 +397,11 @@ public class EtiquetasService : IEtiquetasService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Devolucion, usuario,
+            AuditoriaCatalogo.Entidades.EtiquetaEnfermera, etiquetaId,
+            new { estadoLogistica = estadoLogisticaAnterior },
+            new { motivo = datos.Motivo, datos.EstadoDieta, etiqueta.Codigo });
 
         _logger.LogInformation(
             "Devolución confirmada para etiqueta {Codigo} - Motivo: {Motivo}",
@@ -504,6 +538,28 @@ public class EtiquetasService : IEtiquetasService
             return null;
 
         return string.Join(" · ", partes.Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private void Auditar(
+        string modulo,
+        string accion,
+        string usuario,
+        string entidad,
+        Guid? entidadId,
+        object? antes = null,
+        object? despues = null)
+    {
+        AuditoriaOperativaHelper.RegistrarSilencioso(
+            _auditoria,
+            _logger,
+            modulo,
+            accion,
+            usuario,
+            entidad,
+            entidadId,
+            AuditoriaSnapshot.Json(antes),
+            AuditoriaSnapshot.Json(despues),
+            contexto: _contextoAuditoria);
     }
 
     private static string GenerarCodigo()

@@ -16,13 +16,19 @@ namespace Bital.Infrastructure.Services;
 public class ConciliacionService : IConciliacionService
 {
     private readonly BitalNegocioDbContext _context;
+    private readonly IAuditoriaService _auditoria;
+    private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<ConciliacionService> _logger;
 
     public ConciliacionService(
         BitalNegocioDbContext context,
+        IAuditoriaService auditoria,
+        IAuditoriaContextoRequest contextoAuditoria,
         ILogger<ConciliacionService> logger)
     {
         _context = context;
+        _auditoria = auditoria;
+        _contextoAuditoria = contextoAuditoria;
         _logger = logger;
     }
 
@@ -202,6 +208,8 @@ public class ConciliacionService : IConciliacionService
         if (fila == null)
             throw new KeyNotFoundException($"Línea de conciliación con ID {id} no encontrada");
 
+        var estadoAnterior = fila.Estado;
+
         fila.Estado = "conciliado";
         fila.Motivo = datos.Motivo;
         fila.Observaciones = datos.Observaciones;
@@ -211,6 +219,11 @@ public class ConciliacionService : IConciliacionService
         fila.ModificadoEn = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        Auditar(AuditoriaCatalogo.Modulos.Conciliacion, AuditoriaCatalogo.Acciones.MarcarConciliado, usuario,
+            AuditoriaCatalogo.Entidades.FilaConciliacion, id,
+            new { estado = estadoAnterior },
+            new { estado = fila.Estado, datos.Motivo, datos.Observaciones });
 
         _logger.LogInformation(
             "Línea de conciliación {Id} marcada como conciliada por {Usuario}: {Motivo}",
@@ -234,6 +247,8 @@ public class ConciliacionService : IConciliacionService
         if (fila == null)
             throw new KeyNotFoundException($"Línea de conciliación con ID {id} no encontrada");
 
+        var estadoAnterior = fila.Estado;
+
         fila.Estado = "en_revision";
         fila.Motivo = datos.Motivo;
         fila.Observaciones = datos.Observaciones;
@@ -243,6 +258,11 @@ public class ConciliacionService : IConciliacionService
         fila.ModificadoEn = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        Auditar(AuditoriaCatalogo.Modulos.Conciliacion, AuditoriaCatalogo.Acciones.MarcarPendiente, usuario,
+            AuditoriaCatalogo.Entidades.FilaConciliacion, id,
+            new { estado = estadoAnterior },
+            new { estado = fila.Estado, datos.Motivo, datos.Observaciones });
 
         _logger.LogInformation(
             "Línea de conciliación {Id} marcada como pendiente revisión por {Usuario}: {Motivo}",
@@ -367,8 +387,34 @@ public class ConciliacionService : IConciliacionService
         fila.ModificadoPor = usuario;
         await _context.SaveChangesAsync(cancellationToken);
 
+        Auditar(AuditoriaCatalogo.Modulos.Conciliacion, AuditoriaCatalogo.Acciones.SubirFactura, usuario,
+            AuditoriaCatalogo.Entidades.FilaConciliacion, id,
+            null, new { url, nombreArchivo });
+
         _logger.LogInformation("Factura cargada para conciliación {Id}: {Url}", id, url);
         return MapearADto(fila);
+    }
+
+    private void Auditar(
+        string modulo,
+        string accion,
+        string usuario,
+        string entidad,
+        Guid? entidadId,
+        object? antes = null,
+        object? despues = null)
+    {
+        AuditoriaOperativaHelper.RegistrarSilencioso(
+            _auditoria,
+            _logger,
+            modulo,
+            accion,
+            usuario,
+            entidad,
+            entidadId,
+            AuditoriaSnapshot.Json(antes),
+            AuditoriaSnapshot.Json(despues),
+            contexto: _contextoAuditoria);
     }
 
     private static FilaConciliacionDto MapearADto(FilaConciliacion fila)

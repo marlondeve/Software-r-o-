@@ -11,6 +11,7 @@ import { mockAuditoria } from "@/modules/dietas-cocina/auditoria/datos/mockAudit
 import { obtenerDetalleAuditoria as obtenerDetalleAuditoriaMock } from "@/modules/dietas-cocina/auditoria/lib/detalleAuditoria"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
+  exportarAuditoriaCsvApi,
   listarAuditoria,
   obtenerDetalleAuditoria,
 } from "@/modules/dietas-cocina/api/services/auditoria.service"
@@ -41,6 +42,8 @@ export function AuditoriaPage() {
   const [cargandoAuditoria, setCargandoAuditoria] = useState(false)
   const [errorAuditoria, setErrorAuditoria] = useState<string | null>(null)
 
+  const busquedaApi = busqueda.trim()
+
   useEffect(() => {
     if (!apiActiva) return
     setCargandoAuditoria(true)
@@ -48,8 +51,9 @@ export function AuditoriaPage() {
     void listarAuditoria({
       page: paginaActual,
       pageSize: TAMANO_PAGINA_AUDITORIA,
-      modulo: modulo !== "todos" ? modulo : undefined,
-      resultado: resultado !== "todos" ? resultado : undefined,
+      moduloUi: modulo,
+      resultadoUi: resultado,
+      usuario: busquedaApi || undefined,
     })
       .then((res) => {
         setFilasApi(res.filas)
@@ -70,11 +74,25 @@ export function AuditoriaPage() {
         )
       })
       .finally(() => setCargandoAuditoria(false))
-  }, [apiActiva, paginaActual, modulo, resultado])
+  }, [apiActiva, paginaActual, modulo, resultado, busquedaApi])
 
   const filasBase = apiActiva ? filasApi : data.filas
 
   const filasFiltradas = useMemo(() => {
+    if (apiActiva) {
+      return filasBase.filter((fila) => {
+        const coincideAccion =
+          accion === "todas" ||
+          fila.accion.toLowerCase().includes(accion.toLowerCase())
+        const coincideRol =
+          rol === "todos" ||
+          (rol === "Sistema"
+            ? fila.usuario.esSistema
+            : fila.usuario.rol.includes(rol))
+        return coincideAccion && coincideRol
+      })
+    }
+
     return filasBase.filter((fila) => {
       const termino = busqueda.trim().toLowerCase()
       const coincideBusqueda =
@@ -106,7 +124,7 @@ export function AuditoriaPage() {
         coincideResultado
       )
     })
-  }, [filasBase, busqueda, modulo, accion, rol, resultado])
+  }, [apiActiva, filasBase, busqueda, modulo, accion, rol, resultado])
 
   const totalFiltradas = apiActiva && metaApi ? metaApi.total : filasFiltradas.length
   const totalPaginas = apiActiva && metaApi
@@ -180,6 +198,30 @@ export function AuditoriaPage() {
   }
 
   function exportarCsv() {
+    if (apiActiva) {
+      void exportarAuditoriaCsvApi({
+        moduloUi: modulo,
+        resultadoUi: resultado,
+        usuario: busquedaApi || undefined,
+      })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob)
+          const enlace = document.createElement("a")
+          enlace.href = url
+          enlace.download = "auditoria-dietas-cocina.csv"
+          enlace.click()
+          URL.revokeObjectURL(url)
+          demoToast("Auditoría exportada desde el servidor.", "success")
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error ? error.message : "No se pudo exportar la auditoría.",
+            "error",
+          )
+        })
+      return
+    }
+
     const contenido = exportarAuditoriaCsv(filasFiltradas)
     descargarArchivoDemo(contenido, "auditoria-dietas-cocina.csv", "text/csv")
     demoToast(`Exportados ${filasFiltradas.length} registros filtrados.`)

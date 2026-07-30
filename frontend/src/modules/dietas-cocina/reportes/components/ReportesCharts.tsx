@@ -73,7 +73,7 @@ export function HorizontalBarChart({ items, className }: HorizontalBarChartProps
         <XAxis type="number" hide domain={[0, "dataMax + 10"]} />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent formatter={(value) => `${value}%`} />}
+          content={<ChartTooltipContent formatter={(value) => String(value)} />}
         />
         <Bar dataKey="value" radius={4}>
           {chartData.map((item) => (
@@ -108,7 +108,7 @@ export function VerticalBarChart({ items, className }: VerticalBarChartProps) {
         <YAxis hide domain={[0, "dataMax + 10"]} />
         <ChartTooltip
           cursor={false}
-          content={<ChartTooltipContent formatter={(value) => `${value}%`} />}
+          content={<ChartTooltipContent formatter={(value) => String(value)} />}
         />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
           {chartData.map((item) => (

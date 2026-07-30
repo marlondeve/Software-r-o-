@@ -2,7 +2,7 @@
 # Automatiza la compilación y preparación para despliegue en IIS
 
 param(
-	[string]$OutputPath = "C:\temp\bital-api-consultas-deploy",
+	[string]$OutputPath = "",
 	[switch]$SelfContained = $false,
 	[switch]$OpenFolder = $true
 )
@@ -45,6 +45,10 @@ Write-Host @"
 
 # Verificar ubicación
 $scriptRoot = Split-Path -Parent $PSCommandPath
+$repoRoot = Split-Path -Parent $scriptRoot
+if ([string]::IsNullOrWhiteSpace($OutputPath)) {
+	$OutputPath = Join-Path $repoRoot "deploy\apinegocio"
+}
 $projectPath = Join-Path $scriptRoot "Bital.ApiNegocio"
 $csprojFile = Join-Path $projectPath "Bital.ApiNegocio.csproj"
 
@@ -226,7 +230,7 @@ Write-Host @"
 1. Transferir archivos al servidor IIS (10.238.97.67):
 
    Copiar desde: $OutputPath
-   Copiar hacia: C:\inetpub\wwwroot\bital-api-consultas\
+   Copiar hacia: C:\inetpub\wwwroot\bital-api-negocio\
 
 2. Métodos de transferencia:
 
@@ -236,7 +240,7 @@ Write-Host @"
 
    b) PowerShell Remoting:
 	  `$session = New-PSSession -ComputerName 10.238.97.67
-	  Copy-Item -Path "$OutputPath\*" -Destination "C:\inetpub\wwwroot\bital-api-consultas\" -ToSession `$session -Recurse -Force
+	  Copy-Item -Path "$OutputPath\*" -Destination "C:\inetpub\wwwroot\bital-api-negocio\" -ToSession `$session -Recurse -Force
 
    c) Usar herramientas FTP/SFTP (FileZilla, WinSCP)
 
@@ -272,7 +276,7 @@ SERVIDOR DESTINO:
   - Puerto: 2000
 
 RUTA DE DESPLIEGUE:
-  C:\inetpub\wwwroot\bital-api-consultas\
+  C:\inetpub\wwwroot\bital-api-negocio\
 
 PASOS RÁPIDOS:
   1. Copiar todos los archivos de esta carpeta al servidor en la ruta indicada

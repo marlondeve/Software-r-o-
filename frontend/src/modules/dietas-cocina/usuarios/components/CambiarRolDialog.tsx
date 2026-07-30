@@ -22,6 +22,7 @@ import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { ConfirmarAccionDialog } from "@/modules/dietas-cocina/usuarios/components/ConfirmarAccionDialog"
 import { PermisosRolResumen } from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
 import { validarCambioRol } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
+import { resolverRolIdParaUsuario } from "@/modules/dietas-cocina/usuarios/lib/resolverRolId"
 
 interface CambiarRolDialogProps {
   usuario: UsuarioModulo | null
@@ -48,8 +49,8 @@ export function CambiarRolDialog({
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
 
   useEffect(() => {
-    if (usuario) setRolSeleccionadoId(usuario.rolId)
-  }, [usuario])
+    if (usuario) setRolSeleccionadoId(resolverRolIdParaUsuario(usuario, roles))
+  }, [usuario, roles])
 
   const rolSeleccionado = roles.find((rol) => rol.id === rolSeleccionadoId)
 
@@ -107,7 +108,7 @@ export function CambiarRolDialog({
               <SelectTrigger className="w-full bg-card">
                 <SelectValue placeholder="Seleccione un rol" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-100">
                 {roles.map((rol) => (
                   <SelectItem key={rol.id} value={rol.id ?? ""}>
                     {rol.nombre}

@@ -115,6 +115,19 @@ export async function actualizarPermisosRol(
   )
 }
 
+export async function editarRol(
+  rolModuloId: string,
+  nombre: string,
+): Promise<RolModuloDto> {
+  const { data } = await apiClient.put<ApiResponse<unknown>>(
+    buildDietasCocinaPath(`/roles/${rolModuloId}`),
+    { nombre },
+  )
+  const body = extraerCuerpoApi(data)
+  const roles = mapRolesModuloResponse({ data: [body] })
+  return roles[0] ?? { nombre }
+}
+
 export async function eliminarRol(rolModuloId: string): Promise<void> {
   await apiClient.delete(buildDietasCocinaPath(`/roles/${rolModuloId}`))
 }

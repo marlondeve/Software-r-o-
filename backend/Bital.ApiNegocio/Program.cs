@@ -123,6 +123,9 @@ try
 
     builder.Services.AddAuthorization();
 
+    builder.Services.AddHttpContextAccessor();
+    builder.Services.AddScoped<IAuditoriaContextoRequest, Bital.Infrastructure.DietasCocina.AuditoriaContextoRequest>();
+
     // CORS
     var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                       ?? builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()

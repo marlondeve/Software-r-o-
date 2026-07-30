@@ -122,16 +122,27 @@ export function ReportesProveedorView() {
           </div>
 
           <div
-            className={`grid gap-4 ${data.mostrarDistribucionTurno ? "lg:grid-cols-2" : ""}`}
+            className={`grid gap-4 ${data.mostrarDistribucionTurno ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
           >
             <Card className="gap-0 py-0 shadow-none">
               <CardHeader className="border-b py-3">
                 <CardTitle className="text-sm font-semibold">
-                  Motivos de devolución (Top 3)
+                  Rechazos antes de entrega (Top 3)
                 </CardTitle>
               </CardHeader>
               <CardContent className="py-4">
                 <VerticalBarChart items={data.motivosDevolucion} />
+              </CardContent>
+            </Card>
+
+            <Card className="gap-0 py-0 shadow-none">
+              <CardHeader className="border-b py-3">
+                <CardTitle className="text-sm font-semibold">
+                  Recogidas de bandeja (Top 3)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-4">
+                <VerticalBarChart items={data.motivosRecogida} />
               </CardContent>
             </Card>
 
@@ -143,7 +154,13 @@ export function ReportesProveedorView() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="py-4">
-                  <VerticalBarChart items={data.distribucionServicio} />
+                  <VerticalBarChart
+                    items={
+                      "distribucionTurno" in data
+                        ? data.distribucionTurno
+                        : data.distribucionServicio
+                    }
+                  />
                 </CardContent>
               </Card>
             )}

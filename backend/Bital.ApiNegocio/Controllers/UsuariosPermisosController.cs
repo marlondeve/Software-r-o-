@@ -199,6 +199,29 @@ public class UsuariosPermisosController : ControllerBase
         }
     }
 
+    [HttpPut("roles/{id:guid}")]
+    public async Task<ActionResult<object>> EditarRol(Guid id, [FromBody] EditarRolDto dto)
+    {
+        try
+        {
+            var rol = await _service.EditarRolAsync(id, dto);
+            return Ok(new { data = rol });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al editar rol {Id}", id);
+            return StatusCode(500, new { message = "Error al editar rol" });
+        }
+    }
+
     [HttpGet("roles/permisos")]
     public async Task<ActionResult<MatrizPermisosDto>> ObtenerMatrizPermisos()
     {

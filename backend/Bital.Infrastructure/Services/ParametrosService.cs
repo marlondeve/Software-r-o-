@@ -5,16 +5,27 @@ using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Bital.Infrastructure.Services;
 
 public class ParametrosService : IParametrosService
 {
     private readonly BitalNegocioDbContext _context;
+    private readonly IAuditoriaService _auditoria;
+    private readonly IAuditoriaContextoRequest _contextoAuditoria;
+    private readonly ILogger<ParametrosService> _logger;
 
-    public ParametrosService(BitalNegocioDbContext context)
+    public ParametrosService(
+        BitalNegocioDbContext context,
+        IAuditoriaService auditoria,
+        IAuditoriaContextoRequest contextoAuditoria,
+        ILogger<ParametrosService> logger)
     {
         _context = context;
+        _auditoria = auditoria;
+        _contextoAuditoria = contextoAuditoria;
+        _logger = logger;
     }
 
     public async Task<TiemposComidaConfiguracionDto> ObtenerTiemposComidaAsync()
@@ -34,6 +45,7 @@ public class ParametrosService : IParametrosService
     public async Task<TiemposComidaConfiguracionDto> ActualizarTiemposComidaAsync(ActualizarTiemposComidaDto dto)
     {
         var config = await ParametrosOperativosHelper.ObtenerOSemillarAsync(_context);
+        var modoCargaAnterior = config.ModoCarga;
         if (!string.IsNullOrWhiteSpace(dto.ModoCarga))
         {
             config.ModoCarga = ParametrosOperativosHelper.NormalizarModoCarga(dto.ModoCarga);
@@ -85,6 +97,12 @@ public class ParametrosService : IParametrosService
         }
 
         await _context.SaveChangesAsync();
+
+        Auditar(AuditoriaCatalogo.Modulos.Parametros, AuditoriaCatalogo.Acciones.ActualizarTiempos, dto.Usuario,
+            AuditoriaCatalogo.Entidades.ParametroOperativo, config.Id,
+            new { modoCarga = modoCargaAnterior },
+            new { modoCarga = config.ModoCarga, tiempos = dto.Tiempos.Count });
+
         return await ObtenerTiemposComidaAsync();
     }
 
@@ -127,6 +145,11 @@ public class ParametrosService : IParametrosService
     public async Task<List<CategoriaEdadDto>> ActualizarCategoriasEdadAsync(ActualizarCategoriasEdadDto dto)
     {
         var existentes = await _context.CategoriasEdad.ToListAsync();
+        var categoriasAnteriores = existentes
+            .Where(c => c.Activa)
+            .Select(c => new { c.Nombre, c.EdadMinima, c.EdadMaxima })
+            .ToList();
+
         foreach (var existente in existentes)
         {
             existente.Activa = false;
@@ -155,6 +178,12 @@ public class ParametrosService : IParametrosService
         }
 
         await _context.SaveChangesAsync();
+
+        Auditar(AuditoriaCatalogo.Modulos.Parametros, AuditoriaCatalogo.Acciones.ActualizarCategoriasEdad, dto.Usuario,
+            AuditoriaCatalogo.Entidades.ParametroOperativo, null,
+            new { categorias = categoriasAnteriores },
+            new { categorias = dto.Categorias.Select(c => new { c.Nombre, c.EdadMinima, c.EdadMaxima }) });
+
         return await ObtenerCategoriasEdadAsync();
     }
 
@@ -183,5 +212,27 @@ public class ParametrosService : IParametrosService
             EdadMaxima = categoria.EdadMaxima,
             FactorPorcion = categoria.FactorPorcion
         };
+    }
+
+    private void Auditar(
+        string modulo,
+        string accion,
+        string usuario,
+        string entidad,
+        Guid? entidadId,
+        object? antes = null,
+        object? despues = null)
+    {
+        AuditoriaOperativaHelper.RegistrarSilencioso(
+            _auditoria,
+            _logger,
+            modulo,
+            accion,
+            usuario,
+            entidad,
+            entidadId,
+            AuditoriaSnapshot.Json(antes),
+            AuditoriaSnapshot.Json(despues),
+            contexto: _contextoAuditoria);
     }
 }

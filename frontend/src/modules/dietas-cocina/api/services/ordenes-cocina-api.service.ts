@@ -19,7 +19,13 @@ export async function listarOrdenesCocina(
     params: filtros,
   })
   const items = Array.isArray(data) ? data : []
-  return items.map((orden) => ({ ...orden, id: String(orden.id) }))
+  return items.map((orden) => ({
+    ...orden,
+    id: String(orden.id),
+    dietasIds: (orden.dietasIds ?? (orden as { DietasIds?: string[] }).DietasIds ?? []).map(
+      String,
+    ),
+  }))
 }
 
 export async function obtenerDetalleOrdenCocina(

@@ -5,7 +5,7 @@ import { FileText, Loader2, RefreshCw, Tag } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
-import { CocinaBarraSeleccion } from "@/modules/dietas-cocina/cocina/components/CocinaBarraSeleccion"
+import { CocinaBarraDespacho } from "@/modules/dietas-cocina/cocina/components/CocinaBarraDespacho"
 import { CocinaDetalleSheet } from "@/modules/dietas-cocina/cocina/components/CocinaDetalleSheet"
 import { CocinaFiltrosBar } from "@/modules/dietas-cocina/cocina/components/CocinaFiltrosBar"
 import { CocinaKpiGrid } from "@/modules/dietas-cocina/cocina/components/CocinaKpiGrid"
@@ -68,6 +68,7 @@ export function CocinaProveedorView() {
     generarEtiquetas,
     marcarEtiquetasImpresas,
     actualizarChecklist,
+    sincronizarChecklistOrden,
     getEtiquetaByOrdenId,
   } = useCicloBandejas()
   const { sincronizarCenso } = useDietasOperativas()
@@ -128,6 +129,14 @@ export function CocinaProveedorView() {
     [seleccionados, idsVisibles],
   )
 
+  const puedeDespachoSeleccion = useMemo(() => {
+    const ids = [...seleccionados].filter((id) => idsVisibles.has(id))
+    return ids.some((id) => {
+      const orden = ordenes.find((o) => o.id === id)
+      return orden && puedeDespachar(orden, getEtiquetaByOrdenId(id))
+    })
+  }, [ordenes, seleccionados, idsVisibles, getEtiquetaByOrdenId])
+
   const ordenDetalleActual = useMemo(() => {
     if (!ordenDetalle) return null
     return ordenes.find((o) => o.id === ordenDetalle.id) ?? ordenDetalle
@@ -171,41 +180,6 @@ export function CocinaProveedorView() {
 
   function idsSeleccionados(): string[] {
     return [...seleccionados].filter((id) => idsVisibles.has(id))
-  }
-
-  const ordenesSeleccionadas = useMemo(
-    () => ordenes.filter((o) => idsSeleccionados().includes(o.id)),
-    [ordenes, seleccionados, idsVisibles],
-  )
-
-  const barraAcciones = useMemo(() => {
-    const puedePrep = ordenesSeleccionadas.some(
-      (o) =>
-        o.estadoCocina === "por_iniciar" || o.estadoCocina === "en_preparacion",
-    )
-    const puedeLista = ordenesSeleccionadas.some((o) => puedeMarcarLista(o))
-    const puedeDesp = ordenesSeleccionadas.some((o) =>
-      puedeDespachar(o, getEtiquetaByOrdenId(o.id)),
-    )
-    return { puedePrep, puedeLista, puedeDesp }
-  }, [ordenesSeleccionadas, getEtiquetaByOrdenId])
-
-  function ejecutarMarcarLista() {
-    const ids = idsSeleccionados().filter((id) => {
-      const orden = ordenes.find((o) => o.id === id)
-      return orden && puedeMarcarLista(orden)
-    })
-    if (ids.length === 0) {
-      const primera = ordenes.find((o) => idsSeleccionados().includes(o.id))
-      demoToast(
-        primera
-          ? motivoNoMarcarLista(primera) ??
-              "Completa el checklist obligatorio antes de marcar como lista."
-          : "Selecciona bandejas en preparación con checklist completo.",
-      )
-      return
-    }
-    marcarComoLista(ids)
   }
 
   function ejecutarDespacho() {
@@ -394,14 +368,10 @@ export function CocinaProveedorView() {
         onLimpiar={limpiarFiltros}
       />
 
-      <CocinaBarraSeleccion
+      <CocinaBarraDespacho
         cantidad={seleccionadosVisibles}
         visible={seleccionadosVisibles > 0}
-        puedePreparacion={barraAcciones.puedePrep}
-        puedeLista={barraAcciones.puedeLista}
-        puedeDespacho={barraAcciones.puedeDesp}
-        onMarcarEnPreparacion={() => marcarEnPreparacion(idsSeleccionados())}
-        onMarcarComoLista={ejecutarMarcarLista}
+        puedeDespacho={puedeDespachoSeleccion}
         onRegistrarDespacho={ejecutarDespacho}
       />
 
@@ -442,6 +412,7 @@ export function CocinaProveedorView() {
         onContinuarPreparacion={(id) => marcarEnPreparacion([id])}
         onImprimirEtiqueta={imprimirEtiqueta}
         onChecklistChange={actualizarChecklist}
+        onSincronizarChecklist={sincronizarChecklistOrden}
         getEtiquetaByOrdenId={getEtiquetaByOrdenId}
       />
         </>

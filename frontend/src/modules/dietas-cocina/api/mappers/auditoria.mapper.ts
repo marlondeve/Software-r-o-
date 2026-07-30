@@ -8,6 +8,7 @@ import { formatearFechaHoraCatalogo } from "@/modules/dietas-cocina/dietas-tarif
 
 const MODULO_API: Record<string, ModuloAuditoria> = {
   dietas: "dietas",
+  catalogo: "dietas",
   ordenes: "cocina",
   cocina: "cocina",
   etiquetas: "etiquetas",
@@ -17,6 +18,7 @@ const MODULO_API: Record<string, ModuloAuditoria> = {
   parametros: "parametros",
   parámetros: "parametros",
   usuarios: "usuarios",
+  roles: "usuarios",
   inicio: "inicio",
   auth: "usuarios",
 }
@@ -128,10 +130,38 @@ export function mapAuditoriaDtoToDomain(dto: FilaAuditoriaDto): FilaAuditoria {
   }
 }
 
+function parseMetadata(raw: unknown): {
+  ip?: string
+  dispositivo?: string
+  sistema?: string
+} {
+  if (!raw) return {}
+  if (typeof raw === "object") {
+    const obj = raw as Record<string, unknown>
+    return {
+      ip: obj.ip ? String(obj.ip) : undefined,
+      dispositivo: obj.dispositivo ? String(obj.dispositivo) : undefined,
+      sistema: obj.sistema ? String(obj.sistema) : undefined,
+    }
+  }
+  if (typeof raw !== "string") return {}
+  try {
+    const obj = JSON.parse(raw) as Record<string, unknown>
+    return {
+      ip: obj.ip ? String(obj.ip) : undefined,
+      dispositivo: obj.dispositivo ? String(obj.dispositivo) : undefined,
+      sistema: obj.sistema ? String(obj.sistema) : undefined,
+    }
+  } catch {
+    return {}
+  }
+}
+
 export function mapDetalleAuditoriaDto(dto: DetalleAuditoriaDto): DetalleAuditoria {
   const base = mapAuditoriaDtoToDomain(dto)
   const tipoEntidad = String(dto.tipoEntidad ?? "").trim()
   const entidadId = String(dto.entidadId ?? "").trim()
+  const metadata = parseMetadata(dto.metadata ?? dto.Metadata)
 
   return {
     codigoAuditoria: base.codigoAuditoria,
@@ -156,9 +186,9 @@ export function mapDetalleAuditoriaDto(dto: DetalleAuditoriaDto): DetalleAuditor
     valorNuevo: dto.valorNuevo ?? dto.datosDespues ?? undefined,
     justificacion: dto.justificacion,
     metadatos: {
-      ip: String(dto.metadatos?.ip ?? dto.direccionIp ?? "—"),
-      dispositivo: String(dto.metadatos?.dispositivo ?? "—"),
-      sistema: String(dto.metadatos?.sistema ?? dto.modulo ?? "Bital"),
+      ip: String(metadata.ip ?? dto.metadatos?.ip ?? dto.direccionIp ?? "—"),
+      dispositivo: String(metadata.dispositivo ?? dto.metadatos?.dispositivo ?? "—"),
+      sistema: String(metadata.sistema ?? dto.metadatos?.sistema ?? dto.modulo ?? "Bital"),
     },
     historial: (dto.historial ?? []).map((h) => ({
       titulo: String(h.titulo ?? ""),

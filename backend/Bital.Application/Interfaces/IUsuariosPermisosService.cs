@@ -14,6 +14,7 @@ public interface IUsuariosPermisosService
     // Gestión de roles y permisos
     Task<List<RolModuloDto>> ListarRolesAsync();
     Task<RolModuloDto> CrearRolAsync(CrearRolDto dto, string creadoPor);
+    Task<RolModuloDto> EditarRolAsync(Guid rolModuloId, EditarRolDto dto);
     Task<MatrizPermisosDto> ObtenerMatrizPermisosAsync();
     Task ActualizarPermisosRolAsync(Guid rolModuloId, ActualizarPermisosRolDto dto);
     Task EliminarRolAsync(Guid rolModuloId);

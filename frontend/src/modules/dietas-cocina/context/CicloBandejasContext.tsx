@@ -14,6 +14,8 @@ import { etiquetasRepositoryMock } from "@/modules/dietas-cocina/api/etiquetasRe
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
 import {
   fusionarOrdenesCocina,
+  mapChecklistFromApi,
+  checklistMasCompleto,
   mapFilasDietasToOrdenesCocina,
 } from "@/modules/dietas-cocina/api/mappers/ordenCocina.mapper"
 import { deduplicarEtiquetasPorFila } from "@/modules/dietas-cocina/api/mappers/etiqueta.mapper"
@@ -22,9 +24,7 @@ import {
   actualizarEstadoOrdenCocina,
   actualizarChecklistOrdenCocina,
   cancelarOrdenCocinaApi,
-  crearOrdenCocina,
 } from "@/modules/dietas-cocina/api/services/ordenes-cocina-api.service"
-import { fechaOperativaHoy, mapearComidaApi } from "@/modules/dietas-cocina/api/utils"
 import { CicloBandejasContext } from "@/modules/dietas-cocina/context/cicloBandejasContextStore"
 import { crearOrdenesIniciales } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import { crearEtiquetasEnfermeraIniciales } from "@/modules/dietas-cocina/etiquetas/datos/mockEntregasEnfermera"
@@ -56,13 +56,17 @@ import {
   resolverEtiquetaParaOrden,
 } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
 import {
-  guardarOrdenCocinaApiId,
+  guardarChecklistOrden,
   cargarOrdenCocinaApiId,
   migrarOverridesCocinaLegacy,
 } from "@/modules/dietas-cocina/lib/cocinaOverridesStorage"
 import { solicitarRefreshCenso } from "@/modules/dietas-cocina/lib/cocinaSyncBus"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { cargarCicloBandejas, guardarCicloBandejas } from "@/modules/dietas-cocina/lib/cicloBandejasStorage"
+import {
+  aplicarVinculoOrdenesEnApi,
+  vincularOrdenesCocinaEnApi,
+} from "@/modules/dietas-cocina/lib/vincularOrdenCocinaApi"
 
 export type { CrearOrdenDesdeDietaInput } from "@/modules/dietas-cocina/types/tray-cycle"
 
@@ -191,7 +195,11 @@ async function completarOrdenesCocinaEnApi(
     const ordenSync = opciones?.forzarChecklistObligatorio
       ? ordenConChecklistObligatorioForzado(orden)
       : orden
-    porApiId.set(apiId, ordenSync)
+    const previo = porApiId.get(apiId)
+    porApiId.set(
+      apiId,
+      previo ? { ...previo, checklist: checklistMasCompleto(previo.checklist, ordenSync.checklist) } : ordenSync,
+    )
   }
 
   for (const [apiId, orden] of porApiId) {
@@ -475,38 +483,16 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       if (pendientesApi.length === 0) return
 
       const referencia = pendientesApi[0]
-      void crearOrdenCocina({
-        fechaOperativa: fechaOperativaHoy(),
-        comida: mapearComidaApi(referencia.comida),
-        dietasIds: pendientesApi.map((orden) => orden.id),
-      })
-        .then((ordenApi) => {
-          const ordenApiId = String(ordenApi.id)
-          for (const orden of pendientesApi) {
-            guardarOrdenCocinaApiId(orden.id, ordenApiId)
-          }
-          setOrdenes((prev) =>
-            prev.map((orden) =>
-              pendientesApi.some((item) => item.id === orden.id)
-                ? {
-                    ...orden,
-                    estadoCocina: "en_preparacion",
-                    ordenCocinaApiId: ordenApiId,
-                  }
-                : orden,
-            ),
+      void vincularOrdenesCocinaEnApi(pendientesApi)
+        .then((vinculos) => {
+          setOrdenes((prev) => aplicarVinculoOrdenesEnApi(prev, vinculos))
+          ordenesRef.current = aplicarVinculoOrdenesEnApi(
+            ordenesRef.current,
+            vinculos,
           )
           solicitarRefreshCenso(referencia.comida)
         })
         .catch((error) => {
-          setOrdenes((prev) =>
-            prev.map((orden) =>
-              pendientesApi.some((item) => item.id === orden.id) &&
-              !orden.ordenCocinaApiId
-                ? { ...orden, estadoCocina: "en_preparacion" }
-                : orden,
-            ),
-          )
           demoToast(
             error instanceof Error
               ? error.message
@@ -548,17 +534,53 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       ]
 
       if (ordenesApiIds.length === 0) {
-        setOrdenes((prev) =>
-          prev.map((orden) =>
-            idsValidos.includes(orden.id) && orden.estadoCocina === "lista"
-              ? { ...orden, estadoCocina: "en_preparacion" }
-              : orden,
-          ),
-        )
-        demoToast(
-          "No hay orden de cocina vinculada. Marca la bandeja en preparación primero.",
-          "error",
-        )
+        const pendientesApi = idsValidos
+          .map((id) => ordenesRef.current.find((orden) => orden.id === id))
+          .filter((orden): orden is OrdenCocina => Boolean(orden))
+
+        if (pendientesApi.length === 0) return
+
+        void vincularOrdenesCocinaEnApi(pendientesApi)
+          .then((vinculos) => {
+            setOrdenes((prev) => aplicarVinculoOrdenesEnApi(prev, vinculos))
+            ordenesRef.current = aplicarVinculoOrdenesEnApi(
+              ordenesRef.current,
+              vinculos,
+            )
+            const ordenesVinculadas = pendientesApi.map((orden) => {
+              const vinculo = vinculos.find((item) => item.ordenId === orden.id)
+              if (!vinculo) return orden
+              return {
+                ...orden,
+                ordenCocinaApiId: vinculo.ordenApiId,
+                checklist: checklistMasCompleto(orden.checklist, vinculo.checklist),
+                estadoCocina: "lista" as const,
+              }
+            })
+            return completarOrdenesCocinaEnApi(ordenesVinculadas)
+          })
+          .then(() => {
+            const primera = ordenesRef.current.find((orden) =>
+              idsValidos.includes(orden.id),
+            )
+            if (primera) solicitarRefreshCenso(primera.comida)
+          })
+          .catch((error) => {
+            setOrdenes((prev) =>
+              prev.map((orden) =>
+                idsValidos.includes(orden.id)
+                  ? { ...orden, estadoCocina: "en_preparacion" as const }
+                  : orden,
+              ),
+            )
+            void recargarDesdeApi()
+            demoToast(
+              error instanceof Error
+                ? error.message
+                : "No se pudo marcar la bandeja como lista.",
+              "error",
+            )
+          })
         return
       }
 
@@ -696,23 +718,6 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           return idsEtiquetasParaOrdenes(targetOrdenes, etiquetasRef.current)
         }
 
-        const apiIds = [
-          ...new Set(
-            pendientes
-              .map(
-                (orden) =>
-                  orden.ordenCocinaApiId ?? cargarOrdenCocinaApiId(orden.id),
-              )
-              .filter((id): id is string => Boolean(id)),
-          ),
-        ]
-
-        if (apiIds.length === 0) {
-          throw new Error(
-            "Marca las bandejas como listas antes de generar etiquetas.",
-          )
-        }
-
         const sinChecklist = pendientes.filter(
           (orden) => !checklistObligatorioCompleto(orden),
         )
@@ -723,7 +728,31 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           )
         }
 
-        await completarOrdenesCocinaEnApi(pendientes)
+        const vinculos = await vincularOrdenesCocinaEnApi(pendientes)
+        setOrdenes((prev) => aplicarVinculoOrdenesEnApi(prev, vinculos))
+        ordenesRef.current = aplicarVinculoOrdenesEnApi(ordenesRef.current, vinculos)
+
+        const pendientesVinculados = pendientes.map((orden) => {
+          const vinculo = vinculos.find((item) => item.ordenId === orden.id)
+          if (!vinculo) return orden
+          return {
+            ...orden,
+            ordenCocinaApiId: vinculo.ordenApiId,
+            checklist: checklistMasCompleto(orden.checklist, vinculo.checklist),
+          }
+        })
+
+        const apiIds = [
+          ...new Set(vinculos.map((item) => item.ordenApiId)),
+        ]
+
+        if (apiIds.length === 0) {
+          throw new Error(
+            "No se pudo vincular la bandeja con cocina en el servidor.",
+          )
+        }
+
+        await completarOrdenesCocinaEnApi(pendientesVinculados)
 
         const nuevas = deduplicarEtiquetasPorFila(
           await etiquetasRepository.generar({ ordenIds: apiIds }),
@@ -1088,15 +1117,38 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           const checklist = o.checklist.map((c) =>
             c.id === checklistId ? { ...c, completado } : c,
           )
+          guardarChecklistOrden(ordenId, checklist)
+          const estadoCocina =
+            o.estadoCocina === "por_iniciar" ? ("en_preparacion" as const) : o.estadoCocina
+
           if (apiActiva) {
             const ordenApiId = o.ordenCocinaApiId ?? cargarOrdenCocinaApiId(o.id)
-            if (ordenApiId) {
-              void actualizarChecklistOrdenCocina(ordenApiId, {
-                items: checklist.map((item) => ({
-                  id: item.id,
-                  completado: item.completado,
-                })),
-              }).catch((error) => {
+            if (!ordenApiId) {
+              demoToast(
+                "Checklist guardado localmente. Al marcar como lista se registrará en cocina.",
+                "warning",
+              )
+              return { ...o, checklist, estadoCocina }
+            }
+
+            void actualizarChecklistOrdenCocina(ordenApiId, {
+              items: checklist.map((item) => ({
+                id: item.id,
+                completado: item.completado,
+              })),
+            })
+              .then((ordenApi) => {
+                const checklistApi = mapChecklistFromApi(ordenApi.checklist)
+                guardarChecklistOrden(ordenId, checklistApi)
+                setOrdenes((current) =>
+                  current.map((orden) =>
+                    orden.id === ordenId
+                      ? { ...orden, checklist: checklistApi, ordenCocinaApiId: ordenApiId }
+                      : orden,
+                  ),
+                )
+              })
+              .catch((error) => {
                 demoToast(
                   error instanceof Error
                     ? error.message
@@ -1104,13 +1156,25 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
                   "error",
                 )
               })
-            }
           }
-          return { ...o, checklist }
+
+          return { ...o, checklist, estadoCocina }
         }),
       )
     },
     [apiActiva],
+  )
+
+  const sincronizarChecklistOrden = useCallback(
+    (ordenId: string, checklist: OrdenCocina["checklist"]) => {
+      guardarChecklistOrden(ordenId, checklist)
+      setOrdenes((prev) =>
+        prev.map((orden) =>
+          orden.id === ordenId ? { ...orden, checklist } : orden,
+        ),
+      )
+    },
+    [],
   )
 
   const rehidratarDesdeStorage = useCallback(() => {
@@ -1149,6 +1213,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       confirmarDevolucion,
       contarRecibidasEnfermeria,
       actualizarChecklist,
+      sincronizarChecklistOrden,
       rehidratarDesdeStorage,
       sincronizarOrdenesDesdeFilas,
       hidrato,
@@ -1173,6 +1238,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       confirmarDevolucion,
       contarRecibidasEnfermeria,
       actualizarChecklist,
+      sincronizarChecklistOrden,
       rehidratarDesdeStorage,
       sincronizarOrdenesDesdeFilas,
       hidrato,

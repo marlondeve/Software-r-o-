@@ -24,7 +24,7 @@ import { useEffect, useState } from "react"
 interface CrearDietaSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onGuardar: (dieta: DietaCatalogo) => void
+  onGuardar: (dieta: DietaCatalogo) => void | Promise<void>
   siguienteCodigo: string
 }
 
@@ -48,14 +48,20 @@ export function CrearDietaSheet({
   const puedeGuardar =
     values.codigo.trim().length > 0 && values.nombre.trim().length > 0
 
-  function guardar() {
+  async function guardar() {
     if (!values.codigo.trim() || !values.nombre.trim()) return
 
     const ahora = new Date()
     const tarifa = Number.parseFloat(values.tarifaInicial) || 0
     const anio = values.fechaInicio
-      ? new Date(values.fechaInicio).getFullYear()
+      ? new Date(`${values.fechaInicio}T12:00:00`).getFullYear()
       : ahora.getFullYear()
+    const vigenciaDesde = values.fechaInicio
+      ? formatearFechaCatalogo(new Date(`${values.fechaInicio}T12:00:00`))
+      : formatearFechaCatalogo(ahora)
+    const vigenciaHasta = values.fechaFin
+      ? formatearFechaCatalogo(new Date(`${values.fechaFin}T12:00:00`))
+      : formatearFechaCatalogo(new Date(anio, 11, 31))
 
     const dieta: DietaCatalogo = {
       id: `diet-cat-new-${Date.now()}`,
@@ -64,11 +70,9 @@ export function CrearDietaSheet({
       descripcion: values.descripcion.trim(),
       estado: values.activa ? "vigente" : "vencida",
       tarifaVigente: tarifa,
-      fechaInicio: values.fechaInicio
-        ? formatearFechaCatalogo(new Date(values.fechaInicio))
-        : formatearFechaCatalogo(ahora),
+      fechaInicio: vigenciaDesde,
       fechaFin: values.fechaFin
-        ? formatearFechaCatalogo(new Date(values.fechaFin))
+        ? formatearFechaCatalogo(new Date(`${values.fechaFin}T12:00:00`))
         : null,
       ultimaActualizacion: formatearFechaHoraCatalogo(ahora),
       usuario: "m.nutricion",
@@ -80,8 +84,8 @@ export function CrearDietaSheet({
                 id: `TRF-${anio}-01`,
                 anio,
                 monto: tarifa,
-                vigenciaDesde: "01 Ene",
-                vigenciaHasta: "31 Dic",
+                vigenciaDesde,
+                vigenciaHasta,
                 registradoPor: "m.nutricion",
                 motivoCambio: "Tarifa inicial al crear la dieta.",
                 creadoEn: formatearFechaCatalogo(ahora),
@@ -91,8 +95,12 @@ export function CrearDietaSheet({
           : [],
     }
 
-    onGuardar(dieta)
-    onOpenChange(false)
+    try {
+      await onGuardar(dieta)
+      onOpenChange(false)
+    } catch {
+      // El padre muestra el error; mantener el sheet abierto.
+    }
   }
 
   return (

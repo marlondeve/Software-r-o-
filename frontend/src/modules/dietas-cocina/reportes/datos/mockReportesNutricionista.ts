@@ -107,8 +107,13 @@ export const mockReportesNutricionista = {
   ],
   motivosDevolucion: [
     { label: "Rechazo paciente", value: 45, color: "#e879a9" },
-    { label: "Temperatura", value: 30, color: "#60a5fa" },
-    { label: "Error cocina", value: 25, color: "#a78bfa" },
+    { label: "Temperatura", value: 30, color: "#ef4444" },
+    { label: "Error cocina", value: 25, color: "#f97316" },
+  ],
+  motivosRecogida: [
+    { label: "Se consumió", value: 40, color: "#60a5fa" },
+    { label: "No se consumió", value: 35, color: "#38bdf8" },
+    { label: "Consumo parcial", value: 25, color: "#0ea5e9" },
   ],
   distribucionServicio: [
     { label: "Desayunos", value: 45, color: "#e879a9" },

@@ -12,9 +12,7 @@ import {
   obtenerPermisosRoles,
 } from "@/modules/dietas-cocina/api/services/usuarios.service"
 import { establecerMatrizPermisosApi } from "@/modules/dietas-cocina/lib/permisosMatrizCache"
-import {
-  EditarPermisosRolDialog,
-} from "@/modules/dietas-cocina/usuarios/components/EditarPermisosRolDialog"
+import { RolAccionesCell } from "@/modules/dietas-cocina/usuarios/components/RolAccionesCell"
 import { PermisosRolResumen } from "@/modules/dietas-cocina/usuarios/components/PermisosRolPopover"
 import { UsuarioRolBadge } from "@/modules/dietas-cocina/usuarios/components/UsuarioRolBadge"
 import { contarPermisosActivos } from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
@@ -29,11 +27,13 @@ interface RolPermisoFila {
 interface RolesPermisosPanelProps {
   puedeGestionar: boolean
   refresco?: number
+  onRolesChanged?: () => void
 }
 
 export function RolesPermisosPanel({
   puedeGestionar,
   refresco = 0,
+  onRolesChanged,
 }: RolesPermisosPanelProps) {
   const apiActiva = usarApiDietasCocina()
   const { config } = useConfigAccesoModulos()
@@ -53,6 +53,11 @@ export function RolesPermisosPanel({
         setPermisosApi([])
       })
   }, [apiActiva])
+
+  const recargarRoles = useCallback(() => {
+    cargarRoles()
+    onRolesChanged?.()
+  }, [cargarRoles, onRolesChanged])
 
   useEffect(() => {
     cargarRoles()
@@ -75,6 +80,11 @@ export function RolesPermisosPanel({
       total: config.permisosDietas[rol]?.length ?? 0,
     }))
   }, [apiActiva, config.permisosDietas, rolesApi])
+
+  const nombresRoles = useMemo(
+    () => filasRoles.map((rol) => rol.nombre),
+    [filasRoles],
+  )
 
   const columnas = useMemo<ColumnDef<RolPermisoFila>[]>(
     () => [
@@ -112,24 +122,25 @@ export function RolesPermisosPanel({
         id: "acciones",
         header: () => <span className="float-right">Acciones</span>,
         cell: ({ row }) => (
-          <div className="text-right">
-            <EditarPermisosRolDialog
-              rolId={row.original.id}
-              rolNombre={row.original.nombre}
-              puedeGestionar={puedeGestionar}
-              apiActiva={apiActiva}
-              permisosApi={permisosApi}
-              onPermisosActualizados={(permisos) => {
-                setPermisosApi(permisos)
-                establecerMatrizPermisosApi(permisos)
-                cargarRoles()
-              }}
-            />
-          </div>
+          <RolAccionesCell
+            rolId={row.original.id}
+            rolNombre={row.original.nombre}
+            esSistema={row.original.esSistema}
+            puedeGestionar={puedeGestionar}
+            apiActiva={apiActiva}
+            permisosApi={permisosApi}
+            nombresExistentes={nombresRoles}
+            onRolesActualizados={recargarRoles}
+            onPermisosActualizados={(permisos) => {
+              setPermisosApi(permisos)
+              establecerMatrizPermisosApi(permisos)
+              recargarRoles()
+            }}
+          />
         ),
       },
     ],
-    [apiActiva, permisosApi, puedeGestionar, cargarRoles],
+    [apiActiva, permisosApi, puedeGestionar, recargarRoles, nombresRoles],
   )
 
   return (

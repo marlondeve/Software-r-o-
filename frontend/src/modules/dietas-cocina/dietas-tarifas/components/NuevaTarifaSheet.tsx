@@ -17,6 +17,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import {
+  fechaCatalogoAISO,
+  finAnioCatalogoISO,
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,
   formatearMonedaTarifa,
@@ -24,11 +26,21 @@ import {
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
 import { cn } from "@/lib/utils"
 
+export interface NuevaTarifaPayload {
+  monto: number
+  vigenciaDesde: string
+  vigenciaHasta: string
+  motivoCambio: string
+}
+
 interface NuevaTarifaSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   dieta: DietaCatalogo | null
-  onConfirmar: (dieta: DietaCatalogo) => void
+  onConfirmar: (
+    dieta: DietaCatalogo,
+    tarifa: NuevaTarifaPayload,
+  ) => void | Promise<void>
 }
 
 export function NuevaTarifaSheet({
@@ -52,38 +64,73 @@ export function NuevaTarifaSheet({
   const solapamiento = validarSolapamientoVigencia(fechaInicio, dieta)
   const montoNum = Number.parseFloat(monto) || 0
 
-  function confirmar() {
+  async function confirmar() {
     if (!dieta || solapamiento.solapa || montoNum <= 0 || !fechaInicio) return
 
     const dietaActual = dieta
-    const anio = new Date(fechaInicio).getFullYear()
+    const inicio = new Date(`${fechaInicio}T12:00:00`)
+    const anio = inicio.getFullYear()
+    const vigenciaHastaIso = finAnioCatalogoISO(fechaInicio)
+    const fin = new Date(`${vigenciaHastaIso}T12:00:00`)
     const ahora = new Date()
-    const historicoActualizado = dietaActual.historicoTarifas.map((t) => ({
-      ...t,
-      vigente: false,
-    }))
+    const motivoCambio = "Nueva vigencia tarifaria registrada."
+    const historicoActualizado = dietaActual.historicoTarifas.map((t) => {
+      if (!t.vigente) return t
+
+      const inicioExistenteIso = fechaCatalogoAISO(t.vigenciaDesde, t.anio)
+      const finExistenteIso = fechaCatalogoAISO(t.vigenciaHasta, t.anio)
+      if (!inicioExistenteIso || !finExistenteIso) {
+        return { ...t, vigente: false }
+      }
+
+      const inicioExistente = new Date(`${inicioExistenteIso}T12:00:00`)
+      const finExistente = new Date(`${finExistenteIso}T12:00:00`)
+
+      if (inicio > inicioExistente && inicio <= finExistente) {
+        const cierre = new Date(inicio)
+        cierre.setDate(cierre.getDate() - 1)
+        return {
+          ...t,
+          vigenciaHasta: formatearFechaCatalogo(cierre),
+          vigente: false,
+        }
+      }
+
+      return { ...t, vigente: false }
+    })
 
     const nuevaEntrada = {
       id: `TRF-${anio}-${String(historicoActualizado.length + 1).padStart(2, "0")}`,
       anio,
       monto: montoNum,
-      vigenciaDesde: formatearFechaCatalogo(new Date(fechaInicio)),
-      vigenciaHasta: "31 Dic",
+      vigenciaDesde: formatearFechaCatalogo(inicio),
+      vigenciaHasta: formatearFechaCatalogo(fin),
       registradoPor: "m.nutricion",
-      motivoCambio: "Nueva vigencia tarifaria registrada.",
+      motivoCambio,
       creadoEn: formatearFechaCatalogo(ahora),
       vigente: true,
     }
 
-    onConfirmar({
-      ...dietaActual,
-      tarifaVigente: montoNum,
-      estado: "vigente",
-      fechaInicio: formatearFechaCatalogo(new Date(fechaInicio)),
-      ultimaActualizacion: formatearFechaHoraCatalogo(ahora),
-      historicoTarifas: [nuevaEntrada, ...historicoActualizado],
-    })
-    onOpenChange(false)
+    try {
+      await onConfirmar(
+        {
+          ...dietaActual,
+          tarifaVigente: montoNum,
+          estado: "vigente",
+          ultimaActualizacion: formatearFechaHoraCatalogo(ahora),
+          historicoTarifas: [nuevaEntrada, ...historicoActualizado],
+        },
+        {
+          monto: montoNum,
+          vigenciaDesde: fechaInicio,
+          vigenciaHasta: vigenciaHastaIso,
+          motivoCambio,
+        },
+      )
+      onOpenChange(false)
+    } catch {
+      // El padre muestra el error; mantener el sheet abierto.
+    }
   }
 
   return (
