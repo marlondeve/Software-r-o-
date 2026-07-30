@@ -13,23 +13,28 @@ export interface DiagnosticoCamara {
   sugerencia?: string
 }
 
+export function esContextoCamaraInseguro(): boolean {
+  return typeof window !== "undefined" && !window.isSecureContext
+}
+
+function mensajeContextoInseguro(): DiagnosticoCamara {
+  const host = typeof window !== "undefined" ? window.location.host : "tu-servidor"
+  return {
+    puedeUsarCamara: false,
+    tipo: "inseguro",
+    mensaje:
+      "No se pudo usar la cámara en una conexión HTTP (no segura).",
+    sugerencia: `Abre la app por HTTPS (https://${host}/…) o usa ingreso manual. En localhost la cámara funciona para pruebas.`,
+  }
+}
+
+/** Solo valida soporte del navegador; no bloquea HTTP antes de intentar la cámara. */
 export function diagnosticarEntornoCamara(): DiagnosticoCamara {
   if (typeof window === "undefined") {
     return {
       puedeUsarCamara: false,
       tipo: "no_soportado",
       mensaje: "Entorno sin navegador.",
-    }
-  }
-
-  if (!window.isSecureContext) {
-    const host = window.location.host
-    return {
-      puedeUsarCamara: false,
-      tipo: "inseguro",
-      mensaje:
-        "El navegador bloquea la cámara porque la app se abrió por HTTP (conexión no segura).",
-      sugerencia: `Usa HTTPS (https://${host}/…) o el ingreso manual del código. En localhost la cámara sí funciona para pruebas.`,
     }
   }
 
@@ -53,6 +58,9 @@ export function interpretarErrorCamara(error: unknown): DiagnosticoCamara {
     switch (error.name) {
       case "NotAllowedError":
       case "PermissionDeniedError":
+        if (esContextoCamaraInseguro()) {
+          return mensajeContextoInseguro()
+        }
         return {
           puedeUsarCamara: false,
           tipo: "denegado",
@@ -76,9 +84,15 @@ export function interpretarErrorCamara(error: unknown): DiagnosticoCamara {
           mensaje: "La cámara está en uso por otra aplicación.",
           sugerencia: "Cierra otras apps que usen la cámara y reintenta.",
         }
+      case "SecurityError":
+        return mensajeContextoInseguro()
       default:
         break
     }
+  }
+
+  if (esContextoCamaraInseguro()) {
+    return mensajeContextoInseguro()
   }
 
   return {

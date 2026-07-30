@@ -4,9 +4,10 @@ const C = {
   black25: "#bfbfbf",
 } as const
 
-const LINEA_ALTO = 14
-const ICONO_OFFSET_X = 12
-const TEXTO_Y = 10.5
+const LINEA_ALTO = 12
+const ICONO_OFFSET_X = 11
+const TEXTO_Y = 9.5
+const META_FONT_SIZE = 8.5
 
 export type IconoMetaTipo =
   | "idCard"
@@ -122,9 +123,8 @@ export function FilaMetaSvg({
   })
 
   const anchos = segmentos.map((seg) => {
-    if (seg.esSep) return 14
-    const fs = 9.5
-    return ICONO_OFFSET_X + Math.ceil(seg.texto.length * fs * 0.52) + 2
+    if (seg.esSep) return 12
+    return ICONO_OFFSET_X + Math.ceil(seg.texto.length * META_FONT_SIZE * 0.52) + 2
   })
   const anchoTotal = anchos.reduce((a, b) => a + b, 0)
 
@@ -143,10 +143,10 @@ export function FilaMetaSvg({
           return (
             <text
               key={i}
-              x={segX + 7}
+              x={segX + 6}
               y={TEXTO_Y}
               textAnchor="middle"
-              fontSize={9.5}
+              fontSize={META_FONT_SIZE}
               fill={C.black25}
               fontFamily="Arial, Helvetica, sans-serif"
             >
@@ -157,7 +157,7 @@ export function FilaMetaSvg({
         return (
           <g key={i} transform={`translate(${segX}, 0)`}>
             <g
-              transform="translate(0, 2) scale(0.42)"
+              transform="translate(0, 1) scale(0.38)"
               fill="none"
               stroke={C.black50}
               strokeWidth={2}
@@ -169,7 +169,7 @@ export function FilaMetaSvg({
             <text
               x={ICONO_OFFSET_X}
               y={TEXTO_Y}
-              fontSize={9.5}
+              fontSize={META_FONT_SIZE}
               fill={C.black85}
               fontFamily="Arial, Helvetica, sans-serif"
             >

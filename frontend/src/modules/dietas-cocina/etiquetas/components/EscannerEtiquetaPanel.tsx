@@ -14,6 +14,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useEscannerQr } from "@/modules/dietas-cocina/etiquetas/hooks/useEscannerQr"
+import { esContextoCamaraInseguro } from "@/modules/dietas-cocina/etiquetas/lib/escannerCamara"
 import { cn } from "@/lib/utils"
 
 interface EscannerEtiquetaPanelProps {
@@ -64,6 +65,7 @@ export function EscannerEtiquetaPanel({
   const textoGuia = guia ?? GUIAS[modo]
   const falloCamara = Boolean(errorCamara)
   const requiereHttps = tipoError === "inseguro"
+  const enHttp = esContextoCamaraInseguro()
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4">
@@ -100,17 +102,17 @@ export function EscannerEtiquetaPanel({
                 <ScanLine className="size-12 animate-pulse text-primary" aria-hidden />
                 <p className="text-sm text-muted-foreground">Iniciando cámara…</p>
               </>
-            ) : requiereHttps ? (
+            ) : falloCamara && requiereHttps ? (
               <>
                 <ShieldAlert className="size-12 text-amber-500" aria-hidden />
                 <p className="text-sm font-medium text-foreground">
-                  Cámara bloqueada en HTTP
+                  Cámara no disponible en HTTP
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Los navegadores solo permiten cámara con HTTPS o en localhost.
+                  El navegador bloqueó el acceso. Usa HTTPS o ingreso manual.
                 </p>
               </>
-            ) : (
+            ) : falloCamara ? (
               <>
                 <CameraOff className="size-12 text-muted-foreground" aria-hidden />
                 <p className="text-sm font-medium text-foreground">
@@ -119,6 +121,18 @@ export function EscannerEtiquetaPanel({
                 <p className="text-xs text-muted-foreground">
                   Reintenta o ingresa el código manualmente.
                 </p>
+              </>
+            ) : (
+              <>
+                <Camera className="size-12 text-muted-foreground" aria-hidden />
+                <p className="text-sm font-medium text-foreground">
+                  Pulsa «Activar cámara» para escanear
+                </p>
+                {enHttp && (
+                  <p className="text-xs text-muted-foreground">
+                    Conexión HTTP: si no inicia, prueba HTTPS o ingreso manual.
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -151,14 +165,18 @@ export function EscannerEtiquetaPanel({
           {errorCamara.sugerencia && (
             <AlertDescription className="text-xs">{errorCamara.sugerencia}</AlertDescription>
           )}
-          {!requiereHttps && (
-            <div className="mt-3">
+          <div className="mt-3 flex flex-wrap gap-2">
+            {!requiereHttps && (
               <Button type="button" size="sm" variant="outline" onClick={reintentar}>
                 <RefreshCw className="size-4" data-icon="inline-start" />
                 Reintentar cámara
               </Button>
-            </div>
-          )}
+            )}
+            <Button type="button" size="sm" variant={requiereHttps ? "default" : "outline"} onClick={onIngresoManual}>
+              <Keyboard className="size-4" data-icon="inline-start" />
+              Ingreso manual
+            </Button>
+          </div>
         </Alert>
       )}
 

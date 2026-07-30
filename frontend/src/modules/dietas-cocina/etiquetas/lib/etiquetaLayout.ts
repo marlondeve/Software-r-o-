@@ -1,6 +1,6 @@
 /** Tamaño del contenido de la etiqueta en mm (ancho × alto). */
 export const ANCHO_ETIQUETA_MM = 115
-export const ALTO_ETIQUETA_MM = 66
+export const ALTO_ETIQUETA_MM = 72
 
 /** Margen extra en la hoja PDF para que no se corten los bordes. */
 export const MARGEN_PDF_MM = 4
@@ -18,7 +18,7 @@ export const ETIQUETA_QR_COL_RATIO = 0.3
 /** Resolución del QR. */
 export const ETIQUETA_QR_RESolucion = 512
 
-/** Dimensiones px del contenido impreso (115 × 66 mm). */
+/** Dimensiones px del contenido impreso (115 × 72 mm). */
 export const ETIQUETA_ANCHO_PX = Math.round(ANCHO_ETIQUETA_MM * PX_POR_MM)
 export const ETIQUETA_ALTO_PX = Math.round(ALTO_ETIQUETA_MM * PX_POR_MM)
 

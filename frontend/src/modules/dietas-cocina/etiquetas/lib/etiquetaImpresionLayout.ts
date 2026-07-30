@@ -19,8 +19,8 @@ export function estiloCodigoEtiqueta(
   if (!esImpresion) {
     return {
       ...base,
-      padding: "0 6px 6px",
-      fontSize: 9,
+      padding: "0 6px 8px",
+      fontSize: 8,
       color: "#808080",
     }
   }
@@ -29,24 +29,24 @@ export function estiloCodigoEtiqueta(
   if (largo > 28) {
     return {
       ...base,
-      padding: "0 3px 5px",
-      fontSize: 6.5,
+      padding: "0 3px 8px",
+      fontSize: 6,
       color: "#808080",
     }
   }
   if (largo > 22) {
     return {
       ...base,
-      padding: "0 4px 6px",
-      fontSize: 7,
+      padding: "0 4px 8px",
+      fontSize: 6.5,
       color: "#808080",
     }
   }
 
   return {
     ...base,
-    padding: "0 5px 6px",
-    fontSize: 7.5,
+    padding: "0 5px 8px",
+    fontSize: 7,
     color: "#808080",
   }
 }

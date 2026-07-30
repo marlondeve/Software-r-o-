@@ -128,9 +128,9 @@ Encuestas tiene repositorio HTTP preparado (`modules/encuestas/api/`); las panta
 
 ## Despliegue IIS (frontend + API en el mismo servidor)
 
-Guía paso a paso: [docs/PASOS-DESPLIEGUE-IIS.md](../docs/PASOS-DESPLIEGUE-IIS.md)
+Guía HTTPS (subdominio + certificado SSL): [docs/PASOS-HTTPS-IIS-FRONTEND.md](../docs/PASOS-HTTPS-IIS-FRONTEND.md)
 
-Guía completa: [docs/DEPLOYMENT-IIS.md](../docs/DEPLOYMENT-IIS.md)
+Guía API en IIS: [backend/DEPLOYMENT-IIS-GUIDE.md](../backend/DEPLOYMENT-IIS-GUIDE.md)
 
 ### Resumen
 
