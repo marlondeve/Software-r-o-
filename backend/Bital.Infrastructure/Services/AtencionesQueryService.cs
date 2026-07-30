@@ -322,10 +322,9 @@ public class AtencionesQueryService : IAtencionesQueryService
             INNER JOIN CAPBAS cap ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu))
                 AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))
             INNER JOIN MAEPAB map ON map.MPCodP = i.MPCodP
-            WHERE i.MPCodP IN (3,4,5,6,7) 
-              AND i.IngFecEgr IS NULL 
+            WHERE i.IngFecEgr IS NULL 
               AND (i.IngEstSld = 0 OR i.IngEstSld IS NULL)      
-              AND (i.IngHsp = 'S' OR i.IngHsp IS NULL)
+              AND (i.INGATNACT = '2')
             ORDER BY map.MPNomP, i.MPNumC";
 
         var resultados = await EjecutarQueryHospitalariasAsync(sql, cancellationToken);
