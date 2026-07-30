@@ -78,6 +78,11 @@ public class CrearRolDto
     public List<RutaDietas> Rutas { get; set; } = new();
 }
 
+public class EditarRolDto
+{
+    public string Nombre { get; set; } = string.Empty;
+}
+
 public class RolPermisosDetalleDto
 {
     public Guid Id { get; set; }

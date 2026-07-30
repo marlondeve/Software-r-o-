@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Bital.Application\Bital.Application.csproj" />
     <ProjectReference Include="..\Bital.Domain\Bital.Domain.csproj" />
     <ProjectReference Include="..\Bital.Shared\Bital.Shared.csproj" />

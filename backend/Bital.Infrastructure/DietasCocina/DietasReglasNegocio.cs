@@ -57,6 +57,25 @@ internal static class DietasReglasNegocio
         return hora <= config.HoraCierre;
     }
 
+    internal static void ValidarCondicionesClinicas(
+        bool aislado,
+        string? observacionAislamiento,
+        bool alergico,
+        string? alergias)
+    {
+        if (aislado && string.IsNullOrWhiteSpace(observacionAislamiento))
+        {
+            throw new InvalidOperationException(
+                "Debe indicar la observación de aislamiento cuando el paciente está aislado.");
+        }
+
+        if (alergico && string.IsNullOrWhiteSpace(alergias))
+        {
+            throw new InvalidOperationException(
+                "Debe indicar las alergias del paciente cuando está marcado como alérgico.");
+        }
+    }
+
     private static string NormalizarRol(string rol) =>
         rol.Trim() switch
         {

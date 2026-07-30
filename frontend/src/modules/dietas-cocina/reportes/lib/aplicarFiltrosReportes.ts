@@ -13,6 +13,7 @@ interface ReportesBase {
   estadoDietas: ReportesEstadoDietas
   tiposDieta: ReportesChartItem[]
   motivosDevolucion: ReportesChartItem[]
+  motivosRecogida: ReportesChartItem[]
   distribucionServicio: ReportesChartItem[]
 }
 
@@ -146,6 +147,7 @@ export function aplicarFiltrosReportes<T extends ReportesBase>(
     },
     tiposDieta: escalarItems(data.tiposDieta, factor),
     motivosDevolucion: escalarItems(data.motivosDevolucion, factor),
+    motivosRecogida: escalarItems(data.motivosRecogida, factor),
     distribucionServicio: escalarItems(data.distribucionServicio, factor),
   }
 }

@@ -5,6 +5,7 @@ import {
   History,
   MoreHorizontal,
   PencilLine,
+  Power,
   Receipt,
 } from "lucide-react"
 
@@ -22,6 +23,7 @@ interface DietasTarifasAccionesPopoverProps {
   onHistorico: (dieta: DietaCatalogo) => void
   onNuevaTarifa: (dieta: DietaCatalogo) => void
   onDesactivar: (dieta: DietaCatalogo) => void
+  onActivar: (dieta: DietaCatalogo) => void
 }
 
 const opcionClassName =
@@ -33,6 +35,7 @@ export function DietasTarifasAccionesPopover({
   onHistorico,
   onNuevaTarifa,
   onDesactivar,
+  onActivar,
 }: DietasTarifasAccionesPopoverProps) {
   const [open, setOpen] = useState(false)
 
@@ -66,15 +69,17 @@ export function DietasTarifasAccionesPopover({
           <History className="size-4 shrink-0" />
           Consultar histórico
         </button>
-        <button
-          type="button"
-          className={opcionClassName}
-          onClick={() => ejecutar(() => onNuevaTarifa(dieta))}
-        >
-          <Receipt className="size-4 shrink-0" />
-          Crear nueva tarifa
-        </button>
         {dieta.activa && (
+          <button
+            type="button"
+            className={opcionClassName}
+            onClick={() => ejecutar(() => onNuevaTarifa(dieta))}
+          >
+            <Receipt className="size-4 shrink-0" />
+            Crear nueva tarifa
+          </button>
+        )}
+        {dieta.activa ? (
           <button
             type="button"
             className={cn(
@@ -85,6 +90,15 @@ export function DietasTarifasAccionesPopover({
           >
             <Ban className="size-4 shrink-0" />
             Desactivar dieta
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={cn(opcionClassName, "text-primary hover:bg-primary/10")}
+            onClick={() => ejecutar(() => onActivar(dieta))}
+          >
+            <Power className="size-4 shrink-0" />
+            Activar dieta
           </button>
         )}
       </PopoverContent>

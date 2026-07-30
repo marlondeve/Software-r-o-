@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { evaluarAccionesDietaClinica } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
+import {
+  evaluarAccionesDietaClinica,
+  validarCondicionesClinicasFormulario,
+} from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 
@@ -121,5 +124,37 @@ describe("evaluarAccionesDietaClinica", () => {
     const r = evaluar("en-preparacion", { rol: "Administrador" })
     expect(r.puedeCancelarDieta).toBe(true)
     expect(r.cancelacionEnPreparacion).toBe(true)
+  })
+})
+
+describe("validarCondicionesClinicasFormulario", () => {
+  it("rechaza aislamiento sin observación", () => {
+    const r = validarCondicionesClinicasFormulario({
+      pacienteAislado: true,
+      observacionAislamiento: "",
+      alergico: false,
+      alergias: "",
+    })
+    expect(r.valido).toBe(false)
+  })
+
+  it("rechaza alergia sin descripción", () => {
+    const r = validarCondicionesClinicasFormulario({
+      pacienteAislado: false,
+      observacionAislamiento: "",
+      alergico: true,
+      alergias: "   ",
+    })
+    expect(r.valido).toBe(false)
+  })
+
+  it("acepta cuando las condiciones tienen detalle", () => {
+    const r = validarCondicionesClinicasFormulario({
+      pacienteAislado: true,
+      observacionAislamiento: "Contacto por MRSA",
+      alergico: true,
+      alergias: "Maní",
+    })
+    expect(r.valido).toBe(true)
   })
 })

@@ -121,7 +121,7 @@ export function ReportesNutricionistaView() {
             <Card className="gap-0 py-0 shadow-none">
               <CardHeader className="border-b py-3">
                 <CardTitle className="text-sm font-semibold">
-                  Motivos de devolución (Top 3)
+                  Rechazos antes de entrega (Top 3)
                 </CardTitle>
               </CardHeader>
               <CardContent className="py-4">
@@ -129,6 +129,19 @@ export function ReportesNutricionistaView() {
               </CardContent>
             </Card>
 
+            <Card className="gap-0 py-0 shadow-none">
+              <CardHeader className="border-b py-3">
+                <CardTitle className="text-sm font-semibold">
+                  Recogidas de bandeja (Top 3)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="py-4">
+                <VerticalBarChart items={data.motivosRecogida} />
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card className="gap-0 py-0 shadow-none">
               <CardHeader className="border-b py-3">
                 <CardTitle className="text-sm font-semibold">

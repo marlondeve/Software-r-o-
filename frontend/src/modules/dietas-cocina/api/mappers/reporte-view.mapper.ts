@@ -30,7 +30,9 @@ export function reporteViewVacio() {
     },
     tiposDieta: [] as BarItem[],
     motivosDevolucion: [] as BarItem[],
+    motivosRecogida: [] as BarItem[],
     distribucionServicio: [] as BarItem[],
+    distribucionTurno: [] as BarItem[],
     mostrarDistribucionTurno: false,
   }
 }
@@ -40,7 +42,23 @@ function leerCampo(item: Record<string, unknown>, ...claves: string[]): unknown 
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+const SEGMENT_COLORS = ["#006671", "#00818f", "#bbf244", "#7c6ba8", "#94a3b8", "#e879a9"]
+
+function formatearValorKpi(item: Record<string, unknown>): string {
+  const valor = Number(leerCampo(item, "value", "valor", "Valor") ?? 0)
+  const formato = String(leerCampo(item, "formato", "Formato") ?? "numero").toLowerCase()
+  if (formato === "porcentaje") return `${valor}%`
+  if (formato === "moneda") {
+    return `$${valor.toLocaleString("es-CO", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    })}`
+  }
+  return Number.isInteger(valor) ? String(valor) : valor.toLocaleString("es-CO")
 }
 
 function mapHallazgosApi(hallazgos: unknown) {
@@ -70,10 +88,11 @@ export function reporteTieneContenido(
   reporte: ReturnType<typeof mapReporteDto>,
 ): boolean {
   return (
-    reporte.kpis.some((kpi) => Number(kpi.value) > 0) ||
+    reporte.kpis.some((kpi) => Number(kpi.value.replace(/[^\d.-]/g, "")) > 0) ||
     reporte.estadoDietas.segmentos.length > 0 ||
     reporte.tiposDieta.length > 0 ||
     reporte.motivosDevolucion.length > 0 ||
+    reporte.motivosRecogida.length > 0 ||
     reporte.hallazgos.length > 0 ||
     reporte.hitos.length > 0
   )
@@ -96,63 +115,80 @@ function mapBarItems(items: unknown, fallbackColor = "#006671"): BarItem[] {
   })
 }
 
-const SEGMENT_COLORS = ["#006671", "#00818f", "#bbf244", "#7c6ba8", "#94a3b8"]
+function tituloGrafico(grafico: Record<string, unknown>): string {
+  return String(grafico.titulo ?? grafico.Titulo ?? "").toLowerCase()
+}
 
-function mapGraficosPie(graficos: unknown): Segmento[] {
+function buscarGrafico(graficos: unknown, ...fragmentos: string[]): Record<string, unknown> | null {
+  if (!Array.isArray(graficos)) return null
+  for (const fragmento of fragmentos) {
+    const encontrado = graficos.find((raw) => {
+      const grafico = asRecord(raw)
+      if (!grafico) return false
+      return tituloGrafico(grafico).includes(fragmento.toLowerCase())
+    })
+    if (encontrado) return asRecord(encontrado)
+  }
+  return null
+}
+
+function mapGraficoABarItems(grafico: Record<string, unknown> | null): BarItem[] {
+  if (!grafico) return []
+
+  const categorias = leerCampo(grafico, "categorias", "Categorias")
+  const series = leerCampo(grafico, "series", "Series")
+  if (!Array.isArray(categorias) || !Array.isArray(series) || series.length === 0) return []
+
+  const primeraSerie = asRecord(series[0]) ?? {}
+  const valores = leerCampo(primeraSerie, "valores", "Valores")
+  if (!Array.isArray(valores)) return []
+
+  return categorias.map((categoria, index) => ({
+    label: String(categoria),
+    value: Number(valores[index] ?? 0),
+    color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#006671",
+  }))
+}
+
+function mapGraficoAPie(grafico: Record<string, unknown> | null): Segmento[] {
+  if (!grafico) return []
+  return mapGraficoABarItems(grafico).map((item, index) => ({
+    ...item,
+    color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#006671",
+  }))
+}
+
+function mapGraficosPiePorTipo(graficos: unknown): Segmento[] {
   if (!Array.isArray(graficos)) return []
-
   for (const raw of graficos) {
-    const grafico = asRecord(raw) ?? {}
+    const grafico = asRecord(raw)
+    if (!grafico) continue
     const tipo = String(grafico.tipo ?? grafico.Tipo ?? "").toLowerCase()
     if (tipo !== "pie" && tipo !== "donut") continue
-
-    const categorias = leerCampo(grafico, "categorias", "Categorias")
-    const series = leerCampo(grafico, "series", "Series")
-    if (!Array.isArray(categorias) || !Array.isArray(series) || series.length === 0) continue
-
-    const primeraSerie = asRecord(series[0]) ?? {}
-    const valores = leerCampo(primeraSerie, "valores", "Valores")
-    if (!Array.isArray(valores)) continue
-
-    return categorias.map((categoria, index) => ({
-      label: String(categoria),
-      value: Number(valores[index] ?? 0),
-      color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#006671",
-    }))
+    const titulo = tituloGrafico(grafico)
+    if (titulo.includes("estado")) {
+      return mapGraficoAPie(grafico)
+    }
   }
-
   return []
 }
 
-function mapGraficosBarra(graficos: unknown): BarItem[] {
+function mapGraficosBarraPorTitulo(graficos: unknown, ...fragmentos: string[]): BarItem[] {
+  const grafico = buscarGrafico(graficos, ...fragmentos)
+  if (grafico) return mapGraficoABarItems(grafico)
+
   if (!Array.isArray(graficos)) return []
-
   for (const raw of graficos) {
-    const grafico = asRecord(raw) ?? {}
-    const tipo = String(grafico.tipo ?? grafico.Tipo ?? "").toLowerCase()
+    const graficoItem = asRecord(raw)
+    if (!graficoItem) continue
+    const tipo = String(graficoItem.tipo ?? graficoItem.Tipo ?? "").toLowerCase()
     if (tipo !== "barra" && tipo !== "bar") continue
-
-    const categorias = leerCampo(grafico, "categorias", "Categorias")
-    const series = leerCampo(grafico, "series", "Series")
-    if (!Array.isArray(categorias) || !Array.isArray(series) || series.length === 0) continue
-
-    const primeraSerie = asRecord(series[0]) ?? {}
-    const valores = leerCampo(primeraSerie, "valores", "Valores")
-    if (!Array.isArray(valores)) continue
-
-    return categorias.map((categoria, index) => ({
-      label: String(categoria),
-      value: Number(valores[index] ?? 0),
-      color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#006671",
-    }))
+    const titulo = tituloGrafico(graficoItem)
+    if (fragmentos.some((fragmento) => titulo.includes(fragmento.toLowerCase()))) {
+      return mapGraficoABarItems(graficoItem)
+    }
   }
-
   return []
-}
-
-function esHitoLogistico(item: Record<string, unknown>): boolean {
-  const tiempo = String(leerCampo(item, "tiempo", "Tiempo", "value", "Value") ?? "")
-  return /\d+\s*min/i.test(tiempo)
 }
 
 export function mapReporteDto(dto: ReporteDto) {
@@ -161,16 +197,68 @@ export function mapReporteDto(dto: ReporteDto) {
   const graficosRaw = leerCampo(dtoRecord, "graficos", "Graficos")
   const graficosObj = asRecord(graficosRaw)
 
+  const estadoGrafico = buscarGrafico(
+    graficosRaw,
+    "estado de dietas",
+    "estado de órdenes",
+    "estado de ordenes",
+  )
   const segmentosDesdeObjeto = mapBarItems(
     graficosObj?.estadoDietas ?? graficosObj?.distribucionEstados,
     "#006671",
   )
   const segmentos =
-    segmentosDesdeObjeto.length > 0 ? segmentosDesdeObjeto : mapGraficosPie(graficosRaw)
-  const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
+    mapGraficoAPie(estadoGrafico).length > 0
+      ? mapGraficoAPie(estadoGrafico)
+      : segmentosDesdeObjeto.length > 0
+        ? segmentosDesdeObjeto
+        : mapGraficosPiePorTipo(graficosRaw)
+
   const tiposDesdeGraficos = mapBarItems(graficosObj?.tiposDieta)
   const tiposDieta =
-    tiposDesdeGraficos.length > 0 ? tiposDesdeGraficos : mapGraficosBarra(graficosRaw)
+    tiposDesdeGraficos.length > 0
+      ? tiposDesdeGraficos
+      : mapGraficosBarraPorTitulo(
+          graficosRaw,
+          "tipos de dieta principales",
+          "tipos de dieta producidos",
+          "tipos de dieta",
+        )
+
+  const motivosRechazoDesdeObjeto = mapBarItems(graficosObj?.motivosDevolucion, "#e879a9")
+  const motivosRecogidaDesdeObjeto = mapBarItems(graficosObj?.motivosRecogida, "#60a5fa")
+  const motivosDevolucion =
+    motivosRechazoDesdeObjeto.length > 0
+      ? motivosRechazoDesdeObjeto
+      : mapGraficosBarraPorTitulo(
+          graficosRaw,
+          "rechazos antes de entrega",
+          "motivos de devolución",
+          "devolución",
+        )
+  const motivosRecogida =
+    motivosRecogidaDesdeObjeto.length > 0
+      ? motivosRecogidaDesdeObjeto
+      : mapGraficosBarraPorTitulo(
+          graficosRaw,
+          "recogidas de bandeja",
+          "recogida de bandeja",
+          "recogidas",
+        )
+
+  const servicioDesdeObjeto = mapBarItems(graficosObj?.distribucionServicio)
+  const distribucionServicio =
+    servicioDesdeObjeto.length > 0
+      ? servicioDesdeObjeto
+      : mapGraficosBarraPorTitulo(graficosRaw, "distribución por servicios", "por servicios")
+
+  const turnoDesdeObjeto = mapBarItems(graficosObj?.distribucionTurno)
+  const distribucionTurno =
+    turnoDesdeObjeto.length > 0
+      ? turnoDesdeObjeto
+      : mapGraficosBarraPorTitulo(graficosRaw, "distribución por turno", "por turno")
+
+  const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
 
   const kpisRaw = leerCampo(dtoRecord, "kpis", "Kpis")
   const hitosRaw = leerCampo(dtoRecord, "hitos", "Hitos")
@@ -180,35 +268,32 @@ export function mapReporteDto(dto: ReporteDto) {
     kpis: Array.isArray(kpisRaw)
       ? kpisRaw.map((raw) => {
           const item = asRecord(raw) ?? {}
-          const valor = leerCampo(item, "value", "valor", "Valor")
           return {
             label: String(leerCampo(item, "label", "etiqueta", "Etiqueta") ?? ""),
-            value: String(valor ?? ""),
+            value: formatearValorKpi(item),
             detalleVariant: "neutral" as const,
           }
         })
       : vacio.kpis,
     hitos: Array.isArray(hitosRaw)
-      ? hitosRaw
-          .map((raw) => {
-            const item = asRecord(raw) ?? {}
-            return {
-              etapa: String(
-                leerCampo(item, "etapa", "Etapa", "evento", "Evento", "label", "Label") ?? "",
-              ),
-              tiempo: String(
-                leerCampo(item, "tiempo", "Tiempo", "detalle", "Detalle", "value", "Value") ??
-                  "—",
-              ),
-              tendencia: String(leerCampo(item, "tendencia", "Tendencia") ?? "—"),
-              tendenciaVariant:
-                (leerCampo(item, "tendenciaVariant", "TendenciaVariant") as
-                  | "positive"
-                  | "negative"
-                  | "neutral") ?? "neutral",
-            }
-          })
-          .filter((hito) => esHitoLogistico({ tiempo: hito.tiempo }))
+      ? hitosRaw.map((raw) => {
+          const item = asRecord(raw) ?? {}
+          return {
+            etapa: String(
+              leerCampo(item, "etapa", "Etapa", "evento", "Evento", "label", "Label") ?? "",
+            ),
+            tiempo: String(
+              leerCampo(item, "tiempo", "Tiempo", "detalle", "Detalle", "value", "Value") ??
+                "—",
+            ),
+            tendencia: String(leerCampo(item, "tendencia", "Tendencia") ?? "—"),
+            tendenciaVariant:
+              (leerCampo(item, "tendenciaVariant", "TendenciaVariant") as
+                | "positive"
+                | "negative"
+                | "neutral") ?? "neutral",
+          }
+        })
       : vacio.hitos,
     hallazgos: mapHallazgosApi(hallazgosRaw),
     estadoDietas: {
@@ -217,10 +302,10 @@ export function mapReporteDto(dto: ReporteDto) {
       segmentos,
     },
     tiposDieta,
-    motivosDevolucion: mapBarItems(graficosObj?.motivosDevolucion, "#e879a9"),
-    distribucionServicio: mapBarItems(
-      graficosObj?.distribucionServicio ?? graficosObj?.distribucionTurno,
-    ),
-    mostrarDistribucionTurno: mapBarItems(graficosObj?.distribucionTurno).length > 0,
+    motivosDevolucion,
+    motivosRecogida,
+    distribucionServicio,
+    distribucionTurno,
+    mostrarDistribucionTurno: distribucionTurno.length > 0,
   }
 }

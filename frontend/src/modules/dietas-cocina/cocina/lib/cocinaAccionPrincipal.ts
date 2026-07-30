@@ -119,7 +119,7 @@ export function resolverAccionPrincipalCocina(
   }
 
   const motivoLista = motivoNoMarcarLista(orden)
-  if (motivoLista && orden.estadoCocina === "en_preparacion") {
+  if (motivoLista && estaEnGestionCocina(orden)) {
     return {
       id: "marcar-lista",
       label: "Marcar como lista",

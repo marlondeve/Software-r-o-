@@ -432,6 +432,7 @@ export function UsuariosRolesPage() {
           <RolesPermisosPanel
             puedeGestionar={puedeGestionar}
             refresco={refrescoRoles}
+            onRolesChanged={onRolCreado}
           />
         </TabsContent>
       </Tabs>

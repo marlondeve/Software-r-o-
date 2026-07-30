@@ -42,7 +42,12 @@ export function HallazgosPanel({
         <CardTitle className="text-sm font-semibold">{titulo}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2 px-4 py-3">
-        {hallazgos.map((hallazgo) => {
+        {hallazgos.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No hay hallazgos relevantes para el período seleccionado.
+          </p>
+        ) : (
+          hallazgos.map((hallazgo) => {
           const styles = variantStyles[hallazgo.variant]
           return (
             <div
@@ -67,7 +72,8 @@ export function HallazgosPanel({
               </div>
             </div>
           )
-        })}
+        })
+        )}
       </CardContent>
     </Card>
   )

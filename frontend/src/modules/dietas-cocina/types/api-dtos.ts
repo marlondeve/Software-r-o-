@@ -137,6 +137,7 @@ export interface EtiquetaDto {
   filaDietaId?: string
   cedula?: string
   generadaEn?: string
+  fechaOperativa?: string
   impresaEn?: string
   observacionAislamiento?: string
   alergico?: boolean
@@ -214,6 +215,7 @@ export interface OrdenCocinaApiDto {
   generadoEn?: string
   observaciones?: string
   dietas?: FilaDietaDto[]
+  dietasIds?: string[]
   checklist?: ChecklistItemApiDto[]
 }
 
@@ -331,6 +333,8 @@ export interface FilaAuditoriaDto {
   valorAnterior?: string
   valorNuevo?: string
   direccionIp?: string | null
+  metadata?: string | null
+  Metadata?: string | null
   resultado?: string
 }
 

@@ -30,6 +30,9 @@ import {
 } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
 import { MOTIVOS_NOVEDAD } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
 import { resolverEstadoVentanaComida } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
+import {
+  validarCondicionesClinicasFormulario,
+} from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import { cn } from "@/lib/utils"
 
 interface FormularioNovedad {
@@ -153,12 +156,14 @@ export function DietasNovedadSheet({
   if (!fila || !formulario || !estadoVentana) return null
   const hayCambios = cambios.some((c) => c.anterior !== c.nuevo)
   const ventanaPermiteCambios = estadoVentana.ventanaAbierta
+  const validacionClinica = validarCondicionesClinicasFormulario(formulario)
   const formularioValido =
     ventanaPermiteCambios &&
     formulario.motivo.trim().length > 0 &&
     formulario.tipoDieta.trim().length > 0 &&
     formulario.consistencia.trim().length > 0 &&
-    hayCambios
+    hayCambios &&
+    validacionClinica.valido
 
   function actualizarFormulario(cambios: Partial<FormularioNovedad>) {
     setFormulario((prev) => (prev ? { ...prev, ...cambios } : prev))
@@ -311,7 +316,10 @@ export function DietasNovedadSheet({
                 activo={formulario.pacienteAislado}
                 observacion={formulario.observacionAislamiento}
                 onActivoChange={(activo) =>
-                  actualizarFormulario({ pacienteAislado: activo })
+                  actualizarFormulario({
+                    pacienteAislado: activo,
+                    observacionAislamiento: activo ? formulario.observacionAislamiento : "",
+                  })
                 }
                 onObservacionChange={(value) =>
                   actualizarFormulario({ observacionAislamiento: value })
@@ -325,7 +333,10 @@ export function DietasNovedadSheet({
                 observacion={formulario.alergias}
                 placeholder="Describa alergias..."
                 onActivoChange={(activo) =>
-                  actualizarFormulario({ alergico: activo })
+                  actualizarFormulario({
+                    alergico: activo,
+                    alergias: activo ? formulario.alergias : "",
+                  })
                 }
                 onObservacionChange={(value) =>
                   actualizarFormulario({ alergias: value })
@@ -381,6 +392,9 @@ export function DietasNovedadSheet({
         </ScrollAreaFlex>
 
         <SheetFooter className="mt-0 shrink-0 flex-col gap-2 border-t bg-muted/30 px-5 py-4">
+          {!validacionClinica.valido && validacionClinica.mensaje && (
+            <p className="w-full text-sm text-destructive">{validacionClinica.mensaje}</p>
+          )}
           <Button
             type="button"
             className="w-full"

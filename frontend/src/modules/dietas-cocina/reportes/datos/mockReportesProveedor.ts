@@ -104,9 +104,14 @@ export const mockReportesProveedor = {
     { label: "Blanda", value: 8, color: "#94a3b8" },
   ],
   motivosDevolucion: [
-    { label: "Temperatura", value: 40, color: "#60a5fa" },
-    { label: "Demora entrega", value: 35, color: "#e879a9" },
-    { label: "Error etiquetado", value: 25, color: "#a78bfa" },
+    { label: "Temperatura", value: 40, color: "#ef4444" },
+    { label: "Demora entrega", value: 35, color: "#f97316" },
+    { label: "Error etiquetado", value: 25, color: "#eab308" },
+  ],
+  motivosRecogida: [
+    { label: "Se consumió", value: 38, color: "#60a5fa" },
+    { label: "Bandeja sin abrir", value: 34, color: "#38bdf8" },
+    { label: "Consumo parcial", value: 28, color: "#0ea5e9" },
   ],
   distribucionServicio: [
     { label: "Desayuno", value: 28, color: "#e879a9" },

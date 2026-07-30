@@ -6,8 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:clean": "vite --force",
-    "build": "tsc -b && vite build",
-    "build:hostinger": "tsc -b && vite build --mode hostinger",
+    "build": "tsc -b && vite build --mode production",
     "build:iis": "tsc -b && vite build --mode production",
     "lint": "oxlint",
     "preview": "vite preview",

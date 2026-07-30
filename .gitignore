@@ -16,6 +16,7 @@ dist-ssr
 frontend/dist
 backend/dist
 backend/publish
+deploy/
 **/publish/
 
 # .NET build artifacts (no subir DLLs ni compilados)
@@ -29,7 +30,7 @@ backend/publish
 .env
 .env.*
 !.env.example
-!.env.hostinger.example
+!.env.production.example
 
 # Editor directories and files
 .vscode/*

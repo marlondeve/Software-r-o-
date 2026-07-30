@@ -131,7 +131,7 @@ export function EditarPermisosRolDialog({
     return (
       <Button type="button" variant="outline" size="sm" disabled>
         <Settings2 data-icon="inline-start" />
-        Editar
+        Permisos
       </Button>
     )
   }
@@ -145,7 +145,7 @@ export function EditarPermisosRolDialog({
         onClick={abrirDialogo}
       >
         <Settings2 data-icon="inline-start" />
-        Editar
+        Permisos
       </Button>
 
       <Dialog open={dialogAbierto} onOpenChange={setDialogAbierto}>

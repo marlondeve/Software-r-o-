@@ -71,6 +71,129 @@ public class DashboardService : IDashboardService
             _ => estado.ToString(),
         };
 
+    private static string EtiquetaComidaReporte(TiempoComida comida) =>
+        comida switch
+        {
+            TiempoComida.Desayuno => "Desayuno",
+            TiempoComida.MediaNueve => "Merienda mañana",
+            TiempoComida.Almuerzo => "Almuerzo",
+            TiempoComida.Onces => "Merienda tarde",
+            TiempoComida.Cena => "Cena",
+            TiempoComida.MediaNoche => "Merienda noche",
+            _ => comida.ToString(),
+        };
+
+    private static string EtiquetaEstadoOrdenReporte(string estado) =>
+        estado switch
+        {
+            "Pendiente" => "Pendientes",
+            "EnPreparacion" => "En preparación",
+            "Completada" => "Completadas",
+            _ => estado,
+        };
+
+    private static GraficoDto CrearGraficoBarra(
+        string titulo,
+        IEnumerable<(string Categoria, int Cantidad)> datos)
+    {
+        var items = datos.ToList();
+        return new GraficoDto
+        {
+            Tipo = "barra",
+            Titulo = titulo,
+            Categorias = items.Select(d => d.Categoria).ToList(),
+            Series = new List<GraficoSerieDto>
+            {
+                new()
+                {
+                    Etiqueta = "Cantidad",
+                    Valores = items.Select(d => (decimal)d.Cantidad).ToList(),
+                },
+            },
+        };
+    }
+
+    private static GraficoDto CrearGraficoPie(
+        string titulo,
+        IEnumerable<(string Categoria, int Cantidad)> datos)
+    {
+        var items = datos.ToList();
+        return new GraficoDto
+        {
+            Tipo = "pie",
+            Titulo = titulo,
+            Categorias = items.Select(d => d.Categoria).ToList(),
+            Series = new List<GraficoSerieDto>
+            {
+                new()
+                {
+                    Etiqueta = "Cantidad",
+                    Valores = items.Select(d => (decimal)d.Cantidad).ToList(),
+                },
+            },
+        };
+    }
+
+    private static List<HitoReporteDto> ConstruirHitosLogisticos(
+        List<Domain.Entities.DietasCocina.EtiquetaEnfermera> etiquetas,
+        DateTime hasta)
+    {
+        var hitos = new List<HitoReporteDto>();
+        var minImpresion = PromedioMinutosEtiquetas(etiquetas, e => e.GeneradaEn, e => e.ImpresaEn);
+        if (minImpresion.HasValue)
+        {
+            hitos.Add(new HitoReporteDto
+            {
+                Fecha = hasta,
+                Evento = "Impresión de etiqueta",
+                Detalle = $"{minImpresion.Value} min",
+            });
+        }
+
+        var minTransito = PromedioMinutosEtiquetas(etiquetas, e => e.ImpresaEn, e => e.PreEntregadaEn);
+        if (minTransito.HasValue)
+        {
+            hitos.Add(new HitoReporteDto
+            {
+                Fecha = hasta,
+                Evento = "Tránsito a enfermería",
+                Detalle = $"{minTransito.Value} min",
+            });
+        }
+
+        var minEntrega = PromedioMinutosEtiquetas(etiquetas, e => e.PreEntregadaEn, e => e.EntregadaEn);
+        if (minEntrega.HasValue)
+        {
+            hitos.Add(new HitoReporteDto
+            {
+                Fecha = hasta,
+                Evento = "Entrega al paciente",
+                Detalle = $"{minEntrega.Value} min",
+            });
+        }
+
+        return hitos;
+    }
+
+    private static List<(string Categoria, int Cantidad)> AgruparMotivosTop3(
+        IEnumerable<Domain.Entities.DietasCocina.EtiquetaEnfermera> etiquetas,
+        Func<Domain.Entities.DietasCocina.EtiquetaEnfermera, bool> filtro)
+    {
+        return etiquetas
+            .Where(filtro)
+            .GroupBy(e => string.IsNullOrWhiteSpace(e.MotivoDevolucion) ? "Sin motivo" : e.MotivoDevolucion!.Trim())
+            .OrderByDescending(g => g.Count())
+            .Take(3)
+            .Select(g => (g.Key, g.Count()))
+            .ToList();
+    }
+
+    private static bool EsRechazoAntesEntrega(Domain.Entities.DietasCocina.EtiquetaEnfermera etiqueta) =>
+        etiqueta.EstadoLogistica == "devuelta" && !etiqueta.EntregadaEn.HasValue;
+
+    private static bool EsRecogidaPostEntrega(Domain.Entities.DietasCocina.EtiquetaEnfermera etiqueta) =>
+        etiqueta.EstadoLogistica == "devuelta" && etiqueta.EntregadaEn.HasValue;
+
     private static int? PromedioMinutosEtiquetas(
         IEnumerable<Domain.Entities.DietasCocina.EtiquetaEnfermera> etiquetas,
         Func<Domain.Entities.DietasCocina.EtiquetaEnfermera, DateTime?> inicio,
@@ -506,39 +629,7 @@ public class DashboardService : IDashboardService
         };
 
         // Hitos logísticos (promedios en minutos)
-        var hitos = new List<HitoReporteDto>();
-        var minImpresion = PromedioMinutosEtiquetas(etiquetas, e => e.GeneradaEn, e => e.ImpresaEn);
-        if (minImpresion.HasValue)
-        {
-            hitos.Add(new HitoReporteDto
-            {
-                Fecha = hasta,
-                Evento = "Impresión de etiqueta",
-                Detalle = $"{minImpresion.Value} min",
-            });
-        }
-
-        var minTransito = PromedioMinutosEtiquetas(etiquetas, e => e.ImpresaEn, e => e.PreEntregadaEn);
-        if (minTransito.HasValue)
-        {
-            hitos.Add(new HitoReporteDto
-            {
-                Fecha = hasta,
-                Evento = "Tránsito a enfermería",
-                Detalle = $"{minTransito.Value} min",
-            });
-        }
-
-        var minEntrega = PromedioMinutosEtiquetas(etiquetas, e => e.PreEntregadaEn, e => e.EntregadaEn);
-        if (minEntrega.HasValue)
-        {
-            hitos.Add(new HitoReporteDto
-            {
-                Fecha = hasta,
-                Evento = "Entrega al paciente",
-                Detalle = $"{minEntrega.Value} min",
-            });
-        }
+        var hitos = ConstruirHitosLogisticos(etiquetas, hasta);
 
         // Gráfico de dietas por día
         var dietasPorDia = dietas
@@ -558,7 +649,23 @@ public class DashboardService : IDashboardService
             .GroupBy(d => d.TipoDieta!.Nombre)
             .OrderByDescending(g => g.Count())
             .Take(5)
-            .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
+            .Select(g => (g.Key, g.Count()))
+            .ToList();
+
+        var motivosRechazo = AgruparMotivosTop3(etiquetas, EsRechazoAntesEntrega);
+        var motivosRecogida = AgruparMotivosTop3(etiquetas, EsRecogidaPostEntrega);
+
+        var distribucionServicio = dietas
+            .GroupBy(d => string.IsNullOrWhiteSpace(d.Servicio) ? "Sin servicio" : d.Servicio.Trim())
+            .OrderByDescending(g => g.Count())
+            .Take(6)
+            .Select(g => (g.Key, g.Count()))
+            .ToList();
+
+        var distribucionTurno = dietas
+            .GroupBy(d => EtiquetaComidaReporte(d.Comida))
+            .OrderByDescending(g => g.Count())
+            .Select(g => (g.Key, g.Count()))
             .ToList();
 
         var graficos = new List<GraficoDto>
@@ -573,26 +680,12 @@ public class DashboardService : IDashboardService
                     new() { Etiqueta = "Dietas", Valores = dietasPorDia.Select(d => (decimal)d.Cantidad).ToList() }
                 }
             },
-            new()
-            {
-                Tipo = "pie",
-                Titulo = "Estado de dietas",
-                Categorias = estadosDietas.Select(e => e.Categoria).ToList(),
-                Series = new List<GraficoSerieDto>
-                {
-                    new() { Etiqueta = "Dietas", Valores = estadosDietas.Select(e => (decimal)e.Cantidad).ToList() }
-                }
-            },
-            new()
-            {
-                Tipo = "barra",
-                Titulo = "Tipos de dieta principales",
-                Categorias = tiposDieta.Select(t => t.Categoria).ToList(),
-                Series = new List<GraficoSerieDto>
-                {
-                    new() { Etiqueta = "Dietas", Valores = tiposDieta.Select(t => (decimal)t.Cantidad).ToList() }
-                }
-            }
+            CrearGraficoPie("Estado de dietas", estadosDietas.Select(e => (e.Categoria, e.Cantidad))),
+            CrearGraficoBarra("Tipos de dieta principales", tiposDieta),
+            CrearGraficoBarra("Rechazos antes de entrega (Top 3)", motivosRechazo),
+            CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
+            CrearGraficoBarra("Distribución por servicios", distribucionServicio),
+            CrearGraficoBarra("Distribución por turno", distribucionTurno),
         };
 
         return new ReporteNutricionistaDto
@@ -628,8 +721,18 @@ public class DashboardService : IDashboardService
         if (TryResolverComidaReporte(filtros, out var comidaReporteEtiqueta))
             etiquetasQuery = etiquetasQuery.Where(e => e.Comida == comidaReporteEtiqueta);
 
-        var totalEtiquetas = await etiquetasQuery.CountAsync();
-        var etiquetasEntregadas = await etiquetasQuery.CountAsync(e => e.EntregadaEn != null);
+        var etiquetas = await etiquetasQuery.ToListAsync();
+        var totalEtiquetas = etiquetas.Count;
+        var etiquetasEntregadas = etiquetas.Count(e => e.EntregadaEn != null);
+
+        var dietasQuery = _context.FilasDietas
+            .Include(f => f.TipoDieta)
+            .Where(f => f.FechaOperativa >= desde && f.FechaOperativa <= hasta);
+
+        if (TryResolverComidaReporte(filtros, out var comidaReporteDieta))
+            dietasQuery = dietasQuery.Where(f => f.Comida == comidaReporteDieta);
+
+        var dietas = await dietasQuery.ToListAsync();
 
         // KPIs
         var kpis = new List<KpiDto>
@@ -668,7 +771,30 @@ public class DashboardService : IDashboardService
             });
         }
 
-        // Gráfico de cumplimiento diario
+        // Gráficos operativos
+        var estadosOrdenes = ordenes
+            .GroupBy(o => EtiquetaEstadoOrdenReporte(o.Estado))
+            .OrderByDescending(g => g.Count())
+            .Select(g => (g.Key, g.Count()))
+            .ToList();
+
+        var tiposDieta = dietas
+            .Where(d => d.TipoDieta != null)
+            .GroupBy(d => d.TipoDieta!.Nombre)
+            .OrderByDescending(g => g.Count())
+            .Take(5)
+            .Select(g => (g.Key, g.Count()))
+            .ToList();
+
+        var motivosRechazo = AgruparMotivosTop3(etiquetas, EsRechazoAntesEntrega);
+        var motivosRecogida = AgruparMotivosTop3(etiquetas, EsRecogidaPostEntrega);
+
+        var distribucionTurno = dietas
+            .GroupBy(d => EtiquetaComidaReporte(d.Comida))
+            .OrderByDescending(g => g.Count())
+            .Select(g => (g.Key, g.Count()))
+            .ToList();
+
         var cumplimientoDiario = ordenes
             .GroupBy(o => o.FechaOperativa.Date)
             .OrderBy(g => g.Key)
@@ -681,6 +807,11 @@ public class DashboardService : IDashboardService
 
         var graficos = new List<GraficoDto>
         {
+            CrearGraficoPie("Estado de órdenes", estadosOrdenes),
+            CrearGraficoBarra("Tipos de dieta producidos", tiposDieta),
+            CrearGraficoBarra("Rechazos antes de entrega (Top 3)", motivosRechazo),
+            CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
+            CrearGraficoBarra("Distribución por turno", distribucionTurno),
             new()
             {
                 Tipo = "barra",
@@ -688,14 +819,17 @@ public class DashboardService : IDashboardService
                 Categorias = cumplimientoDiario.Select(c => c.Fecha).ToList(),
                 Series = new List<GraficoSerieDto>
                 {
-                    new() { Etiqueta = "% Impresión", Valores = cumplimientoDiario.Select(c => c.Porcentaje).ToList() }
+                    new() { Etiqueta = "% Completadas", Valores = cumplimientoDiario.Select(c => c.Porcentaje).ToList() }
                 }
-            }
+            },
         };
+
+        var hitos = ConstruirHitosLogisticos(etiquetas, hasta);
 
         return new ReporteProveedorDto
         {
             Kpis = kpis,
+            Hitos = hitos,
             Hallazgos = hallazgos,
             Graficos = graficos,
             Filtros = filtros

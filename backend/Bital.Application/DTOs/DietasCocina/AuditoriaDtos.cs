@@ -27,6 +27,8 @@ public record EventoAuditoriaDto
     public Guid? EntidadId { get; init; }
     public string? DireccionIp { get; init; }
     public int? DuracionMs { get; init; }
+    public string? DatosAntes { get; init; }
+    public string? DatosDespues { get; init; }
 }
 
 public record ListaEventosAuditoriaDto

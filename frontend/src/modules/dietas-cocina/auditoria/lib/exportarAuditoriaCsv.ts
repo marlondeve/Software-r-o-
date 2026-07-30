@@ -1,4 +1,4 @@
-export const TAMANO_PAGINA_AUDITORIA = 3
+export const TAMANO_PAGINA_AUDITORIA = 20
 
 export function exportarAuditoriaCsv(
   filas: {

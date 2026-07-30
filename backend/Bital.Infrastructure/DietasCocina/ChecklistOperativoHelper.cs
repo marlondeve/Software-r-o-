@@ -13,7 +13,7 @@ internal static class ChecklistOperativoHelper
 
     public static List<ChecklistItemDto> PlantillaInicial() =>
     [
-        new() { Id = "ck-1", Label = "Receta revisada", Obligatorio = false, Completado = true },
+        new() { Id = "ck-1", Label = "Receta revisada", Obligatorio = false, Completado = false },
         new() { Id = "ck-2", Label = "Alergias revisadas", Obligatorio = true, Completado = false },
         new() { Id = "ck-3", Label = "Aislamiento identificado", Obligatorio = true, Completado = false },
         new() { Id = "ck-4", Label = "Porción verificada", Obligatorio = false, Completado = false },

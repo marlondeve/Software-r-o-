@@ -44,6 +44,7 @@ export function NuevoUsuarioDialog({
   const [rolId, setRolId] = useState("")
   const [servicioArea, setServicioArea] = useState("")
 
+  const esEdicion = Boolean(usuarioEdit)
   const rolSeleccionado = roles.find((rol) => rol.id === rolId)
 
   useEffect(() => {
@@ -59,7 +60,6 @@ export function NuevoUsuarioDialog({
       setNombre(usuarioEdit.nombre)
       setUsuario(usuarioEdit.usuario)
       setCorreo(usuarioEdit.correo)
-      setRolId(usuarioEdit.rolId)
       setServicioArea(usuarioEdit.servicioArea)
     } else {
       setRolId(roles[0]?.id ?? "")
@@ -67,15 +67,19 @@ export function NuevoUsuarioDialog({
   }, [open, usuarioEdit, roles])
 
   function guardar() {
-    if (!nombre.trim() || !usuario.trim() || !correo.trim() || !rolId) return
+    if (!nombre.trim() || !usuario.trim() || !correo.trim()) return
+    if (!esEdicion && !rolId) return
 
-    const nombreRol = rolSeleccionado?.nombre ?? "Usuario"
+    const nombreRol = esEdicion
+      ? usuarioEdit!.rol
+      : (rolSeleccionado?.nombre ?? "Usuario")
+    const rolIdFinal = esEdicion ? usuarioEdit!.rolId : rolId
 
     const payload = {
       nombre: nombre.trim(),
       usuario: usuario.trim(),
       correo: correo.trim(),
-      rolId,
+      rolId: rolIdFinal,
       rol: nombreRol,
       servicioArea: servicioArea.trim() || "Sin asignar",
       orgProveedora:
@@ -93,14 +97,17 @@ export function NuevoUsuarioDialog({
     onOpenChange(false)
   }
 
+  const formularioValido =
+    nombre.trim() && usuario.trim() && correo.trim() && (esEdicion || rolId)
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{usuarioEdit ? "Editar usuario" : "Nuevo usuario"}</DialogTitle>
+          <DialogTitle>{esEdicion ? "Editar usuario" : "Nuevo usuario"}</DialogTitle>
           <DialogDescription>
-            {usuarioEdit
-              ? "Actualice los datos del usuario del módulo Dietas y Cocina."
+            {esEdicion
+              ? "Actualice los datos del usuario. Para cambiar el rol use la acción «Cambiar rol» en la tabla."
               : "Registre un usuario para el módulo Dietas y Cocina."}
           </DialogDescription>
         </DialogHeader>
@@ -134,21 +141,23 @@ export function NuevoUsuarioDialog({
               className="bg-card"
             />
           </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="nuevo-rol">Rol</Label>
-            <Select value={rolId} onValueChange={setRolId}>
-              <SelectTrigger id="nuevo-rol" className="w-full bg-card">
-                <SelectValue placeholder="Seleccione un rol" />
-              </SelectTrigger>
-              <SelectContent>
-                {roles.map((item) => (
-                  <SelectItem key={item.id} value={item.id ?? ""}>
-                    {item.nombre}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!esEdicion && (
+            <div className="space-y-1.5">
+              <Label htmlFor="nuevo-rol">Rol</Label>
+              <Select value={rolId} onValueChange={setRolId}>
+                <SelectTrigger id="nuevo-rol" className="w-full bg-card">
+                  <SelectValue placeholder="Seleccione un rol" />
+                </SelectTrigger>
+                <SelectContent className="z-100">
+                  {roles.map((item) => (
+                    <SelectItem key={item.id} value={item.id ?? ""}>
+                      {item.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label htmlFor="nuevo-servicio">Servicio / Área</Label>
             <Input
@@ -164,12 +173,8 @@ export function NuevoUsuarioDialog({
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button
-            type="button"
-            disabled={!nombre.trim() || !usuario.trim() || !correo.trim() || !rolId}
-            onClick={guardar}
-          >
-            {usuarioEdit ? "Guardar cambios" : "Crear usuario"}
+          <Button type="button" disabled={!formularioValido} onClick={guardar}>
+            {esEdicion ? "Guardar cambios" : "Crear usuario"}
           </Button>
         </DialogFooter>
       </DialogContent>

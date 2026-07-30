@@ -17,6 +17,14 @@ export function HistoricoTarifasTimeline({
 }: HistoricoTarifasTimelineProps) {
   const ordenadas = [...tarifas].sort((a, b) => b.anio - a.anio)
 
+  if (ordenadas.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No hay tarifas registradas para esta dieta.
+      </p>
+    )
+  }
+
   return (
     <ul className="space-y-0">
       {ordenadas.map((tarifa, index) => {

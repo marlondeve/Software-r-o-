@@ -14,6 +14,7 @@ import {
   ChipIconoTexto,
   FilaMetaSvg,
 } from "@/modules/dietas-cocina/etiquetas/components/etiquetaMetaSvg"
+import { estiloCodigoEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaImpresionLayout"
 
 export interface EtiquetaLabelFaceProps {
   etiqueta: EtiquetaDieta
@@ -557,16 +558,7 @@ function EtiquetaLabelContenido({
           )}
         </div>
 
-        <p
-          style={{
-            margin: 0,
-            padding: esImpresion ? "0 8px 8px" : "0 6px 6px",
-            textAlign: "center",
-            fontSize: 9,
-            color: C.black50,
-            flexShrink: 0,
-          }}
-        >
+        <p style={estiloCodigoEtiqueta(etiqueta.codigo, esImpresion)}>
           {etiqueta.codigo}
         </p>
       </div>

@@ -14,7 +14,9 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 function parseFechaApi(valor: unknown): Date | null {
   if (!valor) return null
   const fecha = new Date(String(valor))
-  return Number.isNaN(fecha.getTime()) ? null : fecha
+  if (Number.isNaN(fecha.getTime())) return null
+  if (fecha.getFullYear() < 1900) return null
+  return fecha
 }
 
 function formatearFechaApi(valor: unknown): string {
@@ -32,10 +34,15 @@ function resolverEstadoCatalogo(
   activa: boolean,
 ): EstadoDietaCatalogo {
   const estadoRaw = String(normalizarClave(dto, "estado", "Estado") ?? "").toLowerCase()
-  if (estadoRaw === "vigente" || estadoRaw === "programada" || estadoRaw === "vencida") {
+  if (
+    estadoRaw === "vigente"
+    || estadoRaw === "programada"
+    || estadoRaw === "vencida"
+    || estadoRaw === "inactiva"
+  ) {
     return estadoRaw
   }
-  return activa ? "vigente" : "vencida"
+  return activa ? "vigente" : "inactiva"
 }
 
 function mapTarifaHistoricoDto(dto: TarifaHistoricoDto | Record<string, unknown>): TarifaHistorico {

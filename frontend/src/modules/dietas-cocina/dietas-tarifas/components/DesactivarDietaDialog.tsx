@@ -14,7 +14,7 @@ interface DesactivarDietaDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   dieta: DietaCatalogo | null
-  onConfirmar: (dieta: DietaCatalogo) => void
+  onConfirmar: (dieta: DietaCatalogo) => void | Promise<void>
 }
 
 export function DesactivarDietaDialog({
@@ -25,14 +25,19 @@ export function DesactivarDietaDialog({
 }: DesactivarDietaDialogProps) {
   if (!dieta) return null
 
-  function confirmar() {
-    onConfirmar({
-      ...dieta,
-      activa: false,
-      estado: "vencida",
-      ultimaActualizacion: formatearFechaHoraCatalogo(new Date()),
-    } as DietaCatalogo)
-    onOpenChange(false)
+  async function confirmar() {
+    if (!dieta) return
+    try {
+      await onConfirmar({
+        ...dieta,
+        activa: false,
+        estado: "inactiva",
+        ultimaActualizacion: formatearFechaHoraCatalogo(new Date()),
+      })
+      onOpenChange(false)
+    } catch {
+      // El padre muestra el error; mantener el diálogo abierto.
+    }
   }
 
   return (

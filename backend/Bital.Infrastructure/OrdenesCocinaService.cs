@@ -16,16 +16,19 @@ public class OrdenesCocinaService : IOrdenesCocinaService
 {
     private readonly BitalNegocioDbContext _context;
     private readonly ILogger<OrdenesCocinaService> _logger;
-    private readonly IAuditoriaService? _auditoria;
+    private readonly IAuditoriaService _auditoria;
+    private readonly IAuditoriaContextoRequest _contextoAuditoria;
 
     public OrdenesCocinaService(
         BitalNegocioDbContext context,
         ILogger<OrdenesCocinaService> logger,
-        IAuditoriaService? auditoria = null)
+        IAuditoriaService auditoria,
+        IAuditoriaContextoRequest contextoAuditoria)
     {
         _context = context;
         _logger = logger;
         _auditoria = auditoria;
+        _contextoAuditoria = contextoAuditoria;
     }
 
     private static bool TryParseTiempoComida(string? comida, out TiempoComida tiempoComida)
@@ -148,6 +151,18 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             "Orden de cocina #{NumeroOrden} creada para {Fecha} {Comida} con {Total} dietas por {Usuario}",
             numeroOrden, datos.FechaOperativa.Date, datos.Comida, dietas.Count, usuario);
 
+        AuditoriaOperativaHelper.RegistrarSilencioso(
+            _auditoria,
+            _logger,
+            AuditoriaCatalogo.Modulos.Ordenes,
+            AuditoriaCatalogo.Acciones.Crear,
+            usuario,
+            AuditoriaCatalogo.Entidades.OrdenCocina,
+            orden.Id,
+            null,
+            AuditoriaSnapshot.Json(new { orden.NumeroOrden, datos.Comida, datos.FechaOperativa, totalDietas = dietas.Count }),
+            contexto: _contextoAuditoria);
+
         return MapearADtoConDietas(orden);
     }
 
@@ -260,12 +275,14 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         AuditoriaOperativaHelper.RegistrarSilencioso(
             _auditoria,
             _logger,
-            "Ordenes",
-            "ActualizarEstado",
+            AuditoriaCatalogo.Modulos.Ordenes,
+            AuditoriaCatalogo.Acciones.ActualizarEstado,
             usuario,
-            "OrdenCocina",
+            AuditoriaCatalogo.Entidades.OrdenCocina,
             orden.Id,
-            $"{{\"estado\":\"{datos.Estado}\"}}");
+            AuditoriaSnapshot.Json(new { estado = estadoAnterior }),
+            AuditoriaSnapshot.Json(new { estado = datos.Estado }),
+            contexto: _contextoAuditoria);
 
         return MapearADto(orden);
     }
@@ -318,6 +335,18 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             "Orden #{NumeroOrden} cancelada por {Usuario}. Motivo: {Motivo}",
             orden.NumeroOrden, usuario, motivo);
 
+        AuditoriaOperativaHelper.RegistrarSilencioso(
+            _auditoria,
+            _logger,
+            AuditoriaCatalogo.Modulos.Ordenes,
+            AuditoriaCatalogo.Acciones.Cancelar,
+            usuario,
+            AuditoriaCatalogo.Entidades.OrdenCocina,
+            orden.Id,
+            null,
+            AuditoriaSnapshot.Json(new { orden.NumeroOrden, motivo }),
+            contexto: _contextoAuditoria);
+
         return true;
     }
 
@@ -348,11 +377,14 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         AuditoriaOperativaHelper.RegistrarSilencioso(
             _auditoria,
             _logger,
-            "Ordenes",
-            "ActualizarChecklist",
+            AuditoriaCatalogo.Modulos.Ordenes,
+            AuditoriaCatalogo.Acciones.ActualizarChecklist,
             usuario,
-            "OrdenCocina",
-            orden.Id);
+            AuditoriaCatalogo.Entidades.OrdenCocina,
+            orden.Id,
+            AuditoriaSnapshot.Json(actual),
+            AuditoriaSnapshot.Json(actualizado),
+            contexto: _contextoAuditoria);
 
         return MapearADtoConDietas(orden);
     }
@@ -370,6 +402,7 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             GeneradoPor = orden.GeneradoPor,
             GeneradoEn = orden.GeneradoEn,
             Observaciones = orden.Observaciones,
+            DietasIds = orden.Dietas?.Select(d => d.Id).ToList(),
             Checklist = ChecklistOperativoHelper.DesdeJson(orden.ChecklistJson),
         };
     }

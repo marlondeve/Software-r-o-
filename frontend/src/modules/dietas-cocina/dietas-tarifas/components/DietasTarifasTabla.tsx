@@ -19,6 +19,7 @@ interface DietasTarifasTablaProps {
   onHistorico: (dieta: DietaCatalogo) => void
   onNuevaTarifa: (dieta: DietaCatalogo) => void
   onDesactivar: (dieta: DietaCatalogo) => void
+  onActivar: (dieta: DietaCatalogo) => void
 }
 
 function numerosPagina(total: number): number[] {
@@ -36,6 +37,7 @@ export function DietasTarifasTabla({
   onHistorico,
   onNuevaTarifa,
   onDesactivar,
+  onActivar,
 }: DietasTarifasTablaProps) {
   const desde = (paginaActual - 1) * tamanoPagina + 1
   const hasta = Math.min(paginaActual * tamanoPagina, totalRegistros)
@@ -143,11 +145,12 @@ export function DietasTarifasTabla({
             onHistorico={onHistorico}
             onNuevaTarifa={onNuevaTarifa}
             onDesactivar={onDesactivar}
+            onActivar={onActivar}
           />
         ),
       },
     ],
-    [onEditar, onHistorico, onNuevaTarifa, onDesactivar],
+    [onEditar, onHistorico, onNuevaTarifa, onDesactivar, onActivar],
   )
 
   return (

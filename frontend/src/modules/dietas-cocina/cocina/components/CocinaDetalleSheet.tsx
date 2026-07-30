@@ -6,9 +6,10 @@ import {
   ShieldAlert,
   Utensils,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
+import { mapChecklistFromApi } from "@/modules/dietas-cocina/api/mappers/ordenCocina.mapper"
 import { obtenerDetalleOrdenCocina } from "@/modules/dietas-cocina/api/services/ordenes-cocina-api.service"
 import type { OrdenCocinaApiDto } from "@/modules/dietas-cocina/types/api-dtos"
 
@@ -61,6 +62,10 @@ interface CocinaDetalleSheetProps {
     checklistId: string,
     completado: boolean,
   ) => void
+  onSincronizarChecklist?: (
+    ordenId: string,
+    checklist: OrdenCocina["checklist"],
+  ) => void
   getEtiquetaByOrdenId: (ordenId: string) => EtiquetaEnfermera | undefined
 }
 
@@ -73,15 +78,18 @@ export function CocinaDetalleSheet({
   onContinuarPreparacion,
   onImprimirEtiqueta,
   onChecklistChange,
+  onSincronizarChecklist,
   getEtiquetaByOrdenId,
 }: CocinaDetalleSheetProps) {
   const apiActiva = usarApiDietasCocina()
   const [detalleApi, setDetalleApi] = useState<OrdenCocinaApiDto | null>(null)
   const [cargandoDetalleApi, setCargandoDetalleApi] = useState(false)
+  const ultimoChecklistSync = useRef<string>("")
 
   useEffect(() => {
     if (!open || !orden?.ordenCocinaApiId || !apiActiva) {
       setDetalleApi(null)
+      ultimoChecklistSync.current = ""
       return
     }
 
@@ -92,31 +100,49 @@ export function CocinaDetalleSheet({
       .finally(() => setCargandoDetalleApi(false))
   }, [open, orden?.ordenCocinaApiId, apiActiva])
 
-  if (!orden) return null
+  useEffect(() => {
+    if (!orden?.id || !detalleApi?.checklist?.length || !onSincronizarChecklist) return
+    const checklist = mapChecklistFromApi(detalleApi.checklist)
+    const firma = JSON.stringify(checklist)
+    if (firma === ultimoChecklistSync.current) return
+    ultimoChecklistSync.current = firma
+    onSincronizarChecklist(orden.id, checklist)
+  }, [detalleApi, onSincronizarChecklist, orden?.id])
 
-  const ordenActiva = orden
+  const ordenActiva = useMemo(() => {
+    if (!orden) return null
+    if (!detalleApi?.checklist?.length) return orden
+    return {
+      ...orden,
+      checklist: mapChecklistFromApi(detalleApi.checklist),
+    }
+  }, [orden, detalleApi])
 
-  const etiqueta = getEtiquetaByOrdenId(ordenActiva.id)
-  const progresoChecklist = checklistProgreso(ordenActiva)
-  const checklistEditable = puedeEditarChecklist(ordenActiva)
-  const checklistRecuperacion = enRecuperacionChecklistCocina(ordenActiva)
-  const accionPrincipal = resolverAccionPrincipalCocina(ordenActiva, etiqueta)
-  const descripcionLogistica = descripcionEstadoLogisticaCocina(ordenActiva, etiqueta)
+  if (!ordenActiva) return null
+
+  const vista = ordenActiva
+
+  const etiqueta = getEtiquetaByOrdenId(vista.id)
+  const progresoChecklist = checklistProgreso(vista)
+  const checklistEditable = puedeEditarChecklist(vista)
+  const checklistRecuperacion = enRecuperacionChecklistCocina(vista)
+  const accionPrincipal = resolverAccionPrincipalCocina(vista, etiqueta)
+  const descripcionLogistica = descripcionEstadoLogisticaCocina(vista, etiqueta)
 
   function ejecutarAccionPrincipal() {
     switch (accionPrincipal.id) {
       case "continuar-preparacion":
-        onContinuarPreparacion(ordenActiva.id)
+        onContinuarPreparacion(vista.id)
         break
       case "marcar-lista":
-        onMarcarComoLista(ordenActiva.id)
+        onMarcarComoLista(vista.id)
         break
       case "generar-etiqueta":
       case "imprimir-etiqueta":
-        onImprimirEtiqueta(ordenActiva)
+        onImprimirEtiqueta(vista)
         break
       case "registrar-despacho":
-        onRegistrarDespacho(ordenActiva.id)
+        onRegistrarDespacho(vista.id)
         break
     }
   }
@@ -124,9 +150,9 @@ export function CocinaDetalleSheet({
   const IconoAccion = accionPrincipal.icon
 
   const ubicacion = [
-    orden.pabellon,
-    `Hab ${orden.habitacion}`,
-    orden.cama,
+    vista.pabellon,
+    `Hab ${vista.habitacion}`,
+    vista.cama,
   ]
     .filter(Boolean)
     .join(" · ")
@@ -141,16 +167,16 @@ export function CocinaDetalleSheet({
           <SheetTitle>Detalle de bandeja</SheetTitle>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="font-medium">
-              {etiquetaComidaLabel(orden.comida)}
+              {etiquetaComidaLabel(vista.comida)}
             </Badge>
             <Badge
               variant="outline"
               className={cn(
                 "font-medium",
-                claseBadgeEstadoVisibleCocina(orden, etiqueta),
+                claseBadgeEstadoVisibleCocina(vista, etiqueta),
               )}
             >
-              {labelEstadoVisibleCocina(orden, etiqueta)}
+              {labelEstadoVisibleCocina(vista, etiqueta)}
             </Badge>
             {descripcionLogistica && (
               <Badge variant="secondary" className="font-normal">
@@ -173,26 +199,26 @@ export function CocinaDetalleSheet({
                 {detalleApi.observaciones}
               </section>
             )}
-            {orden.aislado && (
+            {vista.aislado && (
               <AlertaCriticaCard
                 tipo="aislamiento"
                 titulo="Paciente aislado"
                 descripcion="Siga estrictamente los protocolos de bioseguridad del pabellón."
               />
             )}
-            {orden.alergias.length > 0 && (
+            {vista.alergias.length > 0 && (
               <AlertaCriticaCard
                 tipo="alergia"
                 titulo="Alergia severa"
-                descripcion={orden.alergias.join(", ") + "."}
+                descripcion={vista.alergias.join(", ") + "."}
               />
             )}
 
             <section className="rounded-xl border border-border bg-muted/40 p-4">
-              <p className="font-semibold text-foreground">{orden.paciente}</p>
+              <p className="font-semibold text-foreground">{vista.paciente}</p>
               <p className="text-sm text-muted-foreground">{ubicacion}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                ID: {orden.pacienteId} · {orden.edad} años
+                ID: {vista.pacienteId} · {vista.edad} años
               </p>
             </section>
 
@@ -206,15 +232,15 @@ export function CocinaDetalleSheet({
                   <p
                     className={cn(
                       "font-semibold",
-                      claseTipoDieta(orden.tipoDieta),
+                      claseTipoDieta(vista.tipoDieta),
                     )}
                   >
-                    {orden.tipoDieta}
+                    {vista.tipoDieta}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Consistencia</p>
-                  <p className="font-medium">{orden.consistencia}</p>
+                  <p className="font-medium">{vista.consistencia}</p>
                 </div>
               </div>
               <div className="flex flex-wrap gap-3 text-muted-foreground">
@@ -222,28 +248,28 @@ export function CocinaDetalleSheet({
                   <Utensils className="size-3.5" />
                   Porción estándar
                 </span>
-                {orden.observaciones && (
+                {vista.observaciones && (
                   <span className="flex items-center gap-1.5 text-xs">
                     <AlertTriangle className="size-3.5" />
                     Observaciones
                   </span>
                 )}
-                {orden.alergias.length > 0 && (
+                {vista.alergias.length > 0 && (
                   <span className="flex items-center gap-1.5 text-xs text-destructive">
                     <ShieldAlert className="size-3.5" />
                     Alergia
                   </span>
                 )}
-                {orden.aislado && (
+                {vista.aislado && (
                   <span className="flex items-center gap-1.5 text-xs text-destructive">
                     <AlertTriangle className="size-3.5" />
                     Aislamiento
                   </span>
                 )}
               </div>
-              {orden.observaciones && (
+              {vista.observaciones && (
                 <p className="text-sm text-muted-foreground">
-                  {orden.observaciones}
+                  {vista.observaciones}
                 </p>
               )}
             </section>
@@ -284,7 +310,7 @@ export function CocinaDetalleSheet({
                 </p>
               )}
               <ul className="space-y-2">
-                {orden.checklist.map((item) => (
+                {ordenActiva.checklist.map((item) => (
                   <li
                     key={item.id}
                     className={cn(
@@ -300,7 +326,7 @@ export function CocinaDetalleSheet({
                       disabled={!checklistEditable}
                       onCheckedChange={(checked) =>
                         onChecklistChange(
-                          orden.id,
+                          ordenActiva.id,
                           item.id,
                           checked === true,
                         )
@@ -328,7 +354,7 @@ export function CocinaDetalleSheet({
 
             <section className="space-y-3">
               <p className="text-sm font-semibold text-primary">Seguimiento</p>
-              <CocinaSeguimientoTimeline orden={orden} etiqueta={etiqueta} />
+              <CocinaSeguimientoTimeline orden={vista} etiqueta={etiqueta} />
             </section>
 
             <section className="space-y-2">

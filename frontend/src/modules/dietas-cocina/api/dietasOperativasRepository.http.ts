@@ -41,7 +41,13 @@ export const dietasOperativasRepositoryHttp: DietasOperativasRepository = {
   },
   async obtenerCatalogo() {
     const items = await obtenerCatalogoDietas()
-    return items.map((item) => ({
+    return items
+      .filter((item) => {
+        const registro = item as Record<string, unknown>
+        const activa = registro.activa ?? registro.Activa
+        return activa !== false
+      })
+      .map((item) => ({
       id: String(item.id ?? item.codigo ?? ""),
       nombre: String(item.nombre ?? item.codigo ?? ""),
       descripcion: item.descripcion,

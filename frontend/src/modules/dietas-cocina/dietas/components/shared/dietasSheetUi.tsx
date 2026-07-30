@@ -101,6 +101,7 @@ export function CondicionExpandible({
             className="mb-2 block text-sm font-semibold text-foreground"
           >
             Observación
+            <span className="ml-1 text-destructive">*</span>
           </Label>
           <Textarea
             id={`${id}-observacion`}
@@ -109,6 +110,8 @@ export function CondicionExpandible({
             placeholder={placeholder}
             className="min-h-20 bg-background shadow-none"
             disabled={disabled}
+            required
+            aria-required="true"
           />
         </div>
       )}

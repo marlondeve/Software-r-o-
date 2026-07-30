@@ -5,17 +5,20 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { DietaCatalogoFormValues } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietaCatalogoFormDefaults"
+import { formatearMonedaTarifa } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
 
 interface DietaCatalogoFormProps {
   values: DietaCatalogoFormValues
   onChange: (values: DietaCatalogoFormValues) => void
   codigoReadOnly?: boolean
+  tarifaReadOnly?: boolean
 }
 
 export function DietaCatalogoForm({
   values,
   onChange,
   codigoReadOnly = false,
+  tarifaReadOnly = false,
 }: DietaCatalogoFormProps) {
   function patch(partial: Partial<DietaCatalogoFormValues>) {
     onChange({ ...values, ...partial })
@@ -58,20 +61,36 @@ export function DietaCatalogoForm({
       <Separator />
 
       <div className="space-y-2">
-        <Label htmlFor="tarifa-inicial">Tarifa inicial (COP, opcional)</Label>
-        <div className="relative">
-          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            $
-          </span>
+        <Label htmlFor="tarifa-inicial">
+          {tarifaReadOnly ? "Tarifa vigente (COP)" : "Tarifa inicial (COP, opcional)"}
+        </Label>
+        {tarifaReadOnly ? (
           <Input
             id="tarifa-inicial"
-            className="pl-7"
-            placeholder="0"
-            inputMode="numeric"
-            value={values.tarifaInicial}
-            onChange={(e) => patch({ tarifaInicial: e.target.value })}
+            readOnly
+            className="bg-muted/40"
+            value={formatearMonedaTarifa(Number.parseFloat(values.tarifaInicial) || 0)}
           />
-        </div>
+        ) : (
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              $
+            </span>
+            <Input
+              id="tarifa-inicial"
+              className="pl-7"
+              placeholder="0"
+              inputMode="numeric"
+              value={values.tarifaInicial}
+              onChange={(e) => patch({ tarifaInicial: e.target.value })}
+            />
+          </div>
+        )}
+        {tarifaReadOnly && (
+          <p className="text-xs text-muted-foreground">
+            Para cambiar la tarifa use la acción &quot;Nueva tarifa&quot; en el catálogo.
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

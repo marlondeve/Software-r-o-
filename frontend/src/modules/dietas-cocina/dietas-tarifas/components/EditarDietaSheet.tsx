@@ -22,17 +22,30 @@ interface EditarDietaSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   dieta: DietaCatalogo | null
-  onGuardar: (dieta: DietaCatalogo) => void
+  onGuardar: (
+    dieta: DietaCatalogo,
+    fechasIso?: { fechaInicio?: string; fechaFin?: string },
+  ) => void | Promise<void>
 }
 
 function dietaToForm(dieta: DietaCatalogo): DietaCatalogoFormValues {
+  const tarifaVigente = dieta.historicoTarifas.find((t) => t.vigente)
+  const fechaInicio =
+    fechaCatalogoAISO(dieta.fechaInicio) ||
+    (tarifaVigente ? fechaCatalogoAISO(tarifaVigente.vigenciaDesde) : "")
+  const fechaFin = dieta.fechaFin
+    ? fechaCatalogoAISO(dieta.fechaFin)
+    : tarifaVigente?.vigenciaHasta
+      ? fechaCatalogoAISO(tarifaVigente.vigenciaHasta)
+      : ""
+
   return {
     codigo: dieta.codigo,
     nombre: dieta.nombre,
     descripcion: dieta.descripcion,
     tarifaInicial: String(dieta.tarifaVigente),
-    fechaInicio: fechaCatalogoAISO(dieta.fechaInicio),
-    fechaFin: dieta.fechaFin ? fechaCatalogoAISO(dieta.fechaFin) : "",
+    fechaInicio,
+    fechaFin,
     activa: dieta.activa,
   }
 }
@@ -53,45 +66,39 @@ export function EditarDietaSheet({
 
   const puedeGuardar = values.nombre.trim().length > 0
 
-  function guardar() {
+  async function guardar() {
     if (!puedeGuardar || !dieta || !values) return
 
     const dietaActual = dieta
     const valuesActuales = values
     const ahora = new Date()
-    const tarifa =
-      Number.parseFloat(valuesActuales.tarifaInicial) || dietaActual.tarifaVigente
-    const historicoTarifas = dietaActual.historicoTarifas.map((entrada) => {
-      if (!entrada.vigente) return entrada
-      return {
-        ...entrada,
-        monto: tarifa,
-        vigenciaDesde: valuesActuales.fechaInicio
-          ? formatearFechaCatalogo(new Date(valuesActuales.fechaInicio))
-          : entrada.vigenciaDesde,
-        vigenciaHasta: valuesActuales.fechaFin
-          ? formatearFechaCatalogo(new Date(valuesActuales.fechaFin))
-          : entrada.vigenciaHasta,
-      }
-    })
+    const parseIso = (iso: string) => new Date(`${iso}T12:00:00`)
 
-    onGuardar({
-      ...dietaActual,
-      nombre: valuesActuales.nombre.trim(),
-      descripcion: valuesActuales.descripcion.trim(),
-      activa: valuesActuales.activa,
-      estado: valuesActuales.activa ? dietaActual.estado : "vencida",
-      tarifaVigente: tarifa,
-      fechaInicio: valuesActuales.fechaInicio
-        ? formatearFechaCatalogo(new Date(valuesActuales.fechaInicio))
-        : dietaActual.fechaInicio,
-      fechaFin: valuesActuales.fechaFin
-        ? formatearFechaCatalogo(new Date(valuesActuales.fechaFin))
-        : null,
-      historicoTarifas,
-      ultimaActualizacion: formatearFechaHoraCatalogo(ahora),
-    })
-    onOpenChange(false)
+    try {
+      await onGuardar(
+        {
+          ...dietaActual,
+          nombre: valuesActuales.nombre.trim(),
+          descripcion: valuesActuales.descripcion.trim(),
+          activa: valuesActuales.activa,
+          estado: valuesActuales.activa ? dietaActual.estado : "inactiva",
+          fechaInicio: valuesActuales.fechaInicio
+            ? formatearFechaCatalogo(parseIso(valuesActuales.fechaInicio))
+            : dietaActual.fechaInicio,
+          fechaFin: valuesActuales.fechaFin
+            ? formatearFechaCatalogo(parseIso(valuesActuales.fechaFin))
+            : null,
+          ultimaActualizacion: formatearFechaHoraCatalogo(ahora),
+        },
+        {
+          fechaInicio: valuesActuales.fechaInicio || undefined,
+          fechaFin: valuesActuales.fechaFin || undefined,
+        },
+      )
+      onOpenChange(false)
+    } catch {
+      // El padre muestra el error; mantener el sheet abierto.
+    }
   }
 
   return (
@@ -110,6 +117,7 @@ export function EditarDietaSheet({
               values={values}
               onChange={setValues}
               codigoReadOnly
+              tarifaReadOnly
             />
           </div>
         </ScrollAreaFlex>

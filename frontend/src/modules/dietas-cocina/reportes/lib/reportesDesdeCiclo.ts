@@ -51,18 +51,37 @@ function contarTiposDieta(ordenes: OrdenCocina[]) {
   }))
 }
 
-function contarMotivosDevolucion(etiquetas: EtiquetaEnfermera[]) {
+function contarMotivosPorTipo(
+  etiquetas: EtiquetaEnfermera[],
+  filtro: (etiqueta: EtiquetaEnfermera) => boolean,
+  colores: string[],
+) {
   const map = new Map<string, number>()
-  for (const etq of etiquetas.filter((e) => e.estadoLogistica === "devuelta")) {
+  for (const etq of etiquetas.filter(filtro)) {
     const motivo = etq.motivoDevolucion ?? "Sin motivo"
     map.set(motivo, (map.get(motivo) ?? 0) + 1)
   }
-  const colores = ["#ef4444", "#f97316", "#eab308"]
   return [...map.entries()].slice(0, 3).map(([label, value], i) => ({
     label,
     value: value || 1,
     color: colores[i % colores.length],
   }))
+}
+
+function contarMotivosRechazo(etiquetas: EtiquetaEnfermera[]) {
+  return contarMotivosPorTipo(
+    etiquetas,
+    (etq) => etq.estadoLogistica === "devuelta" && esRechazoAntesEntrega(etq),
+    ["#ef4444", "#f97316", "#eab308"],
+  )
+}
+
+function contarMotivosRecogida(etiquetas: EtiquetaEnfermera[]) {
+  return contarMotivosPorTipo(
+    etiquetas,
+    (etq) => etq.estadoLogistica === "devuelta" && !esRechazoAntesEntrega(etq),
+    ["#60a5fa", "#38bdf8", "#0ea5e9"],
+  )
 }
 
 function construirSegmentosEstadoOrdenes(
@@ -276,7 +295,8 @@ export function construirReportesNutricionistaDesdeCiclo(
   const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
 
   const tiposDieta = contarTiposDieta(ordenesFiltradas)
-  const motivosDevolucion = contarMotivosDevolucion(etiquetasFiltradas)
+  const motivosDevolucion = contarMotivosRechazo(etiquetasFiltradas)
+  const motivosRecogida = contarMotivosRecogida(etiquetasFiltradas)
 
   const kpis = soloReal
     ? base.kpis
@@ -315,6 +335,12 @@ export function construirReportesNutricionistaDesdeCiclo(
         : soloReal
           ? []
           : base.motivosDevolucion,
+    motivosRecogida:
+      motivosRecogida.length > 0
+        ? motivosRecogida
+        : soloReal
+          ? []
+          : base.motivosRecogida,
     distribucionServicio: soloReal ? [] : base.distribucionServicio,
     mostrarDistribucionTurno: filtros.horario === "todos",
   }
@@ -376,9 +402,13 @@ export function construirReportesProveedorDesdeCiclo(
         ? contarTiposDieta(ordenesFiltradas)
         : base.tiposDieta,
     motivosDevolucion:
-      contarMotivosDevolucion(etiquetasFiltradas).length > 0
-        ? contarMotivosDevolucion(etiquetasFiltradas)
+      contarMotivosRechazo(etiquetasFiltradas).length > 0
+        ? contarMotivosRechazo(etiquetasFiltradas)
         : base.motivosDevolucion,
+    motivosRecogida:
+      contarMotivosRecogida(etiquetasFiltradas).length > 0
+        ? contarMotivosRecogida(etiquetasFiltradas)
+        : base.motivosRecogida,
     distribucionServicio: usarDatosCiclo
       ? construirDistribucionPorTurno(ordenes)
       : base.distribucionServicio,

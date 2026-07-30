@@ -36,7 +36,37 @@ const MESES_CATALOGO: Record<string, number> = {
 }
 
 function parseFechaCatalogo(texto: string, anioFallback?: number): Date | null {
-  const partes = texto.trim().split(/\s+/)
+  const trimmed = texto.trim()
+  if (!trimmed || trimmed === "—") return null
+
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const fecha = new Date(`${trimmed.slice(0, 10)}T12:00:00`)
+    return Number.isNaN(fecha.getTime()) ? null : fecha
+  }
+
+  const formatoEsCo = trimmed.match(
+    /^(\d{1,2})\s+de\s+(\p{L}{3,4})\.?\s+de\s+(\d{4})$/iu,
+  )
+  if (formatoEsCo) {
+    const dia = Number.parseInt(formatoEsCo[1], 10)
+    const mes = MESES_CATALOGO[formatoEsCo[2].toLowerCase().slice(0, 3)]
+    const anio = Number.parseInt(formatoEsCo[3], 10)
+    if (!Number.isNaN(dia) && mes !== undefined && !Number.isNaN(anio)) {
+      return new Date(anio, mes, dia)
+    }
+  }
+
+  const formatoSlash = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+  if (formatoSlash) {
+    const dia = Number.parseInt(formatoSlash[1], 10)
+    const mes = Number.parseInt(formatoSlash[2], 10) - 1
+    const anio = Number.parseInt(formatoSlash[3], 10)
+    if (!Number.isNaN(dia) && mes >= 0 && mes <= 11 && !Number.isNaN(anio)) {
+      return new Date(anio, mes, dia)
+    }
+  }
+
+  const partes = trimmed.split(/\s+/)
   if (partes.length >= 3) {
     const dia = Number.parseInt(partes[0], 10)
     const mes = MESES_CATALOGO[partes[1].toLowerCase().slice(0, 3)]
@@ -64,29 +94,53 @@ export function fechaCatalogoAISO(texto: string, anioFallback?: number): string 
   return `${y}-${m}-${d}`
 }
 
+export function finAnioCatalogoISO(fechaInicioIso: string): string {
+  const anio = new Date(`${fechaInicioIso}T12:00:00`).getFullYear()
+  return `${anio}-12-31`
+}
+
 export function validarSolapamientoVigencia(
   fechaInicio: string,
   dieta: DietaCatalogo,
 ): SolapamientoVigencia {
   if (!fechaInicio) return { solapa: false }
 
-  const fecha = new Date(fechaInicio)
+  const fecha = new Date(`${fechaInicio}T12:00:00`)
   if (Number.isNaN(fecha.getTime())) return { solapa: false }
 
-  const vigente = dieta.historicoTarifas.find((t) => t.vigente)
-  if (!vigente) return { solapa: false }
-
-  const inicioVigente = parseFechaCatalogo(
-    vigente.vigenciaDesde,
-    vigente.anio,
-  )
-  const finVigente = parseFechaCatalogo(vigente.vigenciaHasta, vigente.anio)
-  if (!inicioVigente || !finVigente) return { solapa: false }
-
-  if (fecha >= inicioVigente && fecha <= finVigente) {
+  const hoy = new Date()
+  hoy.setHours(12, 0, 0, 0)
+  if (fecha < hoy) {
     return {
       solapa: true,
-      rangoConflicto: `${formatearFechaCatalogo(inicioVigente)} - ${formatearFechaCatalogo(finVigente)}`,
+      rangoConflicto: "La fecha de inicio debe ser hoy o posterior.",
+    }
+  }
+
+  const vigenciaHastaNueva = new Date(`${finAnioCatalogoISO(fechaInicio)}T12:00:00`)
+
+  for (const tarifa of dieta.historicoTarifas.filter((t) => t.vigente)) {
+    const inicioExistente = parseFechaCatalogo(tarifa.vigenciaDesde, tarifa.anio)
+    const finExistente = parseFechaCatalogo(tarifa.vigenciaHasta, tarifa.anio)
+    if (!inicioExistente || !finExistente) continue
+
+    if (fecha.getTime() === inicioExistente.getTime()) {
+      return {
+        solapa: true,
+        rangoConflicto: `${formatearFechaCatalogo(inicioExistente)} - ${formatearFechaCatalogo(finExistente)}`,
+      }
+    }
+
+    const solapa =
+      fecha <= finExistente && vigenciaHastaNueva >= inicioExistente
+    const cierreAutomatico =
+      fecha > inicioExistente && fecha <= finExistente && fecha > hoy
+
+    if (solapa && !cierreAutomatico) {
+      return {
+        solapa: true,
+        rangoConflicto: `${formatearFechaCatalogo(inicioExistente)} - ${formatearFechaCatalogo(finExistente)}`,
+      }
     }
   }
 

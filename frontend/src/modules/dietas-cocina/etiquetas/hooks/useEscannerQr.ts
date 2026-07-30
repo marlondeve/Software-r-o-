@@ -1,9 +1,39 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react"
 import { Html5Qrcode } from "html5-qrcode"
 
+import {
+  diagnosticarEntornoCamara,
+  interpretarErrorCamara,
+  type DiagnosticoCamara,
+  type TipoErrorCamara,
+} from "@/modules/dietas-cocina/etiquetas/lib/escannerCamara"
+
 interface UseEscannerQrOptions {
   onCodigoLeido: (codigo: string) => void
   activo?: boolean
+}
+
+async function resolverDispositivoCamara(trasera: boolean): Promise<string | MediaTrackConstraints> {
+  try {
+    const cameras = await Html5Qrcode.getCameras()
+    if (cameras.length === 0) {
+      return { facingMode: trasera ? "environment" : "user" }
+    }
+    if (cameras.length === 1) return cameras[0].id
+
+    const etiquetaTrasera = cameras.find((cam) =>
+      /back|rear|environment|trasera|trase/i.test(cam.label),
+    )
+    const etiquetaFrontal = cameras.find((cam) =>
+      /front|user|face|frontal|selfie/i.test(cam.label),
+    )
+
+    if (trasera && etiquetaTrasera) return etiquetaTrasera.id
+    if (!trasera && etiquetaFrontal) return etiquetaFrontal.id
+    return cameras[trasera ? cameras.length - 1 : 0].id
+  } catch {
+    return { facingMode: trasera ? "environment" : "user" }
+  }
 }
 
 export function useEscannerQr({
@@ -19,8 +49,10 @@ export function useEscannerQr({
   const activoRef = useRef(activo)
   const escaneoPermitidoRef = useRef(false)
   const iniciandoRef = useRef(false)
+  const [intento, setIntento] = useState(0)
   const [iniciando, setIniciando] = useState(false)
-  const [errorCamara, setErrorCamara] = useState<string | null>(null)
+  const [camaraActiva, setCamaraActiva] = useState(false)
+  const [errorCamara, setErrorCamara] = useState<DiagnosticoCamara | null>(null)
   const [camaraTrasera, setCamaraTrasera] = useState(true)
   const [linternaActiva, setLinternaActiva] = useState(false)
 
@@ -36,6 +68,7 @@ export function useEscannerQr({
 
   const detener = useCallback(async () => {
     escaneoPermitidoRef.current = false
+    setCamaraActiva(false)
     const scanner = scannerRef.current
     scannerRef.current = null
     if (!scanner) {
@@ -67,6 +100,15 @@ export function useEscannerQr({
       iniciandoRef.current = true
       setIniciando(true)
       setErrorCamara(null)
+      setCamaraActiva(false)
+
+      const entorno = diagnosticarEntornoCamara()
+      if (!entorno.puedeUsarCamara) {
+        setErrorCamara(entorno)
+        iniciandoRef.current = false
+        setIniciando(false)
+        return
+      }
 
       await detener()
       if (cancelado) {
@@ -79,9 +121,10 @@ export function useEscannerQr({
       scannerRef.current = scanner
 
       try {
+        const dispositivo = await resolverDispositivoCamara(camaraTrasera)
         await scanner.start(
-          { facingMode: camaraTrasera ? "environment" : "user" },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
+          dispositivo,
+          { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
           (decoded) => {
             if (!escaneoPermitidoRef.current || !activoRef.current) return
             const ahora = Date.now()
@@ -101,11 +144,10 @@ export function useEscannerQr({
           },
         )
         escaneoPermitidoRef.current = true
-      } catch {
+        if (!cancelado) setCamaraActiva(true)
+      } catch (error) {
         if (!cancelado) {
-          setErrorCamara(
-            "No se pudo acceder a la cámara. Usa el ingreso manual del código.",
-          )
+          setErrorCamara(interpretarErrorCamara(error))
         }
         await detener()
       } finally {
@@ -122,11 +164,19 @@ export function useEscannerQr({
       cancelado = true
       void detener()
     }
-  }, [activo, camaraTrasera, contenedorId, detener])
+  }, [activo, camaraTrasera, contenedorId, detener, intento])
+
+  const reintentar = useCallback(() => {
+    setIntento((prev) => prev + 1)
+  }, [])
 
   const alternarCamara = useCallback(() => {
+    if (!camaraActiva && !iniciando) {
+      reintentar()
+      return
+    }
     setCamaraTrasera((prev) => !prev)
-  }, [])
+  }, [camaraActiva, iniciando, reintentar])
 
   const alternarLinterna = useCallback(async () => {
     if (!scannerRef.current?.isScanning) return
@@ -156,8 +206,11 @@ export function useEscannerQr({
   return {
     contenedorId,
     iniciando,
+    camaraActiva,
     errorCamara,
+    tipoError: errorCamara?.tipo as TipoErrorCamara | undefined,
     alternarCamara,
     alternarLinterna,
+    reintentar,
   }
 }

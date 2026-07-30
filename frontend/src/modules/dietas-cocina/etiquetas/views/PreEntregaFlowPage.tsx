@@ -87,6 +87,7 @@ export function PreEntregaFlowPage() {
           <EscannerEtiquetaPanel
             modo="pre-entrega"
             activo={escaneando}
+            mostrarEncabezado={false}
             onCodigoLeido={procesarCodigo}
             onIngresoManual={() => setManualAbierto(true)}
           />

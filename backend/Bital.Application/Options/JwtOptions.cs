@@ -15,7 +15,7 @@ public class JwtOptions
     public string CookieName { get; set; } = "bital_access_token";
 
     /// <summary>
-    /// Habilitar cuando el frontend está en otro dominio (p. ej. Hostinger) y el API en la clínica.
+    /// Habilitar cuando el frontend está en otro origen que el API (dominio o puerto distinto).
     /// Emite la cookie con SameSite=None y Secure=true.
     /// </summary>
     public bool CrossOriginCookies { get; set; }

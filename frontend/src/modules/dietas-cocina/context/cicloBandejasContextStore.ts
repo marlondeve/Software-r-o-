@@ -1,7 +1,7 @@
 import { createContext, useContext } from "react"
 
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
-import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
+import type { OrdenCocina, ChecklistItem } from "@/modules/dietas-cocina/types/kitchen"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import type {
   ConfirmarDevolucionInput,
@@ -32,6 +32,7 @@ export interface CicloBandejasContextValue {
     checklistId: string,
     completado: boolean,
   ) => void
+  sincronizarChecklistOrden: (ordenId: string, checklist: ChecklistItem[]) => void
   hidrato: boolean
   rehidratarDesdeStorage: () => void
   sincronizarOrdenesDesdeFilas: (filas: FilaDieta[]) => void

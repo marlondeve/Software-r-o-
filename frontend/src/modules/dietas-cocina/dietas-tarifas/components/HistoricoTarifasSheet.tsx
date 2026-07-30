@@ -46,7 +46,7 @@ export function HistoricoTarifasSheet({
         </ScrollAreaFlex>
 
         <SheetFooter className="shrink-0 border-t px-5 py-4">
-          {!soloLectura && (
+          {!soloLectura && dieta.activa && (
             <Button
               type="button"
               variant="outline"
