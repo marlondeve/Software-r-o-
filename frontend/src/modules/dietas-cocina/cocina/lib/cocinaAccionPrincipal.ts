@@ -8,6 +8,7 @@ import {
   enPasoEtiquetaSeguimiento,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaSeguimiento"
 import {
+  estaEnGestionCocina,
   etiquetaAccionOrden,
   motivoNoEtiquetaOrden,
   motivoNoMarcarLista,

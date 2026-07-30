@@ -14,7 +14,9 @@
     "dev:back": "pnpm --filter backend dev",
     "build": "pnpm --filter frontend build:iis",
     "build:front": "pnpm --filter frontend build:iis",
-    "build:iis": "pnpm --filter frontend build:iis",
+    "build:iis": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-iis.ps1",
+    "build:iis:apinegocio": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-iis.ps1 -Target apinegocio",
+    "build:iis:frontend": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/build-iis.ps1 -Target frontend",
     "build:back": "pnpm --filter backend build",
     "lint": "pnpm --filter frontend lint",
     "preview": "pnpm --filter frontend preview"
