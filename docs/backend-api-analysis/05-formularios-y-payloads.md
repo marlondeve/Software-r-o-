@@ -100,7 +100,7 @@ POST /api/dietas-cocina/dietas/{id}/novedad
   "alergico": false,
   "alergias": "",
   "motivo": "Cambio clínico",
-  "observaciones": "Paciente NPO suspendido"
+  "observaciones": "Paciente NVO suspendido"
 }
 ```
 
@@ -114,7 +114,7 @@ POST /api/dietas-cocina/dietas/{id}/novedad
 
 | Campo UI | Tipo | Obligatorio | Validación |
 |----------|------|-------------|------------|
-| `motivo` | `MotivoCancelacionId` | Sí | Radio: alta-medica, traslado, fallecimiento, npo, error-solicitud, otro |
+| `motivo` | `MotivoCancelacionId` | Sí | Radio: alta-medica, traslado, fallecimiento, nvo, error-solicitud, otro |
 | `justificacion` | string | Sí | `trim().length > 0` |
 | `aceptaFacturacion` | boolean | Condicional | Requerido si `cancelacionTardia === true` |
 
@@ -276,7 +276,7 @@ PATCH /api/dietas-cocina/conciliacion/{id}/pendiente-revision
 | Paso | Campo | Tipo | Obligatorio | Validación |
 |------|-------|------|-------------|------------|
 | 1 | `codigo` | string | Sí | Etiqueta existe; logística `pre_entregada` o `entregada` |
-| 2 | `motivo` | `MotivoDevolucion` | Sí | Enum: Rechazo paciente, Condición médica, Error cocina, Temperatura inadecuada |
+| 2 | `motivo` | `MotivoDevolucion` | Sí | Enum (antes entrega): Paciente no estaba en habitación, Paciente en NVO o ayuno, Paciente se negó antes de recibir, Bandeja incorrecta, Bandeja dañada, Temperatura inadecuada; (post entrega): Se consumió, Consumo parcial, No se consumió, Bandeja sin abrir |
 | 2 | `observaciones` | string | No | Textarea |
 | 2 | `fotoDevolucion` | file/base64 | No | JPG/PNG ≤5MB; frontend guarda nombre |
 | 3 | — | confirmación | — | Revisión resumen |
@@ -286,7 +286,7 @@ PATCH /api/dietas-cocina/conciliacion/{id}/pendiente-revision
 ```json
 PATCH /api/dietas-cocina/etiquetas/{id}/devolucion
 {
-  "motivo": "Rechazo del paciente",
+  "motivo": "Paciente en NVO o ayuno",
   "observaciones": "Paciente con náuseas post-quimio",
   "fotoDevolucion": "https://storage/.../evidencia.jpg"
 }

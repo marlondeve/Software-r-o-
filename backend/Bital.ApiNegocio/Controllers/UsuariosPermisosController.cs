@@ -341,6 +341,11 @@ public class UsuariosPermisosController : ControllerBase
                 Rutas = RolModuloSeed.PermisosEnfermera
             });
 
+            await _service.ActualizarPermisosRolAsync(RolModuloSeed.AuxiliarCocina, new ActualizarPermisosRolDto
+            {
+                Rutas = RolModuloSeed.PermisosAuxiliarCocina
+            });
+
             return Ok(new { message = "Datos de prueba insertados correctamente" });
         }
         catch (Exception ex)

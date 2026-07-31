@@ -339,6 +339,12 @@ public class DietasService : IDietasService
                 "Debe aceptar la responsabilidad de facturación para cancelar una dieta confirmada o en preparación.");
         }
 
+        if (!MotivosEtiquetasCatalogo.CancelacionIds.Contains(cancelacion.Motivo.Trim()))
+        {
+            throw new InvalidOperationException(
+                $"Motivo de cancelación no válido: {cancelacion.Motivo}");
+        }
+
         var motivoCompleto = $"[{cancelacion.Motivo}] {cancelacion.Justificacion}".Trim();
         var estadoAnterior = fila.Estado;
 

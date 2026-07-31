@@ -5,6 +5,7 @@ import {
   Shield,
   Stethoscope,
   Truck,
+  Utensils,
   type LucideIcon,
 } from "lucide-react"
 
@@ -19,6 +20,7 @@ const ROL_ICONOS: Record<RolDietas, LucideIcon> = {
   Proveedor: Truck,
   Doctor: Stethoscope,
   Enfermera: HeartPulse,
+  "Auxiliar de Cocina": Utensils,
 }
 
 interface UsuarioRolBadgeProps {

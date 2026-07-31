@@ -27,7 +27,8 @@ import { EntregaFlowPage } from "@/modules/dietas-cocina/etiquetas/views/Entrega
 import { EtiquetasEnfermeraIndex } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraIndex"
 import { PreEntregaFlowPage } from "@/modules/dietas-cocina/etiquetas/views/PreEntregaFlowPage"
 import { EtiquetaConsultaPage } from "@/modules/dietas-cocina/etiquetas/views/EtiquetaConsultaPage"
-import { RequireEnfermeraEtiquetas } from "@/modules/dietas-cocina/etiquetas/views/RequireEnfermeraEtiquetas"
+import { RequireCapacidadEtiqueta } from "@/modules/dietas-cocina/etiquetas/views/RequireEnfermeraEtiquetas"
+import { RequireDevolucionEtiqueta } from "@/modules/dietas-cocina/etiquetas/views/RequireDevolucionEtiqueta"
 import { InicioPage as InicioDietasPage } from "@/modules/dietas-cocina/inicio/InicioPage"
 import { ParametrosLayout } from "@/modules/dietas-cocina/parametros/ParametrosLayout"
 import { TiemposRestriccionesView } from "@/modules/dietas-cocina/parametros/views/TiemposRestriccionesView"
@@ -158,41 +159,41 @@ export const router = createBrowserRouter([
               {
                 path: "consulta/:codigo",
                 element: (
-                  <RequireEnfermeraEtiquetas>
+                  <RequireCapacidadEtiqueta capacidad="entrega_paciente">
                     <EtiquetaConsultaPage />
-                  </RequireEnfermeraEtiquetas>
+                  </RequireCapacidadEtiqueta>
                 ),
               },
               {
                 path: "pre-entrega",
                 element: (
-                  <RequireEnfermeraEtiquetas>
+                  <RequireCapacidadEtiqueta capacidad="recepcion_proveedor">
                     <PreEntregaFlowPage />
-                  </RequireEnfermeraEtiquetas>
+                  </RequireCapacidadEtiqueta>
                 ),
               },
               {
                 path: "entrega",
                 element: (
-                  <RequireEnfermeraEtiquetas>
+                  <RequireCapacidadEtiqueta capacidad="entrega_paciente">
                     <EntregaFlowPage />
-                  </RequireEnfermeraEtiquetas>
+                  </RequireCapacidadEtiqueta>
                 ),
               },
               {
                 path: "devolucion/:tipo",
                 element: (
-                  <RequireEnfermeraEtiquetas>
+                  <RequireDevolucionEtiqueta>
                     <DevolucionFlowPage />
-                  </RequireEnfermeraEtiquetas>
+                  </RequireDevolucionEtiqueta>
                 ),
               },
               {
                 path: "exito",
                 element: (
-                  <RequireEnfermeraEtiquetas>
+                  <RequireCapacidadEtiqueta operativa>
                     <CicloFinalizadoPage />
-                  </RequireEnfermeraEtiquetas>
+                  </RequireCapacidadEtiqueta>
                 ),
               },
             ],

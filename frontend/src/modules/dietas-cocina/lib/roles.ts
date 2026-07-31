@@ -10,6 +10,7 @@ const ROLES_DIETAS: RolDietas[] = [
   "Doctor",
   "Proveedor",
   "Enfermera",
+  "Auxiliar de Cocina",
 ]
 
 const ALIAS_ROLES: Record<string, RolDietas> = {

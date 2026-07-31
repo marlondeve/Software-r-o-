@@ -17,6 +17,7 @@ import type {
   PermisoRolDto,
   RolModuloDto,
 } from "@/modules/dietas-cocina/types/api-dtos"
+import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 
 export interface FiltrosUsuarios {
@@ -108,10 +109,11 @@ export async function obtenerPermisosRoles(): Promise<PermisoRolDto[]> {
 export async function actualizarPermisosRol(
   rolModuloId: string,
   permisos: Record<string, boolean>,
+  capacidadesEtiquetas?: CapacidadEtiquetas[],
 ): Promise<void> {
   await apiClient.put(
     buildDietasCocinaPath(`/roles/${rolModuloId}/permisos`),
-    mapPermisosUiToActualizarRequest(permisos),
+    mapPermisosUiToActualizarRequest(permisos, capacidadesEtiquetas),
   )
 }
 

@@ -16,6 +16,17 @@ public static class ClaimsPrincipalExtensions
         throw new UnauthorizedAccessException("Usuario no autenticado.");
     }
 
+    public static Guid GetRolModuloId(this ClaimsPrincipal user)
+    {
+        var rolModuloIdClaim = user.FindFirstValue("rol_modulo_id");
+        if (Guid.TryParse(rolModuloIdClaim, out var rolModuloId))
+        {
+            return rolModuloId;
+        }
+
+        throw new UnauthorizedAccessException("Rol no disponible en la sesión.");
+    }
+
     public static LoginModuloResponseDto ToLoginModuloResponse(this ClaimsPrincipal user)
     {
         var idClaim = user.FindFirstValue(ClaimTypes.NameIdentifier)

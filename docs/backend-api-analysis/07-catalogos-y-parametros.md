@@ -33,8 +33,8 @@ Estos valores están definidos en TypeScript; el backend debería **exponerlos c
 | `EstadoDietaCatalogo` | `vigente`, `programada`, `vencida` | Tarifas | Calculado + fijo | Incluido en respuesta catálogo dietas | Confirmado |
 | `EstadoCategoria` | `activo`, `borrador` | Tipos paciente | Fijo | `GET .../catalogos/estados-categoria-edad` | Confirmado |
 | `ModoCargaAnticipada` | `todas-desde-manana`, `ventana-por-comida` | Parámetros tiempos | **Administrable** | `PUT .../parametros/carga-anticipada` | Confirmado |
-| `MotivoDevolucion` | `Rechazo del paciente`, `Condición médica`, `Error en cocina`, `Temperatura inadecuada` | Devolución etiquetas | **Administrable** | `GET/POST .../catalogos/motivos-devolucion` | Confirmado |
-| `MotivoCancelacion` | `alta-medica`, `traslado`, `fallecimiento`, `npo`, `error-solicitud`, `otro` | Cancelar dieta | **Administrable** | `GET/POST .../catalogos/motivos-cancelacion` | Confirmado |
+| `MotivoDevolucion` | `Paciente no estaba en habitación`, `Paciente en NVO o ayuno`, `Paciente se negó antes de recibir`, `Bandeja incorrecta para el paciente`, `Bandeja dañada o contaminada`, `Temperatura inadecuada`, `Se consumió`, `Consumo parcial`, `No se consumió`, `Bandeja sin abrir` | Devolución etiquetas | **Administrable** | `GET/POST .../catalogos/motivos-devolucion` | Confirmado |
+| `MotivoCancelacion` | `alta-medica`, `traslado`, `fallecimiento`, `nvo`, `error-solicitud`, `otro` | Cancelar dieta | **Administrable** | `GET/POST .../catalogos/motivos-cancelacion` | Confirmado |
 | `MOTIVOS_NOVEDAD` | `Cambio clínico`, `Ajuste de consistencia`, ... | Novedad dieta | **Administrable** | `GET/POST .../catalogos/motivos-novedad` | Confirmado |
 | `RolDietas` | `Administrador`, `Nutricionista`, `Doctor`, `Proveedor`, `Enfermera` | Auth módulo | Semi-fijo (Super Admin crea roles plataforma) | `GET .../catalogos/roles-modulo` | Confirmado |
 | `FiltroSeguimientoCocina` | `Todos`, `en_transito`, `pre_entregada`, `entregada`, `devuelta` | Filtros cocina | Fijo (UI) | — | Confirmado |

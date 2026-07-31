@@ -7,6 +7,7 @@ export const ROLES_VISTA_PREVIEW: RolDietas[] = [
   "Nutricionista",
   "Proveedor",
   "Enfermera",
+  "Auxiliar de Cocina",
 ]
 
 export const ETIQUETAS_VISTA_PREVIEW: Record<RolDietas | "admin", string> = {
@@ -15,6 +16,7 @@ export const ETIQUETAS_VISTA_PREVIEW: Record<RolDietas | "admin", string> = {
   Doctor: "Doctor",
   Proveedor: "Proveedor",
   Enfermera: "Enfermera",
+  "Auxiliar de Cocina": "Auxiliar de Cocina",
   Administrador: "Administrador",
 }
 

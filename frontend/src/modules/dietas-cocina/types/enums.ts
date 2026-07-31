@@ -83,6 +83,15 @@ export type RolDietas =
   | "Doctor"
   | "Proveedor"
   | "Enfermera"
+  | "Auxiliar de Cocina"
+
+/** Permisos granulares dentro del módulo Etiquetas. */
+export type CapacidadEtiquetas =
+  | "impresion_proveedor"
+  | "recepcion_proveedor"
+  | "entrega_paciente"
+  | "rechazo_antes_entrega"
+  | "recogida_bandeja"
 
 export type RutaDietas =
   | "inicio"
@@ -98,7 +107,7 @@ export type RutaDietas =
 
 export const MOTIVOS_DEVOLUCION = [
   "Paciente no estaba en habitación",
-  "Paciente en NPO o ayuno",
+  "Paciente en NVO o ayuno",
   "Paciente se negó antes de recibir",
   "Bandeja incorrecta para el paciente",
   "Bandeja dañada o contaminada",
@@ -115,7 +124,7 @@ export const MOTIVOS_CANCELACION = [
   { id: "alta-medica", label: "Alta médica" },
   { id: "traslado", label: "Traslado" },
   { id: "fallecimiento", label: "Fallecimiento" },
-  { id: "npo", label: "NPO / Nada vía oral" },
+  { id: "nvo", label: "NVO / Nada vía oral" },
   { id: "error-solicitud", label: "Error de solicitud" },
   { id: "otro", label: "Otro" },
 ] as const

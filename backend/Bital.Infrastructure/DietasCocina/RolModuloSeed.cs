@@ -9,6 +9,7 @@ public static class RolModuloSeed
     public static readonly Guid Proveedor = Guid.Parse("11111111-1111-1111-1111-111111000003");
     public static readonly Guid Enfermera = Guid.Parse("11111111-1111-1111-1111-111111000004");
     public static readonly Guid Doctor = Guid.Parse("11111111-1111-1111-1111-111111000005");
+    public static readonly Guid AuxiliarCocina = Guid.Parse("11111111-1111-1111-1111-111111000006");
 
     public static Guid FromLegacyEnum(int legacyRol) => legacyRol switch
     {
@@ -49,9 +50,18 @@ public static class RolModuloSeed
 
     public static List<RutaDietas> PermisosEnfermera =>
     [
-        RutaDietas.ListarEtiquetas,
-        RutaDietas.ImprimirEtiquetas,
-        RutaDietas.VerDashboard,
         RutaDietas.ListarDietas,
+        RutaDietas.ListarEtiquetas,
+        RutaDietas.RecepcionProveedor,
+        RutaDietas.VerDashboard,
+    ];
+
+    public static List<RutaDietas> PermisosAuxiliarCocina =>
+    [
+        RutaDietas.ListarEtiquetas,
+        RutaDietas.EntregaPaciente,
+        RutaDietas.RechazoAntesEntrega,
+        RutaDietas.RecogidaBandeja,
+        RutaDietas.VerDashboard,
     ];
 }

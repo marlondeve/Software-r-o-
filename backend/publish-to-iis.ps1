@@ -4,7 +4,8 @@
 param(
 	[string]$OutputPath = "",
 	[switch]$SelfContained = $false,
-	[switch]$OpenFolder = $true
+	[switch]$OpenFolder = $true,
+	[switch]$NonInteractive = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -18,7 +19,7 @@ function Write-Step {
 
 function Write-Success {
 	param([string]$Message)
-	Write-Host "✓ $Message" -ForegroundColor Green
+	Write-Host "[OK] $Message" -ForegroundColor Green
 }
 
 function Write-Error {
@@ -220,45 +221,18 @@ Write-Host $publishedFiles.Count -ForegroundColor Cyan
 Write-Host "Tamaño total: " -NoNewline
 Write-Host "$([math]::Round($totalSize, 2)) MB" -ForegroundColor Cyan
 
-# Información de despliegue
-Write-Host "`n" + ("=" * 60) -ForegroundColor Gray
-Write-Host "                  PRÓXIMOS PASOS" -ForegroundColor Yellow
+Write-Host ("`n" + ("=" * 60)) -ForegroundColor Gray
+Write-Host "                  PROXIMOS PASOS" -ForegroundColor Yellow
 Write-Host ("=" * 60) -ForegroundColor Gray
-
-Write-Host @"
-
-1. Transferir archivos al servidor IIS (10.238.97.67):
-
-   Copiar desde: $OutputPath
-   Copiar hacia: C:\inetpub\wwwroot\bital-api-negocio\
-
-2. Métodos de transferencia:
-
-   a) RDP (Recomendado):
-	  - Conectarse al servidor 10.238.97.67
-	  - Copiar y pegar la carpeta completa
-
-   b) PowerShell Remoting:
-	  `$session = New-PSSession -ComputerName 10.238.97.67
-	  Copy-Item -Path "$OutputPath\*" -Destination "C:\inetpub\wwwroot\bital-api-negocio\" -ToSession `$session -Recurse -Force
-
-   c) Usar herramientas FTP/SFTP (FileZilla, WinSCP)
-
-3. Configurar IIS en el servidor:
-
-   - Ver guía completa en: backend\DEPLOYMENT-IIS-GUIDE.md
-	  - Crear Application Pool: BitalApiNegocioPool
-   - Crear sitio web en puerto 2000
-   - Verificar permisos de IIS_IUSRS
-
-4. Probar el despliegue:
-
-   Health Check: http://190.242.127.238:8080/health
-   Swagger UI:    http://190.242.127.238:8080/swagger
-   API Info:      http://190.242.127.238:8080/
-
-"@ -ForegroundColor White
-
+Write-Host ""
+Write-Host "1. Transferir archivos al servidor IIS (10.238.97.67):"
+Write-Host "   Copiar desde: $OutputPath"
+Write-Host "   Copiar hacia: C:\inetpub\wwwroot\bital-api-negocio\"
+Write-Host ""
+Write-Host "2. Probar el despliegue:"
+Write-Host "   Health:  http://190.242.127.238:8080/health"
+Write-Host "   Swagger: http://190.242.127.238:8080/swagger"
+Write-Host ""
 Write-Host ("=" * 60) -ForegroundColor Gray
 
 # Crear archivo de instrucciones rápidas
@@ -321,7 +295,8 @@ if ($OpenFolder) {
 	Start-Process explorer.exe $OutputPath
 }
 
-Write-Host "`n"
-Write-Success "¡Publicación completada exitosamente!"
-Write-Host "`nPresiona cualquier tecla para salir..." -ForegroundColor Gray
-$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+Write-Success "Publicacion completada exitosamente!"
+if (-not $NonInteractive) {
+	Write-Host "`nPresiona cualquier tecla para salir..." -ForegroundColor Gray
+	$null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}

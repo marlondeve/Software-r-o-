@@ -130,7 +130,7 @@ export async function subirFotoDevolucion(
   archivo: File,
 ): Promise<void> {
   const formData = new FormData()
-  formData.append("archivo", archivo)
+  formData.append("foto", archivo)
   await apiClient.post(
     buildDietasCocinaPath(`/etiquetas/${etiquetaId}/foto-devolucion`),
     formData,

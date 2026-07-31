@@ -3,7 +3,13 @@ import { PackageCheck, RotateCcw, Truck } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { ProgresoEtiquetaStep } from "@/modules/dietas-cocina/etiquetas/components/ProgresoEtiquetaStep"
+import {
+  puedeCapacidadEtiquetas,
+} from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
+import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 
 interface EtiquetasEnfermeraFlowLayoutProps {
   titulo: string
@@ -32,53 +38,101 @@ export function EtiquetasEnfermeraFlowLayout({
   )
 }
 
-export function AccionesFlujoHub() {
+const ACCIONES_FLUJO: {
+  capacidad: CapacidadEtiquetas
+  to: string
+  icon: typeof Truck
+  titulo: string
+  descripcion: string
+  iconClassName?: string
+}[] = [
+  {
+    capacidad: "recepcion_proveedor",
+    to: "/dietas-cocina/etiquetas/pre-entrega",
+    icon: Truck,
+    titulo: "Recepción del proveedor",
+    descripcion: "Escanea el QR al recibir la bandeja",
+  },
+  {
+    capacidad: "entrega_paciente",
+    to: "/dietas-cocina/etiquetas/entrega",
+    icon: PackageCheck,
+    titulo: "Entrega al paciente",
+    descripcion: "Escanea el QR al entregar la bandeja",
+  },
+  {
+    capacidad: "rechazo_antes_entrega",
+    to: "/dietas-cocina/etiquetas/devolucion/antes-entrega",
+    icon: RotateCcw,
+    titulo: "Rechazo antes de entrega",
+    descripcion: "No entregarás la bandeja al paciente",
+    iconClassName: "text-amber-600",
+  },
+  {
+    capacidad: "recogida_bandeja",
+    to: "/dietas-cocina/etiquetas/devolucion/paciente",
+    icon: RotateCcw,
+    titulo: "Recogida de bandeja",
+    descripcion: "Registra el consumo al recoger la bandeja",
+    iconClassName: "text-destructive",
+  },
+]
+
+export function AccionesFlujoHub({
+  capacidades,
+  className,
+}: {
+  /** Si se omite, muestra todas las acciones permitidas al rol. */
+  capacidades?: CapacidadEtiquetas[]
+  className?: string
+}) {
+  const rol = useRolVistaEfectivo()
+  const permitidas = capacidades ?? ACCIONES_FLUJO.map((accion) => accion.capacidad)
+  const acciones = ACCIONES_FLUJO.filter(
+    (accion) =>
+      permitidas.includes(accion.capacidad) &&
+      puedeCapacidadEtiquetas(rol, accion.capacidad),
+  )
+
+  if (acciones.length === 0) return null
+
+  const columnas =
+    acciones.length === 1
+      ? "grid-cols-1"
+      : acciones.length === 2
+        ? "sm:grid-cols-2"
+        : acciones.length === 3
+          ? "sm:grid-cols-2 lg:grid-cols-3"
+          : "sm:grid-cols-2 lg:grid-cols-4"
+
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <Button variant="outline" className="h-auto justify-start gap-3 py-4" asChild>
-        <Link to="/dietas-cocina/etiquetas/pre-entrega">
-          <Truck className="size-5 shrink-0 text-primary" />
-          <span className="text-left">
-            <span className="block font-medium">Recepción del proveedor</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              Escanea el QR al recibir la bandeja
-            </span>
-          </span>
-        </Link>
-      </Button>
-      <Button variant="outline" className="h-auto justify-start gap-3 py-4" asChild>
-        <Link to="/dietas-cocina/etiquetas/entrega">
-          <PackageCheck className="size-5 shrink-0 text-primary" />
-          <span className="text-left">
-            <span className="block font-medium">Entrega al paciente</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              Escanea el QR al entregar la bandeja
-            </span>
-          </span>
-        </Link>
-      </Button>
-      <Button variant="outline" className="h-auto justify-start gap-3 py-4" asChild>
-        <Link to="/dietas-cocina/etiquetas/devolucion/antes-entrega">
-          <RotateCcw className="size-5 shrink-0 text-amber-600" />
-          <span className="text-left">
-            <span className="block font-medium">Rechazo antes de entrega</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              No entregarás la bandeja al paciente
-            </span>
-          </span>
-        </Link>
-      </Button>
-      <Button variant="outline" className="h-auto justify-start gap-3 py-4" asChild>
-        <Link to="/dietas-cocina/etiquetas/devolucion/paciente">
-          <RotateCcw className="size-5 shrink-0 text-destructive" />
-          <span className="text-left">
-            <span className="block font-medium">Recogida de bandeja</span>
-            <span className="text-xs font-normal text-muted-foreground">
-              Registra el consumo al recoger la bandeja
-            </span>
-          </span>
-        </Link>
-      </Button>
+    <div className={cn("grid gap-3", columnas, className)}>
+      {acciones.map((accion) => {
+        const Icono = accion.icon
+        return (
+          <Button
+            key={accion.capacidad}
+            variant="outline"
+            className="h-auto justify-start gap-3 py-4"
+            asChild
+          >
+            <Link to={accion.to}>
+              <Icono
+                className={cn(
+                  "size-5 shrink-0",
+                  accion.iconClassName ?? "text-primary",
+                )}
+              />
+              <span className="text-left">
+                <span className="block font-medium">{accion.titulo}</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  {accion.descripcion}
+                </span>
+              </span>
+            </Link>
+          </Button>
+        )
+      })}
     </div>
   )
 }

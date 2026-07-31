@@ -221,6 +221,7 @@ DECLARE @RolNutricionista uniqueidentifier = '11111111-1111-1111-1111-1111110000
 DECLARE @RolProveedor uniqueidentifier = '11111111-1111-1111-1111-111111000003';
 DECLARE @RolEnfermera uniqueidentifier = '11111111-1111-1111-1111-111111000004';
 DECLARE @RolDoctor uniqueidentifier = '11111111-1111-1111-1111-111111000005';
+DECLARE @RolAuxiliar uniqueidentifier = '11111111-1111-1111-1111-111111000006';
 
 ;WITH RolesSeed AS (
     SELECT *
@@ -229,7 +230,8 @@ DECLARE @RolDoctor uniqueidentifier = '11111111-1111-1111-1111-111111000005';
         (@RolNutricionista, N'Nutricionista', 1),
         (@RolProveedor,     N'Proveedor',     1),
         (@RolEnfermera,     N'Enfermera',     1),
-        (@RolDoctor,        N'Doctor',        1)
+        (@RolDoctor,        N'Doctor',        1),
+        (@RolAuxiliar,      N'Auxiliar de Cocina', 1)
     ) AS v(Id, Nombre, EsSistema)
 )
 MERGE bital.RolesModulo AS tgt
@@ -288,14 +290,16 @@ WHERE u.Identificacion IS NOT NULL
 ;WITH RutasPorRol AS (
     SELECT @RolAdmin AS RolModuloId, r.Ruta
     FROM (VALUES
-        (1),(2),(3),(4),(5),(6),(7),(8),(10),(11),(12),(13),(20),(21),(30),(31),(32),(40),(41),(50),(51),(60),(70),(71)
+        (1),(2),(3),(4),(5),(6),(7),(8),(10),(11),(12),(13),(20),(21),(22),(23),(24),(25),(30),(31),(32),(40),(41),(50),(51),(60),(70),(71)
     ) AS r(Ruta)
     UNION ALL
     SELECT @RolNutricionista, r.Ruta FROM (VALUES (1),(2),(3),(5),(6),(7),(8),(10),(40),(41),(50),(60)) AS r(Ruta)
     UNION ALL
-    SELECT @RolProveedor, r.Ruta FROM (VALUES (10),(11),(12),(13),(21),(40)) AS r(Ruta)
+    SELECT @RolProveedor, r.Ruta FROM (VALUES (10),(11),(12),(13),(20),(21),(40)) AS r(Ruta)
     UNION ALL
-    SELECT @RolEnfermera, r.Ruta FROM (VALUES (20),(21),(40)) AS r(Ruta)
+    SELECT @RolEnfermera, r.Ruta FROM (VALUES (1),(20),(22),(40)) AS r(Ruta)
+    UNION ALL
+    SELECT @RolAuxiliar, r.Ruta FROM (VALUES (20),(23),(24),(25),(40)) AS r(Ruta)
 )
 INSERT INTO bital.PermisosRol (Id, RolModuloId, Ruta, Permitido, CreadoEn, CreadoPor)
 SELECT NEWID(), rr.RolModuloId, rr.Ruta, 1, @AhoraUtc, N'Migracion'

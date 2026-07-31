@@ -4,6 +4,10 @@ import { EnfermeraDashboard } from "@/modules/dietas-cocina/inicio/dashboards/En
 import { NutricionistaDashboard } from "@/modules/dietas-cocina/inicio/dashboards/NutricionistaDashboard"
 import { ProveedorDashboard } from "@/modules/dietas-cocina/inicio/dashboards/ProveedorDashboard"
 import { comparteDashboardNutricion } from "@/modules/dietas-cocina/lib/roles"
+import {
+  puedeRecepcionProveedor,
+  tieneOperacionBandejasPiso,
+} from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
 
 export function InicioPage() {
   const rol = useRolVistaEfectivo()
@@ -16,7 +20,7 @@ export function InicioPage() {
     return <ProveedorDashboard />
   }
 
-  if (rol === "Enfermera") {
+  if (puedeRecepcionProveedor(rol) || tieneOperacionBandejasPiso(rol)) {
     return <EnfermeraDashboard />
   }
 

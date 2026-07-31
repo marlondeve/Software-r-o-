@@ -35,6 +35,7 @@ const PERMISOS_POR_ROL_DEFAULT: Record<RolDietas, RutaDietas[]> = {
   Doctor: RUTAS_CLINICAS,
   Proveedor: ["inicio", "cocina", "etiquetas", "reportes"],
   Enfermera: ["inicio", "dietas", "etiquetas"],
+  "Auxiliar de Cocina": ["inicio", "etiquetas"],
 }
 
 function obtenerPermisosPorRol(): Record<RolDietas, RutaDietas[]> {
@@ -51,6 +52,7 @@ const PLACEHOLDER_BUSQUEDA: Record<RolDietas, string> = {
   Doctor: "Buscar paciente o habitación...",
   Proveedor: "Buscar órdenes, pacientes...",
   Enfermera: "Buscar paciente o habitación...",
+  "Auxiliar de Cocina": "Buscar paciente o habitación...",
 }
 
 function extraerRutaDietas(pathname: string): RutaDietas | null {

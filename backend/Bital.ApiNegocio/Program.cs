@@ -159,6 +159,7 @@ try
     builder.Services.AddScoped<Bital.Application.Interfaces.IParametrosService, Bital.Infrastructure.Services.ParametrosService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IAuditoriaService, Bital.Infrastructure.Services.AuditoriaService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IUsuariosPermisosService, Bital.Infrastructure.Services.UsuariosPermisosService>();
+    builder.Services.AddScoped<Bital.Application.Interfaces.IPermisosOperativosService, Bital.Infrastructure.Services.PermisosOperativosService>();
     builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IAdministracionEncuestasService, Bital.Infrastructure.Services.AdministracionEncuestasService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IEncuestasBffService, Bital.Infrastructure.Services.EncuestasProxyService>();

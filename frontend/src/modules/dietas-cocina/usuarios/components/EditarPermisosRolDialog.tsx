@@ -23,6 +23,10 @@ import {
   PermisosRolForm,
 } from "@/modules/dietas-cocina/usuarios/components/PermisosRolForm"
 import {
+  alternarCapacidadEtiquetaLista,
+  CapacidadesEtiquetasForm,
+} from "@/modules/dietas-cocina/usuarios/components/CapacidadesEtiquetasForm"
+import {
   diffPermisosRol,
   etiquetaRuta,
   validarPermisosRol,
@@ -31,7 +35,15 @@ import {
   permisosPorRolDesdeApi,
   rutasToPermisosRecord,
 } from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import {
+  CAPACIDADES_ETIQUETAS,
+  obtenerCapacidadesEtiquetas,
+} from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
+import type { CapacidadEtiquetas, RolDietas } from "@/modules/dietas-cocina/types/enums"
+
+function etiquetaCapacidad(id: CapacidadEtiquetas): string {
+  return CAPACIDADES_ETIQUETAS.find((item) => item.id === id)?.label ?? id
+}
 
 interface EditarPermisosRolDialogProps {
   rolId: string
@@ -54,8 +66,16 @@ export function EditarPermisosRolDialog({
   const [dialogAbierto, setDialogAbierto] = useState(false)
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [rutasPendientes, setRutasPendientes] = useState<RutaDietasConfig[]>([])
+  const [capacidadesPendientes, setCapacidadesPendientes] = useState<
+    CapacidadEtiquetas[]
+  >([])
 
   const rolConfig = rolNombre as RolDietas
+
+  const capacidadesActuales = useMemo(
+    () => obtenerCapacidadesEtiquetas(rolNombre),
+    [rolNombre, config.capacidadesEtiquetas],
+  )
 
   const rutasActuales = useMemo(
     () =>
@@ -67,8 +87,21 @@ export function EditarPermisosRolDialog({
 
   function abrirDialogo() {
     setRutasPendientes([...rutasActuales])
+    setCapacidadesPendientes([...capacidadesActuales])
     setDialogAbierto(true)
   }
+
+  const diffCapacidades = useMemo(() => {
+    const anteriores = new Set(capacidadesActuales)
+    const nuevas = new Set(capacidadesPendientes)
+    return {
+      agregadas: capacidadesPendientes.filter((item) => !anteriores.has(item)),
+      removidas: capacidadesActuales.filter((item) => !nuevas.has(item)),
+      sinCambios:
+        capacidadesActuales.length === capacidadesPendientes.length &&
+        capacidadesActuales.every((item) => nuevas.has(item)),
+    }
+  }, [capacidadesActuales, capacidadesPendientes])
 
   const diff = useMemo(
     () => diffPermisosRol(rutasActuales, rutasPendientes),
@@ -81,7 +114,7 @@ export function EditarPermisosRolDialog({
   )
 
   function solicitarConfirmacion() {
-    if (diff.sinCambios) {
+    if (diff.sinCambios && diffCapacidades.sinCambios) {
       demoToast("No hay cambios en los permisos de este rol.")
       return
     }
@@ -97,10 +130,21 @@ export function EditarPermisosRolDialog({
 
   function aplicarCambios() {
     if (apiActiva) {
-      void actualizarPermisosRol(rolId, rutasToPermisosRecord(rutasPendientes))
+      void actualizarPermisosRol(
+        rolId,
+        rutasToPermisosRecord(rutasPendientes),
+        capacidadesPendientes,
+      )
         .then(() => obtenerPermisosRoles())
         .then((actualizados) => {
           onPermisosActualizados?.(actualizados)
+          actualizar({
+            ...config,
+            capacidadesEtiquetas: {
+              ...config.capacidadesEtiquetas,
+              [rolNombre]: [...capacidadesPendientes],
+            },
+          })
           setDialogAbierto(false)
           demoToast(`Permisos del rol ${rolNombre} actualizados.`, "success")
         })
@@ -121,6 +165,13 @@ export function EditarPermisosRolDialog({
     }
     for (const ruta of diff.removidas) {
       nextConfig = alternarPermisoRutaDietas(nextConfig, rolConfig, ruta, false)
+    }
+    nextConfig = {
+      ...nextConfig,
+      capacidadesEtiquetas: {
+        ...nextConfig.capacidadesEtiquetas,
+        [rolNombre]: [...capacidadesPendientes],
+      },
     }
     actualizar(nextConfig)
     setDialogAbierto(false)
@@ -166,6 +217,17 @@ export function EditarPermisosRolDialog({
                 setRutasPendientes((prev) => alternarRutaPermiso(prev, ruta, activo))
               }
             />
+            {rutasPendientes.includes("etiquetas") && (
+              <CapacidadesEtiquetasForm
+                capacidades={capacidadesPendientes}
+                idPrefix={`${rolId}-cap`}
+                onAlternar={(capacidad, activo) =>
+                  setCapacidadesPendientes((prev) =>
+                    alternarCapacidadEtiquetaLista(prev, capacidad, activo),
+                  )
+                }
+              />
+            )}
           </ScrollArea>
 
           {!validacion.valido && validacion.mensaje && (
@@ -182,7 +244,9 @@ export function EditarPermisosRolDialog({
             </Button>
             <Button
               type="button"
-              disabled={diff.sinCambios || !validacion.valido}
+              disabled={
+                (diff.sinCambios && diffCapacidades.sinCambios) || !validacion.valido
+              }
               onClick={solicitarConfirmacion}
             >
               Revisar cambios
@@ -219,6 +283,26 @@ export function EditarPermisosRolDialog({
                 <ul className="mt-1 list-disc pl-5">
                   {diff.removidas.map((ruta) => (
                     <li key={ruta}>{etiquetaRuta(ruta)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {diffCapacidades.agregadas.length > 0 && (
+              <div>
+                <p className="font-medium text-foreground">Flujos de bandejas habilitados:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {diffCapacidades.agregadas.map((capacidad) => (
+                    <li key={capacidad}>{etiquetaCapacidad(capacidad)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {diffCapacidades.removidas.length > 0 && (
+              <div>
+                <p className="font-medium text-foreground">Flujos de bandejas revocados:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {diffCapacidades.removidas.map((capacidad) => (
+                    <li key={capacidad}>{etiquetaCapacidad(capacidad)}</li>
                   ))}
                 </ul>
               </div>

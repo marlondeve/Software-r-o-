@@ -364,11 +364,17 @@ public class EtiquetasService : IEtiquetasService
         if (etiqueta.EstadoLogistica != "pre_entregada" && etiqueta.EstadoLogistica != "entregada")
             throw new InvalidOperationException("Solo se pueden devolver etiquetas pre-entregadas o entregadas");
 
+        var motivoNormalizado = EtiquetasReglasNegocio.NormalizarMotivoDevolucion(datos.Motivo);
+        EtiquetasReglasNegocio.ValidarDevolucion(
+            etiqueta.EstadoLogistica,
+            motivoNormalizado,
+            datos.EstadoDieta);
+
         var ahora = DateTime.UtcNow;
         var estadoLogisticaAnterior = etiqueta.EstadoLogistica;
 
         etiqueta.EstadoLogistica = "devuelta";
-        etiqueta.MotivoDevolucion = datos.Motivo;
+        etiqueta.MotivoDevolucion = motivoNormalizado;
         etiqueta.EstadoDietaDevolucion = datos.EstadoDieta;
         etiqueta.ObservacionesDevolucion = datos.Observaciones;
         etiqueta.FotoDevolucionUrl = datos.FotoUrl;
@@ -380,12 +386,12 @@ public class EtiquetasService : IEtiquetasService
             Id = Guid.NewGuid(),
             FilaDietaId = etiqueta.FilaDietaId,
             TipoEvento = "devolucion_registrada",
-            Descripcion = $"Dieta devuelta - {datos.Motivo}",
+            Descripcion = $"Dieta devuelta - {motivoNormalizado}",
             EstadoAnterior = etiqueta.FilaDieta?.Estado ?? EstadoDieta.Entregada,
             EstadoNuevo = EstadoDieta.Devuelta,
             Usuario = usuario,
             FechaEvento = ahora,
-            DatosAdicionales = $"Motivo: {datos.Motivo}, EstadoDieta: {datos.EstadoDieta}"
+            DatosAdicionales = $"Motivo: {motivoNormalizado}, EstadoDieta: {datos.EstadoDieta}"
         };
 
         _context.EventosTrazabilidad.Add(evento);
@@ -401,11 +407,11 @@ public class EtiquetasService : IEtiquetasService
         Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Devolucion, usuario,
             AuditoriaCatalogo.Entidades.EtiquetaEnfermera, etiquetaId,
             new { estadoLogistica = estadoLogisticaAnterior },
-            new { motivo = datos.Motivo, datos.EstadoDieta, etiqueta.Codigo });
+            new { motivo = motivoNormalizado, datos.EstadoDieta, etiqueta.Codigo });
 
         _logger.LogInformation(
             "Devolución confirmada para etiqueta {Codigo} - Motivo: {Motivo}",
-            etiqueta.Codigo, datos.Motivo);
+            etiqueta.Codigo, motivoNormalizado);
 
         return MapearADto(etiqueta);
     }

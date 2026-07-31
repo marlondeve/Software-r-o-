@@ -15,6 +15,9 @@ export const rolDietasEstilos: Record<RolDietas, { className: string }> = {
   Enfermera: {
     className: "bg-accent/30 text-accent-foreground border-accent/40",
   },
+  "Auxiliar de Cocina": {
+    className: "bg-amber-500/10 text-amber-800 border-amber-500/25 dark:text-amber-200",
+  },
 }
 
 export const estadoUsuarioEstilos: Record<

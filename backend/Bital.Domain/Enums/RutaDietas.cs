@@ -23,6 +23,10 @@ public enum RutaDietas
     // Etiquetas
     ListarEtiquetas = 20,
     ImprimirEtiquetas = 21,
+    RecepcionProveedor = 22,
+    EntregaPaciente = 23,
+    RechazoAntesEntrega = 24,
+    RecogidaBandeja = 25,
 
     // Conciliación
     ListarConciliacion = 30,

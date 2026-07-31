@@ -1,4 +1,5 @@
 import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
+import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 import type { ModuloId } from "@/types/module"
 
 const STORAGE_KEY = "bital:config-acceso-modulos"
@@ -33,6 +34,8 @@ export interface ConfigAccesoModulos {
   rolesConAcceso: Record<ModuloId, string[]>
   permisosDietas: Record<RolDietas, RutaDietasConfig[]>
   permisosEncuestas: Record<RolEncuestas, RutaEncuestas[]>
+  /** Permisos granulares de flujos QR en Etiquetas, por nombre de rol. */
+  capacidadesEtiquetas: Record<string, CapacidadEtiquetas[]>
 }
 
 export const ROLES_DIETAS: RolDietas[] = [
@@ -41,6 +44,7 @@ export const ROLES_DIETAS: RolDietas[] = [
   "Doctor",
   "Proveedor",
   "Enfermera",
+  "Auxiliar de Cocina",
 ]
 
 export const ROLES_ENCUESTAS: RolEncuestas[] = [
@@ -79,6 +83,12 @@ const RUTAS_CLINICAS = RUTAS_DIETAS.map((r) => r.id).filter(
   (id) => id !== "cocina" && id !== "etiquetas",
 )
 
+const CAPACIDADES_BANDEJAS_PISO: CapacidadEtiquetas[] = [
+  "entrega_paciente",
+  "rechazo_antes_entrega",
+  "recogida_bandeja",
+]
+
 const CONFIG_DEFAULT: ConfigAccesoModulos = {
   rolesConAcceso: {
     "dietas-cocina": [...ROLES_DIETAS],
@@ -90,6 +100,7 @@ const CONFIG_DEFAULT: ConfigAccesoModulos = {
     Doctor: RUTAS_CLINICAS,
     Proveedor: ["inicio", "cocina", "etiquetas", "reportes"],
     Enfermera: ["inicio", "dietas", "etiquetas"],
+    "Auxiliar de Cocina": ["inicio", "etiquetas"],
   },
   permisosEncuestas: {
     Administrador: RUTAS_ENCUESTAS.map((r) => r.id),
@@ -101,6 +112,18 @@ const CONFIG_DEFAULT: ConfigAccesoModulos = {
       "encuestas-realizadas",
     ],
   },
+  capacidadesEtiquetas: {
+    Administrador: [
+      "impresion_proveedor",
+      "recepcion_proveedor",
+      ...CAPACIDADES_BANDEJAS_PISO,
+    ],
+    Proveedor: ["impresion_proveedor"],
+    Enfermera: ["recepcion_proveedor"],
+    "Auxiliar de Cocina": [...CAPACIDADES_BANDEJAS_PISO],
+    Nutricionista: [],
+    Doctor: [],
+  },
 }
 
 function clonarConfig(config: ConfigAccesoModulos): ConfigAccesoModulos {
@@ -111,6 +134,7 @@ function clonarConfig(config: ConfigAccesoModulos): ConfigAccesoModulos {
     },
     permisosDietas: { ...config.permisosDietas },
     permisosEncuestas: { ...config.permisosEncuestas },
+    capacidadesEtiquetas: { ...config.capacidadesEtiquetas },
   }
 }
 
@@ -138,6 +162,10 @@ export function cargarConfigAccesoModulos(): ConfigAccesoModulos {
       permisosEncuestas: {
         ...CONFIG_DEFAULT.permisosEncuestas,
         ...parsed.permisosEncuestas,
+      },
+      capacidadesEtiquetas: {
+        ...CONFIG_DEFAULT.capacidadesEtiquetas,
+        ...parsed.capacidadesEtiquetas,
       },
     }
   } catch {
@@ -196,6 +224,25 @@ export function alternarPermisoRutaDietas(
     permisosDietas: {
       ...config.permisosDietas,
       [rol]: Array.from(rutas) as RutaDietasConfig[],
+    },
+  }
+}
+
+export function alternarCapacidadEtiquetas(
+  config: ConfigAccesoModulos,
+  rol: string,
+  capacidad: CapacidadEtiquetas,
+  activo: boolean,
+): ConfigAccesoModulos {
+  const actuales = new Set(config.capacidadesEtiquetas[rol] ?? [])
+  if (activo) actuales.add(capacidad)
+  else actuales.delete(capacidad)
+
+  return {
+    ...config,
+    capacidadesEtiquetas: {
+      ...config.capacidadesEtiquetas,
+      [rol]: Array.from(actuales) as CapacidadEtiquetas[],
     },
   }
 }

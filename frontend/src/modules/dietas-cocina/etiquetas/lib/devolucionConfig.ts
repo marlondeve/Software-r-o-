@@ -5,7 +5,7 @@ export type TipoDevolucionEtiqueta = "antes_entrega" | "post_entrega"
 /** Bandeja recibida del proveedor que NO se entregará al paciente. */
 export const MOTIVOS_DEVOLUCION_ANTES_ENTREGA = [
   "Paciente no estaba en habitación",
-  "Paciente en NPO o ayuno",
+  "Paciente en NVO o ayuno",
   "Paciente se negó antes de recibir",
   "Bandeja incorrecta para el paciente",
   "Bandeja dañada o contaminada",
@@ -42,10 +42,9 @@ export function esDevolucionConsumida(
 }
 
 function motivoEsAntesEntrega(motivo?: string): boolean {
-  return (
-    !!motivo &&
-    (MOTIVOS_DEVOLUCION_ANTES_ENTREGA as readonly string[]).includes(motivo)
-  )
+  if (!motivo) return false
+  if (motivo === "Paciente en NPO o ayuno") return true
+  return (MOTIVOS_DEVOLUCION_ANTES_ENTREGA as readonly string[]).includes(motivo)
 }
 
 function motivoEsPostEntrega(motivo?: string): boolean {
