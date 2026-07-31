@@ -65,10 +65,16 @@ public class EtiquetasService : IEtiquetasService
         string codigo,
         CancellationToken cancellationToken = default)
     {
+        var normalizado = EtiquetasCodigoHelper.Normalizar(codigo);
+        if (string.IsNullOrEmpty(normalizado))
+            return null;
+
         var etiqueta = await _context.EtiquetasEnfermeria
             .Include(e => e.OrdenCocina)
             .Include(e => e.FilaDieta)
-            .FirstOrDefaultAsync(e => e.Codigo == codigo, cancellationToken);
+            .FirstOrDefaultAsync(
+                e => e.Codigo.ToUpper() == normalizado,
+                cancellationToken);
 
         return etiqueta == null ? null : MapearADto(etiqueta);
     }
@@ -116,7 +122,7 @@ public class EtiquetasService : IEtiquetasService
                 var etiqueta = new EtiquetaEnfermera
                 {
                     Id = Guid.NewGuid(),
-                    Codigo = GenerarCodigo(),
+                    Codigo = EtiquetasCodigoHelper.Generar(ahora),
                     OrdenCocinaId = orden.Id,
                     FilaDietaId = dieta.Id,
                     EstadoLogistica = "generada",
@@ -566,14 +572,5 @@ public class EtiquetasService : IEtiquetasService
             AuditoriaSnapshot.Json(antes),
             AuditoriaSnapshot.Json(despues),
             contexto: _contextoAuditoria);
-    }
-
-    private static string GenerarCodigo()
-    {
-        // Generar código único para la etiqueta (QR/Barcode)
-        // Formato: ETQ-YYYYMMDD-HHMMSS-GUID(8)
-        var ahora = DateTime.UtcNow;
-        var guid = Guid.NewGuid().ToString()[..8].ToUpper();
-        return $"ETQ-{ahora:yyyyMMdd}-{ahora:HHmmss}-{guid}";
     }
 }

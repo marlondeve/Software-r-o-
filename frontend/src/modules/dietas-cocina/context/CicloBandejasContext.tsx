@@ -38,6 +38,7 @@ import type {
 import type { EstadoEtiqueta } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaDieta, EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { formatearHoraActual } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
+import { generarCodigoEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/generarCodigoEtiqueta"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 import {
   checklistObligatorioCompleto,
@@ -128,7 +129,7 @@ function sincronizarOrdenConEtiqueta(
 }
 
 function ordenToEtiquetaBase(orden: OrdenCocina, id: string): EtiquetaDieta {
-  const codigo = `LBL-${9000 + parseInt(id.replace(/\D/g, "") || "0", 10)}-X`
+  const codigo = generarCodigoEtiqueta()
   return {
     id,
     codigo,

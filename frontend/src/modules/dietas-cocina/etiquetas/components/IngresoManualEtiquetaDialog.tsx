@@ -44,7 +44,7 @@ export function IngresoManualEtiquetaDialog({
           <Label htmlFor="codigo-manual">Código de etiqueta</Label>
           <Input
             id="codigo-manual"
-            placeholder="Ej. ETQ-20260726-223725-88D6E8AF"
+            placeholder="Ej. E260731-K7M3"
             value={codigo}
             onChange={(e) => setCodigo(e.target.value)}
             onKeyDown={(e) => {

@@ -1,3 +1,7 @@
+import { normalizarCodigoEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/generarCodigoEtiqueta"
+
+export { normalizarCodigoEtiqueta }
+
 const RUTA_CONSULTA = "/dietas-cocina/etiquetas/consulta"
 
 export function construirUrlConsultaEtiqueta(codigo: string): string {
@@ -14,15 +18,12 @@ export function payloadQrEtiqueta(codigo: string): string {
   return construirUrlConsultaEtiqueta(codigo)
 }
 
-/** Normaliza códigos leídos desde QR (URL, LBL:… o código plano). */
+/** Normaliza códigos leídos desde QR (URL, LBL:…, E… o legacy ETQ-…). */
 export function extraerCodigoDesdeQr(raw: string): string {
   const limpio = raw.replace(/\s+/g, "").trim()
   const matchConsulta = limpio.match(/\/etiquetas\/consulta\/([^/?#]+)/i)
   if (matchConsulta) {
-    return decodeURIComponent(matchConsulta[1]).toUpperCase()
+    return normalizarCodigoEtiqueta(decodeURIComponent(matchConsulta[1]))
   }
-  if (limpio.toUpperCase().startsWith("LBL:")) {
-    return limpio.slice(4).trim().toUpperCase()
-  }
-  return limpio.toUpperCase()
+  return normalizarCodigoEtiqueta(limpio)
 }
