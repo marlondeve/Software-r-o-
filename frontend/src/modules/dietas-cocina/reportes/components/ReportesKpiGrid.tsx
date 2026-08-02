@@ -1,23 +1,19 @@
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  detalleKpiVariantEstilos,
+  type DetalleKpiVariant,
+} from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
 import { cn } from "@/lib/utils"
-
-type DetalleVariant = "positive" | "negative" | "neutral"
 
 interface ReporteKpi {
   label: string
   value: string
   detalle?: string
-  detalleVariant?: DetalleVariant
+  detalleVariant?: DetalleKpiVariant
 }
 
 interface ReportesKpiGridProps {
   kpis: ReporteKpi[]
-}
-
-const detalleStyles: Record<DetalleVariant, string> = {
-  positive: "text-emerald-600",
-  negative: "text-destructive",
-  neutral: "text-muted-foreground",
 }
 
 export function ReportesKpiGrid({ kpis }: ReportesKpiGridProps) {
@@ -41,7 +37,7 @@ export function ReportesKpiGrid({ kpis }: ReportesKpiGridProps) {
               <p
                 className={cn(
                   "mt-0.5 text-xs font-medium",
-                  detalleStyles[kpi.detalleVariant ?? "neutral"],
+                  detalleKpiVariantEstilos[kpi.detalleVariant ?? "neutral"],
                 )}
               >
                 {kpi.detalle}

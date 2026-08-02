@@ -12,6 +12,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { SheetDetailSkeleton } from "@/components/shared/skeletons"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
 import {
@@ -133,9 +134,10 @@ export function DietasDetalleSheet({
 
         <ScrollAreaFlex>
           <div className="w-full space-y-5 px-5 py-4">
-            {cargandoDetalle && (
-              <p className="text-sm text-muted-foreground">Actualizando detalle…</p>
-            )}
+            {cargandoDetalle ? (
+              <SheetDetailSkeleton />
+            ) : (
+              <>
             <section className="rounded-xl border border-border bg-muted/40 p-4">
               <div className="flex items-start justify-between gap-3">
                 <SeccionTitulo>Estado actual</SeccionTitulo>
@@ -221,6 +223,8 @@ export function DietasDetalleSheet({
                 ))}
               </ul>
             </section>
+              </>
+            )}
           </div>
         </ScrollAreaFlex>
 

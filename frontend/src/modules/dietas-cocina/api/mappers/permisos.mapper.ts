@@ -14,7 +14,12 @@ export const CAPACIDAD_A_RUTA_API: Record<CapacidadEtiquetas, number> = {
 }
 
 const RUTAS_CAPACIDAD_ETIQUETAS = Object.values(CAPACIDAD_A_RUTA_API)
-const RUTA_LISTAR_ETIQUETAS = 20
+export const RUTA_LISTAR_ETIQUETAS = 20
+export const RUTA_EXPORTAR_REPORTES = 41
+
+/** Códigos API que sugieren reportes clínicos vs producción (comparten 41). */
+const CODIGOS_REPORTES_CLINICOS = [1, 2, 3, 4, 5, 6, 7, 8, 30, 31, 32]
+const CODIGOS_REPORTES_PRODUCCION = [11, 12, 13, 21]
 
 /** Permisos granulares API (`RutaDietas`) agrupados por sección del sidebar UI. */
 const RUTA_UI_A_API: Record<RutaDietasConfig, number[]> = {
@@ -22,9 +27,17 @@ const RUTA_UI_A_API: Record<RutaDietasConfig, number[]> = {
   dietas: [1, 2, 3, 4],
   "dietas-tarifas": [5, 6, 7, 8],
   cocina: [10, 11, 12, 13],
-  etiquetas: [RUTA_LISTAR_ETIQUETAS],
+  "impresion-etiquetas": [RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.impresion_proveedor],
+  "recepcion-proveedor": [RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.recepcion_proveedor],
+  "bandejas-piso": [
+    RUTA_LISTAR_ETIQUETAS,
+    CAPACIDAD_A_RUTA_API.entrega_paciente,
+    CAPACIDAD_A_RUTA_API.rechazo_antes_entrega,
+    CAPACIDAD_A_RUTA_API.recogida_bandeja,
+  ],
   conciliacion: [30, 31, 32],
-  reportes: [41],
+  "reportes-clinicos": [RUTA_EXPORTAR_REPORTES],
+  "reportes-produccion": [RUTA_EXPORTAR_REPORTES],
   parametros: [50, 51],
   auditoria: [60],
   usuarios: [70, 71],
@@ -62,16 +75,71 @@ export function rutasApiDesdeCapacidadesEtiquetas(
   return Array.from(codigos)
 }
 
+function inferirRutasLogisticaDesdeApi(setApi: Set<number>): Record<string, boolean> {
+  const tieneListar = setApi.has(RUTA_LISTAR_ETIQUETAS)
+  const caps = RUTAS_CAPACIDAD_ETIQUETAS.filter((codigo) => setApi.has(codigo))
+
+  const impresion =
+    setApi.has(CAPACIDAD_A_RUTA_API.impresion_proveedor) ||
+    (tieneListar && caps.length === 0)
+  const recepcion = setApi.has(CAPACIDAD_A_RUTA_API.recepcion_proveedor)
+  const piso = RUTAS_CAPACIDAD_ETIQUETAS.some(
+    (codigo) =>
+      codigo !== CAPACIDAD_A_RUTA_API.impresion_proveedor &&
+      codigo !== CAPACIDAD_A_RUTA_API.recepcion_proveedor &&
+      setApi.has(codigo),
+  )
+
+  return {
+    "impresion-etiquetas": impresion,
+    "recepcion-proveedor": recepcion,
+    "bandejas-piso": piso,
+  }
+}
+
+function inferirRutasReportesDesdeApi(setApi: Set<number>): Record<string, boolean> {
+  if (!setApi.has(RUTA_EXPORTAR_REPORTES)) {
+    return {
+      "reportes-clinicos": false,
+      "reportes-produccion": false,
+    }
+  }
+
+  const esAdmin = setApi.has(70) && setApi.has(71)
+  const clinico =
+    esAdmin || CODIGOS_REPORTES_CLINICOS.some((codigo) => setApi.has(codigo))
+  const produccion =
+    esAdmin || CODIGOS_REPORTES_PRODUCCION.some((codigo) => setApi.has(codigo))
+
+  if (!clinico && !produccion) {
+    return {
+      "reportes-clinicos": true,
+      "reportes-produccion": true,
+    }
+  }
+
+  return {
+    "reportes-clinicos": clinico,
+    "reportes-produccion": produccion,
+  }
+}
+
 function permisosUiDesdeRutasApi(rutasApi: number[]): Record<string, boolean> {
   const setApi = new Set(rutasApi)
-  const tieneEtiquetas =
-    setApi.has(RUTA_LISTAR_ETIQUETAS) ||
-    RUTAS_CAPACIDAD_ETIQUETAS.some((codigo) => setApi.has(codigo))
+  const logistica = inferirRutasLogisticaDesdeApi(setApi)
+  const reportes = inferirRutasReportesDesdeApi(setApi)
 
   return Object.fromEntries(
     RUTAS_DIETAS.map((ruta) => {
-      if (ruta.id === "etiquetas") {
-        return [ruta.id, tieneEtiquetas]
+      if (
+        ruta.id === "impresion-etiquetas" ||
+        ruta.id === "recepcion-proveedor" ||
+        ruta.id === "bandejas-piso"
+      ) {
+        return [ruta.id, logistica[ruta.id] ?? false]
+      }
+      if (ruta.id === "reportes-clinicos" || ruta.id === "reportes-produccion") {
+        return [ruta.id, reportes[ruta.id] ?? false]
       }
       return [
         ruta.id,
@@ -85,6 +153,9 @@ function rutasApiDesdePermisosUi(permisos: Record<string, boolean>): number[] {
   const codigos = new Set<number>()
   for (const ruta of RUTAS_DIETAS) {
     if (!permisos[ruta.id]) continue
+    if (ruta.id === "reportes-clinicos" || ruta.id === "reportes-produccion") {
+      continue
+    }
     for (const codigo of RUTA_UI_A_API[ruta.id]) {
       codigos.add(codigo)
     }
@@ -153,19 +224,40 @@ export function mapPermisosUiToActualizarRequest(
 ): { rutas: number[] } {
   let rutas = rutasApiDesdePermisosUi(permisos)
 
-  if (permisos.etiquetas) {
-    rutas = rutas.filter(
-      (codigo) =>
-        codigo !== RUTA_LISTAR_ETIQUETAS &&
-        !RUTAS_CAPACIDAD_ETIQUETAS.includes(codigo),
-    )
-    rutas.push(...rutasApiDesdeCapacidadesEtiquetas(capacidadesEtiquetas ?? []))
-  } else {
-    rutas = rutas.filter(
-      (codigo) =>
-        codigo !== RUTA_LISTAR_ETIQUETAS &&
-        !RUTAS_CAPACIDAD_ETIQUETAS.includes(codigo),
-    )
+  rutas = rutas.filter(
+    (codigo) =>
+      codigo !== RUTA_LISTAR_ETIQUETAS &&
+      !RUTAS_CAPACIDAD_ETIQUETAS.includes(codigo) &&
+      codigo !== RUTA_EXPORTAR_REPORTES,
+  )
+
+  if (permisos["impresion-etiquetas"]) {
+    rutas.push(RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.impresion_proveedor)
+  }
+  if (permisos["recepcion-proveedor"]) {
+    rutas.push(RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.recepcion_proveedor)
+  }
+  if (permisos["bandejas-piso"]) {
+    rutas.push(RUTA_LISTAR_ETIQUETAS)
+    const capsBandejas =
+      capacidadesEtiquetas && capacidadesEtiquetas.length > 0
+        ? capacidadesEtiquetas.filter((cap) =>
+            (
+              [
+                "entrega_paciente",
+                "rechazo_antes_entrega",
+                "recogida_bandeja",
+              ] as CapacidadEtiquetas[]
+            ).includes(cap),
+          )
+        : (["entrega_paciente", "rechazo_antes_entrega", "recogida_bandeja"] as CapacidadEtiquetas[])
+    for (const cap of capsBandejas) {
+      rutas.push(CAPACIDAD_A_RUTA_API[cap])
+    }
+  }
+
+  if (permisos["reportes-clinicos"] || permisos["reportes-produccion"]) {
+    rutas.push(RUTA_EXPORTAR_REPORTES)
   }
 
   return { rutas: Array.from(new Set(rutas)).sort((a, b) => a - b) }

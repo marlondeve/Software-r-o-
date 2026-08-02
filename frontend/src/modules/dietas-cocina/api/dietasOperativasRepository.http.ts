@@ -1,4 +1,5 @@
-import type { DatosSolicitudDietaInput } from "@/modules/dietas-cocina/api/mappers"
+import { normalizarTiempoComidaTarifa } from "@/modules/dietas-cocina/dietas-tarifas/lib/tarifasPorComida"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import {
   cancelarDieta,
   confirmarDieta,
@@ -11,7 +12,7 @@ import {
 } from "@/modules/dietas-cocina/api/services/dietas.service"
 import { sincronizarFilasDesdeCensoApi } from "@/modules/dietas-cocina/api/services/censo-dietas.service"
 import type { DietasOperativasRepository } from "@/modules/dietas-cocina/types/repositories"
-import { mapCancelarToRequest } from "@/modules/dietas-cocina/api/mappers"
+import { mapCancelarToRequest, type DatosSolicitudDietaInput } from "@/modules/dietas-cocina/api/mappers"
 
 export const dietasOperativasRepositoryHttp: DietasOperativasRepository = {
   async obtenerCenso(_fecha, comida) {
@@ -47,11 +48,30 @@ export const dietasOperativasRepositoryHttp: DietasOperativasRepository = {
         const activa = registro.activa ?? registro.Activa
         return activa !== false
       })
-      .map((item) => ({
-      id: String(item.id ?? item.codigo ?? ""),
-      nombre: String(item.nombre ?? item.codigo ?? ""),
-      descripcion: item.descripcion,
-    }))
+      .map((item) => {
+        const registro = item as Record<string, unknown>
+        const tarifasRaw =
+          registro.tarifasVigentes ?? registro.TarifasVigentes
+        const tarifasVigentes: Partial<Record<TiempoComida, number>> = {}
+
+        if (tarifasRaw && typeof tarifasRaw === "object") {
+          for (const [clave, monto] of Object.entries(
+            tarifasRaw as Record<string, unknown>,
+          )) {
+            const valor = Number(monto)
+            if (valor > 0) {
+              tarifasVigentes[normalizarTiempoComidaTarifa(clave)] = valor
+            }
+          }
+        }
+
+        return {
+          id: String(item.id ?? item.codigo ?? ""),
+          nombre: String(item.nombre ?? item.codigo ?? ""),
+          descripcion: item.descripcion,
+          tarifasVigentes,
+        }
+      })
   },
 }
 

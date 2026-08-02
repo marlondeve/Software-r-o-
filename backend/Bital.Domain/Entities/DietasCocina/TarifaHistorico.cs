@@ -1,4 +1,5 @@
 using Bital.Domain.Common;
+using Bital.Domain.Enums;
 
 namespace Bital.Domain.Entities.DietasCocina;
 
@@ -16,6 +17,11 @@ public class TarifaHistorico : EntityBase
     /// Año de vigencia de la tarifa
     /// </summary>
     public int Anio { get; set; }
+
+    /// <summary>
+    /// Tiempo de comida al que aplica esta tarifa
+    /// </summary>
+    public TiempoComida TiempoComida { get; set; } = TiempoComida.Almuerzo;
 
     /// <summary>
     /// Monto de la tarifa

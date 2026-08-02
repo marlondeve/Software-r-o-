@@ -1,5 +1,6 @@
 using System.Text;
 using Asp.Versioning;
+using Bital.ApiNegocio.Extensions;
 using Bital.Application.Interfaces;
 using Bital.Application.Options;
 using Bital.Infrastructure.Extensions;
@@ -12,6 +13,14 @@ using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Asegurar carpeta de logs en producción (permisos IIS en C:\logs)
+const string preferredProdLogDir = @"C:\logs\bital-api-negocio";
+if (!builder.Environment.IsDevelopment())
+{
+    try { Directory.CreateDirectory(preferredProdLogDir); }
+    catch { /* fallback a logs/ en la carpeta de la app */ }
+}
+
 // ============================================================================
 // 1. Configurar Serilog
 // ============================================================================
@@ -22,7 +31,9 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File(
         path: builder.Environment.IsDevelopment()
             ? "logs/bital-api-negocio-.log"
-            : builder.Configuration["Serilog:LogPath"] ?? "C:\\logs\\bital-api-negocio\\app-.log",
+            : Directory.Exists(preferredProdLogDir)
+                ? Path.Combine(preferredProdLogDir, "app-.log")
+                : "logs/bital-api-negocio-.log",
         rollingInterval: RollingInterval.Day,
         retainedFileCountLimit: 7)
     .CreateLogger();
@@ -123,6 +134,8 @@ try
 
     builder.Services.AddAuthorization();
 
+    builder.Services.AddBitalSecurity();
+
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddScoped<IAuditoriaContextoRequest, Bital.Infrastructure.DietasCocina.AuditoriaContextoRequest>();
 
@@ -175,12 +188,65 @@ try
 
     var app = builder.Build();
 
-    if (app.Environment.IsDevelopment())
+    var applyMigrations = app.Environment.IsDevelopment()
+        || builder.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
+
+    if (applyMigrations)
     {
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<Bital.Infrastructure.Data.BitalNegocioDbContext>();
-        db.Database.Migrate();
-        await Bital.Infrastructure.Data.QuestionnaireSchemaInitializer.EnsureCreatedAsync(db);
+        try
+        {
+            var pendientes = (await db.Database.GetPendingMigrationsAsync()).ToList();
+            if (pendientes.Count > 0)
+            {
+                Log.Information("Aplicando {Count} migraciones EF pendientes: {Migraciones}",
+                    pendientes.Count, string.Join(", ", pendientes));
+                await db.Database.MigrateAsync();
+                Log.Information("Migraciones EF aplicadas.");
+            }
+            else
+            {
+                Log.Information("No hay migraciones EF pendientes.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Fatal(ex,
+                "Fallo al aplicar migraciones EF. Ejecute backend\\scripts\\Migrate-BitalNegocio.ps1 " +
+                "o backend\\scripts\\04-TiempoComidaTarifaHistorico.sql en el servidor SQL.");
+            throw;
+        }
+
+        if (app.Environment.IsDevelopment())
+        {
+            await Bital.Infrastructure.Data.QuestionnaireSchemaInitializer.EnsureCreatedAsync(db);
+        }
+    }
+
+    try
+    {
+        if (builder.Configuration.GetValue<bool>("CatalogoDietas:SeedFcrIfEmpty"))
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<Bital.Infrastructure.Data.BitalNegocioDbContext>();
+            if (await Bital.Infrastructure.DietasCocina.CatalogoDietasFcrSeed.EnsureFcrSeededAsync(db))
+            {
+                Log.Information("Catálogo FCR insertado (BD vacía, primer despliegue).");
+            }
+        }
+        else if (builder.Configuration.GetValue<bool>("CatalogoDietas:ReseedFcrTarifasOnStartup"))
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<Bital.Infrastructure.Data.BitalNegocioDbContext>();
+            Log.Warning("Reseed FCR forzado: se eliminará el catálogo existente.");
+            await Bital.Infrastructure.DietasCocina.CatalogoDietasFcrSeed.ReseedAsync(db);
+            Log.Information("Reseed catálogo FCR completado.");
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error al sembrar catálogo FCR al iniciar. Revise esquema BD y migraciones.");
     }
 
     // Swagger en todos los entornos (para desarrollo/staging)
@@ -199,6 +265,8 @@ try
         options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000}ms";
         options.GetLevel = (httpContext, elapsed, ex) => LogEventLevel.Information;
     });
+
+    app.UseBitalSecurity(app.Environment);
 
     app.UseCors("AllowFrontend");
 

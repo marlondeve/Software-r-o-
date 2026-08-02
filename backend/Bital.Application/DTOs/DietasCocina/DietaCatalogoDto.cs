@@ -10,6 +10,7 @@ public class DietaCatalogoDto
     public string Nombre { get; set; } = string.Empty;
     public string Descripcion { get; set; } = string.Empty;
     public decimal? TarifaActual { get; set; }
+    public Dictionary<string, decimal> TarifasVigentes { get; set; } = new();
     public bool Activa { get; set; }
     public DateTime FechaInicio { get; set; }
     public DateTime? FechaFin { get; set; }

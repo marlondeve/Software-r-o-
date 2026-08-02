@@ -41,6 +41,26 @@ import { formatearHoraActual } from "@/modules/dietas-cocina/etiquetas/lib/etiqu
 import { generarCodigoEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/generarCodigoEtiqueta"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 import {
+  contarOperacionesConConflicto,
+  contarOperacionesPendientes,
+  crearClientIdBandeja,
+  descartarOperacionBandeja,
+  encolarOperacionBandeja,
+  listarOperacionesPendientes,
+  reintentarOperacionBandeja,
+  suscribirOutboxBandejas,
+} from "@/modules/dietas-cocina/lib/bandejasOutbox"
+import {
+  limpiarAdjuntosOperacion,
+  sincronizarOutboxBandejas,
+} from "@/modules/dietas-cocina/lib/bandejasSyncService"
+import { guardarFotoDevolucionOffline } from "@/modules/dietas-cocina/lib/bandejasFotosDb"
+import {
+  estaOnlineAhora,
+  suscribirConectividadRed,
+} from "@/hooks/useConectividadRed"
+import { esErrorRed } from "@/lib/esErrorRed"
+import {
   checklistObligatorioCompleto,
   motivoNoGenerarEtiqueta,
   puedeCancelarOrdenCocina,
@@ -260,6 +280,14 @@ function resolverEstadoInicialCicloBandejas(): {
   hidrato: boolean
 } {
   if (usarApiDietasCocina()) {
+    const persistidoSync = cargarCicloBandejas()
+    if (persistidoSync && !estaOnlineAhora()) {
+      const sync = sincronizarSeedsCocinaEtiquetas(
+        persistidoSync.ordenes,
+        persistidoSync.etiquetas,
+      )
+      return { ...sync, hidrato: true }
+    }
     return { ordenes: [], etiquetas: [], hidrato: false }
   }
 
@@ -288,11 +316,33 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
   const [hidrato, setHidrato] = useState(
     () => resolverEstadoInicialCicloBandejas().hidrato,
   )
+  const [estaOnline, setEstaOnline] = useState(estaOnlineAhora)
+  const [cantidadPendientesSync, setCantidadPendientesSync] = useState(
+    contarOperacionesPendientes,
+  )
+  const [cantidadConflictosSync, setCantidadConflictosSync] = useState(
+    contarOperacionesConConflicto,
+  )
+  const [sincronizandoBandejas, setSincronizandoBandejas] = useState(false)
   const etiquetasRef = useRef(etiquetas)
   etiquetasRef.current = etiquetas
   const ordenesRef = useRef(ordenes)
   ordenesRef.current = ordenes
   const generandoEtiquetasRef = useRef(false)
+  const estaOnlineRef = useRef(estaOnline)
+  estaOnlineRef.current = estaOnline
+  const sincronizandoRef = useRef(false)
+
+  useEffect(() => {
+    return suscribirConectividadRed(setEstaOnline)
+  }, [])
+
+  useEffect(() => {
+    return suscribirOutboxBandejas(() => {
+      setCantidadPendientesSync(contarOperacionesPendientes())
+      setCantidadConflictosSync(contarOperacionesConConflicto())
+    })
+  }, [])
 
   useEffect(() => {
     if (apiActiva) {
@@ -395,10 +445,12 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
   }, [hidrato, apiActiva, recargarDesdeApi, repository])
 
   useEffect(() => {
-    if (!hidrato || apiActiva) return
-    void repository.guardar({ ordenes, etiquetas })
+    if (!hidrato) return
     guardarCicloBandejas({ ordenes, etiquetas })
-  }, [ordenes, etiquetas, hidrato, apiActiva])
+    if (!apiActiva) {
+      void repository.guardar({ ordenes, etiquetas })
+    }
+  }, [ordenes, etiquetas, hidrato, apiActiva, repository])
 
   const buscarPorCodigo = useCallback(
     (codigo: string) => repository.buscarEtiquetaPorCodigo(etiquetas, codigo),
@@ -407,19 +459,31 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
 
   const buscarPorCodigoAsync = useCallback(
     async (codigo: string): Promise<EtiquetaEnfermera | undefined> => {
+      const buscarLocal = () =>
+        repository.buscarEtiquetaPorCodigo(etiquetasRef.current, codigo)
+
+      if (apiActiva && !estaOnlineRef.current) {
+        return buscarLocal()
+      }
+
       if (apiActiva) {
         try {
           const etq = await etiquetasRepository.buscarPorCodigo(codigo)
           setEtiquetas((prev) => {
             const existe = prev.some((e) => e.id === etq.id)
-            return existe ? prev.map((e) => (e.id === etq.id ? etq : e)) : [...prev, etq]
+            return existe
+              ? prev.map((e) => (e.id === etq.id ? etq : e))
+              : [...prev, etq]
           })
           return etq
-        } catch {
+        } catch (error) {
+          if (esErrorRed(error)) {
+            return buscarLocal()
+          }
           return undefined
         }
       }
-      return repository.buscarEtiquetaPorCodigo(etiquetasRef.current, codigo)
+      return buscarLocal()
     },
     [apiActiva, etiquetasRepository, repository],
   )
@@ -983,35 +1047,11 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
     [apiActiva],
   )
 
-  const confirmarPreEntrega = useCallback(
-    async (ids: string[], recibidoPor?: string): Promise<void> => {
-      if (apiActiva) {
-        try {
-          await completarOrdenesPorEtiquetaIdsEnApi(
-            ids,
-            ordenesRef.current,
-            etiquetasRef.current,
-          )
-          await Promise.all(
-            ids.map((id) =>
-              etiquetasRepository.confirmarPreEntrega(id, recibidoPor),
-            ),
-          )
-          await recargarEtiquetas()
-        } catch (error) {
-          demoToast(
-            error instanceof Error
-              ? error.message
-              : "No se pudo confirmar la recepción.",
-            "error",
-          )
-          throw error
-        }
-        return
-      }
+  const aplicarPreEntregaLocal = useCallback(
+    (ids: string[], recibidoPor?: string) => {
       const hora = formatearHoraActual()
       const mapOrdenes = new Map(
-        ordenes
+        ordenesRef.current
           .filter((o) => o.etiquetaId)
           .map((o) => [o.etiquetaId!, o]),
       )
@@ -1031,15 +1071,11 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [syncOrdenesFromEtiquetas, ordenes, apiActiva, recargarEtiquetas, etiquetasRepository],
+    [syncOrdenesFromEtiquetas],
   )
 
-  const confirmarEntrega = useCallback(
+  const aplicarEntregaLocal = useCallback(
     (id: string) => {
-      if (apiActiva) {
-        void etiquetasRepository.confirmarEntrega(id).then(() => recargarEtiquetas())
-        return
-      }
       const hora = formatearHoraActual()
       setEtiquetas((prev) => {
         const next = prev.map((e) =>
@@ -1051,33 +1087,11 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [syncOrdenesFromEtiquetas, apiActiva, recargarEtiquetas],
+    [syncOrdenesFromEtiquetas],
   )
 
-  const confirmarDevolucion = useCallback(
-    async (id: string, input: ConfirmarDevolucionInput): Promise<void> => {
-      if (apiActiva) {
-        try {
-          await etiquetasRepository.registrarDevolucion(id, {
-            motivo: input.motivo,
-            estadoDieta: input.estadoDieta ?? "Devuelta",
-            observaciones: input.observaciones,
-          })
-          if (input.fotoArchivo) {
-            await etiquetasRepository.subirFotoDevolucion(id, input.fotoArchivo)
-          }
-          await recargarEtiquetas()
-        } catch (error) {
-          demoToast(
-            error instanceof Error
-              ? error.message
-              : "No se pudo registrar la devolución.",
-            "error",
-          )
-          throw error
-        }
-        return
-      }
+  const aplicarDevolucionLocal = useCallback(
+    (id: string, input: ConfirmarDevolucionInput) => {
       const hora = formatearHoraActual()
       setEtiquetas((prev) => {
         const next = prev.map((e) =>
@@ -1096,7 +1110,244 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [syncOrdenesFromEtiquetas, apiActiva, recargarEtiquetas, etiquetasRepository],
+    [syncOrdenesFromEtiquetas],
+  )
+
+  const encolarPreEntregaOffline = useCallback(
+    (ids: string[], recibidoPor?: string) => {
+      for (const id of ids) {
+        encolarOperacionBandeja({
+          tipo: "pre_entrega",
+          etiquetaId: id,
+          recibidoPor,
+          clientId: crearClientIdBandeja(),
+          creadoEn: new Date().toISOString(),
+        })
+      }
+      setCantidadPendientesSync(contarOperacionesPendientes())
+    },
+    [],
+  )
+
+  const encolarEntregaOffline = useCallback((id: string) => {
+    encolarOperacionBandeja({
+      tipo: "entrega",
+      etiquetaId: id,
+      clientId: crearClientIdBandeja(),
+      creadoEn: new Date().toISOString(),
+    })
+    setCantidadPendientesSync(contarOperacionesPendientes())
+  }, [])
+
+  const encolarDevolucionOffline = useCallback(
+    async (id: string, input: ConfirmarDevolucionInput) => {
+      const clientId = crearClientIdBandeja()
+      let fotoRefId: string | undefined
+      if (input.fotoArchivo) {
+        fotoRefId = clientId
+        await guardarFotoDevolucionOffline(clientId, input.fotoArchivo)
+      }
+      encolarOperacionBandeja({
+        tipo: "devolucion",
+        etiquetaId: id,
+        payload: {
+          motivo: input.motivo,
+          observaciones: input.observaciones,
+          estadoDieta: input.estadoDieta,
+          tipoDevolucion: input.tipoDevolucion,
+        },
+        fotoRefId,
+        clientId,
+        creadoEn: new Date().toISOString(),
+        estadoSync: "pendiente",
+      })
+      setCantidadPendientesSync(contarOperacionesPendientes())
+    },
+    [],
+  )
+
+  const descartarConflictoSync = useCallback(async (clientId: string) => {
+    const operacion = listarOperacionesPendientes().find(
+      (op) => op.clientId === clientId,
+    )
+    if (operacion) {
+      await limpiarAdjuntosOperacion(operacion)
+    }
+    descartarOperacionBandeja(clientId)
+    setCantidadPendientesSync(contarOperacionesPendientes())
+    setCantidadConflictosSync(contarOperacionesConConflicto())
+  }, [])
+
+  const sincronizarBandejasPendientes = useCallback(async () => {
+    if (!apiActiva || !estaOnlineRef.current || sincronizandoRef.current) return
+    if (contarOperacionesPendientes() === 0) return
+
+    sincronizandoRef.current = true
+    setSincronizandoBandejas(true)
+    try {
+      const resultado = await sincronizarOutboxBandejas({
+        ordenes: ordenesRef.current,
+        etiquetas: etiquetasRef.current,
+      })
+      setCantidadPendientesSync(contarOperacionesPendientes())
+      setCantidadConflictosSync(contarOperacionesConConflicto())
+      if (resultado.sincronizadas > 0) {
+        await recargarEtiquetas()
+      }
+      if (resultado.conflictos > 0) {
+        demoToast(
+          `${resultado.conflictos} registro(s) tienen conflicto con el servidor. Revíselos en la lista de pendientes.`,
+          "warning",
+        )
+      }
+      if (resultado.fallidas > 0) {
+        demoToast(
+          `${resultado.fallidas} registro(s) no se pudieron sincronizar. Revise la conexión e intente de nuevo.`,
+          "warning",
+        )
+      }
+    } finally {
+      sincronizandoRef.current = false
+      setSincronizandoBandejas(false)
+    }
+  }, [apiActiva, recargarEtiquetas])
+
+  const reintentarConflictoSync = useCallback(
+    (clientId: string) => {
+      reintentarOperacionBandeja(clientId)
+      setCantidadPendientesSync(contarOperacionesPendientes())
+      setCantidadConflictosSync(contarOperacionesConConflicto())
+      void sincronizarBandejasPendientes()
+    },
+    [sincronizarBandejasPendientes],
+  )
+
+  const confirmarPreEntrega = useCallback(
+    async (ids: string[], recibidoPor?: string): Promise<void> => {
+      const debeUsarOffline = !apiActiva || !estaOnlineRef.current
+
+      if (apiActiva && estaOnlineRef.current) {
+        try {
+          await completarOrdenesPorEtiquetaIdsEnApi(
+            ids,
+            ordenesRef.current,
+            etiquetasRef.current,
+          )
+          await Promise.all(
+            ids.map((id) =>
+              etiquetasRepository.confirmarPreEntrega(id, recibidoPor),
+            ),
+          )
+          await recargarEtiquetas()
+          return
+        } catch (error) {
+          if (!esErrorRed(error)) {
+            demoToast(
+              error instanceof Error
+                ? error.message
+                : "No se pudo confirmar la recepción.",
+              "error",
+            )
+            throw error
+          }
+        }
+      }
+
+      if (debeUsarOffline || apiActiva) {
+        aplicarPreEntregaLocal(ids, recibidoPor)
+        if (apiActiva) {
+          encolarPreEntregaOffline(ids, recibidoPor)
+        }
+        return
+      }
+
+      aplicarPreEntregaLocal(ids, recibidoPor)
+    },
+    [
+      apiActiva,
+      aplicarPreEntregaLocal,
+      encolarPreEntregaOffline,
+      recargarEtiquetas,
+      etiquetasRepository,
+    ],
+  )
+
+  const confirmarEntrega = useCallback(
+    (id: string) => {
+      if (apiActiva && estaOnlineRef.current) {
+        aplicarEntregaLocal(id)
+        void etiquetasRepository
+          .confirmarEntrega(id)
+          .then(() => recargarEtiquetas())
+          .catch((error) => {
+            if (esErrorRed(error)) {
+              encolarEntregaOffline(id)
+              return
+            }
+            void recargarEtiquetas()
+            demoToast(
+              error instanceof Error
+                ? error.message
+                : "No se pudo confirmar la entrega.",
+              "error",
+            )
+          })
+        return
+      }
+
+      aplicarEntregaLocal(id)
+      if (apiActiva) {
+        encolarEntregaOffline(id)
+      }
+    },
+    [
+      apiActiva,
+      aplicarEntregaLocal,
+      encolarEntregaOffline,
+      recargarEtiquetas,
+      etiquetasRepository,
+    ],
+  )
+
+  const confirmarDevolucion = useCallback(
+    async (id: string, input: ConfirmarDevolucionInput): Promise<void> => {
+      if (apiActiva && estaOnlineRef.current) {
+        try {
+          await etiquetasRepository.registrarDevolucion(id, {
+            motivo: input.motivo,
+            estadoDieta: input.estadoDieta ?? "Devuelta",
+            observaciones: input.observaciones,
+          })
+          if (input.fotoArchivo) {
+            await etiquetasRepository.subirFotoDevolucion(id, input.fotoArchivo)
+          }
+          await recargarEtiquetas()
+          return
+        } catch (error) {
+          if (!esErrorRed(error)) {
+            demoToast(
+              error instanceof Error
+                ? error.message
+                : "No se pudo registrar la devolución.",
+              "error",
+            )
+            throw error
+          }
+        }
+      }
+
+      aplicarDevolucionLocal(id, input)
+      if (apiActiva) {
+        await encolarDevolucionOffline(id, input)
+      }
+    },
+    [
+      apiActiva,
+      aplicarDevolucionLocal,
+      encolarDevolucionOffline,
+      recargarEtiquetas,
+      etiquetasRepository,
+    ],
   )
 
   const contarRecibidasEnfermeria = useCallback(
@@ -1218,6 +1469,13 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       rehidratarDesdeStorage,
       sincronizarOrdenesDesdeFilas,
       hidrato,
+      estaOnline,
+      cantidadPendientesSync,
+      cantidadConflictosSync,
+      sincronizandoBandejas,
+      sincronizarBandejasPendientes,
+      descartarConflictoSync,
+      reintentarConflictoSync,
     }),
     [
       ordenes,
@@ -1243,6 +1501,13 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       rehidratarDesdeStorage,
       sincronizarOrdenesDesdeFilas,
       hidrato,
+      estaOnline,
+      cantidadPendientesSync,
+      cantidadConflictosSync,
+      sincronizandoBandejas,
+      sincronizarBandejasPendientes,
+      descartarConflictoSync,
+      reintentarConflictoSync,
     ],
   )
 

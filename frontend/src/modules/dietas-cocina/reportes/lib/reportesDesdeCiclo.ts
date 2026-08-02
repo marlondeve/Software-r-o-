@@ -1,5 +1,5 @@
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
-import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import type { FiltrosReportes, ReportesSegmento } from "@/modules/dietas-cocina/types/reports"
 import {
@@ -8,6 +8,14 @@ import {
 } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { aplicarFiltrosReportes } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
+import {
+  chartPaletteComidas,
+  colorCategoricoPorIndice,
+  colorMotivoRechazoPorIndice,
+  colorMotivoRecogidaPorIndice,
+  segmentoEtiquetaReporteColores,
+  segmentoOrdenReporteColores,
+} from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
 import { mockReportesNutricionista } from "@/modules/dietas-cocina/reportes/datos/mockReportesNutricionista"
 import { mockReportesProveedor } from "@/modules/dietas-cocina/reportes/datos/mockReportesProveedor"
 import { reporteViewVacio } from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
@@ -43,18 +51,17 @@ function contarTiposDieta(ordenes: OrdenCocina[]) {
   for (const orden of ordenes) {
     map.set(orden.tipoDieta, (map.get(orden.tipoDieta) ?? 0) + 1)
   }
-  const colores = ["#0ea5e9", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6"]
   return [...map.entries()].slice(0, 5).map(([label, value], i) => ({
     label,
     value,
-    color: colores[i % colores.length],
+    color: colorCategoricoPorIndice(i),
   }))
 }
 
 function contarMotivosPorTipo(
   etiquetas: EtiquetaEnfermera[],
   filtro: (etiqueta: EtiquetaEnfermera) => boolean,
-  colores: string[],
+  resolverColor: (indice: number) => string,
 ) {
   const map = new Map<string, number>()
   for (const etq of etiquetas.filter(filtro)) {
@@ -64,7 +71,7 @@ function contarMotivosPorTipo(
   return [...map.entries()].slice(0, 3).map(([label, value], i) => ({
     label,
     value: value || 1,
-    color: colores[i % colores.length],
+    color: resolverColor(i),
   }))
 }
 
@@ -72,7 +79,7 @@ function contarMotivosRechazo(etiquetas: EtiquetaEnfermera[]) {
   return contarMotivosPorTipo(
     etiquetas,
     (etq) => etq.estadoLogistica === "devuelta" && esRechazoAntesEntrega(etq),
-    ["#ef4444", "#f97316", "#eab308"],
+    colorMotivoRechazoPorIndice,
   )
 }
 
@@ -80,7 +87,7 @@ function contarMotivosRecogida(etiquetas: EtiquetaEnfermera[]) {
   return contarMotivosPorTipo(
     etiquetas,
     (etq) => etq.estadoLogistica === "devuelta" && !esRechazoAntesEntrega(etq),
-    ["#60a5fa", "#38bdf8", "#0ea5e9"],
+    colorMotivoRecogidaPorIndice,
   )
 }
 
@@ -127,13 +134,17 @@ function construirSegmentosEstadoOrdenes(
   }
 
   const segmentos = [
-    { label: "En cocina", value: enCocina, color: "#94a3b8" },
-    { label: "Listas", value: listas, color: "#f59e0b" },
-    { label: "Despachadas", value: despachadas, color: "#0ea5e9" },
-    { label: "Recibidas", value: recibidas, color: "#8b5cf6" },
-    { label: "Recogidas", value: recogidas, color: "#64748b" },
-    { label: "Recogidas (consumidas)", value: recogidasConsumidas, color: "#f97316" },
-    { label: "Rechazadas", value: rechazadas, color: "#ef4444" },
+    { label: "En cocina", value: enCocina, color: segmentoOrdenReporteColores.enCocina },
+    { label: "Listas", value: listas, color: segmentoOrdenReporteColores.listas },
+    { label: "Despachadas", value: despachadas, color: segmentoOrdenReporteColores.despachadas },
+    { label: "Recibidas", value: recibidas, color: segmentoOrdenReporteColores.recibidas },
+    { label: "Recogidas", value: recogidas, color: segmentoOrdenReporteColores.recogidas },
+    {
+      label: "Recogidas (consumidas)",
+      value: recogidasConsumidas,
+      color: segmentoOrdenReporteColores.recogidasConsumidas,
+    },
+    { label: "Rechazadas", value: rechazadas, color: segmentoOrdenReporteColores.rechazadas },
   ].filter((segmento) => segmento.value > 0)
 
   return { segmentos, total: activas.length }
@@ -142,22 +153,13 @@ function construirSegmentosEstadoOrdenes(
 function construirDistribucionPorTurno(
   ordenes: OrdenCocina[],
 ): ReportesSegmento[] {
-  const colores: Record<TiempoComida, string> = {
-    desayuno: "#e879a9",
-    "merienda-manana": "#f472b6",
-    almuerzo: "#60a5fa",
-    "merienda-tarde": "#38bdf8",
-    cena: "#a78bfa",
-    "merienda-noche": "#c084fc",
-  }
-
   return COMIDAS_TABS.map((comida) => ({
     label: comida.label,
     value: ordenes.filter(
       (orden) =>
         orden.comida === comida.id && orden.estadoCocina !== "cancelada",
     ).length,
-    color: colores[comida.id],
+    color: chartPaletteComidas[comida.id],
   })).filter((item) => item.value > 0)
 }
 
@@ -222,14 +224,26 @@ function construirHallazgosProveedor(
 
 function construirSegmentosEstadoEtiquetas(stats: ReturnType<typeof contarPorEstadoLogistico>) {
   return [
-    { label: "Entregadas", value: stats.entregadas, color: "#22c55e" },
+    {
+      label: "Entregadas",
+      value: stats.entregadas,
+      color: segmentoEtiquetaReporteColores.entregadas,
+    },
     {
       label: "En tránsito",
       value: stats.preEntregadas + stats.impresas + stats.generadas,
-      color: "#0ea5e9",
+      color: segmentoEtiquetaReporteColores.enTransito,
     },
-    { label: "Recogidas", value: stats.recogidas + stats.devueltasConsumidas, color: "#64748b" },
-    { label: "Rechazadas", value: stats.devueltas, color: "#ef4444" },
+    {
+      label: "Recogidas",
+      value: stats.recogidas + stats.devueltasConsumidas,
+      color: segmentoEtiquetaReporteColores.recogidas,
+    },
+    {
+      label: "Rechazadas",
+      value: stats.devueltas,
+      color: segmentoEtiquetaReporteColores.rechazadas,
+    },
   ].filter((segmento) => segmento.value > 0)
 }
 
@@ -278,13 +292,16 @@ export function construirReportesNutricionistaDesdeCiclo(
   ordenes: OrdenCocina[],
   etiquetas: EtiquetaEnfermera[],
   filtros: FiltrosReportes,
-  opciones?: { soloDatosReales?: boolean },
+  opciones?: { soloDatosReales?: boolean; filas?: FilaDieta[] },
 ) {
   const soloReal = opciones?.soloDatosReales ?? false
+  const filasPorId = opciones?.filas
+    ? new Map(opciones.filas.map((fila) => [fila.id, fila]))
+    : undefined
   const base = soloReal
     ? reporteViewVacio()
     : aplicarFiltrosReportes(mockReportesNutricionista, filtros)
-  const ordenesFiltradas = filtrarOrdenesReporte(ordenes, filtros)
+  const ordenesFiltradas = filtrarOrdenesReporte(ordenes, filtros, filasPorId)
   const etiquetasFiltradas = filtrarEtiquetasReporte(
     etiquetas,
     ordenesFiltradas,
@@ -351,9 +368,11 @@ export function construirReportesProveedorDesdeCiclo(
   ordenes: OrdenCocina[],
   etiquetas: EtiquetaEnfermera[],
   filtros: FiltrosReportes,
+  filas: FilaDieta[] = [],
 ) {
   const base = aplicarFiltrosReportes(mockReportesProveedor, filtros)
-  const ordenesFiltradas = filtrarOrdenesReporte(ordenes, filtros)
+  const filasPorId = new Map(filas.map((fila) => [fila.id, fila]))
+  const ordenesFiltradas = filtrarOrdenesReporte(ordenes, filtros, filasPorId)
   const etiquetasFiltradas = filtrarEtiquetasReporte(
     etiquetas,
     ordenesFiltradas,

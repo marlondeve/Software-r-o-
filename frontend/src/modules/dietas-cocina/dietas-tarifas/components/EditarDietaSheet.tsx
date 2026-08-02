@@ -17,6 +17,7 @@ import {
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import { tarifasPorComidaDesdeMontos } from "@/modules/dietas-cocina/dietas-tarifas/lib/tarifasPorComida"
 
 interface EditarDietaSheetProps {
   open: boolean
@@ -43,7 +44,7 @@ function dietaToForm(dieta: DietaCatalogo): DietaCatalogoFormValues {
     codigo: dieta.codigo,
     nombre: dieta.nombre,
     descripcion: dieta.descripcion,
-    tarifaInicial: String(dieta.tarifaVigente),
+    tarifasPorComida: tarifasPorComidaDesdeMontos(dieta.tarifasVigentes),
     fechaInicio,
     fechaFin,
     activa: dieta.activa,

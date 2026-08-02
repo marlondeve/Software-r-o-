@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { CardGridSkeleton } from "@/components/shared/skeletons"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { EtiquetaCard } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaCard"
 import { EtiquetasFiltrosPanel } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasFiltrosPanel"
@@ -334,12 +335,12 @@ export function EtiquetasProveedorView() {
             onReimprimir={reimprimirSeleccionadas}
           />
 
-          {etiquetasFiltradas.length === 0 ? (
+          {apiActiva && !hidrato ? (
+            <CardGridSkeleton count={4} />
+          ) : etiquetasFiltradas.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center">
               <p className="text-sm font-medium text-foreground">
-                {apiActiva && !hidrato
-                  ? "Cargando etiquetas del turno…"
-                  : "No hay etiquetas para este turno"}
+                No hay etiquetas para este turno
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {mostrarRecibidasEnfermeria

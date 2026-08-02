@@ -50,13 +50,27 @@ function construirDetalleDesdeFila(fila: FilaAuditoria): DetalleAuditoria {
   }
 
   if (fila.cambios.tipo === "diff" && fila.cambios.lineas?.length) {
-    const anterior = fila.cambios.lineas.find((l) => l.prefijo === "-")
-    const nuevo = fila.cambios.lineas.find((l) => l.prefijo === "+")
+    const cambiosLegibles = fila.cambios.lineas.map((linea) => {
+      const match = linea.texto.match(/^([^:]+):\s*(.+)$/)
+      if (match) {
+        return linea.prefijo === "-"
+          ? { campo: match[1]!.trim(), anterior: match[2]!.trim() }
+          : { campo: match[1]!.trim(), nuevo: match[2]!.trim() }
+      }
+      return linea.prefijo === "-"
+        ? { campo: fila.accion, anterior: linea.texto }
+        : { campo: fila.accion, nuevo: linea.texto }
+    })
+
+    const resumen =
+      fila.cambios.resumen ??
+      fila.cambios.lineas.map((l) => l.texto).join(" · ")
+
     return {
       ...base,
       parametro: fila.accion,
-      valorAnterior: anterior?.texto.replace(/^[^:]+:\s*/, "") ?? "—",
-      valorNuevo: nuevo?.texto.replace(/^[^:]+:\s*/, "") ?? "—",
+      resumenCambios: resumen,
+      cambiosLegibles,
     }
   }
 

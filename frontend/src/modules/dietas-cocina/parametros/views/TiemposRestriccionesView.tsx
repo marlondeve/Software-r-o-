@@ -3,6 +3,8 @@ import type { ParametrosTiempoComida } from "@/modules/dietas-cocina/types/param
 import { useEffect, useMemo, useState } from "react"
 import { Loader2 } from "lucide-react"
 
+import { ParametrosPageSkeleton } from "@/components/shared/skeletons"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
@@ -151,12 +153,7 @@ export function TiemposRestriccionesView() {
   }
 
   if (cargando) {
-    return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Cargando parámetros de tiempos…
-      </div>
-    )
+    return <ParametrosPageSkeleton />
   }
 
   return (

@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { DietaCatalogoFormValues } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietaCatalogoFormDefaults"
-import { formatearMonedaTarifa } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import { TarifasPorComidaInputs } from "@/modules/dietas-cocina/dietas-tarifas/components/TarifasPorComidaInputs"
 
 interface DietaCatalogoFormProps {
   values: DietaCatalogoFormValues
@@ -60,35 +60,33 @@ export function DietaCatalogoForm({
 
       <Separator />
 
-      <div className="space-y-2">
-        <Label htmlFor="tarifa-inicial">
-          {tarifaReadOnly ? "Tarifa vigente (COP)" : "Tarifa inicial (COP, opcional)"}
-        </Label>
+      <div className="space-y-3">
+        <div>
+          <Label>
+            {tarifaReadOnly
+              ? "Tarifas vigentes por comida (COP)"
+              : "Tarifas iniciales por comida (COP, opcional)"}
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Cada tiempo de comida puede tener un valor distinto.
+          </p>
+        </div>
         {tarifaReadOnly ? (
-          <Input
-            id="tarifa-inicial"
+          <TarifasPorComidaInputs
+            values={values.tarifasPorComida}
+            onChange={() => {}}
             readOnly
-            className="bg-muted/40"
-            value={formatearMonedaTarifa(Number.parseFloat(values.tarifaInicial) || 0)}
+            idPrefix="tarifa-vigente"
           />
         ) : (
-          <div className="relative">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-              $
-            </span>
-            <Input
-              id="tarifa-inicial"
-              className="pl-7"
-              placeholder="0"
-              inputMode="numeric"
-              value={values.tarifaInicial}
-              onChange={(e) => patch({ tarifaInicial: e.target.value })}
-            />
-          </div>
+          <TarifasPorComidaInputs
+            values={values.tarifasPorComida}
+            onChange={(tarifasPorComida) => patch({ tarifasPorComida })}
+          />
         )}
         {tarifaReadOnly && (
           <p className="text-xs text-muted-foreground">
-            Para cambiar la tarifa use la acción &quot;Nueva tarifa&quot; en el catálogo.
+            Para cambiar las tarifas use la acción &quot;Nueva tarifa&quot; en el catálogo.
           </p>
         )}
       </div>

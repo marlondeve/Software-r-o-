@@ -45,6 +45,45 @@ export interface CrearOrdenDesdeDietaInput {
   observaciones?: string
 }
 
+export type EstadoSyncBandeja = "pendiente" | "conflicto"
+
+export type OperacionBandejaPendiente =
+  | {
+      tipo: "pre_entrega"
+      etiquetaId: string
+      recibidoPor?: string
+      clientId: string
+      creadoEn: string
+      intentos?: number
+      ultimoError?: string
+      estadoSync?: EstadoSyncBandeja
+    }
+  | {
+      tipo: "entrega"
+      etiquetaId: string
+      clientId: string
+      creadoEn: string
+      intentos?: number
+      ultimoError?: string
+      estadoSync?: EstadoSyncBandeja
+    }
+  | {
+      tipo: "devolucion"
+      etiquetaId: string
+      payload: ConfirmarDevolucionInput
+      /** Referencia a foto en IndexedDB (mismo clientId). */
+      fotoRefId?: string
+      /** Legacy: base64 en localStorage (migración). */
+      fotoBase64?: string
+      fotoNombre?: string
+      fotoTipo?: string
+      clientId: string
+      creadoEn: string
+      intentos?: number
+      ultimoError?: string
+      estadoSync?: EstadoSyncBandeja
+    }
+
 export type CicloBandejasMutations = {
   marcarEnPreparacion: (ids: string[]) => void
   marcarComoLista: (ids: string[]) => void

@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom"
 
+import { AuthLayoutSkeleton } from "@/components/shared/skeletons"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 
 interface RequireAuthProps {
@@ -11,11 +12,7 @@ export function RequireAuth({ children }: RequireAuthProps) {
   const location = useLocation()
 
   if (cargando) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
-        Cargando sesión…
-      </div>
-    )
+    return <AuthLayoutSkeleton />
   }
 
   if (!usuario) {

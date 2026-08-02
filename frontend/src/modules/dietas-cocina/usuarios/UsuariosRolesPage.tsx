@@ -6,11 +6,13 @@ import { Plus, Shield, Users } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { TableSkeleton } from "@/components/shared/skeletons"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { obtenerNombreRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { TAMANO_PAGINA_TABLA } from "@/lib/tamanoPaginaTabla"
 import { CambiarRolDialog } from "@/modules/dietas-cocina/usuarios/components/CambiarRolDialog"
 import { CrearRolDialog } from "@/modules/dietas-cocina/usuarios/components/CrearRolDialog"
 import { NuevoUsuarioDialog } from "@/modules/dietas-cocina/usuarios/components/NuevoUsuarioDialog"
@@ -33,7 +35,7 @@ import {
 } from "@/modules/dietas-cocina/api/services/usuarios.service"
 import { puedeGestionarUsuariosRoles } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
 
-const TAMANO_PAGINA_USUARIOS = 10
+const TAMANO_PAGINA_USUARIOS = TAMANO_PAGINA_TABLA
 
 type TabUsuariosRoles = "usuarios" | "roles"
 
@@ -410,9 +412,7 @@ export function UsuariosRolesPage() {
             />
             <CardContent className="p-0">
               {apiActiva && cargandoUsuarios ? (
-                <p className="py-12 text-center text-sm text-muted-foreground">
-                  Cargando usuarios…
-                </p>
+                <TableSkeleton rows={8} columns={5} />
               ) : (
                 <UsuariosTabla
                   usuarios={usuariosPagina}

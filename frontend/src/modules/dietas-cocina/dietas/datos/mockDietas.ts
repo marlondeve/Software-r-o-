@@ -1,5 +1,6 @@
 import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { ComidaTab, FilaDieta, KpiDieta } from "@/modules/dietas-cocina/types/diets"
+import type { CatalogoDietaItem } from "@/modules/dietas-cocina/types/repositories"
 
 export const COMIDAS_TABS: ComidaTab[] = [
   { id: "desayuno", label: "Desayuno" },
@@ -193,6 +194,58 @@ const filasDesayuno: FilaDieta[] = filasAlmuerzo.slice(0, 6).map((fila, index) =
         : ("no-solicitada" as EstadoDieta),
 }))
 
+const COMIDAS_PRINCIPALES: TiempoComida[] = ["desayuno", "almuerzo", "cena"]
+
+function tarifasMock(comidas: TiempoComida[]): Partial<Record<TiempoComida, number>> {
+  return Object.fromEntries(comidas.map((comida) => [comida, 6080]))
+}
+
+/** Catálogo demo alineado con reglas FCR (Renal y niños 6–10 m sin desayuno). */
+export const MOCK_CATALOGO_DIETAS: CatalogoDietaItem[] = [
+  { id: "general", nombre: "General", tarifasVigentes: tarifasMock(COMIDAS_PRINCIPALES) },
+  { id: "blanda", nombre: "Blanda", tarifasVigentes: tarifasMock(COMIDAS_PRINCIPALES) },
+  {
+    id: "blanda-sin-sal",
+    nombre: "Blanda / Sin sal",
+    tarifasVigentes: tarifasMock(COMIDAS_PRINCIPALES),
+  },
+  {
+    id: "hipocalorica",
+    nombre: "Hipocalórica",
+    tarifasVigentes: tarifasMock(COMIDAS_PRINCIPALES),
+  },
+  {
+    id: "liquida-clara",
+    nombre: "Líquida clara",
+    tarifasVigentes: tarifasMock(COMIDAS_PRINCIPALES),
+  },
+  {
+    id: "liquida-completa",
+    nombre: "Líquida completa",
+    tarifasVigentes: tarifasMock(COMIDAS_PRINCIPALES),
+  },
+  {
+    id: "diabetica",
+    nombre: "Diabética",
+    tarifasVigentes: tarifasMock(COMIDAS_PRINCIPALES),
+  },
+  {
+    id: "merienda-manana",
+    nombre: "Merienda mañana",
+    tarifasVigentes: { "merienda-manana": 6080 },
+  },
+  {
+    id: "merienda-tarde",
+    nombre: "Merienda tarde",
+    tarifasVigentes: { "merienda-tarde": 6080 },
+  },
+  {
+    id: "merienda-noche",
+    nombre: "Merienda noche",
+    tarifasVigentes: { "merienda-noche": 6080 },
+  },
+]
+
 export const configDietasOperativas = {
   comidaActiva: "almuerzo" as TiempoComida,
   comidas: COMIDAS_TABS,
@@ -206,6 +259,9 @@ export const configDietasOperativas = {
     "Líquida clara",
     "Líquida completa",
     "Diabética",
+    "Merienda mañana",
+    "Merienda tarde",
+    "Merienda noche",
   ],
   consistencias: ["Sólida", "Blanda", "Líquida", "Puré"],
   cierreVentanaMinutos: 45,

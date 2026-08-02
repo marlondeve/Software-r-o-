@@ -7,6 +7,8 @@ interface CapacidadesEtiquetasFormProps {
   onAlternar: (capacidad: CapacidadEtiquetas, activo: boolean) => void
   disabled?: boolean
   idPrefix?: string
+  /** Limita el formulario a un grupo (p. ej. solo flujos de bandejas en piso). */
+  soloGrupo?: "recepcion" | "bandejas" | "proveedor"
 }
 
 const GRUPOS: {
@@ -23,19 +25,28 @@ export function CapacidadesEtiquetasForm({
   onAlternar,
   disabled = false,
   idPrefix = "cap-etiquetas",
+  soloGrupo,
 }: CapacidadesEtiquetasFormProps) {
+  const gruposVisibles = soloGrupo
+    ? GRUPOS.filter((grupo) => grupo.id === soloGrupo)
+    : GRUPOS
+
   return (
     <div className="space-y-3 border-t pt-3">
       <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        Permisos de bandejas (Etiquetas)
+        {soloGrupo === "bandejas"
+          ? "Flujos en bandejas en piso"
+          : "Permisos de bandejas (Etiquetas)"}
       </p>
-      {GRUPOS.map((grupo) => {
+      {gruposVisibles.map((grupo) => {
         const items = CAPACIDADES_ETIQUETAS.filter((item) => item.grupo === grupo.id)
         if (items.length === 0) return null
 
         return (
           <div key={grupo.id} className="space-y-1">
-            <p className="text-xs font-medium text-foreground">{grupo.titulo}</p>
+            {!soloGrupo && (
+              <p className="text-xs font-medium text-foreground">{grupo.titulo}</p>
+            )}
             {items.map((item) => (
               <div
                 key={item.id}

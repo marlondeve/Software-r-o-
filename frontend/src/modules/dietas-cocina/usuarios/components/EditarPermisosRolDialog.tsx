@@ -37,9 +37,10 @@ import {
 } from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
 import {
   CAPACIDADES_ETIQUETAS,
+  CAPACIDADES_BANDEJAS_PISO,
   obtenerCapacidadesEtiquetas,
 } from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
-import type { CapacidadEtiquetas, RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 
 function etiquetaCapacidad(id: CapacidadEtiquetas): string {
   return CAPACIDADES_ETIQUETAS.find((item) => item.id === id)?.label ?? id
@@ -70,8 +71,6 @@ export function EditarPermisosRolDialog({
     CapacidadEtiquetas[]
   >([])
 
-  const rolConfig = rolNombre as RolDietas
-
   const capacidadesActuales = useMemo(
     () => obtenerCapacidadesEtiquetas(rolNombre),
     [rolNombre, config.capacidadesEtiquetas],
@@ -81,13 +80,22 @@ export function EditarPermisosRolDialog({
     () =>
       apiActiva
         ? permisosPorRolDesdeApi(permisosApi, rolNombre)
-        : config.permisosDietas[rolConfig] ?? [],
-    [apiActiva, permisosApi, rolNombre, rolConfig, config.permisosDietas],
+        : config.permisosDietas[rolNombre] ?? [],
+    [apiActiva, permisosApi, rolNombre, config.permisosDietas],
   )
 
   function abrirDialogo() {
     setRutasPendientes([...rutasActuales])
-    setCapacidadesPendientes([...capacidadesActuales])
+    const capsBandejasActuales = capacidadesActuales.filter((cap) =>
+      CAPACIDADES_BANDEJAS_PISO.includes(cap),
+    )
+    const capsIniciales =
+      capsBandejasActuales.length > 0
+        ? [...capsBandejasActuales]
+        : rutasActuales.includes("bandejas-piso")
+          ? [...CAPACIDADES_BANDEJAS_PISO]
+          : []
+    setCapacidadesPendientes(capsIniciales)
     setDialogAbierto(true)
   }
 
@@ -161,10 +169,10 @@ export function EditarPermisosRolDialog({
 
     let nextConfig = config
     for (const ruta of diff.agregadas) {
-      nextConfig = alternarPermisoRutaDietas(nextConfig, rolConfig, ruta, true)
+      nextConfig = alternarPermisoRutaDietas(nextConfig, rolNombre, ruta, true)
     }
     for (const ruta of diff.removidas) {
-      nextConfig = alternarPermisoRutaDietas(nextConfig, rolConfig, ruta, false)
+      nextConfig = alternarPermisoRutaDietas(nextConfig, rolNombre, ruta, false)
     }
     nextConfig = {
       ...nextConfig,
@@ -217,10 +225,11 @@ export function EditarPermisosRolDialog({
                 setRutasPendientes((prev) => alternarRutaPermiso(prev, ruta, activo))
               }
             />
-            {rutasPendientes.includes("etiquetas") && (
+            {rutasPendientes.includes("bandejas-piso") && (
               <CapacidadesEtiquetasForm
                 capacidades={capacidadesPendientes}
                 idPrefix={`${rolId}-cap`}
+                soloGrupo="bandejas"
                 onAlternar={(capacidad, activo) =>
                   setCapacidadesPendientes((prev) =>
                     alternarCapacidadEtiquetaLista(prev, capacidad, activo),

@@ -77,3 +77,12 @@ public class KpiConciliacionDto
     public string? Tendencia { get; set; } // alza, baja, estable
     public string? Comparacion { get; set; }
 }
+
+/// <summary>
+/// Lista paginada de líneas de conciliación
+/// </summary>
+public class ListaConciliacionDto
+{
+    public List<FilaConciliacionDto> Data { get; set; } = new();
+    public MetaPaginacionDto Meta { get; set; } = new();
+}

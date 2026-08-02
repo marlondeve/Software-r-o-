@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageLoadingGate, ReportesPageSkeleton } from "@/components/shared/skeletons"
+import { BannerModuloSinConexion } from "@/modules/dietas-cocina/components/BannerModuloSinConexion"
+import { useConectividadRed } from "@/hooks/useConectividadRed"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart"
 import { HallazgosPanel } from "@/modules/dietas-cocina/reportes/components/HallazgosPanel"
@@ -12,52 +15,65 @@ import {
 import { ReportesFiltros } from "@/modules/dietas-cocina/reportes/components/ReportesFiltros"
 import { ReportesKpiGrid } from "@/modules/dietas-cocina/reportes/components/ReportesKpiGrid"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
+import { listarServiciosDesdeFilas } from "@/modules/dietas-cocina/lib/servicioClinico"
 import { mockReportesProveedor } from "@/modules/dietas-cocina/reportes/datos/mockReportesProveedor"
 import { crearFiltrosReportesIniciales } from "@/modules/dietas-cocina/reportes/lib/aplicarFiltrosReportes"
 import { construirReportesProveedorDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
-import {
-  mapReporteDto,
-  reporteViewVacio,
-} from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
+import { mapReporteDto } from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
 import { obtenerReporteProveedor } from "@/modules/dietas-cocina/api/services/reportes.service"
 import { REPORTES_FILTROS_UI } from "@/modules/dietas-cocina/config/reportes-ui"
+import { useReporteApi } from "@/modules/dietas-cocina/reportes/hooks/useReporteApi"
 
 export function ReportesProveedorView() {
   const base = mockReportesProveedor
   const { ordenes, etiquetas } = useCicloBandejas()
+  const { filas } = useDietasOperativas()
   const apiActiva = usarApiDietasCocina()
+  const estaOnline = useConectividadRed()
   const [filtros, setFiltros] = useState(crearFiltrosReportesIniciales)
-  const [reporteApi, setReporteApi] = useState<ReturnType<typeof mapReporteDto> | null>(
-    null,
+  const serviciosDisponibles = useMemo(
+    () => (apiActiva ? listarServiciosDesdeFilas(filas) : undefined),
+    [apiActiva, filas],
   )
-  const [cargando, setCargando] = useState(false)
 
-  useEffect(() => {
-    if (!apiActiva) return
-    setCargando(true)
-    void obtenerReporteProveedor({
+  const cargarReporte = useCallback(
+    () =>
+      obtenerReporteProveedor({
+        desde: filtros.desde,
+        hasta: filtros.hasta,
+        servicio: filtros.servicio !== "todos" ? filtros.servicio : undefined,
+        horario: filtros.horario !== "todos" ? filtros.horario : undefined,
+        comida: undefined,
+      }),
+    [filtros],
+  )
+
+  const { reporteApi, cargando, desdeCache } = useReporteApi({
+    tipo: "produccion",
+    apiActiva,
+    filtros: {
       desde: filtros.desde,
       hasta: filtros.hasta,
       servicio: filtros.servicio !== "todos" ? filtros.servicio : undefined,
       horario: filtros.horario !== "todos" ? filtros.horario : undefined,
-      comida: undefined,
-    })
-      .then((resp) => setReporteApi(mapReporteDto(resp)))
-      .catch(() => setReporteApi(reporteViewVacio()))
-      .finally(() => setCargando(false))
-  }, [apiActiva, filtros])
+    },
+    cargar: cargarReporte,
+    mapear: (resp) => mapReporteDto(resp as Parameters<typeof mapReporteDto>[0]),
+  })
 
   const dataCiclo = useMemo(
-    () => construirReportesProveedorDesdeCiclo(ordenes, etiquetas, filtros),
-    [ordenes, etiquetas, filtros],
+    () => construirReportesProveedorDesdeCiclo(ordenes, etiquetas, filtros, filas),
+    [ordenes, etiquetas, filtros, filas],
   )
 
   const data = useMemo(() => {
     if (!apiActiva) return dataCiclo
-    return reporteApi ?? reporteViewVacio()
-  }, [apiActiva, reporteApi, dataCiclo])
+    if (!estaOnline && !reporteApi) return dataCiclo
+    return reporteApi ?? dataCiclo
+  }, [apiActiva, reporteApi, dataCiclo, estaOnline])
 
   const subtituloActualizacion = useMemo(
     () =>
@@ -75,14 +91,20 @@ export function ReportesProveedorView() {
         title="Reportes de producción"
         subtitle="Analítica operativa de planta y despacho."
       />
+      <BannerModuloSinConexion datosEnCache={desdeCache || !estaOnline} />
 
       <ReportesFiltros
         {...(apiActiva ? REPORTES_FILTROS_UI : base.filtros)}
         filtros={filtros}
+        serviciosDisponibles={serviciosDisponibles}
         ultimaActualizacion={subtituloActualizacion}
         onFiltrosChange={setFiltros}
       />
 
+      <PageLoadingGate
+        loading={apiActiva && estaOnline && cargando && !reporteApi}
+        skeleton={<ReportesPageSkeleton />}
+      >
       <ReportesKpiGrid kpis={data.kpis} />
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -150,7 +172,7 @@ export function ReportesProveedorView() {
               <Card className="gap-0 py-0 shadow-none">
                 <CardHeader className="border-b py-3">
                   <CardTitle className="text-sm font-semibold">
-                    Distribución por turno
+                    Volumen por comida
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="py-4">
@@ -169,6 +191,7 @@ export function ReportesProveedorView() {
 
         <HallazgosPanel hallazgos={data.hallazgos} titulo="Alertas operativas" />
       </div>
+      </PageLoadingGate>
     </div>
   )
 }

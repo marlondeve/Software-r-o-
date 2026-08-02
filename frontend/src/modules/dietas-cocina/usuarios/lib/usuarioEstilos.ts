@@ -1,35 +1,5 @@
-import type { EstadoUsuario, RolDietas } from "@/modules/dietas-cocina/types/enums"
-export const rolDietasEstilos: Record<RolDietas, { className: string }> = {
-  Nutricionista: {
-    className: "bg-primary/10 text-primary border-primary/20",
-  },
-  Administrador: {
-    className: "bg-muted text-muted-foreground border-border",
-  },
-  Proveedor: {
-    className: "bg-secondary text-secondary-foreground border-border",
-  },
-  Doctor: {
-    className: "bg-primary/10 text-primary border-primary/20",
-  },
-  Enfermera: {
-    className: "bg-accent/30 text-accent-foreground border-accent/40",
-  },
-  "Auxiliar de Cocina": {
-    className: "bg-amber-500/10 text-amber-800 border-amber-500/25 dark:text-amber-200",
-  },
-}
+export { estadoUsuarioConfig as estadoUsuarioEstilos } from "@/modules/dietas-cocina/lib/estadosEstilos"
 
-export const estadoUsuarioEstilos: Record<
-  EstadoUsuario,
-  { label: string; dotClassName: string }
-> = {
-  activo: {
-    label: "Activo",
-    dotClassName: "bg-emerald-500",
-  },
-  inactivo: {
-    label: "Inactivo",
-    dotClassName: "bg-muted-foreground",
-  },
+export const ROL_BADGE_DEFAULT = {
+  className: "border-border bg-muted/40 text-foreground",
 }

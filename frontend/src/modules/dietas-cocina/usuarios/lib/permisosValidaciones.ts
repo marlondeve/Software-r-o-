@@ -1,4 +1,3 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
 import type { RutaDietasConfig } from "@/lib/configAccesoModulos"
 import { RUTAS_DIETAS } from "@/lib/configAccesoModulos"
 import { obtenerRutasPermitidas } from "@/modules/dietas-cocina/lib/permisos"
@@ -9,11 +8,8 @@ export interface ResultadoValidacion {
   advertencia?: string
 }
 
-export function puedeGestionarUsuariosRoles(
-  rol: RolDietas | string | null,
-): boolean {
+export function puedeGestionarUsuariosRoles(rol: string | null): boolean {
   if (!rol) return false
-  if (rol === "Administrador") return true
   return obtenerRutasPermitidas(rol).includes("usuarios")
 }
 
@@ -28,7 +24,7 @@ export function validarCambioRol(
     }
   }
 
-  if (rolNuevo === "Administrador") {
+  if (rolNuevo.toLowerCase() === "administrador") {
     return {
       valido: true,
       advertencia:
@@ -36,7 +32,7 @@ export function validarCambioRol(
     }
   }
 
-  if (rolActual === "Administrador") {
+  if (rolActual.toLowerCase() === "administrador") {
     return {
       valido: true,
       advertencia:

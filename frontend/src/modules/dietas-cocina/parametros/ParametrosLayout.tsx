@@ -2,6 +2,7 @@ import { Plus } from "lucide-react"
 import { Outlet, useLocation } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { RutaDietasSectionGuard } from "@/modules/dietas-cocina/components/RutaDietasSectionGuard"
 import { ParametrosSubNav } from "@/modules/dietas-cocina/parametros/components/ParametrosSubNav"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import {
@@ -16,6 +17,7 @@ function ParametrosLayoutInner() {
   const { crearCategoria } = useParametrosTiposPaciente()
 
   return (
+    <RutaDietasSectionGuard segmento="parametros" title="Parámetros">
     <div className="space-y-5">
       <DashboardPageHeader
         title={seccion.titulo}
@@ -34,6 +36,7 @@ function ParametrosLayoutInner() {
 
       <Outlet />
     </div>
+    </RutaDietasSectionGuard>
   )
 }
 

@@ -1,4 +1,3 @@
-import { esRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import type { PermisoRolDto } from "@/modules/dietas-cocina/types/api-dtos"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { RUTAS_DIETAS } from "@/lib/configAccesoModulos"
@@ -19,18 +18,27 @@ export function PermisosRolResumen({
   const { config } = useConfigAccesoModulos()
   const rutas = permisosApi
     ? permisosPorRolDesdeApi(permisosApi, rol)
-    : esRolDietas(rol)
-      ? config.permisosDietas[rol] ?? []
-      : []
-  const etiquetas = rutas
-    .map(
-      (id) => RUTAS_DIETAS.find((ruta) => ruta.id === id)?.label ?? id,
+    : config.permisosDietas[rol] ?? []
+  const etiquetas = rutas.map(
+    (id) => RUTAS_DIETAS.find((ruta) => ruta.id === id)?.label ?? id,
+  )
+
+  if (etiquetas.length === 0) {
+    return (
+      <span className={cn("text-sm text-muted-foreground", className)}>
+        Sin secciones asignadas
+      </span>
     )
-    .join(", ")
+  }
 
   return (
-    <span className={cn("text-muted-foreground", className)}>
-      {etiquetas || "Sin secciones asignadas"}
-    </span>
+    <p
+      className={cn(
+        "text-sm leading-relaxed text-muted-foreground wrap-break-word",
+        className,
+      )}
+    >
+      {etiquetas.join(" · ")}
+    </p>
   )
 }

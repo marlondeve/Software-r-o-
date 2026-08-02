@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { crearRol } from "@/modules/dietas-cocina/api/services/usuarios.service"
 import { ConfirmarAccionDialog } from "@/modules/dietas-cocina/usuarios/components/ConfirmarAccionDialog"
@@ -21,11 +22,23 @@ import {
   PermisosRolForm,
 } from "@/modules/dietas-cocina/usuarios/components/PermisosRolForm"
 import {
+  alternarCapacidadEtiquetaLista,
+  CapacidadesEtiquetasForm,
+} from "@/modules/dietas-cocina/usuarios/components/CapacidadesEtiquetasForm"
+import {
+  CAPACIDADES_ETIQUETAS,
+  CAPACIDADES_BANDEJAS_PISO,
+} from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
+import {
   diffPermisosRol,
   etiquetaRuta,
   validarPermisosRol,
 } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
 import { rutasToPermisosRecord } from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
+
+function etiquetaCapacidad(id: CapacidadEtiquetas): string {
+  return CAPACIDADES_ETIQUETAS.find((item) => item.id === id)?.label ?? id
+}
 
 interface CrearRolDialogProps {
   open: boolean
@@ -44,6 +57,9 @@ export function CrearRolDialog({
 }: CrearRolDialogProps) {
   const [nombre, setNombre] = useState("")
   const [rutas, setRutas] = useState<RutaDietasConfig[]>(["inicio"])
+  const [capacidades, setCapacidades] = useState<CapacidadEtiquetas[]>([
+    ...CAPACIDADES_BANDEJAS_PISO,
+  ])
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
@@ -57,6 +73,7 @@ export function CrearRolDialog({
   function cerrarDialogo() {
     setNombre("")
     setRutas(["inicio"])
+    setCapacidades([...CAPACIDADES_BANDEJAS_PISO])
     onOpenChange(false)
   }
 
@@ -87,6 +104,7 @@ export function CrearRolDialog({
       await crearRol({
         nombre: nombreNormalizado,
         permisos: rutasToPermisosRecord(rutas),
+        capacidadesEtiquetas: rutas.includes("bandejas-piso") ? capacidades : [],
       })
       demoToast(`Rol "${nombreNormalizado}" creado correctamente.`, "success")
       onRolCreado()
@@ -140,6 +158,18 @@ export function CrearRolDialog({
                   setRutas((prev) => alternarRutaPermiso(prev, ruta, activo))
                 }
               />
+              {rutas.includes("bandejas-piso") && (
+                <CapacidadesEtiquetasForm
+                  capacidades={capacidades}
+                  idPrefix="crear-rol-cap"
+                  soloGrupo="bandejas"
+                  onAlternar={(capacidad, activo) =>
+                    setCapacidades((prev) =>
+                      alternarCapacidadEtiquetaLista(prev, capacidad, activo),
+                    )
+                  }
+                />
+              )}
             </ScrollArea>
 
             {!validacion.valido && validacion.mensaje && (
@@ -185,6 +215,16 @@ export function CrearRolDialog({
                 <ul className="mt-1 list-disc pl-5">
                   {diff.agregadas.map((ruta) => (
                     <li key={ruta}>{etiquetaRuta(ruta)}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {capacidades.length > 0 && (
+              <div>
+                <p className="font-medium text-foreground">Flujos de bandejas:</p>
+                <ul className="mt-1 list-disc pl-5">
+                  {capacidades.map((capacidad) => (
+                    <li key={capacidad}>{etiquetaCapacidad(capacidad)}</li>
                   ))}
                 </ul>
               </div>

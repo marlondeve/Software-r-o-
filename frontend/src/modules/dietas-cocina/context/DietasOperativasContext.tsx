@@ -12,6 +12,9 @@ import {
 } from "react"
 
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
+import { estaOnlineAhora } from "@/hooks/useConectividadRed"
+import { requiereConsistencia } from "@/modules/dietas-cocina/lib/comidaOperativa"
+import { tiposDietaParaComida } from "@/modules/dietas-cocina/lib/tiposDietaCatalogo"
 import { obtenerDietasOperativasRepository } from "@/modules/dietas-cocina/api/repositories"
 import {
   cargarFilasCensoDesdeApi,
@@ -23,7 +26,7 @@ import type {
   NovedadDietaPayload,
 } from "@/modules/dietas-cocina/types/repositories"
 import type { DatosSolicitudDietaInput } from "@/modules/dietas-cocina/api/mappers"
-import { configDietasOperativas, mockDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { configDietasOperativas, mockDietas, MOCK_CATALOGO_DIETAS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { solicitarRefreshCenso } from "@/modules/dietas-cocina/lib/cocinaSyncBus"
 import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
@@ -69,6 +72,15 @@ function formatearHoraSincronizacion(): string {
   return formatearHoraDesdeFecha()
 }
 
+const ERROR_SIN_CONEXION =
+  "Sin conexión. Conecte a la red para realizar esta acción."
+
+function requiereConexionApi(): void {
+  if (!estaOnlineAhora()) {
+    throw new Error(ERROR_SIN_CONEXION)
+  }
+}
+
 function estadoInicialFilas(persistido: ReturnType<typeof cargarDietasOperativas>): FilaDieta[] {
   const hoy = fechaOperativaHoy()
   if (persistido?.filas.length && persistido.fechaOperativa === hoy) {
@@ -99,7 +111,9 @@ export interface DietasOperativasContextValue {
   filas: FilaDieta[]
   ultimaSincronizacion: string
   meta: typeof configDietasOperativas
+  catalogo: CatalogoDietaItem[]
   tiposDieta: string[]
+  resolverTiposDietaParaComida: (comida: TiempoComida) => string[]
   consistencias: string[]
   sincronizandoCenso: boolean
   errorSincronizacion: string | null
@@ -177,6 +191,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
 
       try {
         if (apiActiva) {
+          requiereConexionApi()
           const { filas: filasFusionadas, totalEnCenso } =
             await sincronizarFilasDesdeCensoApi(comida, filasRef.current)
           setFilas(filasFusionadas)
@@ -219,6 +234,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
   useEffect(() => {
     if (!apiActiva || censoInicialCargado.current) return
     censoInicialCargado.current = true
+    if (!estaOnlineAhora()) return
     setSincronizandoCenso(true)
     void cargarFilasCensoDesdeApi(obtenerComidaActivaOperativa(), [])
       .then(({ filas: filasCargadas, totalEnCenso }) => {
@@ -252,6 +268,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       setFilas((prev) =>
         prev.map((fila) => {
           if (!setIds.has(fila.id)) return fila
+          if (!requiereConsistencia(fila.comida)) return fila
           actualizados += 1
           return { ...fila, consistencia }
         }),
@@ -268,17 +285,19 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
 
   const guardarSolicitud = useCallback(
     async (id: string, datos: DatosSolicitudDietaInput) => {
+      if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
       const fila = await dietasRepository.guardarSolicitud(filaId, datos)
       reemplazarFila(fila)
       return fila
     },
-    [dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila],
   )
 
   const confirmarDietaApi = useCallback(
     async (id: string) => {
+      if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
       const fila = await dietasRepository.confirmar(filaId)
@@ -286,11 +305,12 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       solicitarRefreshCenso(fila.comida)
       return fila
     },
-    [dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila],
   )
 
   const confirmarMasivoApi = useCallback(
     async (ids: string[], usuario: string) => {
+      if (apiActiva) requiereConexionApi()
       let filasBase = filasRef.current
       const idsResueltos: string[] = []
       for (const id of ids) {
@@ -302,29 +322,31 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       await dietasRepository.confirmarMasivo(idsResueltos, usuario)
       await sincronizarCenso(obtenerComidaActivaOperativa())
     },
-    [dietasRepository, sincronizarCenso],
+    [apiActiva, dietasRepository, sincronizarCenso],
   )
 
   const cancelarDietaApi = useCallback(
     async (id: string, payload: CancelarDietaPayload) => {
+      if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
       const fila = await dietasRepository.cancelar(filaId, payload)
       reemplazarFila(fila)
       return fila
     },
-    [dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila],
   )
 
   const registrarNovedadApi = useCallback(
     async (id: string, payload: NovedadDietaPayload) => {
+      if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
       const fila = await dietasRepository.registrarNovedad(filaId, payload)
       reemplazarFila(fila)
       return fila
     },
-    [dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila],
   )
 
   const obtenerDetalleApi = useCallback(
@@ -337,12 +359,20 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
     [dietasRepository],
   )
 
-  const tiposDieta = useMemo(() => {
-    if (apiActiva && catalogo.length > 0) {
-      return catalogo.map((c) => c.nombre)
-    }
-    return configDietasOperativas.tiposDieta
+  const catalogoOperativo = useMemo(() => {
+    if (apiActiva && catalogo.length > 0) return catalogo
+    return MOCK_CATALOGO_DIETAS
   }, [apiActiva, catalogo])
+
+  const tiposDieta = useMemo(
+    () => catalogoOperativo.map((item) => item.nombre),
+    [catalogoOperativo],
+  )
+
+  const resolverTiposDietaParaComida = useCallback(
+    (comida: TiempoComida) => tiposDietaParaComida(comida, catalogoOperativo),
+    [catalogoOperativo],
+  )
 
   const meta = useMemo(
     () => ({
@@ -357,7 +387,9 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       filas,
       ultimaSincronizacion,
       meta,
+      catalogo: catalogoOperativo,
       tiposDieta,
+      resolverTiposDietaParaComida,
       consistencias: configDietasOperativas.consistencias,
       sincronizandoCenso,
       errorSincronizacion,
@@ -378,7 +410,9 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       filas,
       ultimaSincronizacion,
       meta,
+      catalogoOperativo,
       tiposDieta,
+      resolverTiposDietaParaComida,
       sincronizandoCenso,
       errorSincronizacion,
       actualizarFila,

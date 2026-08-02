@@ -6,6 +6,7 @@ using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Bital.Shared.Contracts.Responses;
 using Bital.Shared.Contracts.Services;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -116,6 +117,10 @@ public class EncuestasProxyService : IEncuestasBffService
 
     public async Task<RespuestaCapturaPresencialDto> ObtenerCapturaPresencialAsync(FiltrosCapturaPresencialDto filtros, CancellationToken cancellationToken = default)
     {
+        var (page, pageSize) = PaginacionHelper.Normalizar(filtros.Page, filtros.PageSize);
+        filtros.Page = page;
+        filtros.PageSize = pageSize;
+
         var items = (await _atencionesQueryService.GetCapturaPresencialAsync(
                 filtros.Servicio,
                 filtros.Pabellon,
@@ -136,21 +141,21 @@ public class EncuestasProxyService : IEncuestasBffService
             })
             .ToList();
 
+        var total = items.Count;
+        var pagina = items
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
         return new RespuestaCapturaPresencialDto
         {
-            Data = items,
-            Meta = new Bital.Application.DTOs.DietasCocina.MetaPaginacionDto
-            {
-                Total = items.Count,
-                Page = filtros.Page,
-                PageSize = filtros.PageSize,
-                TotalPages = items.Count == 0 ? 0 : 1
-            },
+            Data = pagina,
+            Meta = PaginacionHelper.CrearMeta(total, page, pageSize),
             Kpis = new KpiCapturaPresencialDto
             {
-                PacientesActivos = items.Count,
+                PacientesActivos = total,
                 EncuestasCompletadas = 0,
-                Pendientes = items.Count,
+                Pendientes = total,
                 NoDisponibles = 0,
                 Rechazadas = 0
             }
@@ -159,6 +164,10 @@ public class EncuestasProxyService : IEncuestasBffService
 
     public async Task<RespuestaCapturaTelefonicaDto> ObtenerCapturaTelefonicaAsync(FiltrosCapturaTelefonicaDto filtros, CancellationToken cancellationToken = default)
     {
+        var (page, pageSize) = PaginacionHelper.Normalizar(filtros.Page, filtros.PageSize);
+        filtros.Page = page;
+        filtros.PageSize = pageSize;
+
         var query = _dbContext.CapturasEncuesta.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(filtros.Busqueda))
@@ -374,6 +383,10 @@ public class EncuestasProxyService : IEncuestasBffService
 
     public async Task<ListaEncuestasRealizadasDto> ObtenerEncuestasRealizadasAsync(FiltrosEncuestasRealizadasDto filtros, CancellationToken cancellationToken = default)
     {
+        var (page, pageSize) = PaginacionHelper.Normalizar(filtros.Page, filtros.PageSize);
+        filtros.Page = page;
+        filtros.PageSize = pageSize;
+
         var query = _dbContext.CapturasEncuesta
             .AsNoTracking()
             .Where(x => x.Estado == EstadoEncuesta.Completada);
@@ -445,13 +458,7 @@ public class EncuestasProxyService : IEncuestasBffService
         return new ListaEncuestasRealizadasDto
         {
             Data = items,
-            Meta = new Bital.Application.DTOs.DietasCocina.MetaPaginacionDto
-            {
-                Total = total,
-                Page = filtros.Page,
-                PageSize = filtros.PageSize,
-                TotalPages = totalPages
-            }
+            Meta = PaginacionHelper.CrearMeta(total, page, pageSize)
         };
     }
 
@@ -561,6 +568,10 @@ public class EncuestasProxyService : IEncuestasBffService
 
     public async Task<RespuestaAnalisisBrechasDto> ObtenerAnalisisBrechasAsync(FiltrosAnalisisBrechasDto filtros, CancellationToken cancellationToken = default)
     {
+        var (page, pageSize) = PaginacionHelper.Normalizar(filtros.Page, filtros.PageSize);
+        filtros.Page = page;
+        filtros.PageSize = pageSize;
+
         var query = _dbContext.CapturasEncuesta.AsNoTracking().Where(x => x.Estado == EstadoEncuesta.Completada);
 
         if (filtros.Desde.HasValue)
@@ -620,13 +631,7 @@ public class EncuestasProxyService : IEncuestasBffService
         return await Task.FromResult(new RespuestaAnalisisBrechasDto
         {
             Data = items,
-            Meta = new MetaPaginacionDto
-            {
-                Total = total,
-                Page = filtros.Page,
-                PageSize = filtros.PageSize,
-                TotalPages = totalPages
-            },
+            Meta = PaginacionHelper.CrearMeta(total, page, pageSize),
             Kpis = kpis
         });
     }

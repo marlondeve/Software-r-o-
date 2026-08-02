@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Bital.Application.DTOs.Encuestas;
 using Bital.Application.Interfaces;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,7 +28,7 @@ public class CuestionariosController : ControllerBase
         [FromQuery] Bital.Domain.Enums.CanalEncuesta? canal,
         [FromQuery] string? busqueda,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
         var resultado = await _service.ObtenerCuestionariosAsync(new FiltrosCuestionariosDto

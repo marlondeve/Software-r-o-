@@ -1,8 +1,10 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { FiltrosReportes } from "@/modules/dietas-cocina/types/reports"
 import { labelComida } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
+import { resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
 import {
   filtrarEtiquetasDelPeriodoOperativo,
   resolverEtiquetaParaOrden,
@@ -51,15 +53,20 @@ export function filtrarEtiquetasPorRangoReporte(
   })
 }
 
-const PABELLON_POR_SERVICIO: Record<string, string> = {
-  cardiologia: "Pab Central",
-  pediatria: "Pab Norte",
-  urgencias: "Pab Sur",
+function resolverServicioOrden(
+  orden: OrdenCocina,
+  filasPorId?: Map<string, FilaDieta>,
+): string {
+  const fila = filasPorId?.get(orden.id)
+  if (fila) return resolverServicioClinico(fila.servicio, fila.pabellon)
+  if (orden.servicio) return resolverServicioClinico(orden.servicio, orden.pabellon)
+  return resolverServicioClinico(undefined, orden.pabellon)
 }
 
 export function filtrarOrdenesReporte(
   ordenes: OrdenCocina[],
   filtros: FiltrosReportes,
+  filasPorId?: Map<string, FilaDieta>,
 ): OrdenCocina[] {
   return ordenes.filter((orden) => {
     if (
@@ -69,8 +76,7 @@ export function filtrarOrdenesReporte(
       return false
     }
     if (filtros.servicio !== "todos") {
-      const pabellon = PABELLON_POR_SERVICIO[filtros.servicio]
-      if (pabellon && orden.pabellon !== pabellon) return false
+      if (resolverServicioOrden(orden, filasPorId) !== filtros.servicio) return false
     }
     return true
   })
@@ -118,8 +124,7 @@ export function contextoFiltroReporte(filtros: FiltrosReportes): string {
     partes.push(`turno ${labelComida(filtros.horario as TiempoComida)}`)
   }
   if (filtros.servicio !== "todos") {
-    const pabellon = PABELLON_POR_SERVICIO[filtros.servicio]
-    partes.push(pabellon ?? filtros.servicio)
+    partes.push(filtros.servicio)
   }
 
   return partes.join(" · ")

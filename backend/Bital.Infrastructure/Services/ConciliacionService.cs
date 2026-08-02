@@ -32,14 +32,19 @@ public class ConciliacionService : IConciliacionService
         _logger = logger;
     }
 
-    public async Task<List<FilaConciliacionDto>> ObtenerConciliacionAsync(
+    public async Task<ListaConciliacionDto> ObtenerConciliacionAsync(
         string? busqueda = null,
         string? numeroFactura = null,
         string? periodo = null,
         string? proveedor = null,
         string? estado = null,
+        int page = 1,
+        int pageSize = PaginacionHelper.DefaultPageSize,
+        bool sinPaginar = false,
         CancellationToken cancellationToken = default)
     {
+        var (pagina, tamano) = PaginacionHelper.Normalizar(page, pageSize);
+
         var query = _context.FilasConciliacion
             .Include(f => f.FilaDieta)
             .Include(f => f.Etiqueta)
@@ -74,16 +79,28 @@ public class ConciliacionService : IConciliacionService
             query = query.Where(f => f.Estado == estado);
         }
 
-        var filas = await query
+        var total = await query.CountAsync(cancellationToken);
+
+        var queryOrdenada = query
             .OrderByDescending(f => f.FechaOperativa)
-            .ThenBy(f => f.Paciente)
-            .ToListAsync(cancellationToken);
+            .ThenBy(f => f.Paciente);
+
+        var filas = sinPaginar
+            ? await queryOrdenada.ToListAsync(cancellationToken)
+            : await queryOrdenada
+                .Skip((pagina - 1) * tamano)
+                .Take(tamano)
+                .ToListAsync(cancellationToken);
 
         _logger.LogInformation(
-            "Obtenidas {Count} líneas de conciliación con filtros: busqueda={Busqueda}, factura={Factura}, periodo={Periodo}, proveedor={Proveedor}, estado={Estado}",
-            filas.Count, busqueda, numeroFactura, periodo, proveedor, estado);
+            "Obtenidas {Count} líneas de conciliación (total {Total}) con filtros: busqueda={Busqueda}, factura={Factura}, periodo={Periodo}, proveedor={Proveedor}, estado={Estado}",
+            filas.Count, total, busqueda, numeroFactura, periodo, proveedor, estado);
 
-        return filas.Select(MapearADto).ToList();
+        return new ListaConciliacionDto
+        {
+            Data = filas.Select(MapearADto).ToList(),
+            Meta = PaginacionHelper.CrearMeta(total, sinPaginar ? 1 : pagina, sinPaginar ? total : tamano)
+        };
     }
 
     public async Task<DetalleConciliacionDto> ObtenerDetalleConciliacionAsync(

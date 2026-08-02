@@ -5,8 +5,12 @@ import { Info, RefreshCw } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { DietasOperativaPageSkeleton } from "@/components/shared/skeletons"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
+import { BannerModuloSinConexion } from "@/modules/dietas-cocina/components/BannerModuloSinConexion"
+import { RutaDietasSectionGuard } from "@/modules/dietas-cocina/components/RutaDietasSectionGuard"
 import { DietasAsignarConsistenciaDialog } from "@/modules/dietas-cocina/dietas/components/DietasAsignarConsistenciaDialog"
 import { DietasBarraSeleccion } from "@/modules/dietas-cocina/dietas/components/DietasBarraSeleccion"
 import { DietasCancelarDialog } from "@/modules/dietas-cocina/dietas/components/DietasCancelarDialog"
@@ -31,11 +35,16 @@ import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasC
 import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { crearResolverEstadoVisibleFila } from "@/modules/dietas-cocina/lib/estadoVisibleFilaDieta"
 import { evaluarAccionesDietaClinica } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
+import {
+  normalizarConsistenciaParaComida,
+  requiereConsistencia,
+} from "@/modules/dietas-cocina/lib/comidaOperativa"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import {
   demoToast,
   descargarArchivoDemo,
 } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { listarServiciosDesdeFilas, resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
 type TipoSheetDieta = "solicitud" | "detalle" | "novedad"
 
 interface SheetDietaState {
@@ -55,6 +64,7 @@ export function DietasPage() {
     filas,
     ultimaSincronizacion,
     meta: data,
+    catalogo,
     sincronizandoCenso,
     errorSincronizacion,
     actualizarFila,
@@ -155,8 +165,9 @@ export function DietasPage() {
     return filasBase.filter((fila) => {
       if (fila.comida !== comidaActiva) return false
       if (!filtrosApiActivos && !filaCoincideBusqueda(fila, busqueda)) return false
-      if (!filtrosApiActivos && servicio !== "todos" && fila.servicio !== servicio) {
-        return false
+      if (!filtrosApiActivos && servicio !== "todos") {
+        const servicioFila = resolverServicioClinico(fila.servicio, fila.pabellon)
+        if (servicioFila !== servicio) return false
       }
       if (
         !filtrosApiActivos &&
@@ -184,6 +195,10 @@ export function DietasPage() {
     resolverEstadoVisible,
   ])
 
+  const paginacionDietas = usePaginacionTabla(filasFiltradas, {
+    resetKey: `${comidaActiva}-${busqueda}-${servicio}-${estado}-${soloPendientes}-${filtrosApiActivos}`,
+  })
+
   const kpis = useMemo(
     () => calcularKpisDietas(filas, comidaActiva, resolverEstadoVisible),
     [filas, comidaActiva, resolverEstadoVisible],
@@ -193,8 +208,7 @@ export function DietasPage() {
     if (!usarApiDietasCocina()) {
       return data.servicios
     }
-    const desdeFilas = filas.map((fila) => fila.servicio)
-    return [...new Set(desdeFilas)].sort((a, b) => a.localeCompare(b, "es"))
+    return listarServiciosDesdeFilas(filas)
   }, [filas, data.servicios])
 
   const idsVisibles = useMemo(
@@ -306,7 +320,8 @@ export function DietasPage() {
   }
 
   function inputOrdenDesdeFila(fila: FilaDieta) {
-    if (!fila.tipoDieta || !fila.consistencia) return null
+    if (!fila.tipoDieta) return null
+    if (requiereConsistencia(fila.comida) && !fila.consistencia) return null
     return {
       id: fila.id,
       pacienteId: fila.pacienteId,
@@ -315,7 +330,7 @@ export function DietasPage() {
       pabellon: fila.pabellon,
       habitacion: fila.habitacion,
       tipoDieta: fila.tipoDieta,
-      consistencia: fila.consistencia,
+      consistencia: fila.consistencia ?? "",
       comida: fila.comida,
       aislado: fila.aislado ?? fila.aislamiento !== "Ninguno",
       alergias: fila.alergico ? fila.alergias.split(",").map((a) => a.trim()) : [],
@@ -366,7 +381,7 @@ export function DietasPage() {
       demoToast(`Dieta de ${fila.paciente} confirmada y enviada a cocina.`)
     } else {
       demoToast(
-        `Dieta de ${fila.paciente} confirmada. Complete tipo y consistencia para crear orden en cocina.`,
+        `Dieta de ${fila.paciente} confirmada. Complete el tipo de dieta${requiereConsistencia(fila.comida) ? " y consistencia" : ""} para crear orden en cocina.`,
       )
     }
     setSheet(null)
@@ -429,6 +444,10 @@ export function DietasPage() {
   }
 
   return (
+    <RutaDietasSectionGuard
+      segmento="dietas"
+      title="Gestión diaria de dietas"
+    >
     <div className="space-y-5 pb-20">
       <DashboardPageHeader
         title="Gestión diaria de dietas"
@@ -481,6 +500,8 @@ export function DietasPage() {
         }
       />
 
+      {apiActiva && <BannerModuloSinConexion datosEnCache />}
+
       {apiActiva && errorSincronizacion && (
         <Alert variant="destructive">
           <AlertDescription>{errorSincronizacion}</AlertDescription>
@@ -488,10 +509,7 @@ export function DietasPage() {
       )}
 
       {apiActiva && sincronizandoCenso && filas.length === 0 ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-sm text-muted-foreground">
-          <RefreshCw className="size-4 animate-spin" />
-          Cargando censo desde el API…
-        </div>
+        <DietasOperativaPageSkeleton />
       ) : (
         <>
       <DietasComidaTabs
@@ -533,11 +551,17 @@ export function DietasPage() {
       )}
 
       <DietasTabla
-        filas={filasFiltradas}
+        filas={paginacionDietas.filasPagina}
         seleccionados={seleccionados}
         comidaActiva={comidaActiva}
         rolActivo={rolActivo}
         resolverEstadoVisible={resolverEstadoVisible}
+        paginaActual={paginacionDietas.paginaActual}
+        totalPaginas={paginacionDietas.totalPaginas}
+        paginaDesde={paginacionDietas.paginaDesde}
+        paginaHasta={paginacionDietas.paginaHasta}
+        totalRegistros={paginacionDietas.total}
+        onCambiarPagina={paginacionDietas.setPaginaActual}
         onToggleFila={toggleFila}
         onToggleTodas={toggleTodas}
         onAbrirSolicitud={(fila) => abrirSheet("solicitud", fila)}
@@ -597,13 +621,18 @@ export function DietasPage() {
         fila={filaActiva}
         comidaInicial={comidaActiva}
         comidas={data.comidas}
-        tiposDieta={data.tiposDieta}
+        catalogo={catalogo}
         consistencias={data.consistencias}
         onGuardar={(fila, datos) => {
+          const consistencia = normalizarConsistenciaParaComida(
+            datos.comida,
+            datos.consistencia,
+          )
           if (apiActiva) {
             void guardarSolicitud(fila.id, {
+              comida: datos.comida,
               tipoDieta: datos.tipoDieta,
-              consistencia: datos.consistencia,
+              consistencia: consistencia ?? "",
               observaciones: datos.observaciones,
               pacienteAislado: datos.pacienteAislado,
               observacionAislamiento: datos.observacionAislamiento,
@@ -625,7 +654,7 @@ export function DietasPage() {
           actualizarFila(fila.id, {
             comida: datos.comida,
             tipoDieta: datos.tipoDieta,
-            consistencia: datos.consistencia,
+            consistencia,
             aislado: datos.pacienteAislado,
             alergico: datos.alergico,
             alergias: datos.alergias,
@@ -658,14 +687,18 @@ export function DietasPage() {
         fila={filaActiva}
         comidaActiva={comidaActiva}
         comidas={data.comidas}
-        tiposDieta={data.tiposDieta}
+        catalogo={catalogo}
         consistencias={data.consistencias}
         onConfirmar={(fila, datos) => {
+          const consistencia = normalizarConsistenciaParaComida(
+            datos.comida,
+            datos.consistencia,
+          )
           if (apiActiva) {
             void registrarNovedadApi(fila.id, {
               comida: datos.comida,
               tipoDieta: datos.tipoDieta,
-              consistencia: datos.consistencia,
+              consistencia: consistencia ?? "",
               observaciones: datos.observaciones,
               pacienteAislado: datos.pacienteAislado,
               observacionAislamiento: datos.observacionAislamiento,
@@ -689,7 +722,7 @@ export function DietasPage() {
             ...fila,
             comida: datos.comida,
             tipoDieta: datos.tipoDieta,
-            consistencia: datos.consistencia,
+            consistencia,
             aislado: datos.pacienteAislado,
             alergico: datos.alergico,
             alergias: datos.alergias,
@@ -699,7 +732,7 @@ export function DietasPage() {
           actualizarFila(fila.id, {
             comida: datos.comida,
             tipoDieta: datos.tipoDieta,
-            consistencia: datos.consistencia,
+            consistencia,
             aislado: datos.pacienteAislado,
             alergico: datos.alergico,
             alergias: datos.alergias,
@@ -721,7 +754,11 @@ export function DietasPage() {
         cantidad={seleccionadosVisibles}
         visible={seleccionadosVisibles > 0}
         onExportar={exportarSeleccionados}
-        onAsignarConsistencia={() => setConsistenciaAbierto(true)}
+        onAsignarConsistencia={
+          requiereConsistencia(comidaActiva)
+            ? () => setConsistenciaAbierto(true)
+            : undefined
+        }
         onConfirmarSeleccionados={confirmarSeleccionados}
       />
 
@@ -745,5 +782,6 @@ export function DietasPage() {
         </>
       )}
     </div>
+    </RutaDietasSectionGuard>
   )
 }

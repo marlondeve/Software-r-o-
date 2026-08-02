@@ -124,9 +124,9 @@ export function EscannerEtiquetaPanel({
               </>
             ) : (
               <>
-                <Camera className="size-12 text-muted-foreground" aria-hidden />
+                <ScanLine className="size-12 animate-pulse text-primary" aria-hidden />
                 <p className="text-sm font-medium text-foreground">
-                  Pulsa «Activar cámara» para escanear
+                  Activando cámara…
                 </p>
                 {enHttp && (
                   <p className="text-xs text-muted-foreground">
@@ -206,7 +206,7 @@ export function EscannerEtiquetaPanel({
           <span className="flex size-11 items-center justify-center rounded-full bg-muted">
             <Camera className="size-5" />
           </span>
-          {camaraActiva ? "Cambiar cámara" : "Activar cámara"}
+          {camaraActiva ? "Cambiar cámara" : "Reintentar cámara"}
         </button>
       </div>
 

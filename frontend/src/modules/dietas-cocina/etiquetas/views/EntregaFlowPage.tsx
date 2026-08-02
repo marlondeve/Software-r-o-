@@ -1,15 +1,19 @@
 import { useCallback, useState } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { EscannerEtiquetaPanel } from "@/modules/dietas-cocina/etiquetas/components/EscannerEtiquetaPanel"
 import { IngresoManualEtiquetaDialog } from "@/modules/dietas-cocina/etiquetas/components/IngresoManualEtiquetaDialog"
+import { ETIQUETAS_TOTAL_PASOS_FLUJO } from "@/modules/dietas-cocina/etiquetas/lib/flujosEtiquetaSteps"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { puedeConfirmarEntrega } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
+import { RUTAS_LOGISTICA, rutaLogisticaConsulta } from "@/modules/dietas-cocina/lib/rutasLogistica"
+import { mensajeEtiquetaNoEncontrada } from "@/modules/dietas-cocina/etiquetas/lib/mensajesEtiquetasOffline"
 
 export function EntregaFlowPage() {
   const navigate = useNavigate()
-  const { buscarPorCodigoAsync } = useCicloBandejas()
+  const { buscarPorCodigoAsync, estaOnline } = useCicloBandejas()
   const [error, setError] = useState<string | null>(null)
   const [manualAbierto, setManualAbierto] = useState(false)
 
@@ -17,7 +21,7 @@ export function EntregaFlowPage() {
     async (codigo: string) => {
       const encontrada = await buscarPorCodigoAsync(codigo)
       if (!encontrada) {
-        setError("No se encontró una etiqueta con ese código.")
+        setError(mensajeEtiquetaNoEncontrada(estaOnline))
         return
       }
       if (!puedeConfirmarEntrega(encontrada)) {
@@ -27,15 +31,19 @@ export function EntregaFlowPage() {
         return
       }
       setError(null)
-      navigate(
-        `/dietas-cocina/etiquetas/consulta/${encodeURIComponent(encontrada.codigo)}`,
-      )
+      navigate(rutaLogisticaConsulta(encontrada.codigo))
     },
-    [buscarPorCodigoAsync, navigate],
+    [buscarPorCodigoAsync, navigate, estaOnline],
   )
 
   return (
-    <EtiquetasEnfermeraFlowLayout titulo="Entrega al paciente" paso={1} totalPasos={1}>
+    <EtiquetasEnfermeraFlowLayout
+      titulo="Entrega al paciente"
+      paso={1}
+      totalPasos={ETIQUETAS_TOTAL_PASOS_FLUJO}
+      rutaVolver={RUTAS_LOGISTICA.piso}
+      etiquetaVolver="Bandejas en piso"
+    >
       <EscannerEtiquetaPanel
         modo="entrega"
         activo
@@ -43,7 +51,11 @@ export function EntregaFlowPage() {
         onCodigoLeido={procesarCodigo}
         onIngresoManual={() => setManualAbierto(true)}
       />
-      {error && <p className="text-center text-sm text-destructive">{error}</p>}
+      {error && (
+        <Alert variant="destructive" className="mt-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
       <IngresoManualEtiquetaDialog
         abierto={manualAbierto}
         onAbiertoChange={setManualAbierto}

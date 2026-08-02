@@ -1,4 +1,6 @@
-export const TAMANO_PAGINA_AUDITORIA = 20
+import { TAMANO_PAGINA_TABLA } from "@/lib/tamanoPaginaTabla"
+
+export const TAMANO_PAGINA_AUDITORIA = TAMANO_PAGINA_TABLA
 
 export function exportarAuditoriaCsv(
   filas: {

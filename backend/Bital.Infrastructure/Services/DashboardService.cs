@@ -6,6 +6,7 @@ using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bital.Infrastructure.Services;
@@ -388,7 +389,7 @@ public class DashboardService : IDashboardService
         // Distribución por servicio
         var distribucionServicios = totalDietas > 0
             ? dietas
-                .GroupBy(d => d.Servicio ?? "Sin servicio")
+                .GroupBy(d => DietasReglasNegocio.ResolverServicioClinico(d.Servicio, d.Pabellon))
                 .Select(g => new DistribucionItemDto
                 {
                     Categoria = g.Key ?? "Sin categoría",
@@ -516,7 +517,7 @@ public class DashboardService : IDashboardService
             etiquetasQuery = etiquetasQuery.Where(e => e.Comida == tiempoComidaEtiqueta);
 
         if (!string.IsNullOrEmpty(pabellon))
-            etiquetasQuery = etiquetasQuery.Where(e => e.FilaDieta != null && e.FilaDieta.Servicio == pabellon);
+            etiquetasQuery = etiquetasQuery.Where(e => e.FilaDieta != null && e.FilaDieta.Pabellon == pabellon);
 
         var etiquetas = await etiquetasQuery.ToListAsync();
         var totalEtiquetas = etiquetas.Count;
@@ -590,13 +591,18 @@ public class DashboardService : IDashboardService
             .Include(f => f.TipoDieta)
             .Where(f => f.FechaOperativa >= desde && f.FechaOperativa <= hasta);
 
-        if (!string.IsNullOrEmpty(filtros.Servicio))
-            dietasQuery = dietasQuery.Where(f => f.Servicio == filtros.Servicio);
-
         if (TryResolverComidaReporte(filtros, out var comidaFiltro))
             dietasQuery = dietasQuery.Where(f => f.Comida == comidaFiltro);
 
         var dietas = await dietasQuery.ToListAsync();
+
+        if (!string.IsNullOrEmpty(filtros.Servicio))
+        {
+            dietas = dietas
+                .Where(d => DietasReglasNegocio.ResolverServicioClinico(d.Servicio, d.Pabellon) == filtros.Servicio)
+                .ToList();
+        }
+
         var totalDietas = dietas.Count;
         var dietasActivas = dietas.Count(d => d.Estado != Domain.Enums.EstadoDieta.Cancelada);
 
@@ -656,7 +662,7 @@ public class DashboardService : IDashboardService
         var motivosRecogida = AgruparMotivosTop3(etiquetas, EsRecogidaPostEntrega);
 
         var distribucionServicio = dietas
-            .GroupBy(d => string.IsNullOrWhiteSpace(d.Servicio) ? "Sin servicio" : d.Servicio.Trim())
+            .GroupBy(d => DietasReglasNegocio.ResolverServicioClinico(d.Servicio, d.Pabellon))
             .OrderByDescending(g => g.Count())
             .Take(6)
             .Select(g => (g.Key, g.Count()))
@@ -685,7 +691,7 @@ public class DashboardService : IDashboardService
             CrearGraficoBarra("Rechazos antes de entrega (Top 3)", motivosRechazo),
             CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
             CrearGraficoBarra("Distribución por servicios", distribucionServicio),
-            CrearGraficoBarra("Distribución por turno", distribucionTurno),
+            CrearGraficoBarra("Volumen por comida", distribucionTurno),
         };
 
         return new ReporteNutricionistaDto
@@ -811,7 +817,7 @@ public class DashboardService : IDashboardService
             CrearGraficoBarra("Tipos de dieta producidos", tiposDieta),
             CrearGraficoBarra("Rechazos antes de entrega (Top 3)", motivosRechazo),
             CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
-            CrearGraficoBarra("Distribución por turno", distribucionTurno),
+            CrearGraficoBarra("Volumen por comida", distribucionTurno),
             new()
             {
                 Tipo = "barra",

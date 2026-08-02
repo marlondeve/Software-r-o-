@@ -2,6 +2,7 @@ using Asp.Versioning;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.DTOs.Encuestas;
 using Bital.Application.Interfaces;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -79,7 +80,7 @@ public class PacientesEncuestasController : ControllerBase
         [FromQuery] string? estado,
         [FromQuery] string? busqueda,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize)
     {
         try
         {
@@ -164,7 +165,7 @@ public class PacientesEncuestasController : ControllerBase
         [FromQuery] DateTime? fechaCitaDesde,
         [FromQuery] DateTime? fechaCitaHasta,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize)
     {
         try
         {
@@ -239,7 +240,7 @@ public class PacientesEncuestasController : ControllerBase
         [FromQuery] string? nps,
         [FromQuery] string? busqueda,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
         var resultado = await _service.ObtenerEncuestasRealizadasAsync(new FiltrosEncuestasRealizadasDto
@@ -354,7 +355,7 @@ public class PacientesEncuestasController : ControllerBase
         [FromQuery] DateTime? hasta,
         [FromQuery] string? busqueda,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10,
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize,
         CancellationToken cancellationToken = default)
     {
         var resultado = await _service.ObtenerAnalisisBrechasAsync(new FiltrosAnalisisBrechasDto

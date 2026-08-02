@@ -35,6 +35,12 @@ import {
   validarCondicionesClinicasFormulario,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import { resolverEstadoVentanaComida } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
+import { requiereConsistencia } from "@/modules/dietas-cocina/lib/comidaOperativa"
+import {
+  resolverTipoDietaAlCambiarComida,
+  tiposDietaParaComida,
+} from "@/modules/dietas-cocina/lib/tiposDietaCatalogo"
+import type { CatalogoDietaItem } from "@/modules/dietas-cocina/types/repositories"
 import { cn } from "@/lib/utils"
 
 interface FormularioSolicitud {
@@ -56,7 +62,7 @@ interface DietasSolicitudSheetProps {
   fila: FilaDieta | null
   comidaInicial: TiempoComida
   comidas: ComidaTab[]
-  tiposDieta: string[]
+  catalogo: CatalogoDietaItem[]
   consistencias: string[]
   onGuardar?: (fila: FilaDieta, datos: DatosSolicitudDieta) => void
 }
@@ -83,7 +89,7 @@ export function DietasSolicitudSheet({
   fila,
   comidaInicial,
   comidas,
-  tiposDieta,
+  catalogo,
   consistencias,
   onGuardar,
 }: DietasSolicitudSheetProps) {
@@ -115,15 +121,38 @@ export function DietasSolicitudSheet({
     [formulario?.comida, ahora],
   )
 
+  const tiposDietaFiltrados = useMemo(
+    () =>
+      formulario
+        ? tiposDietaParaComida(formulario.comida, catalogo)
+        : [],
+    [formulario?.comida, catalogo],
+  )
+
   if (!fila || !formulario || !estadoVentana) return null
 
   const editable = esSolicitudEditable(fila)
+  const aplicaConsistencia = requiereConsistencia(formulario.comida)
   const validacionClinica = validarCondicionesClinicasFormulario(formulario)
   const formularioValido =
     esFormularioSolicitudDietaValido(formulario) && editable
 
   function actualizarFormulario(cambios: Partial<FormularioSolicitud>) {
-    setFormulario((prev) => (prev ? { ...prev, ...cambios } : prev))
+    setFormulario((prev) => {
+      if (!prev) return prev
+      const siguiente = { ...prev, ...cambios }
+      if (cambios.comida) {
+        if (!requiereConsistencia(cambios.comida)) {
+          siguiente.consistencia = ""
+        }
+        siguiente.tipoDieta = resolverTipoDietaAlCambiarComida(
+          cambios.comida,
+          siguiente.tipoDieta,
+          catalogo,
+        )
+      }
+      return siguiente
+    })
   }
 
   const { identificacion, ubicacion } = obtenerLineasContextoPaciente(fila)
@@ -186,7 +215,7 @@ export function DietasSolicitudSheet({
               </div>
             </section>
 
-            <section className="grid gap-4 sm:grid-cols-2">
+            <section className={cn("grid gap-4", aplicaConsistencia && "sm:grid-cols-2")}>
               <div className="space-y-1.5">
                 <Label
                   htmlFor="tipo-dieta"
@@ -205,7 +234,7 @@ export function DietasSolicitudSheet({
                     <SelectValue placeholder="Seleccionar tipo..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {tiposDieta.map((tipo) => (
+                    {tiposDietaFiltrados.map((tipo) => (
                       <SelectItem key={tipo} value={tipo}>
                         {tipo}
                       </SelectItem>
@@ -213,32 +242,39 @@ export function DietasSolicitudSheet({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="consistencia"
-                  className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
-                >
-                  Consistencia
-                </Label>
-                <Select
-                  value={formulario.consistencia || undefined}
-                  onValueChange={(value) =>
-                    actualizarFormulario({ consistencia: value })
-                  }
-                  disabled={!editable}
-                >
-                  <SelectTrigger id="consistencia" className="w-full bg-card">
-                    <SelectValue placeholder="Seleccionar consistencia..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {consistencias.map((item) => (
-                      <SelectItem key={item} value={item}>
-                        {item}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {aplicaConsistencia ? (
+                <div className="space-y-1.5">
+                  <Label
+                    htmlFor="consistencia"
+                    className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase"
+                  >
+                    Consistencia
+                  </Label>
+                  <Select
+                    value={formulario.consistencia || undefined}
+                    onValueChange={(value) =>
+                      actualizarFormulario({ consistencia: value })
+                    }
+                    disabled={!editable}
+                  >
+                    <SelectTrigger id="consistencia" className="w-full bg-card">
+                      <SelectValue placeholder="Seleccionar consistencia..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {consistencias.map((item) => (
+                        <SelectItem key={item} value={item}>
+                          {item}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <p className="self-end text-xs text-muted-foreground">
+                  Las meriendas no requieren consistencia. Seleccione el tipo de
+                  merienda del catálogo.
+                </p>
+              )}
             </section>
 
             <section className="space-y-3">

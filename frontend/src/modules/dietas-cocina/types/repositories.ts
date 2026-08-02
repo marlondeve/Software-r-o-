@@ -42,6 +42,7 @@ export interface CatalogoDietaItem {
   id: string
   nombre: string
   descripcion?: string
+  tarifasVigentes?: Partial<Record<TiempoComida, number>>
 }
 
 export interface CensoOperativoResult {

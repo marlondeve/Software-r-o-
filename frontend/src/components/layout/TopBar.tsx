@@ -15,7 +15,6 @@ import {
 } from "@/lib/modulos"
 import { SelectorVistaRolAdmin } from "@/modules/dietas-cocina/components/SelectorVistaRolAdmin"
 import { useVistaRolAdmin } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
-import { ETIQUETAS_VISTA_PREVIEW } from "@/modules/dietas-cocina/lib/vistaRolAdmin"
 import type { ModuloId } from "@/types/module"
 
 interface TopBarProps {
@@ -93,9 +92,7 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
               <div className="mt-0.5 flex justify-end gap-1">
                 {rol && (
                   <Badge variant="secondary" className="h-5 px-1.5 text-[11px]">
-                    {vistaPreviewActiva && rolVistaPreview
-                      ? ETIQUETAS_VISTA_PREVIEW[rolVistaPreview]
-                      : rol}
+                    {vistaPreviewActiva && rolVistaPreview ? rolVistaPreview : rol}
                   </Badge>
                 )}
                 {enAdministracion && usuarioEsAdministrador(usuario) && (

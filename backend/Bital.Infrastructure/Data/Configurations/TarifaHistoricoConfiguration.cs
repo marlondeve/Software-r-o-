@@ -22,6 +22,10 @@ public class TarifaHistoricoConfiguration : IEntityTypeConfiguration<TarifaHisto
         builder.Property(t => t.Anio)
             .IsRequired();
 
+        builder.Property(t => t.TiempoComida)
+            .IsRequired()
+            .HasConversion<int>();
+
         builder.Property(t => t.Observaciones)
             .HasMaxLength(500);
 
@@ -33,8 +37,8 @@ public class TarifaHistoricoConfiguration : IEntityTypeConfiguration<TarifaHisto
             .HasMaxLength(100);
 
         // Índices
-        builder.HasIndex(t => new { t.DietaCatalogoId, t.Anio, t.Activa })
-            .HasDatabaseName("IX_TarifaHistorico_DietaAnioActiva");
+        builder.HasIndex(t => new { t.DietaCatalogoId, t.TiempoComida, t.Anio, t.Activa })
+            .HasDatabaseName("IX_TarifaHistorico_DietaComidaAnioActiva");
 
         builder.HasIndex(t => new { t.VigenciaDesde, t.VigenciaHasta })
             .HasDatabaseName("IX_TarifaHistorico_Vigencia");

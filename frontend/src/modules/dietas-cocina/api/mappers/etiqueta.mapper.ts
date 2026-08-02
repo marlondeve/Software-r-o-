@@ -1,4 +1,5 @@
 import { mapearComidaInterna, normalizarClave } from "@/modules/dietas-cocina/api/utils"
+import { formatearHoraDesdeIsoApi } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import type { EtiquetaDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type {
   EstadoEtiqueta,
@@ -88,6 +89,25 @@ function resolverObservacionesEtiqueta(dto: EtiquetaDto): string {
   return partes.join(" · ")
 }
 
+function resolverHoraEtiquetaDesdeDto(
+  registro: Record<string, unknown>,
+  ...claves: string[]
+): string | undefined {
+  for (const clave of claves) {
+    const raw = normalizarClave(registro, clave, clave)
+    if (raw == null || raw === "") continue
+
+    if (typeof raw === "string") {
+      if (/^\d{4}-\d{2}-\d{2}/.test(raw) || raw.includes("T")) {
+        const formateada = formatearHoraDesdeIsoApi(raw)
+        if (formateada !== "—") return formateada
+      }
+      return raw
+    }
+  }
+  return undefined
+}
+
 export function mapEtiquetaDtoToDomain(dto: EtiquetaDto): EtiquetaEnfermera {
   const registro = dto as Record<string, unknown>
   const aislado = resolverAisladoEtiqueta(dto)
@@ -121,9 +141,24 @@ export function mapEtiquetaDtoToDomain(dto: EtiquetaDto): EtiquetaEnfermera {
     qrPayload: String(dto.qrPayload ?? dto.codigo ?? ""),
     estadoLogistica,
     alergias: alergiasLista,
-    horaPreEntrega: dto.horaPreEntrega,
-    horaEntrega: dto.horaEntrega,
-    horaDevolucion: dto.horaDevolucion,
+    horaPreEntrega: resolverHoraEtiquetaDesdeDto(
+      registro,
+      "horaPreEntrega",
+      "preEntregadaEn",
+      "PreEntregadaEn",
+    ),
+    horaEntrega: resolverHoraEtiquetaDesdeDto(
+      registro,
+      "horaEntrega",
+      "entregadaEn",
+      "EntregadaEn",
+    ),
+    horaDevolucion: resolverHoraEtiquetaDesdeDto(
+      registro,
+      "horaDevolucion",
+      "devueltaEn",
+      "DevueltaEn",
+    ),
     recibidoPor: dto.recibidoPor,
     motivoDevolucion: dto.motivoDevolucion as MotivoDevolucion | undefined,
     observacionesDevolucion: dto.observacionesDevolucion,

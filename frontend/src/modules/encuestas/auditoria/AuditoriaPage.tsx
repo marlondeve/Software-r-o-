@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { AuditoriaDetalleSheet } from "@/modules/encuestas/auditoria/components/AuditoriaDetalleSheet"
 import { AuditoriaTabla } from "@/modules/encuestas/auditoria/components/AuditoriaTabla"
 import {
@@ -43,6 +44,10 @@ export function AuditoriaPage() {
       return true
     })
   }, [data.filas, modulo, accion])
+
+  const paginacion = usePaginacionTabla(filasFiltradas, {
+    resetKey: `${modulo}-${accion}`,
+  })
 
   return (
     <div className="space-y-5">
@@ -114,8 +119,13 @@ export function AuditoriaPage() {
       />
 
       <AuditoriaTabla
-        filas={filasFiltradas}
-        totalRegistros={data.totalRegistros}
+        filas={paginacion.filasPagina}
+        paginaDesde={paginacion.paginaDesde}
+        paginaHasta={paginacion.paginaHasta}
+        totalRegistros={paginacion.total}
+        paginaActual={paginacion.paginaActual}
+        totalPaginas={paginacion.totalPaginas}
+        onCambiarPagina={paginacion.setPaginaActual}
         onVerDetalle={abrirDetalle}
       />
 

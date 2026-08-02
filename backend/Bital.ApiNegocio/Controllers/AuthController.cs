@@ -5,6 +5,7 @@ using Bital.Application.Options;
 using Bital.ApiNegocio.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -35,6 +36,7 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(SecurityExtensions.AuthRateLimitPolicy)]
     [HttpPost("login")]
     public async Task<ActionResult<object>> Login([FromBody] LoginModuloDto dto)
     {
@@ -72,6 +74,7 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [EnableRateLimiting(SecurityExtensions.AuthRateLimitPolicy)]
     [HttpPost("cambiar-password")]
     public async Task<ActionResult<object>> CambiarPassword([FromBody] CambiarPasswordDto dto)
     {

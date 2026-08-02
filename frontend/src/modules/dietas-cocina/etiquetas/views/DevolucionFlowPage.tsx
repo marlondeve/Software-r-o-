@@ -2,11 +2,12 @@ import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { useCallback, useRef, useState } from "react"
 import { Navigate, useNavigate, useParams } from "react-router-dom"
 
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { EscannerEtiquetaPanel } from "@/modules/dietas-cocina/etiquetas/components/EscannerEtiquetaPanel"
 import { IngresoManualEtiquetaDialog } from "@/modules/dietas-cocina/etiquetas/components/IngresoManualEtiquetaDialog"
 import { RegistroDevolucionForm } from "@/modules/dietas-cocina/etiquetas/components/RegistroDevolucionForm"
-import { BandejaResumenCard } from "@/modules/dietas-cocina/etiquetas/components/BandejaResumenCard"
+import { ETIQUETAS_TOTAL_PASOS_FLUJO } from "@/modules/dietas-cocina/etiquetas/lib/flujosEtiquetaSteps"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import {
   configDevolucionPorTipo,
@@ -19,6 +20,12 @@ import {
 } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import { EtiquetasEnfermeraFlowLayout } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import {
+  obtenerPrimeraRutaLogisticaPermitida,
+  RUTAS_LOGISTICA,
+} from "@/modules/dietas-cocina/lib/rutasLogistica"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
+import { mensajeEtiquetaNoEncontrada } from "@/modules/dietas-cocina/etiquetas/lib/mensajesEtiquetasOffline"
 
 interface DevolucionFlowPageProps {
   tipo?: TipoDevolucionEtiqueta
@@ -28,7 +35,8 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
   const { tipo: tipoParam } = useParams<{ tipo: string }>()
   const tipo = tipoProp ?? parseTipoDevolucionParam(tipoParam)
   const navigate = useNavigate()
-  const { buscarPorCodigoAsync, confirmarDevolucion } = useCicloBandejas()
+  const rol = useRolVistaEfectivo()
+  const { buscarPorCodigoAsync, confirmarDevolucion, estaOnline } = useCicloBandejas()
   const [paso, setPaso] = useState(1)
   const [etiqueta, setEtiqueta] = useState<EtiquetaEnfermera | null>(null)
   const [motivo, setMotivo] = useState<MotivoDevolucionFlujo | null>(null)
@@ -44,7 +52,9 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
   pasoRef.current = paso
 
   if (!tipo) {
-    return <Navigate to="/dietas-cocina/etiquetas" replace />
+    const destino =
+      obtenerPrimeraRutaLogisticaPermitida(rol) ?? "/dietas-cocina/inicio"
+    return <Navigate to={destino} replace />
   }
 
   const tipoDevolucion = tipo
@@ -63,7 +73,7 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
       if (pasoRef.current >= 2) return
 
       if (!encontrada) {
-        setError("No se encontró una etiqueta con ese código.")
+        setError(mensajeEtiquetaNoEncontrada(estaOnline))
         return
       }
       const motivoBloqueo = motivoNoDevolucionPorTipo(encontrada, tipoDevolucion)
@@ -73,13 +83,24 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
       }
       setError(null)
       setEtiqueta(encontrada)
+      setMotivo(null)
       setObservaciones("")
       setFotoArchivo(null)
       setEscaneando(false)
       setPaso(2)
     },
-    [buscarPorCodigoAsync, tipoDevolucion],
+    [buscarPorCodigoAsync, tipoDevolucion, estaOnline],
   )
+
+  function volverAEscanear() {
+    setPaso(1)
+    setEtiqueta(null)
+    setMotivo(null)
+    setObservaciones("")
+    setFotoArchivo(null)
+    setEscaneando(true)
+    setError(null)
+  }
 
   async function confirmarDevolucionClick() {
     if (!etiqueta || !motivo) return
@@ -93,7 +114,7 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
         tipoDevolucion: tipoDevolucion,
         estadoDieta: estadoDietaDevolucionPorMotivo(tipoDevolucion, motivo),
       })
-      navigate("/dietas-cocina/etiquetas/exito", {
+      navigate(RUTAS_LOGISTICA.pisoExito, {
         state: {
           modo: "devolucion",
           tipoDevolucion: tipoDevolucion,
@@ -107,32 +128,21 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
     }
   }
 
-  function avanzarAConfirmacion() {
-    if (!motivo) return
-    setPaso(3)
-  }
-
   return (
     <EtiquetasEnfermeraFlowLayout
       titulo={config.titulo}
       paso={paso}
-      totalPasos={3}
+      totalPasos={ETIQUETAS_TOTAL_PASOS_FLUJO}
+      rutaVolver={paso === 1 ? RUTAS_LOGISTICA.piso : undefined}
+      onVolver={paso === 2 ? volverAEscanear : undefined}
+      etiquetaVolver={paso === 2 ? "Escanear de nuevo" : "Bandejas en piso"}
       footer={
         paso === 2 ? (
           <Button
             type="button"
-            className="w-full"
-            disabled={!motivo}
-            onClick={avanzarAConfirmacion}
-          >
-            Continuar a confirmación
-          </Button>
-        ) : paso === 3 ? (
-          <Button
-            type="button"
             variant="destructive"
             className="w-full"
-            disabled={confirmando}
+            disabled={!motivo || confirmando}
             onClick={() => void confirmarDevolucionClick()}
           >
             Confirmar devolución
@@ -151,7 +161,9 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
             onIngresoManual={() => setManualAbierto(true)}
           />
           {error && (
-            <p className="text-center text-sm text-destructive">{error}</p>
+            <Alert variant="destructive" className="mt-4">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
           <IngresoManualEtiquetaDialog
             abierto={manualAbierto}
@@ -172,32 +184,6 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
           onObservacionesChange={setObservaciones}
           onFotoChange={setFotoArchivo}
         />
-      )}
-      {paso === 3 && etiqueta && motivo && (
-        <div className="mx-auto max-w-lg space-y-4">
-          <BandejaResumenCard etiqueta={etiqueta} />
-          <div className="rounded-lg border border-border bg-muted/30 p-4">
-            <p className="text-xs font-medium uppercase text-muted-foreground">
-              Tipo de devolución
-            </p>
-            <p className="mt-1 font-medium text-foreground">{config.titulo}</p>
-            <p className="mt-3 text-xs font-medium uppercase text-muted-foreground">
-              {config.etiquetaMotivo}
-            </p>
-            <p className="mt-1 font-medium text-foreground">{motivo}</p>
-            {observaciones.trim() && (
-              <>
-                <p className="mt-3 text-xs font-medium uppercase text-muted-foreground">
-                  Observaciones
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">{observaciones}</p>
-              </>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Revisa el motivo y confirma la devolución a cocina.
-          </p>
-        </div>
       )}
     </EtiquetasEnfermeraFlowLayout>
   )

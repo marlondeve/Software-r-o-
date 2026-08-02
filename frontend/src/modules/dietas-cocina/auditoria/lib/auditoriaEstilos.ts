@@ -1,6 +1,10 @@
-import type { ModuloAuditoria, ResultadoAuditoria } from "@/modules/dietas-cocina/types/enums"
+import type { ModuloAuditoria } from "@/modules/dietas-cocina/types/enums"
+
+export { resultadoAuditoriaConfig as resultadoAuditoriaEstilos } from "@/modules/dietas-cocina/lib/estadosEstilos"
+
 export const MODULO_LABEL: Record<ModuloAuditoria, string> = {
   dietas: "Dietas",
+  catalogo: "Catálogo y tarifas",
   cocina: "Cocina",
   etiquetas: "Etiquetas",
   reportes: "Reportes",
@@ -8,20 +12,6 @@ export const MODULO_LABEL: Record<ModuloAuditoria, string> = {
   parametros: "Parámetros",
   usuarios: "Usuarios y roles",
   inicio: "Inicio",
-}
-
-export const resultadoAuditoriaEstilos: Record<
-  ResultadoAuditoria,
-  { label: string; className: string }
-> = {
-  exitoso: {
-    label: "Exitoso",
-    className: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-  },
-  fallido: {
-    label: "Fallido",
-    className: "bg-destructive/10 text-destructive border-destructive/20",
-  },
 }
 
 export const avatarColorPorIniciales = (iniciales: string) => {

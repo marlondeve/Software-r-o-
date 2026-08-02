@@ -5,6 +5,10 @@ import {
   claseBadgeLogistica,
   etiquetaLogisticaLabel,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
+import {
+  claseBadgeEstadoCocina as claseBadgeEstadoCocinaCentral,
+  labelEstadoCocina as labelEstadoCocinaCentral,
+} from "@/modules/dietas-cocina/lib/estadosEstilos"
 import { labelCierreBandeja } from "@/modules/dietas-cocina/etiquetas/lib/devolucionConfig"
 import { resolverEstadoLogisticaOrden } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
 
@@ -39,17 +43,7 @@ export function claseValorKpiCocina(kpi: KpiCocina): string {
 }
 
 export function labelEstadoCocina(estado: EstadoCocina): string {
-  switch (estado) {
-    case "por_iniciar":
-    case "en_preparacion":
-      return "En gestión"
-    case "lista":
-      return "Lista"
-    case "despachada":
-      return "Despachada"
-    case "cancelada":
-      return "Cancelada"
-  }
+  return labelEstadoCocinaCentral(estado)
 }
 
 export function labelEstadoVisibleCocina(
@@ -93,17 +87,7 @@ export function descripcionEstadoLogisticaCocina(
 }
 
 export function claseBadgeEstadoCocina(estado: EstadoCocina): string {
-  switch (estado) {
-    case "por_iniciar":
-    case "en_preparacion":
-      return "bg-orange-500/20 text-orange-900 border-orange-500/40 dark:text-orange-300"
-    case "lista":
-      return "bg-amber-500/20 text-amber-900 border-amber-500/40 dark:text-amber-300"
-    case "despachada":
-      return "bg-sky-500/20 text-sky-900 border-sky-500/40 dark:text-sky-300"
-    case "cancelada":
-      return "bg-muted/80 text-muted-foreground border-border"
-  }
+  return claseBadgeEstadoCocinaCentral(estado)
 }
 
 export function claseTipoDieta(tipo: string): string {

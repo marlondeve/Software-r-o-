@@ -1,23 +1,17 @@
 import type { LucideIcon } from "lucide-react"
 import {
-  BarChart3,
-  BookOpen,
-  ChefHat,
   FileQuestion,
   FileSearch,
   LayoutGrid,
   ListChecks,
   LogOut,
   Phone,
-  QrCode,
   Settings,
   TrendingUp,
   UserCheck,
   Users,
-  UtensilsCrossed,
-  Wallet,
 } from "lucide-react"
-import { NavLink, useNavigate } from "react-router-dom"
+import { NavLink, useLocation, useNavigate } from "react-router-dom"
 
 import { ClinicaLogo } from "@/components/layout/ClinicaLogo"
 import { AppBrandName } from "@/components/layout/AppBrandName"
@@ -26,11 +20,14 @@ import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
-import { rutaDietasPermitida } from "@/modules/dietas-cocina/lib/permisos"
+import {
+  obtenerNavAdminDietas,
+  obtenerNavDietasAgrupado,
+} from "@/modules/dietas-cocina/lib/navDietas"
+import { useMatrizPermisosVersion } from "@/modules/dietas-cocina/lib/permisosMatrizCache"
 import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { cn } from "@/lib/utils"
 import type { ModuloId } from "@/types/module"
-import type { Usuario } from "@/types/user"
 
 export type ModuleType = ModuloId
 
@@ -56,31 +53,7 @@ const moduleBranding: Record<ModuleType, { subtitulo: string }> = {
 }
 
 const mainNavItems: Record<ModuleType, NavItem[]> = {
-  "dietas-cocina": [
-    { label: "Inicio", to: "/dietas-cocina/inicio", icon: LayoutGrid },
-    {
-      label: "Gestión de dietas",
-      to: "/dietas-cocina/dietas",
-      icon: UtensilsCrossed,
-    },
-    {
-      label: "Dietas y tarifas",
-      to: "/dietas-cocina/dietas-tarifas",
-      icon: BookOpen,
-    },
-    {
-      label: "Cocina y seguimiento",
-      to: "/dietas-cocina/cocina",
-      icon: ChefHat,
-    },
-    { label: "Etiquetas", to: "/dietas-cocina/etiquetas", icon: QrCode },
-    { label: "Reportes", to: "/dietas-cocina/reportes", icon: BarChart3 },
-    {
-      label: "Conciliación",
-      to: "/dietas-cocina/conciliacion",
-      icon: Wallet,
-    },
-  ],
+  "dietas-cocina": [],
   encuestas: [
     { label: "Inicio", to: "/encuestas/inicio", icon: LayoutGrid },
     {
@@ -111,69 +84,6 @@ const mainNavItems: Record<ModuleType, NavItem[]> = {
   ],
 }
 
-function filtrarNavDietas(items: NavItem[], rol: ReturnType<typeof useRolVistaEfectivo>) {
-  return items.filter((item) => {
-    const segmento = item.to.replace("/dietas-cocina/", "")
-    return rutaDietasPermitida(rol, segmento)
-  })
-}
-
-function bottomNavItems(
-  module: ModuleType,
-  _usuario: Usuario | null,
-  rolDietas: ReturnType<typeof useRolVistaEfectivo>,
-): NavItem[] {
-  const items: NavItem[] = []
-
-  if (module === "dietas-cocina") {
-    const rol = rolDietas
-    if (rutaDietasPermitida(rol, "parametros")) {
-      items.push({
-        label: "Parámetros",
-        to: `/${module}/parametros`,
-        icon: Settings,
-      })
-    }
-    if (rutaDietasPermitida(rol, "usuarios")) {
-      items.push({
-        label: "Usuarios y roles",
-        to: `/${module}/usuarios`,
-        icon: Users,
-      })
-    }
-  } else {
-    items.push({
-      label: "Parámetros",
-      to: `/${module}/parametros`,
-      icon: Settings,
-    })
-    items.push({
-      label: "Usuarios y roles",
-      to: `/${module}/usuarios`,
-      icon: Users,
-    })
-  }
-
-  if (module === "dietas-cocina") {
-    const rol = rolDietas
-    if (rutaDietasPermitida(rol, "auditoria")) {
-      items.push({
-        label: "Auditoría",
-        to: `/${module}/auditoria`,
-        icon: FileSearch,
-      })
-    }
-  } else {
-    items.push({
-      label: "Auditoría",
-      to: `/${module}/auditoria`,
-      icon: FileSearch,
-    })
-  }
-
-  return items
-}
-
 function SidebarNavItem({
   item,
   onNavigate,
@@ -181,18 +91,24 @@ function SidebarNavItem({
   item: NavItem
   onNavigate?: () => void
 }) {
+  const location = useLocation()
+
   return (
     <NavLink
       to={item.to}
       onClick={onNavigate}
-      className={({ isActive }) =>
-        cn(
+      className={({ isActive }) => {
+        const activo =
+          isActive ||
+          (item.to !== "/dietas-cocina/inicio" &&
+            location.pathname.startsWith(item.to))
+        return cn(
           "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-          isActive
+          activo
             ? "bg-accent text-accent-foreground"
             : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
         )
-      }
+      }}
     >
       <item.icon className="size-4 shrink-0" />
       <span className="leading-tight">{item.label}</span>
@@ -206,15 +122,21 @@ export function SidebarContent({
   onNavigate,
 }: SidebarContentProps) {
   const navigate = useNavigate()
-  const { usuario, cerrarSesion } = useAuth()
+  const { cerrarSesion } = useAuth()
   useConfigAccesoModulos()
+  useMatrizPermisosVersion()
   const branding = moduleBranding[module]
   const rolVistaEfectivo = useRolVistaEfectivo()
   const rolDietas = module === "dietas-cocina" ? rolVistaEfectivo : null
-  const navItems =
-    module === "dietas-cocina"
-      ? filtrarNavDietas(mainNavItems[module], rolDietas)
-      : mainNavItems[module]
+  const gruposDietas =
+    module === "dietas-cocina" && rolDietas
+      ? obtenerNavDietasAgrupado(rolDietas)
+      : []
+  const adminDietas =
+    module === "dietas-cocina" && rolDietas
+      ? obtenerNavAdminDietas(rolDietas)
+      : []
+  const navEncuestas = module === "encuestas" ? mainNavItems.encuestas : []
 
   function handleLogout() {
     void (async () => {
@@ -246,27 +168,71 @@ export function SidebarContent({
       <Separator className="mb-3" />
 
       <ScrollAreaFlex>
-        <nav className="flex flex-col gap-0.5 pr-2">
-          {navItems.map((item) => (
-            <SidebarNavItem
-              key={item.to}
-              item={item}
-              onNavigate={onNavigate}
-            />
-          ))}
+        <nav className="flex flex-col gap-3 pr-2">
+          {module === "dietas-cocina"
+            ? gruposDietas.map((grupo) => (
+                <div key={grupo.id} className="space-y-0.5">
+                  <p className="px-2.5 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
+                    {grupo.titulo}
+                  </p>
+                  {grupo.items.map((item) => (
+                    <SidebarNavItem
+                      key={item.to}
+                      item={item}
+                      onNavigate={onNavigate}
+                    />
+                  ))}
+                </div>
+              ))
+            : navEncuestas.map((item) => (
+                <SidebarNavItem
+                  key={item.to}
+                  item={item}
+                  onNavigate={onNavigate}
+                />
+              ))}
         </nav>
       </ScrollAreaFlex>
 
       <Separator className="mb-3" />
 
       <nav className="flex flex-col gap-0.5">
-          {bottomNavItems(module, usuario, rolDietas).map((item) => (
-          <SidebarNavItem
-            key={item.to}
-            item={item}
-            onNavigate={onNavigate}
-          />
-        ))}
+        {module === "dietas-cocina"
+          ? adminDietas.map((item) => (
+              <SidebarNavItem
+                key={item.to}
+                item={item}
+                onNavigate={onNavigate}
+              />
+            ))
+          : (
+            <>
+              <SidebarNavItem
+                item={{
+                  label: "Parámetros",
+                  to: `/${module}/parametros`,
+                  icon: Settings,
+                }}
+                onNavigate={onNavigate}
+              />
+              <SidebarNavItem
+                item={{
+                  label: "Usuarios y roles",
+                  to: `/${module}/usuarios`,
+                  icon: Users,
+                }}
+                onNavigate={onNavigate}
+              />
+              <SidebarNavItem
+                item={{
+                  label: "Auditoría",
+                  to: `/${module}/auditoria`,
+                  icon: FileSearch,
+                }}
+                onNavigate={onNavigate}
+              />
+            </>
+          )}
         <button
           type="button"
           onClick={handleLogout}

@@ -5,22 +5,19 @@ import type {
 import type { ModuloAuditoria, ResultadoAuditoria } from "@/modules/dietas-cocina/types/enums"
 import type { CambioAuditoria, DetalleAuditoria, FilaAuditoria } from "@/modules/dietas-cocina/types/audit"
 import { formatearFechaHoraCatalogo } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import {
+  etiquetaAccion,
+  etiquetaEntidad,
+  MODULO_API_A_UI,
+} from "@/modules/dietas-cocina/auditoria/lib/auditoriaCatalogo"
+import {
+  cambiosFormateadosALineas,
+  formatearCambiosAuditoria,
+} from "@/modules/dietas-cocina/auditoria/lib/formatearCambiosAuditoria"
 
 const MODULO_API: Record<string, ModuloAuditoria> = {
-  dietas: "dietas",
-  catalogo: "dietas",
-  ordenes: "cocina",
-  cocina: "cocina",
-  etiquetas: "etiquetas",
-  reportes: "reportes",
-  conciliacion: "conciliacion",
-  conciliación: "conciliacion",
-  parametros: "parametros",
-  parámetros: "parametros",
-  usuarios: "usuarios",
-  roles: "usuarios",
-  inicio: "inicio",
-  auth: "usuarios",
+  ...MODULO_API_A_UI,
+  catálogo: "catalogo",
 }
 
 function normalizarModulo(valor: unknown): ModuloAuditoria {
@@ -94,17 +91,20 @@ function mapCambiosDto(dto: FilaAuditoriaDto): CambioAuditoria {
     return dto.cambios as CambioAuditoria
   }
 
-  const antes = String(dto.datosAntes ?? dto.valorAnterior ?? "").trim()
-  const despues = String(dto.datosDespues ?? dto.valorNuevo ?? "").trim()
+  const antes = dto.datosAntes ?? dto.valorAnterior ?? null
+  const despues = dto.datosDespues ?? dto.valorNuevo ?? null
+  const formateado = formatearCambiosAuditoria(
+    typeof antes === "string" ? antes : null,
+    typeof despues === "string" ? despues : null,
+  )
 
-  if (antes || despues) {
-    return {
-      tipo: "diff",
-      lineas: [
-        ...(antes ? [{ prefijo: "-" as const, texto: antes }] : []),
-        ...(despues ? [{ prefijo: "+" as const, texto: despues }] : []),
-      ],
-    }
+  const lineas = cambiosFormateadosALineas(formateado)
+  if (lineas.length > 0) {
+    return { tipo: "diff", lineas, resumen: formateado.resumen }
+  }
+
+  if (formateado.resumen && formateado.resumen !== "—") {
+    return { tipo: "texto", texto: formateado.resumen, resumen: formateado.resumen }
   }
 
   const texto = String(dto.cambios ?? "").trim()
@@ -162,6 +162,16 @@ export function mapDetalleAuditoriaDto(dto: DetalleAuditoriaDto): DetalleAuditor
   const tipoEntidad = String(dto.tipoEntidad ?? "").trim()
   const entidadId = String(dto.entidadId ?? "").trim()
   const metadata = parseMetadata(dto.metadata ?? dto.Metadata)
+  const datosAntes = dto.datosAntes ?? dto.valorAnterior ?? null
+  const datosDespues = dto.datosDespues ?? dto.valorNuevo ?? null
+  const cambiosFmt = formatearCambiosAuditoria(
+    typeof datosAntes === "string" ? datosAntes : null,
+    typeof datosDespues === "string" ? datosDespues : null,
+  )
+
+  const etiquetaEntidadTexto = tipoEntidad
+    ? `${etiquetaEntidad(tipoEntidad)}${entidadId ? ` · …${entidadId.slice(-8)}` : ""}`
+    : base.registroId
 
   return {
     codigoAuditoria: base.codigoAuditoria,
@@ -173,17 +183,15 @@ export function mapDetalleAuditoriaDto(dto: DetalleAuditoriaDto): DetalleAuditor
     },
     fechaHora: base.fechaHora,
     entidad: {
-      etiqueta: String(
-        dto.entidad?.etiqueta ??
-          (tipoEntidad
-            ? `${tipoEntidad}${entidadId ? ` · ${entidadId.slice(0, 8)}` : ""}`
-            : base.registroId),
-      ),
-      estado: dto.entidad?.estado ?? dto.accion,
+      etiqueta: String(dto.entidad?.etiqueta ?? etiquetaEntidadTexto),
+      estado: dto.entidad?.estado ?? etiquetaAccion(base.accion),
     },
-    parametro: dto.parametro ?? (tipoEntidad || undefined),
-    valorAnterior: dto.valorAnterior ?? dto.datosAntes ?? undefined,
-    valorNuevo: dto.valorNuevo ?? dto.datosDespues ?? undefined,
+    parametro: dto.parametro ?? (tipoEntidad ? etiquetaEntidad(tipoEntidad) : undefined),
+    valorAnterior: typeof datosAntes === "string" ? datosAntes : undefined,
+    valorNuevo: typeof datosDespues === "string" ? datosDespues : undefined,
+    cambiosLegibles: cambiosFmt.cambios,
+    resumenCambios: cambiosFmt.resumen,
+    jsonTecnico: cambiosFmt.jsonTecnico,
     justificacion: dto.justificacion,
     metadatos: {
       ip: String(metadata.ip ?? dto.metadatos?.ip ?? dto.direccionIp ?? "—"),

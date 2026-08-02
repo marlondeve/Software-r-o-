@@ -57,6 +57,7 @@ export type ResultadoAuditoria = "exitoso" | "fallido"
 
 export type ModuloAuditoria =
   | "dietas"
+  | "catalogo"
   | "cocina"
   | "etiquetas"
   | "reportes"
@@ -77,13 +78,8 @@ export type FiltroSeguimientoCocina =
   | "devuelta"
   | "recogida"
 
-export type RolDietas =
-  | "Administrador"
-  | "Nutricionista"
-  | "Doctor"
-  | "Proveedor"
-  | "Enfermera"
-  | "Auxiliar de Cocina"
+/** Nombre de rol del módulo dietas-cocina (dinámico, gestionado en Usuarios y roles). */
+export type RolDietas = string
 
 /** Permisos granulares dentro del módulo Etiquetas. */
 export type CapacidadEtiquetas =
@@ -98,8 +94,11 @@ export type RutaDietas =
   | "dietas"
   | "dietas-tarifas"
   | "cocina"
-  | "etiquetas"
-  | "reportes"
+  | "impresion-etiquetas"
+  | "recepcion-proveedor"
+  | "bandejas-piso"
+  | "reportes-clinicos"
+  | "reportes-produccion"
   | "conciliacion"
   | "parametros"
   | "auditoria"

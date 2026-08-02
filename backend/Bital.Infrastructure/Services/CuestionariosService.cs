@@ -4,6 +4,7 @@ using Bital.Application.Interfaces;
 using Bital.Domain.Entities.Encuestas;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -22,6 +23,10 @@ public class CuestionariosService : ICuestionariosService
 
     public async Task<ListaCuestionariosDto> ObtenerCuestionariosAsync(FiltrosCuestionariosDto filtros, CancellationToken cancellationToken = default)
     {
+        var (page, pageSize) = PaginacionHelper.Normalizar(filtros.Page, filtros.PageSize);
+        filtros.Page = page;
+        filtros.PageSize = pageSize;
+
         var query = BuildQuery();
         query = ApplyFilters(query, filtros);
 

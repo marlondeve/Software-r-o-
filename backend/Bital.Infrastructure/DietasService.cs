@@ -56,6 +56,7 @@ public class DietasService : IDietasService
                 Cedula = p.Cedula,
                 TipoDocumento = p.TipoDocumento,
                 NombreCompleto = p.NombreCompleto,
+                Servicio = p.Servicio,
                 Pabellon = p.Pabellon,
                 Cama = p.Cama
             })
@@ -89,6 +90,7 @@ public class DietasService : IDietasService
             // Usar la cédula como identificador único del paciente
             var pacienteId = $"{paciente.TipoDocumento}-{paciente.Cedula}";
             var filaExistente = filasExistentes.FirstOrDefault(f => f.PacienteId == pacienteId);
+            var servicio = DietasReglasNegocio.ResolverServicioClinico(paciente.Servicio, paciente.Pabellon);
 
             if (filaExistente == null)
             {
@@ -101,7 +103,7 @@ public class DietasService : IDietasService
                     TipoDocumento = paciente.TipoDocumento,
                     Paciente = paciente.NombreCompleto,
                     Edad = 0,
-                    Servicio = "Sin información",
+                    Servicio = servicio,
                     Pabellon = paciente.Pabellon,
                     Habitacion = paciente.Cama,
                     Comida = tiempoComida,
@@ -114,6 +116,14 @@ public class DietasService : IDietasService
 
                 _context.FilasDietas.Add(filaExistente);
                 filasExistentes.Add(filaExistente);
+            }
+            else
+            {
+                filaExistente.IdIngreso = paciente.IdIngreso;
+                filaExistente.Paciente = paciente.NombreCompleto;
+                filaExistente.Pabellon = paciente.Pabellon;
+                filaExistente.Habitacion = paciente.Cama;
+                filaExistente.Servicio = servicio;
             }
 
             resultado.Filas.Add(MapearADto(filaExistente));
@@ -154,6 +164,8 @@ public class DietasService : IDietasService
 
         var estadoAnterior = fila.Estado;
         AplicarSolicitudClinica(fila, solicitud);
+        DietasReglasNegocio.ValidarCamposClinicosPorComida(fila);
+        await ValidarTarifaTipoDietaAsync(fila, cancellationToken);
         fila.SolicitadoPor = usuario;
         fila.SolicitadoEn = DateTime.UtcNow;
         fila.ModificadoPor = usuario;
@@ -194,6 +206,8 @@ public class DietasService : IDietasService
         }
 
         AplicarSolicitudClinica(fila, confirmacion, parcial: true);
+        DietasReglasNegocio.ValidarCamposClinicosPorComida(fila);
+        await ValidarTarifaTipoDietaAsync(fila, cancellationToken);
 
         fila.Estado = EstadoDieta.Confirmada;
         fila.ModificadoPor = usuario;
@@ -233,9 +247,15 @@ public class DietasService : IDietasService
 
         if (fila == null) return false;
 
-        if (string.IsNullOrEmpty(fila.Consistencia))
+        if (DietasReglasNegocio.RequiereConsistencia(fila.Comida)
+            && string.IsNullOrEmpty(fila.Consistencia))
         {
             throw new InvalidOperationException("La consistencia es obligatoria para confirmar una dieta");
+        }
+
+        if (!fila.TipoDietaId.HasValue && string.IsNullOrWhiteSpace(fila.DescripcionDieta))
+        {
+            throw new InvalidOperationException("El tipo de dieta es obligatorio para confirmar una dieta");
         }
 
         fila.Estado = EstadoDieta.Confirmada;
@@ -268,9 +288,16 @@ public class DietasService : IDietasService
                 continue;
             }
 
-            if (string.IsNullOrEmpty(fila.Consistencia))
+            if (DietasReglasNegocio.RequiereConsistencia(fila.Comida)
+                && string.IsNullOrEmpty(fila.Consistencia))
             {
                 _logger.LogWarning("Dieta {DietaId} sin consistencia, no se puede confirmar", fila.Id);
+                continue;
+            }
+
+            if (!fila.TipoDietaId.HasValue && string.IsNullOrWhiteSpace(fila.DescripcionDieta))
+            {
+                _logger.LogWarning("Dieta {DietaId} sin tipo de dieta, no se puede confirmar", fila.Id);
                 continue;
             }
 
@@ -383,23 +410,13 @@ public class DietasService : IDietasService
             .Where(t => t.Activa)
             .OrderByDescending(t => t.Anio)
             .ThenByDescending(t => t.VigenciaDesde)
+            .ThenBy(t => t.TiempoComida)
             .ToList();
 
-        var tarifaVigente = ResolverTarifaVigente(tarifasActivas, hoy);
+        var tarifasVigentes = TarifasCatalogoHelper.ConstruirTarifasVigentes(tarifasActivas, hoy);
 
         var historico = tarifasActivas
-            .Select(t => new TarifaHistoricoDto
-            {
-                Id = t.Id,
-                Anio = t.Anio,
-                Monto = t.Monto,
-                VigenciaDesde = t.VigenciaDesde,
-                VigenciaHasta = t.VigenciaHasta,
-                Vigente = EsTarifaVigente(t, hoy),
-                RegistradoPor = string.IsNullOrWhiteSpace(t.CreadoPor) ? dieta.Usuario : t.CreadoPor,
-                MotivoCambio = t.Observaciones,
-                CreadoEn = t.CreadoEn
-            })
+            .Select(t => TarifasCatalogoHelper.MapTarifaHistoricoDto(t, hoy, dieta.Usuario))
             .ToList();
 
         return new DietaCatalogoDto
@@ -408,7 +425,8 @@ public class DietasService : IDietasService
             Codigo = dieta.Codigo,
             Nombre = dieta.Nombre,
             Descripcion = dieta.Descripcion,
-            TarifaActual = tarifaVigente?.Monto,
+            TarifaActual = tarifasVigentes.Count > 0 ? tarifasVigentes.Values.Min() : null,
+            TarifasVigentes = tarifasVigentes,
             Activa = dieta.Activa,
             FechaInicio = dieta.FechaInicio,
             FechaFin = dieta.FechaFin,
@@ -419,19 +437,8 @@ public class DietasService : IDietasService
         };
     }
 
-    private static TarifaHistorico? ResolverTarifaVigente(IEnumerable<TarifaHistorico> tarifas, DateTime hoy)
-    {
-        return tarifas
-            .Where(t => EsTarifaVigente(t, hoy))
-            .OrderByDescending(t => t.Anio)
-            .FirstOrDefault()
-            ?? tarifas.OrderByDescending(t => t.Anio).FirstOrDefault();
-    }
-
     private static bool EsTarifaVigente(TarifaHistorico tarifa, DateTime hoy) =>
-        tarifa.Activa
-        && tarifa.VigenciaDesde.Date <= hoy
-        && tarifa.VigenciaHasta.Date >= hoy;
+        TarifasCatalogoHelper.EsTarifaVigente(tarifa, hoy);
 
     private static string ResolverEstadoCatalogo(
         DietaCatalogo dieta,
@@ -505,29 +512,38 @@ public class DietasService : IDietasService
 
         _context.DietasCatalogo.Add(dieta);
 
-        if (dto.TarifaInicial.HasValue && dto.TarifaInicial.Value > 0)
+        var montosPorComida = TarifasCatalogoHelper.ResolverMontosPorComida(
+            dto.TarifasIniciales,
+            dto.TarifaInicial);
+
+        if (montosPorComida.Count > 0)
         {
             var vigenciaDesde = (dto.VigenciaDesde ?? dto.FechaInicio ?? hoy).Date;
             var vigenciaHasta = (dto.VigenciaHasta ?? new DateTime(vigenciaDesde.Year, 12, 31)).Date;
-            _context.TarifasHistorico.Add(new TarifaHistorico
+
+            foreach (var (comida, monto) in montosPorComida)
             {
-                Id = Guid.NewGuid(),
-                DietaCatalogoId = dieta.Id,
-                Anio = vigenciaDesde.Year,
-                Monto = dto.TarifaInicial.Value,
-                VigenciaDesde = vigenciaDesde,
-                VigenciaHasta = vigenciaHasta,
-                Activa = true,
-                Observaciones = dto.MotivoTarifa,
-                CreadoPor = usuario,
-            });
+                _context.TarifasHistorico.Add(new TarifaHistorico
+                {
+                    Id = Guid.NewGuid(),
+                    DietaCatalogoId = dieta.Id,
+                    TiempoComida = comida,
+                    Anio = vigenciaDesde.Year,
+                    Monto = monto,
+                    VigenciaDesde = vigenciaDesde,
+                    VigenciaHasta = vigenciaHasta,
+                    Activa = true,
+                    Observaciones = dto.MotivoTarifa,
+                    CreadoPor = usuario,
+                });
+            }
         }
 
         await _context.SaveChangesAsync(cancellationToken);
 
         Auditar(AuditoriaCatalogo.Modulos.Catalogo, AuditoriaCatalogo.Acciones.Crear, usuario,
             AuditoriaCatalogo.Entidades.DietaCatalogo, dieta.Id, null,
-            new { dieta.Codigo, dieta.Nombre, dieta.Activa, tarifaInicial = dto.TarifaInicial });
+            new { dieta.Codigo, dieta.Nombre, dieta.Activa, tarifasIniciales = montosPorComida.Count });
 
         return await ObtenerCatalogoDietaPorIdAsync(dieta.Id, cancellationToken);
     }
@@ -627,7 +643,7 @@ public class DietasService : IDietasService
         return dieta.HistoricoTarifas;
     }
 
-    public async Task<TarifaHistoricoDto> RegistrarTarifaDietaAsync(
+    public async Task<List<TarifaHistoricoDto>> RegistrarTarifaDietaAsync(
         Guid id,
         NuevaTarifaDto dto,
         string usuario,
@@ -645,43 +661,55 @@ public class DietasService : IDietasService
             throw new InvalidOperationException("La vigencia hasta debe ser posterior a la vigencia desde");
         }
 
-        foreach (var tarifa in dieta.HistoricoTarifas.Where(t => t.Activa).ToList())
+        var montosPorComida = TarifasCatalogoHelper.ResolverMontosPorComida(
+            dto.Tarifas,
+            dto.Monto > 0 ? dto.Monto : null);
+
+        if (montosPorComida.Count == 0)
         {
-            if (vigenciaDesde > tarifa.VigenciaDesde.Date
-                && vigenciaDesde <= tarifa.VigenciaHasta.Date)
+            throw new InvalidOperationException("Debe indicar al menos una tarifa por tiempo de comida");
+        }
+
+        foreach (var (comida, _) in montosPorComida)
+        {
+            TarifasCatalogoHelper.CerrarSolapamientos(
+                dieta.HistoricoTarifas,
+                comida,
+                vigenciaDesde,
+                vigenciaHasta);
+
+            if (TarifasCatalogoHelper.TieneSolapamiento(
+                    dieta.HistoricoTarifas,
+                    comida,
+                    vigenciaDesde,
+                    vigenciaHasta))
             {
-                tarifa.VigenciaHasta = vigenciaDesde.AddDays(-1);
-            }
-            else if (vigenciaDesde <= tarifa.VigenciaDesde.Date
-                     && vigenciaHasta >= tarifa.VigenciaDesde.Date)
-            {
-                tarifa.Activa = false;
+                throw new InvalidOperationException(
+                    $"La vigencia de la tarifa se solapa con una tarifa existente para {TarifasCatalogoHelper.EtiquetaTiempoComida(comida)}");
             }
         }
 
-        var solapa = dieta.HistoricoTarifas.Any(t =>
-            t.Activa
-            && vigenciaDesde <= t.VigenciaHasta.Date
-            && vigenciaHasta >= t.VigenciaDesde.Date);
-        if (solapa)
+        var creadas = new List<TarifaHistorico>();
+        foreach (var (comida, monto) in montosPorComida)
         {
-            throw new InvalidOperationException("La vigencia de la tarifa se solapa con una tarifa existente");
+            var nueva = new TarifaHistorico
+            {
+                Id = Guid.NewGuid(),
+                DietaCatalogoId = id,
+                TiempoComida = comida,
+                Anio = vigenciaDesde.Year,
+                Monto = monto,
+                VigenciaDesde = vigenciaDesde,
+                VigenciaHasta = vigenciaHasta,
+                Activa = true,
+                Observaciones = dto.MotivoCambio,
+                CreadoPor = usuario,
+            };
+
+            _context.TarifasHistorico.Add(nueva);
+            creadas.Add(nueva);
         }
 
-        var nueva = new TarifaHistorico
-        {
-            Id = Guid.NewGuid(),
-            DietaCatalogoId = id,
-            Anio = vigenciaDesde.Year,
-            Monto = dto.Monto,
-            VigenciaDesde = vigenciaDesde,
-            VigenciaHasta = vigenciaHasta,
-            Activa = true,
-            Observaciones = dto.MotivoCambio,
-            CreadoPor = usuario,
-        };
-
-        _context.TarifasHistorico.Add(nueva);
         dieta.ModificadoPor = usuario;
         dieta.ModificadoEn = DateTime.UtcNow;
         dieta.Usuario = usuario;
@@ -689,22 +717,24 @@ public class DietasService : IDietasService
         await _context.SaveChangesAsync(cancellationToken);
 
         Auditar(AuditoriaCatalogo.Modulos.Catalogo, AuditoriaCatalogo.Acciones.RegistrarTarifa, usuario,
-            AuditoriaCatalogo.Entidades.TarifaDieta, nueva.Id, null,
-            new { dietaId = id, nueva.Monto, nueva.VigenciaDesde, nueva.VigenciaHasta, dto.MotivoCambio });
+            AuditoriaCatalogo.Entidades.TarifaDieta, creadas[0].Id, null,
+            new
+            {
+                dietaId = id,
+                tarifas = montosPorComida.Select(entry => new
+                {
+                    comida = TarifasCatalogoHelper.EtiquetaTiempoComida(entry.Comida),
+                    entry.Monto,
+                }),
+                vigenciaDesde,
+                vigenciaHasta,
+                dto.MotivoCambio,
+            });
 
         var hoy = DateTime.UtcNow.Date;
-        return new TarifaHistoricoDto
-        {
-            Id = nueva.Id,
-            Anio = nueva.Anio,
-            Monto = nueva.Monto,
-            VigenciaDesde = nueva.VigenciaDesde,
-            VigenciaHasta = nueva.VigenciaHasta,
-            Vigente = EsTarifaVigente(nueva, hoy),
-            RegistradoPor = usuario,
-            MotivoCambio = nueva.Observaciones,
-            CreadoEn = nueva.CreadoEn,
-        };
+        return creadas
+            .Select(t => TarifasCatalogoHelper.MapTarifaHistoricoDto(t, hoy, usuario))
+            .ToList();
     }
 
     private static void AplicarSolicitudClinica(
@@ -720,6 +750,11 @@ public class DietasService : IDietasService
         if (!parcial || solicitud.Consistencia != null)
         {
             fila.Consistencia = solicitud.Consistencia;
+        }
+
+        if (!DietasReglasNegocio.RequiereConsistencia(fila.Comida))
+        {
+            fila.Consistencia = null;
         }
 
         if (!parcial || solicitud.DescripcionDieta != null)
@@ -758,6 +793,23 @@ public class DietasService : IDietasService
             fila.ObservacionAislamiento,
             fila.Alergico,
             fila.Alergias);
+    }
+
+    private async Task ValidarTarifaTipoDietaAsync(
+        FilaDieta fila,
+        CancellationToken cancellationToken)
+    {
+        if (!fila.TipoDietaId.HasValue)
+        {
+            return;
+        }
+
+        var hoy = DateTime.UtcNow.Date;
+        var tarifas = await _context.TarifasHistorico
+            .Where(t => t.DietaCatalogoId == fila.TipoDietaId && t.Activa)
+            .ToListAsync(cancellationToken);
+
+        DietasReglasNegocio.ValidarTarifaTipoDietaParaComida(fila, tarifas, hoy);
     }
 
     public async Task<FilaDietaDto> RegistrarNovedadAsync(Guid filaDietaId, NovedadDietaDto novedad, string usuario, CancellationToken cancellationToken = default)
@@ -857,9 +909,6 @@ public class DietasService : IDietasService
         if (!string.IsNullOrEmpty(filtros.Comida) && Enum.TryParse<TiempoComida>(filtros.Comida, out var comidaEnum))
             query = query.Where(f => f.Comida == comidaEnum);
 
-        if (!string.IsNullOrEmpty(filtros.Servicio))
-            query = query.Where(f => f.Servicio == filtros.Servicio);
-
         if (!string.IsNullOrEmpty(filtros.Pabellon))
             query = query.Where(f => f.Pabellon == filtros.Pabellon);
 
@@ -878,6 +927,13 @@ public class DietasService : IDietasService
             query = query.Where(f => f.Estado == EstadoDieta.Solicitada);
 
         var filas = await query.ToListAsync(cancellationToken);
+
+        if (!string.IsNullOrEmpty(filtros.Servicio))
+        {
+            filas = filas
+                .Where(f => DietasReglasNegocio.ResolverServicioClinico(f.Servicio, f.Pabellon) == filtros.Servicio)
+                .ToList();
+        }
 
         // Aplicar filtro de novedades en memoria después de la consulta
         if (filtros.SoloConNovedades)
@@ -937,7 +993,7 @@ public class DietasService : IDietasService
             TipoDocumento = fila.TipoDocumento,
             Paciente = fila.Paciente,
             Edad = fila.Edad,
-            Servicio = fila.Servicio,
+            Servicio = DietasReglasNegocio.ResolverServicioClinico(fila.Servicio, fila.Pabellon),
             Pabellon = fila.Pabellon,
             Habitacion = fila.Habitacion,
             Comida = fila.Comida.ToString(),
@@ -966,6 +1022,7 @@ internal class PacienteHospitalizadoDto
     public string TipoDocumento { get; set; } = string.Empty;
     public string Cedula { get; set; } = string.Empty;
     public string NombreCompleto { get; set; } = string.Empty;
+    public string Servicio { get; set; } = string.Empty;
     public string Pabellon { get; set; } = string.Empty;
     public string Cama { get; set; } = string.Empty;
 }

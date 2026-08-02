@@ -1,4 +1,3 @@
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
 import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 import type { ModuloId } from "@/types/module"
 
@@ -23,8 +22,11 @@ export type RutaDietasConfig =
   | "dietas"
   | "dietas-tarifas"
   | "cocina"
-  | "etiquetas"
-  | "reportes"
+  | "impresion-etiquetas"
+  | "recepcion-proveedor"
+  | "bandejas-piso"
+  | "reportes-clinicos"
+  | "reportes-produccion"
   | "conciliacion"
   | "parametros"
   | "auditoria"
@@ -32,20 +34,12 @@ export type RutaDietasConfig =
 
 export interface ConfigAccesoModulos {
   rolesConAcceso: Record<ModuloId, string[]>
-  permisosDietas: Record<RolDietas, RutaDietasConfig[]>
+  /** Solo modo demo sin API: permisos por nombre de rol. */
+  permisosDietas: Record<string, RutaDietasConfig[]>
   permisosEncuestas: Record<RolEncuestas, RutaEncuestas[]>
   /** Permisos granulares de flujos QR en Etiquetas, por nombre de rol. */
   capacidadesEtiquetas: Record<string, CapacidadEtiquetas[]>
 }
-
-export const ROLES_DIETAS: RolDietas[] = [
-  "Administrador",
-  "Nutricionista",
-  "Doctor",
-  "Proveedor",
-  "Enfermera",
-  "Auxiliar de Cocina",
-]
 
 export const ROLES_ENCUESTAS: RolEncuestas[] = [
   "Administrador",
@@ -58,8 +52,11 @@ export const RUTAS_DIETAS: { id: RutaDietasConfig; label: string }[] = [
   { id: "dietas", label: "Gestión de dietas" },
   { id: "dietas-tarifas", label: "Dietas y tarifas" },
   { id: "cocina", label: "Cocina y seguimiento" },
-  { id: "etiquetas", label: "Etiquetas" },
-  { id: "reportes", label: "Reportes" },
+  { id: "impresion-etiquetas", label: "Impresión de etiquetas" },
+  { id: "recepcion-proveedor", label: "Recepción del proveedor" },
+  { id: "bandejas-piso", label: "Bandejas en piso" },
+  { id: "reportes-clinicos", label: "Reportes clínicos" },
+  { id: "reportes-produccion", label: "Reportes de producción" },
   { id: "conciliacion", label: "Conciliación" },
   { id: "parametros", label: "Parámetros" },
   { id: "auditoria", label: "Auditoría" },
@@ -79,29 +76,12 @@ export const RUTAS_ENCUESTAS: { id: RutaEncuestas; label: string }[] = [
   { id: "auditoria", label: "Auditoría" },
 ]
 
-const RUTAS_CLINICAS = RUTAS_DIETAS.map((r) => r.id).filter(
-  (id) => id !== "cocina" && id !== "etiquetas",
-)
-
-const CAPACIDADES_BANDEJAS_PISO: CapacidadEtiquetas[] = [
-  "entrega_paciente",
-  "rechazo_antes_entrega",
-  "recogida_bandeja",
-]
-
 const CONFIG_DEFAULT: ConfigAccesoModulos = {
   rolesConAcceso: {
-    "dietas-cocina": [...ROLES_DIETAS],
+    "dietas-cocina": [],
     encuestas: [...ROLES_ENCUESTAS],
   },
-  permisosDietas: {
-    Administrador: RUTAS_DIETAS.map((r) => r.id),
-    Nutricionista: RUTAS_CLINICAS,
-    Doctor: RUTAS_CLINICAS,
-    Proveedor: ["inicio", "cocina", "etiquetas", "reportes"],
-    Enfermera: ["inicio", "dietas", "etiquetas"],
-    "Auxiliar de Cocina": ["inicio", "etiquetas"],
-  },
+  permisosDietas: {},
   permisosEncuestas: {
     Administrador: RUTAS_ENCUESTAS.map((r) => r.id),
     "Analista SIAO": RUTAS_ENCUESTAS.map((r) => r.id),
@@ -112,18 +92,7 @@ const CONFIG_DEFAULT: ConfigAccesoModulos = {
       "encuestas-realizadas",
     ],
   },
-  capacidadesEtiquetas: {
-    Administrador: [
-      "impresion_proveedor",
-      "recepcion_proveedor",
-      ...CAPACIDADES_BANDEJAS_PISO,
-    ],
-    Proveedor: ["impresion_proveedor"],
-    Enfermera: ["recepcion_proveedor"],
-    "Auxiliar de Cocina": [...CAPACIDADES_BANDEJAS_PISO],
-    Nutricionista: [],
-    Doctor: [],
-  },
+  capacidadesEtiquetas: {},
 }
 
 function clonarConfig(config: ConfigAccesoModulos): ConfigAccesoModulos {
@@ -211,7 +180,7 @@ export function alternarAccesoModulo(
 
 export function alternarPermisoRutaDietas(
   config: ConfigAccesoModulos,
-  rol: RolDietas,
+  rol: string,
   ruta: RutaDietasConfig,
   activo: boolean,
 ): ConfigAccesoModulos {

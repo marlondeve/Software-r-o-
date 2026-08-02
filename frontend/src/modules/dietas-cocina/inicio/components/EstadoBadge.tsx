@@ -1,60 +1,8 @@
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
+import { estadoDietaConfig } from "@/modules/dietas-cocina/lib/estadosEstilos"
+
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
-
-const ESTADO_CONFIG: Record<
-  EstadoDieta,
-  { label: string; className: string }
-> = {
-  confirmada: {
-    label: "Confirmada",
-    className: "bg-primary/10 text-primary border-primary/20",
-  },
-  guardado: {
-    label: "Guardado",
-    className: "bg-accent/30 text-accent-foreground border-accent/40",
-  },
-  "no-solicitada": {
-    label: "Sin solicitud",
-    className: "bg-destructive/10 text-destructive border-destructive/20",
-  },
-  preparando: {
-    label: "Preparando",
-    className: "bg-muted text-muted-foreground border-border",
-  },
-  "en-preparacion": {
-    label: "En gestión",
-    className: "bg-accent/30 text-accent-foreground border-accent/40",
-  },
-  "lista-despacho": {
-    label: "Lista p/ Despacho",
-    className: "bg-primary/10 text-primary border-primary/20",
-  },
-  "por-iniciar": {
-    label: "En gestión",
-    className: "bg-accent/30 text-accent-foreground border-accent/40",
-  },
-  recibida: {
-    label: "Recibida",
-    className: "bg-primary/10 text-primary border-primary/20",
-  },
-  devuelta: {
-    label: "Devuelta",
-    className: "bg-muted text-muted-foreground border-border",
-  },
-  recogida: {
-    label: "Recogida",
-    className: "bg-slate-500/10 text-slate-700 border-slate-500/25 dark:text-slate-300",
-  },
-  cancelada: {
-    label: "Cancelada",
-    className: "bg-muted/80 text-muted-foreground border-border",
-  },
-  despachada: {
-    label: "Despachada",
-    className: "bg-sky-500/10 text-sky-700 border-sky-500/25 dark:text-sky-400",
-  },
-}
 
 interface EstadoBadgeProps {
   estado: EstadoDieta
@@ -62,7 +10,7 @@ interface EstadoBadgeProps {
 }
 
 export function EstadoBadge({ estado, className }: EstadoBadgeProps) {
-  const config = ESTADO_CONFIG[estado]
+  const config = estadoDietaConfig[estado]
   return (
     <Badge
       variant="outline"

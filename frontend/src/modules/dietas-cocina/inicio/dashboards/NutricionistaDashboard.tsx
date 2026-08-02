@@ -16,6 +16,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
+import { KpiGridSkeleton } from "@/components/shared/skeletons"
 import {
   mapDashboardNutricionistaDto,
 } from "@/modules/dietas-cocina/api/mappers/dashboard-view.mapper"
@@ -169,9 +170,7 @@ export function NutricionistaDashboard() {
       )}
 
       {data.kpis.length === 0 && dashboardApi.apiActiva && dashboardApi.cargando ? (
-        <p className="text-sm text-muted-foreground">
-          Cargando indicadores…
-        </p>
+        <KpiGridSkeleton count={6} />
       ) : data.kpis.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Sin indicadores disponibles para este periodo.

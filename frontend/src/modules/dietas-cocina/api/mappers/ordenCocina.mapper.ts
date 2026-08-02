@@ -3,6 +3,8 @@ import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EstadoCocina, EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import type { OrdenCocina, ChecklistItem } from "@/modules/dietas-cocina/types/kitchen"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+import { requiereConsistencia } from "@/modules/dietas-cocina/lib/comidaOperativa"
+import { resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
 import {
   cargarChecklistOrden,
   cargarOrdenCocinaApiId,
@@ -69,7 +71,8 @@ export function mapFilaDietaToOrdenCocina(
   etiqueta?: EtiquetaEnfermera,
 ): OrdenCocina | null {
   if (!ESTADOS_EN_COCINA.has(fila.estado)) return null
-  if (!fila.tipoDieta || !fila.consistencia) return null
+  if (!fila.tipoDieta) return null
+  if (requiereConsistencia(fila.comida) && !fila.consistencia) return null
 
   const estadoCocina = mapEstadoDietaToEstadoCocina(fila.estado)
 
@@ -84,8 +87,9 @@ export function mapFilaDietaToOrdenCocina(
     edad: fila.edad,
     pabellon: fila.pabellon,
     habitacion: fila.habitacion,
+    servicio: resolverServicioClinico(fila.servicio, fila.pabellon),
     tipoDieta: fila.tipoDieta,
-    consistencia: fila.consistencia,
+    consistencia: fila.consistencia ?? "",
     comida: fila.comida,
     aislado: fila.aislado ?? fila.aislamiento !== "Ninguno",
     alergias: fila.alergico ? parseAlergias(fila.alergias) : [],

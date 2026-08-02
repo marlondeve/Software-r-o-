@@ -1,17 +1,11 @@
 import { useMemo } from "react"
-import { ChevronLeft, ChevronRight, MoreHorizontal, TriangleAlert } from "lucide-react"
+import { TriangleAlert } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
 import { ResultadoAuditoriaBadge } from "@/modules/encuestas/auditoria/components/ResultadoAuditoriaBadge"
 import type { FilaAuditoriaEncuesta } from "@/modules/encuestas/types/audit"
-
-const REGISTROS_POR_PAGINA = 5
-
-function numerosPagina(total: number) {
-  return Array.from({ length: total }, (_, index) => index + 1).slice(0, 3)
-}
 
 function DetalleCell({ detalle }: { detalle: FilaAuditoriaEncuesta["detalle"] }) {
   if (detalle.tipo === "texto") {
@@ -28,13 +22,25 @@ function DetalleCell({ detalle }: { detalle: FilaAuditoriaEncuesta["detalle"] })
 
 interface AuditoriaTablaProps {
   filas: FilaAuditoriaEncuesta[]
+  paginaDesde: number
+  paginaHasta: number
   totalRegistros: number
+  paginaActual: number
+  totalPaginas: number
+  onCambiarPagina: (pagina: number) => void
   onVerDetalle: (fila: FilaAuditoriaEncuesta) => void
 }
 
-export function AuditoriaTabla({ filas, totalRegistros, onVerDetalle }: AuditoriaTablaProps) {
-  const totalPaginas = Math.max(1, Math.ceil(totalRegistros / REGISTROS_POR_PAGINA))
-
+export function AuditoriaTabla({
+  filas,
+  paginaDesde,
+  paginaHasta,
+  totalRegistros,
+  paginaActual,
+  totalPaginas,
+  onCambiarPagina,
+  onVerDetalle,
+}: AuditoriaTablaProps) {
   const columnas = useMemo<ColumnDef<FilaAuditoriaEncuesta>[]>(
     () => [
       {
@@ -52,9 +58,7 @@ export function AuditoriaTabla({ filas, totalRegistros, onVerDetalle }: Auditori
         header: "Usuario",
         cell: ({ row }) => (
           <div>
-            <p className="text-sm font-medium text-foreground">
-              {row.original.usuarioNombre}
-            </p>
+            <p className="text-sm font-medium text-foreground">{row.original.usuarioNombre}</p>
             <p className="text-xs text-muted-foreground">{row.original.usuarioRol}</p>
           </div>
         ),
@@ -62,36 +66,23 @@ export function AuditoriaTabla({ filas, totalRegistros, onVerDetalle }: Auditori
       {
         accessorKey: "modulo",
         header: "Módulo",
-        cell: ({ row }) => (
-          <span className="text-sm text-foreground">{row.original.modulo}</span>
-        ),
+        cell: ({ row }) => <span className="text-sm text-foreground">{row.original.modulo}</span>,
       },
       {
-        id: "accion",
+        accessorKey: "accion",
         header: "Acción",
-        cell: ({ row }) =>
-          row.original.accionAlerta ? (
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive">
-              <TriangleAlert className="size-4" />
-              {row.original.accion}
-            </span>
-          ) : (
-            <span className="text-sm font-medium text-foreground">{row.original.accion}</span>
-          ),
-      },
-      {
-        id: "idRegistro",
-        header: "ID Reg / Paciente",
         cell: ({ row }) => (
-          <div>
-            <p className="text-sm font-medium text-foreground">{row.original.idRegistro}</p>
-            <p className="text-xs text-muted-foreground">{row.original.idSecundario}</p>
-          </div>
+          <span className="inline-flex items-center gap-1.5 text-sm text-foreground">
+            {row.original.accionAlerta && (
+              <TriangleAlert className="size-3.5 text-destructive" aria-hidden />
+            )}
+            {row.original.accion}
+          </span>
         ),
       },
       {
         id: "detalle",
-        header: "Detalle / Cambio",
+        header: "Detalle",
         cell: ({ row }) => <DetalleCell detalle={row.original.detalle} />,
       },
       {
@@ -122,36 +113,14 @@ export function AuditoriaTabla({ filas, totalRegistros, onVerDetalle }: Auditori
         onRowClick={onVerDetalle}
       />
 
-      <div className="flex flex-col gap-3 border-t border-border bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Mostrando 1 a {filas.length} de {totalRegistros.toLocaleString("es-CO")} registros
-        </p>
-
-        <div className="flex items-center gap-1.5">
-          <Button type="button" variant="outline" size="icon" className="size-10" disabled>
-            <ChevronLeft className="size-4" />
-          </Button>
-          {numerosPagina(totalPaginas).map((numero) => (
-            <Button
-              key={numero}
-              type="button"
-              variant={numero === 1 ? "default" : "outline"}
-              size="icon"
-              className="size-10"
-            >
-              {numero}
-            </Button>
-          ))}
-          {totalPaginas > 3 && (
-            <span className="px-1 text-muted-foreground">
-              <MoreHorizontal className="size-4" />
-            </span>
-          )}
-          <Button type="button" variant="outline" size="icon" className="size-10">
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
-      </div>
+      <TablaPaginacion
+        paginaDesde={paginaDesde}
+        paginaHasta={paginaHasta}
+        total={totalRegistros}
+        paginaActual={paginaActual}
+        totalPaginas={totalPaginas}
+        onCambiarPagina={onCambiarPagina}
+      />
     </Card>
   )
 }

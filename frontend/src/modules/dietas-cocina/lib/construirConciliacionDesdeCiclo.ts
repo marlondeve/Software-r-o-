@@ -12,7 +12,7 @@ import {
   formatearTarifaCOP,
   normalizarNombreTipoDieta,
   parseMonedaCOP,
-  resolverTarifaPorTipoDieta,
+  resolverTarifaPorTipoDietaYComida,
 } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
 const CATALOGO = crearDietasCatalogoIniciales()
 
@@ -113,8 +113,8 @@ export function construirConciliacionDesdeCiclo(
   return [...grupos.entries()].map(([key, grupo], index) => {
     const cantSist = grupo.ordenes.length
     const cantFact = calcularCantFact(cantSist, key)
-    const catalogo = resolverTarifaPorTipoDieta(grupo.tipo, CATALOGO)
-    const tarifaSist = catalogo?.tarifaVigente ?? 45_000
+    const catalogo = resolverTarifaPorTipoDietaYComida(grupo.tipo, grupo.comida, CATALOGO)
+    const tarifaSist = catalogo
     const { tarifa: tarifaFact, alerta: tarifaAlerta } = tarifaFacturadaDemo(
       tarifaSist,
       key,

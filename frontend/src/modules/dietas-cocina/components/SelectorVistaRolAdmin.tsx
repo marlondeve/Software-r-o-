@@ -10,16 +10,21 @@ import {
 } from "@/components/ui/select"
 import { useVistaRolAdmin } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import {
-  ETIQUETAS_VISTA_PREVIEW,
-  ROLES_VISTA_PREVIEW,
-} from "@/modules/dietas-cocina/lib/vistaRolAdmin"
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+  obtenerMatrizPermisosApi,
+  useMatrizPermisosVersion,
+} from "@/modules/dietas-cocina/lib/permisosMatrizCache"
 
 export function SelectorVistaRolAdmin() {
   const { esAdminReal, rolVistaPreview, vistaPreviewActiva, setRolVistaPreview } =
     useVistaRolAdmin()
+  useMatrizPermisosVersion()
 
   if (!esAdminReal) return null
+
+  const matriz = obtenerMatrizPermisosApi() ?? []
+  const rolesPreview = matriz
+    .map((entry) => entry.rol?.trim())
+    .filter((rol): rol is string => !!rol && rol.toLowerCase() !== "administrador")
 
   const valorActual = rolVistaPreview ?? "admin"
 
@@ -32,7 +37,7 @@ export function SelectorVistaRolAdmin() {
             setRolVistaPreview(null)
             return
           }
-          setRolVistaPreview(value as RolDietas)
+          setRolVistaPreview(value)
         }}
       >
         <SelectTrigger
@@ -44,19 +49,17 @@ export function SelectorVistaRolAdmin() {
           <SelectValue placeholder="Vista por rol" />
         </SelectTrigger>
         <SelectContent align="start">
-          <SelectItem value="admin">
-            {ETIQUETAS_VISTA_PREVIEW.admin}
-          </SelectItem>
-          {ROLES_VISTA_PREVIEW.map((rol) => (
+          <SelectItem value="admin">Administrador (acceso completo)</SelectItem>
+          {rolesPreview.map((rol) => (
             <SelectItem key={rol} value={rol}>
-              {ETIQUETAS_VISTA_PREVIEW[rol]}
+              {rol}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
       {vistaPreviewActiva && rolVistaPreview && (
         <Badge variant="outline" className="hidden h-6 shrink-0 text-[10px] sm:inline-flex">
-          Vista: {ETIQUETAS_VISTA_PREVIEW[rolVistaPreview]}
+          Vista: {rolVistaPreview}
         </Badge>
       )}
     </div>
@@ -71,10 +74,8 @@ export function BannerVistaRolAdmin() {
   return (
     <div className="border-b border-primary/20 bg-primary/5 px-4 py-2 text-center text-xs text-foreground/80">
       Estás visualizando la interfaz como{" "}
-      <span className="font-semibold text-primary">
-        {ETIQUETAS_VISTA_PREVIEW[rolVistaPreview]}
-      </span>
-      . El menú y las pantallas reflejan ese rol.
+      <span className="font-semibold text-primary">{rolVistaPreview}</span>. El
+      menú y las pantallas reflejan ese rol.
     </div>
   )
 }

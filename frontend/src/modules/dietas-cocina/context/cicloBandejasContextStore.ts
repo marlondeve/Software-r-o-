@@ -36,6 +36,13 @@ export interface CicloBandejasContextValue {
   hidrato: boolean
   rehidratarDesdeStorage: () => void
   sincronizarOrdenesDesdeFilas: (filas: FilaDieta[]) => void
+  estaOnline: boolean
+  cantidadPendientesSync: number
+  cantidadConflictosSync: number
+  sincronizandoBandejas: boolean
+  sincronizarBandejasPendientes: () => Promise<void>
+  descartarConflictoSync: (clientId: string) => Promise<void>
+  reintentarConflictoSync: (clientId: string) => void
 }
 
 export const CicloBandejasContext = createContext<CicloBandejasContextValue | null>(

@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  hallazgoVariantEstilos,
+  type HallazgoVariant,
+} from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
 import { cn } from "@/lib/utils"
-
-type HallazgoVariant = "destructive" | "info" | "warning"
 
 interface Hallazgo {
   variant: HallazgoVariant
@@ -12,24 +14,6 @@ interface Hallazgo {
 interface HallazgosPanelProps {
   hallazgos: Hallazgo[]
   titulo?: string
-}
-
-const variantStyles: Record<
-  HallazgoVariant,
-  { container: string; dot: string }
-> = {
-  destructive: {
-    container: "border-destructive/20 bg-destructive/5",
-    dot: "bg-destructive",
-  },
-  info: {
-    container: "border-primary/20 bg-primary/5",
-    dot: "bg-primary",
-  },
-  warning: {
-    container: "border-amber-500/25 bg-amber-500/5",
-    dot: "bg-amber-500",
-  },
 }
 
 export function HallazgosPanel({
@@ -48,7 +32,7 @@ export function HallazgosPanel({
           </p>
         ) : (
           hallazgos.map((hallazgo) => {
-          const styles = variantStyles[hallazgo.variant]
+          const styles = hallazgoVariantEstilos[hallazgo.variant]
           return (
             <div
               key={hallazgo.titulo}

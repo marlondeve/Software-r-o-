@@ -3,6 +3,7 @@ import { useMemo } from "react"
 import { Eye, PencilLine, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { Input } from "@/components/ui/input"
@@ -20,6 +21,12 @@ interface ConciliacionTablaProps {
   busqueda: string
   onBusquedaChange: (value: string) => void
   onVerDetalle: (id: string) => void
+  paginaActual: number
+  totalPaginas: number
+  paginaDesde: number
+  paginaHasta: number
+  totalRegistros: number
+  onCambiarPagina: (pagina: number) => void
 }
 
 export function ConciliacionTabla({
@@ -27,6 +34,12 @@ export function ConciliacionTabla({
   busqueda,
   onBusquedaChange,
   onVerDetalle,
+  paginaActual,
+  totalPaginas,
+  paginaDesde,
+  paginaHasta,
+  totalRegistros,
+  onCambiarPagina,
 }: ConciliacionTablaProps) {
   const columnas = useMemo<ColumnDef<FilaConciliacion>[]>(
     () => [
@@ -177,6 +190,14 @@ export function ConciliacionTabla({
           getRowClassName={(fila) =>
             filaRequiereAtencion(fila) ? conciliacionColores.alertaFila : undefined
           }
+        />
+        <TablaPaginacion
+          paginaDesde={paginaDesde}
+          paginaHasta={paginaHasta}
+          total={totalRegistros}
+          paginaActual={paginaActual}
+          totalPaginas={totalPaginas}
+          onCambiarPagina={onCambiarPagina}
         />
         {filas.some((fila) => fila.tarifaAlerta) && (
           <p className="border-t px-4 py-2 text-xs text-muted-foreground">

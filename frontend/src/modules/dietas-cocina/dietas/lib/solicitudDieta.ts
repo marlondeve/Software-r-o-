@@ -1,5 +1,6 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import { requiereConsistencia } from "@/modules/dietas-cocina/lib/comidaOperativa"
 import { esRolAdministrador } from "@/modules/dietas-cocina/lib/roles"
 import {
   formatearIdentificacionPaciente,
@@ -92,13 +93,17 @@ export function validarCondicionesClinicasFormulario(
 
 export function esFormularioSolicitudDietaValido(
   datos: CondicionesClinicasFormulario & {
+    comida: TiempoComida
     tipoDieta: string
     consistencia: string
   },
 ): boolean {
+  const consistenciaValida =
+    !requiereConsistencia(datos.comida) || datos.consistencia.trim().length > 0
+
   return (
     datos.tipoDieta.trim().length > 0 &&
-    datos.consistencia.trim().length > 0 &&
+    consistenciaValida &&
     validarCondicionesClinicasFormulario(datos).valido
   )
 }

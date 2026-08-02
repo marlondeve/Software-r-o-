@@ -1,55 +1,59 @@
 import { createBrowserRouter, Navigate } from "react-router-dom"
 
+import {
+  LazyAnalisisBrechasPage,
+  LazyAuditoriaDietasPage,
+  LazyAuditoriaEncuestasPage,
+  LazyBandejasPisoPage,
+  LazyCapturaEncuestaPage,
+  LazyCapturaPresencialPage,
+  LazyCapturaTelefonicaPage,
+  LazyCicloFinalizadoPage,
+  LazyCocinaPage,
+  LazyConciliacionPage,
+  LazyCuestionariosPage,
+  LazyDevolucionFlowPage,
+  LazyDietasPage,
+  LazyDietasTarifasPage,
+  LazyEditorCuestionarioPage,
+  LazyEncuestaRegistradaPage,
+  LazyEncuestasRealizadasPage,
+  LazyEntregaFlowPage,
+  LazyEtiquetaConsultaPage,
+  LazyIdentificacionPacientePage,
+  LazyImpresionEtiquetasPage,
+  LazyIndicadoresPage,
+  LazyInicioDietasPage,
+  LazyInicioEncuestasPage,
+  LazyParametrosEncuestasPage,
+  LazyPermisosAdminPage,
+  LazyPreEntregaFlowPage,
+  LazyRecepcionProveedorPage,
+  LazyReportesClinicosPage,
+  LazyReportesProduccionPage,
+  LazyRolesAdminPage,
+  LazyTiemposRestriccionesView,
+  LazyTiposPacienteView,
+  LazyUsuariosAdminPage,
+  LazyUsuariosRolesEncuestasPage,
+  LazyUsuariosRolesPage,
+} from "@/app/lazyRoutes"
 import { AdminLayout } from "@/components/layout/AdminLayout"
-import { NotFoundPage } from "@/components/shared/NotFoundPage"
-import { RootRedirect } from "@/components/shared/RootRedirect"
 import { LoginPage } from "@/components/layout/LoginPage"
 import { MainLayout } from "@/components/layout/MainLayout"
+import { NotFoundPage } from "@/components/shared/NotFoundPage"
+import { RootRedirect } from "@/components/shared/RootRedirect"
 import { GuestRoute } from "@/features/autenticacion/components/GuestRoute"
+import { ModulosEntry } from "@/features/autenticacion/components/ModulosEntry"
 import { RequireAdmin } from "@/features/autenticacion/components/RequireAdmin"
 import { RequireAuth } from "@/features/autenticacion/components/RequireAuth"
 import { RequireDietasRuta } from "@/features/autenticacion/components/RequireDietasRuta"
 import { RequireModuleAccess } from "@/features/autenticacion/components/RequireModuleAccess"
-import { ModulosEntry } from "@/features/autenticacion/components/ModulosEntry"
-import { PermisosPage } from "@/features/administracion/permisos/PermisosPage"
-import { RolesPage } from "@/features/administracion/roles/RolesPage"
-import { UsuariosPage } from "@/features/administracion/usuarios/UsuariosPage"
-import { AuditoriaPage as AuditoriaDietasPage } from "@/modules/dietas-cocina/auditoria/AuditoriaPage"
-import { CocinaPage } from "@/modules/dietas-cocina/cocina/CocinaPage"
-import { ConciliacionPage } from "@/modules/dietas-cocina/conciliacion/ConciliacionPage"
-import { DietasPage } from "@/modules/dietas-cocina/dietas/DietasPage"
-import { DietasTarifasPage } from "@/modules/dietas-cocina/dietas-tarifas/DietasTarifasPage"
-import { DietasCocinaLayout } from "@/modules/dietas-cocina/DietasCocinaLayout"
-import { EtiquetasPage } from "@/modules/dietas-cocina/etiquetas/EtiquetasPage"
-import { CicloFinalizadoPage } from "@/modules/dietas-cocina/etiquetas/views/CicloFinalizadoPage"
-import { DevolucionFlowPage } from "@/modules/dietas-cocina/etiquetas/views/DevolucionFlowPage"
-import { EntregaFlowPage } from "@/modules/dietas-cocina/etiquetas/views/EntregaFlowPage"
-import { EtiquetasEnfermeraIndex } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraIndex"
-import { PreEntregaFlowPage } from "@/modules/dietas-cocina/etiquetas/views/PreEntregaFlowPage"
-import { EtiquetaConsultaPage } from "@/modules/dietas-cocina/etiquetas/views/EtiquetaConsultaPage"
-import { RequireCapacidadEtiqueta } from "@/modules/dietas-cocina/etiquetas/views/RequireEnfermeraEtiquetas"
-import { RequireDevolucionEtiqueta } from "@/modules/dietas-cocina/etiquetas/views/RequireDevolucionEtiqueta"
-import { InicioPage as InicioDietasPage } from "@/modules/dietas-cocina/inicio/InicioPage"
-import { ParametrosLayout } from "@/modules/dietas-cocina/parametros/ParametrosLayout"
-import { TiemposRestriccionesView } from "@/modules/dietas-cocina/parametros/views/TiemposRestriccionesView"
-import { TiposPacienteView } from "@/modules/dietas-cocina/parametros/views/TiposPacienteView"
-import { ReportesPage } from "@/modules/dietas-cocina/reportes/ReportesPage"
-import { UsuariosRolesPage } from "@/modules/dietas-cocina/usuarios/UsuariosRolesPage"
-import { AnalisisBrechasPage } from "@/modules/encuestas/analisis-brechas/AnalisisBrechasPage"
-import { AuditoriaPage as AuditoriaEncuestasPage } from "@/modules/encuestas/auditoria/AuditoriaPage"
-import { CapturaEncuestaPage } from "@/modules/encuestas/captura-encuesta/CapturaEncuestaPage"
-import { CapturaPresencialPage } from "@/modules/encuestas/captura-presencial/CapturaPresencialPage"
-import { CapturaTelefonicaPage } from "@/modules/encuestas/captura-telefonica/CapturaTelefonicaPage"
-import { CuestionariosPage } from "@/modules/encuestas/cuestionarios/CuestionariosPage"
-import { EditorCuestionarioPage } from "@/modules/encuestas/editor-cuestionario/EditorCuestionarioPage"
-import { EncuestaRegistradaPage } from "@/modules/encuestas/captura-encuesta/EncuestaRegistradaPage"
-import { EncuestasRealizadasPage } from "@/modules/encuestas/encuestas-realizadas/EncuestasRealizadasPage"
-import { IdentificacionPacientePage } from "@/modules/encuestas/identificacion-paciente/IdentificacionPacientePage"
-import { IndicadoresPage } from "@/modules/encuestas/indicadores/IndicadoresPage"
-import { InicioPage as InicioEncuestasPage } from "@/modules/encuestas/inicio/InicioPage"
-import { ParametrosPage as ParametrosEncuestasPage } from "@/modules/encuestas/parametros/ParametrosPage"
-import { UsuariosRolesPage as UsuariosRolesEncuestasPage } from "@/modules/encuestas/usuarios/UsuariosRolesPage"
 import { encuestasHabilitado } from "@/lib/modulosFlags"
+import { DietasCocinaLayout } from "@/modules/dietas-cocina/DietasCocinaLayout"
+import { RequireCapacidadEtiqueta } from "@/modules/dietas-cocina/etiquetas/views/RequireCapacidadEtiqueta"
+import { RequireDevolucionEtiqueta } from "@/modules/dietas-cocina/etiquetas/views/RequireDevolucionEtiqueta"
+import { ParametrosLayout } from "@/modules/dietas-cocina/parametros/ParametrosLayout"
 
 const encuestasRoutes = encuestasHabilitado()
   ? [
@@ -63,22 +67,28 @@ const encuestasRoutes = encuestasHabilitado()
           </RequireAuth>
         ),
         children: [
-          { index: true, element: <InicioEncuestasPage /> },
-          { path: "inicio", element: <InicioEncuestasPage /> },
-          { path: "identificacion-paciente", element: <IdentificacionPacientePage /> },
-          { path: "captura-presencial", element: <CapturaPresencialPage /> },
-          { path: "captura-telefonica", element: <CapturaTelefonicaPage /> },
-          { path: "encuestas-realizadas", element: <EncuestasRealizadasPage /> },
-          { path: "cuestionarios", element: <CuestionariosPage /> },
+          { index: true, element: <LazyInicioEncuestasPage /> },
+          { path: "inicio", element: <LazyInicioEncuestasPage /> },
+          {
+            path: "identificacion-paciente",
+            element: <LazyIdentificacionPacientePage />,
+          },
+          { path: "captura-presencial", element: <LazyCapturaPresencialPage /> },
+          { path: "captura-telefonica", element: <LazyCapturaTelefonicaPage /> },
+          {
+            path: "encuestas-realizadas",
+            element: <LazyEncuestasRealizadasPage />,
+          },
+          { path: "cuestionarios", element: <LazyCuestionariosPage /> },
           {
             path: "cuestionarios/:cuestionarioId/editor",
-            element: <EditorCuestionarioPage />,
+            element: <LazyEditorCuestionarioPage />,
           },
-          { path: "indicadores", element: <IndicadoresPage /> },
-          { path: "analisis-brechas", element: <AnalisisBrechasPage /> },
-          { path: "parametros", element: <ParametrosEncuestasPage /> },
-          { path: "usuarios", element: <UsuariosRolesEncuestasPage /> },
-          { path: "auditoria", element: <AuditoriaEncuestasPage /> },
+          { path: "indicadores", element: <LazyIndicadoresPage /> },
+          { path: "analisis-brechas", element: <LazyAnalisisBrechasPage /> },
+          { path: "parametros", element: <LazyParametrosEncuestasPage /> },
+          { path: "usuarios", element: <LazyUsuariosRolesEncuestasPage /> },
+          { path: "auditoria", element: <LazyAuditoriaEncuestasPage /> },
         ],
       },
       {
@@ -86,7 +96,7 @@ const encuestasRoutes = encuestasHabilitado()
         element: (
           <RequireAuth>
             <RequireModuleAccess moduloId="encuestas">
-              <CapturaEncuestaPage />
+              <LazyCapturaEncuestaPage />
             </RequireModuleAccess>
           </RequireAuth>
         ),
@@ -96,7 +106,7 @@ const encuestasRoutes = encuestasHabilitado()
         element: (
           <RequireAuth>
             <RequireModuleAccess moduloId="encuestas">
-              <EncuestaRegistradaPage />
+              <LazyEncuestaRegistradaPage />
             </RequireModuleAccess>
           </RequireAuth>
         ),
@@ -146,71 +156,101 @@ export const router = createBrowserRouter([
           {
             element: <RequireDietasRuta />,
             children: [
-          { index: true, element: <InicioDietasPage /> },
-          { path: "inicio", element: <InicioDietasPage /> },
-          { path: "dietas", element: <DietasPage /> },
-          { path: "dietas-tarifas", element: <DietasTarifasPage /> },
-          { path: "cocina", element: <CocinaPage /> },
-          {
-            path: "etiquetas",
-            element: <EtiquetasPage />,
-            children: [
-              { index: true, element: <EtiquetasEnfermeraIndex /> },
+              { index: true, element: <LazyInicioDietasPage /> },
+              { path: "inicio", element: <LazyInicioDietasPage /> },
+              { path: "dietas", element: <LazyDietasPage /> },
+              { path: "dietas-tarifas", element: <LazyDietasTarifasPage /> },
+              { path: "cocina", element: <LazyCocinaPage /> },
               {
-                path: "consulta/:codigo",
-                element: (
-                  <RequireCapacidadEtiqueta capacidad="entrega_paciente">
-                    <EtiquetaConsultaPage />
-                  </RequireCapacidadEtiqueta>
-                ),
+                path: "impresion-etiquetas",
+                element: <LazyImpresionEtiquetasPage />,
               },
               {
-                path: "pre-entrega",
-                element: (
-                  <RequireCapacidadEtiqueta capacidad="recepcion_proveedor">
-                    <PreEntregaFlowPage />
-                  </RequireCapacidadEtiqueta>
-                ),
+                path: "recepcion-proveedor",
+                element: <LazyRecepcionProveedorPage />,
+                children: [
+                  {
+                    path: "escaneo",
+                    element: (
+                      <RequireCapacidadEtiqueta capacidad="recepcion_proveedor">
+                        <LazyPreEntregaFlowPage />
+                      </RequireCapacidadEtiqueta>
+                    ),
+                  },
+                  {
+                    path: "exito",
+                    element: (
+                      <RequireCapacidadEtiqueta capacidad="recepcion_proveedor">
+                        <LazyCicloFinalizadoPage origen="recepcion" />
+                      </RequireCapacidadEtiqueta>
+                    ),
+                  },
+                ],
               },
               {
-                path: "entrega",
-                element: (
-                  <RequireCapacidadEtiqueta capacidad="entrega_paciente">
-                    <EntregaFlowPage />
-                  </RequireCapacidadEtiqueta>
-                ),
+                path: "bandejas-piso",
+                element: <LazyBandejasPisoPage />,
+                children: [
+                  {
+                    path: "consulta/:codigo",
+                    element: (
+                      <RequireCapacidadEtiqueta capacidad="entrega_paciente">
+                        <LazyEtiquetaConsultaPage />
+                      </RequireCapacidadEtiqueta>
+                    ),
+                  },
+                  {
+                    path: "entrega",
+                    element: (
+                      <RequireCapacidadEtiqueta capacidad="entrega_paciente">
+                        <LazyEntregaFlowPage />
+                      </RequireCapacidadEtiqueta>
+                    ),
+                  },
+                  {
+                    path: "devolucion/:tipo",
+                    element: (
+                      <RequireDevolucionEtiqueta>
+                        <LazyDevolucionFlowPage />
+                      </RequireDevolucionEtiqueta>
+                    ),
+                  },
+                  {
+                    path: "exito",
+                    element: (
+                      <RequireCapacidadEtiqueta operativa>
+                        <LazyCicloFinalizadoPage origen="piso" />
+                      </RequireCapacidadEtiqueta>
+                    ),
+                  },
+                ],
               },
               {
-                path: "devolucion/:tipo",
-                element: (
-                  <RequireDevolucionEtiqueta>
-                    <DevolucionFlowPage />
-                  </RequireDevolucionEtiqueta>
-                ),
+                path: "reportes-clinicos",
+                element: <LazyReportesClinicosPage />,
               },
               {
-                path: "exito",
-                element: (
-                  <RequireCapacidadEtiqueta operativa>
-                    <CicloFinalizadoPage />
-                  </RequireCapacidadEtiqueta>
-                ),
+                path: "reportes-produccion",
+                element: <LazyReportesProduccionPage />,
               },
-            ],
-          },
-          { path: "reportes", element: <ReportesPage /> },
-          { path: "conciliacion", element: <ConciliacionPage /> },
-          {
-            path: "parametros",
-            element: <ParametrosLayout />,
-            children: [
-              { index: true, element: <Navigate to="tiempos" replace /> },
-              { path: "tiempos", element: <TiemposRestriccionesView /> },
-              { path: "tipos-paciente", element: <TiposPacienteView /> },
-            ],
-          },
-          { path: "auditoria", element: <AuditoriaDietasPage /> },
-          { path: "usuarios", element: <UsuariosRolesPage /> },
+              { path: "conciliacion", element: <LazyConciliacionPage /> },
+              {
+                path: "parametros",
+                element: <ParametrosLayout />,
+                children: [
+                  { index: true, element: <Navigate to="tiempos" replace /> },
+                  {
+                    path: "tiempos",
+                    element: <LazyTiemposRestriccionesView />,
+                  },
+                  {
+                    path: "tipos-paciente",
+                    element: <LazyTiposPacienteView />,
+                  },
+                ],
+              },
+              { path: "auditoria", element: <LazyAuditoriaDietasPage /> },
+              { path: "usuarios", element: <LazyUsuariosRolesPage /> },
             ],
           },
         ],
@@ -228,10 +268,10 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <UsuariosPage /> },
-      { path: "usuarios", element: <UsuariosPage /> },
-      { path: "roles", element: <RolesPage /> },
-      { path: "permisos", element: <PermisosPage /> },
+      { index: true, element: <LazyUsuariosAdminPage /> },
+      { path: "usuarios", element: <LazyUsuariosAdminPage /> },
+      { path: "roles", element: <LazyRolesAdminPage /> },
+      { path: "permisos", element: <LazyPermisosAdminPage /> },
     ],
   },
   {

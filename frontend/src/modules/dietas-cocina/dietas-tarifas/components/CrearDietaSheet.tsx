@@ -19,6 +19,11 @@ import {
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import {
+  parseTarifasPorComida,
+  resolverTarifaVigenteMinima,
+} from "@/modules/dietas-cocina/dietas-tarifas/lib/tarifasPorComida"
+import { mapearComidaInterna } from "@/modules/dietas-cocina/api/utils"
 import { useEffect, useState } from "react"
 
 interface CrearDietaSheetProps {
@@ -52,7 +57,13 @@ export function CrearDietaSheet({
     if (!values.codigo.trim() || !values.nombre.trim()) return
 
     const ahora = new Date()
-    const tarifa = Number.parseFloat(values.tarifaInicial) || 0
+    const tarifasPayload = parseTarifasPorComida(values.tarifasPorComida)
+    const tarifasVigentes = Object.fromEntries(
+      tarifasPayload.map((item) => [
+        mapearComidaInterna(item.tiempoComida),
+        item.monto,
+      ]),
+    ) as DietaCatalogo["tarifasVigentes"]
     const anio = values.fechaInicio
       ? new Date(`${values.fechaInicio}T12:00:00`).getFullYear()
       : ahora.getFullYear()
@@ -69,7 +80,8 @@ export function CrearDietaSheet({
       nombre: values.nombre.trim(),
       descripcion: values.descripcion.trim(),
       estado: values.activa ? "vigente" : "vencida",
-      tarifaVigente: tarifa,
+      tarifasVigentes,
+      tarifaVigente: resolverTarifaVigenteMinima(tarifasVigentes),
       fechaInicio: vigenciaDesde,
       fechaFin: values.fechaFin
         ? formatearFechaCatalogo(new Date(`${values.fechaFin}T12:00:00`))
@@ -78,20 +90,19 @@ export function CrearDietaSheet({
       usuario: "m.nutricion",
       activa: values.activa,
       historicoTarifas:
-        tarifa > 0
-          ? [
-              {
-                id: `TRF-${anio}-01`,
-                anio,
-                monto: tarifa,
-                vigenciaDesde,
-                vigenciaHasta,
-                registradoPor: "m.nutricion",
-                motivoCambio: "Tarifa inicial al crear la dieta.",
-                creadoEn: formatearFechaCatalogo(ahora),
-                vigente: true,
-              },
-            ]
+        tarifasPayload.length > 0
+          ? tarifasPayload.map((item, index) => ({
+              id: `TRF-${anio}-${String(index + 1).padStart(2, "0")}`,
+              anio,
+              tiempoComida: mapearComidaInterna(item.tiempoComida),
+              monto: item.monto,
+              vigenciaDesde,
+              vigenciaHasta,
+              registradoPor: "m.nutricion",
+              motivoCambio: "Tarifa inicial al crear la dieta.",
+              creadoEn: formatearFechaCatalogo(ahora),
+              vigente: true,
+            }))
           : [],
     }
 

@@ -378,6 +378,9 @@ namespace Bital.Infrastructure.Migrations
                     b.Property<Guid?>("EtiquetaId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("FacturaDocumentoUrl")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("FechaOperativa")
                         .HasColumnType("datetime2");
 
@@ -791,6 +794,9 @@ namespace Bital.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<int>("TiempoComida")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("VigenciaDesde")
                         .HasColumnType("datetime2");
 
@@ -802,8 +808,8 @@ namespace Bital.Infrastructure.Migrations
                     b.HasIndex("VigenciaDesde", "VigenciaHasta")
                         .HasDatabaseName("IX_TarifaHistorico_Vigencia");
 
-                    b.HasIndex("DietaCatalogoId", "Anio", "Activa")
-                        .HasDatabaseName("IX_TarifaHistorico_DietaAnioActiva");
+                    b.HasIndex("DietaCatalogoId", "TiempoComida", "Anio", "Activa")
+                        .HasDatabaseName("IX_TarifaHistorico_DietaComidaAnioActiva");
 
                     b.ToTable("TarifasHistorico", "dietas");
                 });
@@ -888,6 +894,9 @@ namespace Bital.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Observaciones")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("RolModuloId")
@@ -1567,6 +1576,17 @@ namespace Bital.Infrastructure.Migrations
                     b.Navigation("TipoDieta");
                 });
 
+            modelBuilder.Entity("Bital.Domain.Entities.DietasCocina.PermisoRol", b =>
+                {
+                    b.HasOne("Bital.Domain.Entities.DietasCocina.RolModulo", "RolModulo")
+                        .WithMany("Permisos")
+                        .HasForeignKey("RolModuloId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("RolModulo");
+                });
+
             modelBuilder.Entity("Bital.Domain.Entities.DietasCocina.TarifaHistorico", b =>
                 {
                     b.HasOne("Bital.Domain.Entities.DietasCocina.DietaCatalogo", "DietaCatalogo")
@@ -1576,6 +1596,17 @@ namespace Bital.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("DietaCatalogo");
+                });
+
+            modelBuilder.Entity("Bital.Domain.Entities.DietasCocina.UsuarioModulo", b =>
+                {
+                    b.HasOne("Bital.Domain.Entities.DietasCocina.RolModulo", "RolModulo")
+                        .WithMany("Usuarios")
+                        .HasForeignKey("RolModuloId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("RolModulo");
                 });
 
             modelBuilder.Entity("Bital.Domain.Entities.Encuestas.CapturaEncuesta", b =>
@@ -1680,6 +1711,13 @@ namespace Bital.Infrastructure.Migrations
             modelBuilder.Entity("Bital.Domain.Entities.DietasCocina.OrdenCocina", b =>
                 {
                     b.Navigation("Dietas");
+                });
+
+            modelBuilder.Entity("Bital.Domain.Entities.DietasCocina.RolModulo", b =>
+                {
+                    b.Navigation("Permisos");
+
+                    b.Navigation("Usuarios");
                 });
 
             modelBuilder.Entity("Bital.Domain.Entities.Encuestas.CapturaEncuesta", b =>

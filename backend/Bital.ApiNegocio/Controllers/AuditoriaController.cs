@@ -14,13 +14,16 @@ namespace Bital.ApiNegocio.Controllers;
 public class AuditoriaController : ControllerBase
 {
     private readonly IAuditoriaService _service;
+    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<AuditoriaController> _logger;
 
     public AuditoriaController(
         IAuditoriaService service,
+        IWebHostEnvironment environment,
         ILogger<AuditoriaController> logger)
     {
         _service = service;
+        _environment = environment;
         _logger = logger;
     }
 
@@ -33,26 +36,30 @@ public class AuditoriaController : ControllerBase
     /// <param name="hasta">Fecha fin (inclusiva)</param>
     /// <param name="usuario">Filtrar por nombre de usuario (búsqueda parcial)</param>
     /// <param name="page">Número de página (por defecto 1)</param>
-    /// <param name="pageSize">Tamaño de página (por defecto 20)</param>
+    /// <param name="pageSize">Tamaño de página (por defecto 24, máximo 24)</param>
     /// <returns>Lista paginada de eventos de auditoría</returns>
     [HttpGet]
     [ProducesResponseType(typeof(ListaEventosAuditoriaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ObtenerEventos(
         [FromQuery] string? modulo,
+        [FromQuery] string? accion,
+        [FromQuery] string? actor,
         [FromQuery] string? resultado,
         [FromQuery] DateTime? desde,
         [FromQuery] DateTime? hasta,
         [FromQuery] string? usuario,
         [FromQuery] string? formato,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize)
     {
         try
         {
             var filtros = new FiltrosAuditoriaDto
             {
                 Modulo = modulo,
+                Accion = accion,
+                Actor = actor,
                 Resultado = resultado,
                 Desde = desde,
                 Hasta = hasta,
@@ -120,6 +127,9 @@ public class AuditoriaController : ControllerBase
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<IActionResult> SeedEventosPrueba()
     {
+        if (!_environment.IsDevelopment())
+            return NotFound();
+
         try
         {
             // Evento 1: Crear dieta

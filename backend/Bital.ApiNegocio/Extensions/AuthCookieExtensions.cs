@@ -32,7 +32,8 @@ public static class AuthCookieExtensions
         bool isHttps)
     {
         var crossOrigin = options.CrossOriginCookies;
-        var secure = crossOrigin ? true : isHttps;
+        // En producción (proxy IIS same-origin) la cookie debe ser Secure aunque Kestrel escuche HTTP en localhost.
+        var secure = crossOrigin || environment.IsProduction() || isHttps;
 
         return new CookieOptions
         {

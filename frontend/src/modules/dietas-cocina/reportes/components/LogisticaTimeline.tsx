@@ -1,9 +1,11 @@
 import { ArrowRight } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  tendenciaVariantEstilos,
+  type TendenciaVariant,
+} from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
 import { cn } from "@/lib/utils"
-
-type TendenciaVariant = "positive" | "negative" | "neutral"
 
 interface HitoLogistico {
   etapa: string
@@ -15,12 +17,6 @@ interface HitoLogistico {
 interface LogisticaTimelineProps {
   hitos: HitoLogistico[]
   titulo?: string
-}
-
-const tendenciaStyles: Record<TendenciaVariant, string> = {
-  positive: "text-emerald-600",
-  negative: "text-destructive",
-  neutral: "text-muted-foreground",
 }
 
 export function LogisticaTimeline({
@@ -52,7 +48,7 @@ export function LogisticaTimeline({
                   <p
                     className={cn(
                       "mt-0.5 text-xs font-medium",
-                      tendenciaStyles[hito.tendenciaVariant],
+                      tendenciaVariantEstilos[hito.tendenciaVariant],
                     )}
                   >
                     {hito.tendencia}

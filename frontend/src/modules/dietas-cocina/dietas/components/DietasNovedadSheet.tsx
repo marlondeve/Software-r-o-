@@ -33,6 +33,12 @@ import { resolverEstadoVentanaComida } from "@/modules/dietas-cocina/dietas/lib/
 import {
   validarCondicionesClinicasFormulario,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
+import { requiereConsistencia } from "@/modules/dietas-cocina/lib/comidaOperativa"
+import {
+  resolverTipoDietaAlCambiarComida,
+  tiposDietaParaComida,
+} from "@/modules/dietas-cocina/lib/tiposDietaCatalogo"
+import type { CatalogoDietaItem } from "@/modules/dietas-cocina/types/repositories"
 import { cn } from "@/lib/utils"
 
 interface FormularioNovedad {
@@ -55,7 +61,7 @@ interface DietasNovedadSheetProps {
   fila: FilaDieta | null
   comidaActiva: TiempoComida
   comidas: ComidaTab[]
-  tiposDieta: string[]
+  catalogo: CatalogoDietaItem[]
   consistencias: string[]
   onConfirmar?: (fila: FilaDieta, datos: DatosNovedadDieta) => void
 }
@@ -104,7 +110,7 @@ export function DietasNovedadSheet({
   fila,
   comidaActiva,
   comidas,
-  tiposDieta,
+  catalogo,
   consistencias,
   onConfirmar,
 }: DietasNovedadSheetProps) {
@@ -137,11 +143,15 @@ export function DietasNovedadSheet({
         anterior: fila.tipoDieta ?? "Sin asignar",
         nuevo: formulario.tipoDieta || "Sin asignar",
       },
-      {
-        etiqueta: "Consistencia",
-        anterior: fila.consistencia ?? "Sin asignar",
-        nuevo: formulario.consistencia || "Sin asignar",
-      },
+      ...(requiereConsistencia(formulario.comida)
+        ? [
+            {
+              etiqueta: "Consistencia",
+              anterior: fila.consistencia ?? "Sin asignar",
+              nuevo: formulario.consistencia || "Sin asignar",
+            },
+          ]
+        : []),
     ]
   }, [fila, formulario])
 
@@ -153,7 +163,16 @@ export function DietasNovedadSheet({
     [formulario?.comida, ahora],
   )
 
+  const tiposDietaFiltrados = useMemo(
+    () =>
+      formulario
+        ? tiposDietaParaComida(formulario.comida, catalogo)
+        : [],
+    [formulario?.comida, catalogo],
+  )
+
   if (!fila || !formulario || !estadoVentana) return null
+  const aplicaConsistencia = requiereConsistencia(formulario.comida)
   const hayCambios = cambios.some((c) => c.anterior !== c.nuevo)
   const ventanaPermiteCambios = estadoVentana.ventanaAbierta
   const validacionClinica = validarCondicionesClinicasFormulario(formulario)
@@ -161,12 +180,26 @@ export function DietasNovedadSheet({
     ventanaPermiteCambios &&
     formulario.motivo.trim().length > 0 &&
     formulario.tipoDieta.trim().length > 0 &&
-    formulario.consistencia.trim().length > 0 &&
+    (!aplicaConsistencia || formulario.consistencia.trim().length > 0) &&
     hayCambios &&
     validacionClinica.valido
 
   function actualizarFormulario(cambios: Partial<FormularioNovedad>) {
-    setFormulario((prev) => (prev ? { ...prev, ...cambios } : prev))
+    setFormulario((prev) => {
+      if (!prev) return prev
+      const siguiente = { ...prev, ...cambios }
+      if (cambios.comida) {
+        if (!requiereConsistencia(cambios.comida)) {
+          siguiente.consistencia = ""
+        }
+        siguiente.tipoDieta = resolverTipoDietaAlCambiarComida(
+          cambios.comida,
+          siguiente.tipoDieta,
+          catalogo,
+        )
+      }
+      return siguiente
+    })
   }
 
   return (
@@ -225,10 +258,12 @@ export function DietasNovedadSheet({
                   <span className="text-muted-foreground">Dieta:</span>{" "}
                   <span className="font-medium">{fila.tipoDieta ?? "—"}</span>
                 </p>
-                <p>
-                  <span className="text-muted-foreground">Consistencia:</span>{" "}
-                  <span className="font-medium">{fila.consistencia ?? "—"}</span>
-                </p>
+                {aplicaConsistencia && (
+                  <p>
+                    <span className="text-muted-foreground">Consistencia:</span>{" "}
+                    <span className="font-medium">{fila.consistencia ?? "—"}</span>
+                  </p>
+                )}
                 {fila.solicitadoPor && (
                   <p>
                     <span className="text-muted-foreground">Solicitante:</span>{" "}
@@ -260,7 +295,7 @@ export function DietasNovedadSheet({
                   )
                 })}
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className={cn("grid gap-4", aplicaConsistencia && "sm:grid-cols-2")}>
                 <div className="space-y-1.5">
                   <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Tipo de dieta
@@ -275,7 +310,7 @@ export function DietasNovedadSheet({
                       <SelectValue placeholder="Seleccionar..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {tiposDieta.map((tipo) => (
+                      {tiposDietaFiltrados.map((tipo) => (
                         <SelectItem key={tipo} value={tipo}>
                           {tipo}
                         </SelectItem>
@@ -283,28 +318,35 @@ export function DietasNovedadSheet({
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Consistencia
-                  </Label>
-                  <Select
-                    value={formulario.consistencia || undefined}
-                    onValueChange={(value) =>
-                      actualizarFormulario({ consistencia: value })
-                    }
-                  >
-                    <SelectTrigger className="w-full bg-card">
-                      <SelectValue placeholder="Seleccionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {consistencias.map((item) => (
-                        <SelectItem key={item} value={item}>
-                          {item}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {aplicaConsistencia ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Consistencia
+                    </Label>
+                    <Select
+                      value={formulario.consistencia || undefined}
+                      onValueChange={(value) =>
+                        actualizarFormulario({ consistencia: value })
+                      }
+                    >
+                      <SelectTrigger className="w-full bg-card">
+                        <SelectValue placeholder="Seleccionar..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {consistencias.map((item) => (
+                          <SelectItem key={item} value={item}>
+                            {item}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <p className="self-end text-xs text-muted-foreground">
+                    Las meriendas no requieren consistencia. Seleccione el tipo de
+                    merienda del catálogo.
+                  </p>
+                )}
               </div>
             </section>
 

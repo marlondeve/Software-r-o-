@@ -24,6 +24,7 @@ export interface OrdenCocina {
   pabellon: string
   habitacion: string
   cama?: string
+  servicio?: string
   tipoDieta: string
   consistencia: string
   comida: TiempoComida

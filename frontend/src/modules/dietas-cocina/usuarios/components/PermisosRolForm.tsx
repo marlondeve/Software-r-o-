@@ -9,6 +9,36 @@ interface PermisosRolFormProps {
   idPrefix?: string
 }
 
+const GRUPOS_PERMISOS: {
+  titulo: string
+  rutas: RutaDietasConfig[]
+}[] = [
+  {
+    titulo: "General",
+    rutas: ["inicio"],
+  },
+  {
+    titulo: "Clínica y nutrición",
+    rutas: ["dietas", "dietas-tarifas", "conciliacion"],
+  },
+  {
+    titulo: "Producción y despacho",
+    rutas: ["cocina", "impresion-etiquetas"],
+  },
+  {
+    titulo: "Logística en piso",
+    rutas: ["recepcion-proveedor", "bandejas-piso"],
+  },
+  {
+    titulo: "Indicadores",
+    rutas: ["reportes-clinicos", "reportes-produccion"],
+  },
+  {
+    titulo: "Administración",
+    rutas: ["parametros", "auditoria", "usuarios"],
+  },
+]
+
 function SwitchPermiso({
   id,
   label,
@@ -38,6 +68,10 @@ function SwitchPermiso({
   )
 }
 
+function etiquetaRutaConfig(id: RutaDietasConfig): string {
+  return RUTAS_DIETAS.find((ruta) => ruta.id === id)?.label ?? id
+}
+
 export function PermisosRolForm({
   rutas,
   onAlternar,
@@ -45,18 +79,25 @@ export function PermisosRolForm({
   idPrefix = "permiso",
 }: PermisosRolFormProps) {
   return (
-    <>
-      {RUTAS_DIETAS.map((ruta) => (
-        <SwitchPermiso
-          key={ruta.id}
-          id={`${idPrefix}-${ruta.id}`}
-          label={ruta.label}
-          checked={rutas.includes(ruta.id)}
-          disabled={disabled || ruta.id === "inicio"}
-          onChange={(activo) => onAlternar(ruta.id, activo)}
-        />
+    <div className="space-y-4">
+      {GRUPOS_PERMISOS.map((grupo) => (
+        <div key={grupo.titulo} className="space-y-0.5">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            {grupo.titulo}
+          </p>
+          {grupo.rutas.map((rutaId) => (
+            <SwitchPermiso
+              key={rutaId}
+              id={`${idPrefix}-${rutaId}`}
+              label={etiquetaRutaConfig(rutaId)}
+              checked={rutas.includes(rutaId)}
+              disabled={disabled || rutaId === "inicio"}
+              onChange={(activo) => onAlternar(rutaId, activo)}
+            />
+          ))}
+        </div>
       ))}
-    </>
+    </div>
   )
 }
 

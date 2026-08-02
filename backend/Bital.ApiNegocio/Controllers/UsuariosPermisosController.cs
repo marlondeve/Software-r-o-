@@ -16,13 +16,16 @@ namespace Bital.ApiNegocio.Controllers;
 public class UsuariosPermisosController : ControllerBase
 {
     private readonly IUsuariosPermisosService _service;
+    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<UsuariosPermisosController> _logger;
 
     public UsuariosPermisosController(
         IUsuariosPermisosService service,
+        IWebHostEnvironment environment,
         ILogger<UsuariosPermisosController> logger)
     {
         _service = service;
+        _environment = environment;
         _logger = logger;
     }
 
@@ -31,7 +34,7 @@ public class UsuariosPermisosController : ControllerBase
         [FromQuery] Guid? rolModuloId,
         [FromQuery] bool? estado,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize)
     {
         try
         {
@@ -283,6 +286,9 @@ public class UsuariosPermisosController : ControllerBase
     [ApiExplorerSettings(IgnoreApi = true)]
     public async Task<ActionResult> SeedDatosPrueba()
     {
+        if (!_environment.IsDevelopment())
+            return NotFound();
+
         try
         {
             await _service.CrearUsuarioAsync(new CrearUsuarioDto

@@ -1,4 +1,8 @@
-import type { ModuloAuditoria } from "@/modules/dietas-cocina/types/enums"
+import {
+  ACCIONES_AUDITORIA,
+  MODULOS_FILTRO,
+  MODULO_LABEL_FILTRO,
+} from "@/modules/dietas-cocina/auditoria/lib/auditoriaCatalogo"
 import type { ReactNode } from "react"
 import { Search } from "lucide-react"
 
@@ -11,36 +15,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { MODULO_LABEL } from "@/modules/dietas-cocina/auditoria/lib/auditoriaEstilos"
 
 interface AuditoriaFiltrosProps {
   moduloLabel: string
   accionLabel: string
-  rolLabel: string
+  actorLabel: string
   resultadoLabel: string
   busqueda: string
   modulo: string
   accion: string
-  rol: string
+  actor: string
   resultado: string
   onBusquedaChange: (value: string) => void
   onModuloChange: (value: string) => void
   onAccionChange: (value: string) => void
-  onRolChange: (value: string) => void
+  onActorChange: (value: string) => void
   onResultadoChange: (value: string) => void
   onLimpiar: () => void
 }
-
-const MODULOS: ModuloAuditoria[] = [
-  "dietas",
-  "cocina",
-  "etiquetas",
-  "reportes",
-  "conciliacion",
-  "parametros",
-  "usuarios",
-  "inicio",
-]
 
 function CampoFiltro({
   id,
@@ -64,20 +56,24 @@ function CampoFiltro({
 export function AuditoriaFiltros({
   moduloLabel,
   accionLabel,
-  rolLabel,
+  actorLabel,
   resultadoLabel,
   busqueda,
   modulo,
   accion,
-  rol,
+  actor,
   resultado,
   onBusquedaChange,
   onModuloChange,
   onAccionChange,
-  onRolChange,
+  onActorChange,
   onResultadoChange,
   onLimpiar,
 }: AuditoriaFiltrosProps) {
+  const accionesOrdenadas = [...ACCIONES_AUDITORIA].sort((a, b) =>
+    a.etiqueta.localeCompare(b.etiqueta, "es"),
+  )
+
   return (
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -114,9 +110,9 @@ export function AuditoriaFiltros({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">{moduloLabel}</SelectItem>
-              {MODULOS.map((item) => (
+              {MODULOS_FILTRO.map((item) => (
                 <SelectItem key={item} value={item}>
-                  {MODULO_LABEL[item]}
+                  {MODULO_LABEL_FILTRO[item]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -128,29 +124,26 @@ export function AuditoriaFiltros({
             <SelectTrigger id="auditoria-accion" className="h-9 w-full bg-background">
               <SelectValue placeholder={accionLabel} />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-72">
               <SelectItem value="todas">{accionLabel}</SelectItem>
-              <SelectItem value="editar">Editar</SelectItem>
-              <SelectItem value="confirmar">Confirmar</SelectItem>
-              <SelectItem value="generar">Generar</SelectItem>
-              <SelectItem value="desactivar">Desactivar</SelectItem>
-              <SelectItem value="conciliar">Conciliar</SelectItem>
+              {accionesOrdenadas.map(({ valor, etiqueta }) => (
+                <SelectItem key={valor} value={valor}>
+                  {etiqueta}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </CampoFiltro>
 
-        <CampoFiltro id="auditoria-rol" label="Rol de usuario">
-          <Select value={rol} onValueChange={onRolChange}>
-            <SelectTrigger id="auditoria-rol" className="h-9 w-full bg-background">
-              <SelectValue placeholder={rolLabel} />
+        <CampoFiltro id="auditoria-actor" label="Actor">
+          <Select value={actor} onValueChange={onActorChange}>
+            <SelectTrigger id="auditoria-actor" className="h-9 w-full bg-background">
+              <SelectValue placeholder={actorLabel} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">{rolLabel}</SelectItem>
-              <SelectItem value="Nutricionista">Nutricionista</SelectItem>
-              <SelectItem value="Administrador">Administrador</SelectItem>
-              <SelectItem value="Proveedor">Proveedor</SelectItem>
-              <SelectItem value="Enfermera">Enfermera</SelectItem>
-              <SelectItem value="Sistema">Sistema</SelectItem>
+              <SelectItem value="todos">{actorLabel}</SelectItem>
+              <SelectItem value="usuario">Usuarios</SelectItem>
+              <SelectItem value="sistema">Sistema</SelectItem>
             </SelectContent>
           </Select>
         </CampoFiltro>

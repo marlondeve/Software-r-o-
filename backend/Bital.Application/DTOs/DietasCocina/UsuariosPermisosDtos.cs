@@ -8,7 +8,7 @@ public class FiltrosUsuariosDto
     public Guid? RolModuloId { get; set; }
     public bool? Activo { get; set; }
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
+    public int PageSize { get; set; } = 24;
 }
 
 // DTO de usuario en listado

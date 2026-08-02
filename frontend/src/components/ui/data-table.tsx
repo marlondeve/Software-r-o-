@@ -29,6 +29,11 @@ interface DataTableProps<TData, TValue> {
   onRowClick?: (row: TData) => void
 }
 
+type ColumnMeta = {
+  cellClassName?: string
+  headerClassName?: string
+}
+
 export function DataTable<TData, TValue>({
   columns,
   data,
@@ -54,8 +59,10 @@ export function DataTable<TData, TValue>({
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
             <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id}>
+              {headerGroup.headers.map((header) => {
+                const meta = header.column.columnDef.meta as ColumnMeta | undefined
+                return (
+                <TableHead key={header.id} className={meta?.headerClassName}>
                   {header.isPlaceholder
                     ? null
                     : flexRender(
@@ -63,7 +70,7 @@ export function DataTable<TData, TValue>({
                         header.getContext(),
                       )}
                 </TableHead>
-              ))}
+              )})}
             </TableRow>
           ))}
         </TableHeader>
@@ -75,11 +82,13 @@ export function DataTable<TData, TValue>({
                 className={cn(onRowClick && "cursor-pointer", getRowClassName?.(row.original))}
                 onClick={onRowClick ? () => onRowClick(row.original) : undefined}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
+                {row.getVisibleCells().map((cell) => {
+                  const meta = cell.column.columnDef.meta as ColumnMeta | undefined
+                  return (
+                  <TableCell key={cell.id} className={meta?.cellClassName}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </TableCell>
-                ))}
+                )})}
               </TableRow>
             ))
           ) : (

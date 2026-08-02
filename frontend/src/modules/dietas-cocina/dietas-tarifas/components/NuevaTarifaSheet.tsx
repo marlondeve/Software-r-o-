@@ -6,7 +6,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DatePickerFromString } from "@/components/ui/date-picker"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ScrollAreaFlex } from "@/components/ui/scroll-area"
 import {
@@ -16,18 +15,27 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { TarifasPorComidaInputs } from "@/modules/dietas-cocina/dietas-tarifas/components/TarifasPorComidaInputs"
 import {
   fechaCatalogoAISO,
   finAnioCatalogoISO,
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,
-  formatearMonedaTarifa,
   validarSolapamientoVigencia,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import {
+  parseTarifasPorComida,
+  resolverTarifaVigenteMinima,
+  TARIFAS_POR_COMIDA_VACIAS,
+  tarifasPorComidaDesdeMontos,
+  formatearResumenTarifas,
+  type TarifasPorComidaForm,
+} from "@/modules/dietas-cocina/dietas-tarifas/lib/tarifasPorComida"
+import { mapearComidaInterna } from "@/modules/dietas-cocina/api/utils"
 import { cn } from "@/lib/utils"
 
 export interface NuevaTarifaPayload {
-  monto: number
+  tarifas: Array<{ tiempoComida: string; monto: number }>
   vigenciaDesde: string
   vigenciaHasta: string
   motivoCambio: string
@@ -49,23 +57,26 @@ export function NuevaTarifaSheet({
   dieta,
   onConfirmar,
 }: NuevaTarifaSheetProps) {
-  const [monto, setMonto] = useState("")
+  const [tarifasPorComida, setTarifasPorComida] = useState<TarifasPorComidaForm>({
+    ...TARIFAS_POR_COMIDA_VACIAS,
+  })
   const [fechaInicio, setFechaInicio] = useState("")
 
   useEffect(() => {
     if (open) {
-      setMonto("")
+      setTarifasPorComida(tarifasPorComidaDesdeMontos(dieta?.tarifasVigentes ?? {}))
       setFechaInicio("")
     }
-  }, [open, dieta?.id])
+  }, [open, dieta?.id, dieta?.tarifasVigentes])
 
   if (!dieta) return null
 
   const solapamiento = validarSolapamientoVigencia(fechaInicio, dieta)
-  const montoNum = Number.parseFloat(monto) || 0
+  const tarifasPayload = parseTarifasPorComida(tarifasPorComida)
+  const tarifasValidas = tarifasPayload.length > 0
 
   async function confirmar() {
-    if (!dieta || solapamiento.solapa || montoNum <= 0 || !fechaInicio) return
+    if (!dieta || solapamiento.solapa || !tarifasValidas || !fechaInicio) return
 
     const dietaActual = dieta
     const inicio = new Date(`${fechaInicio}T12:00:00`)
@@ -99,29 +110,35 @@ export function NuevaTarifaSheet({
       return { ...t, vigente: false }
     })
 
-    const nuevaEntrada = {
-      id: `TRF-${anio}-${String(historicoActualizado.length + 1).padStart(2, "0")}`,
+    const nuevasEntradas = tarifasPayload.map((item, index) => ({
+      id: `TRF-${anio}-${String(historicoActualizado.length + index + 1).padStart(2, "0")}`,
       anio,
-      monto: montoNum,
+      tiempoComida: mapearComidaInterna(item.tiempoComida),
+      monto: item.monto,
       vigenciaDesde: formatearFechaCatalogo(inicio),
       vigenciaHasta: formatearFechaCatalogo(fin),
       registradoPor: "m.nutricion",
       motivoCambio,
       creadoEn: formatearFechaCatalogo(ahora),
       vigente: true,
-    }
+    }))
+
+    const tarifasVigentes = Object.fromEntries(
+      nuevasEntradas.map((item) => [item.tiempoComida, item.monto]),
+    ) as DietaCatalogo["tarifasVigentes"]
 
     try {
       await onConfirmar(
         {
           ...dietaActual,
-          tarifaVigente: montoNum,
+          tarifasVigentes,
+          tarifaVigente: resolverTarifaVigenteMinima(tarifasVigentes),
           estado: "vigente",
           ultimaActualizacion: formatearFechaHoraCatalogo(ahora),
-          historicoTarifas: [nuevaEntrada, ...historicoActualizado],
+          historicoTarifas: [...nuevasEntradas, ...historicoActualizado],
         },
         {
-          monto: montoNum,
+          tarifas: tarifasPayload,
           vigenciaDesde: fechaInicio,
           vigenciaHasta: vigenciaHastaIso,
           motivoCambio,
@@ -137,7 +154,7 @@ export function NuevaTarifaSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="flex flex-col gap-0 overflow-hidden p-0 data-[side=right]:w-[min(100vw,32rem)]"
+        className="flex flex-col gap-0 overflow-hidden p-0 data-[side=right]:w-[min(100vw,36rem)]"
       >
         <SheetHeader className="shrink-0 border-b px-5 py-4 pr-12 text-left">
           <SheetTitle>Crear nueva tarifa</SheetTitle>
@@ -160,8 +177,9 @@ export function NuevaTarifaSheet({
               <Info className="size-4" />
               <AlertTitle>Atención</AlertTitle>
               <AlertDescription>
-                Se creará una nueva vigencia tarifaria. Los registros
-                históricos conservarán la tarifa aplicable en su fecha original.
+                Se creará una nueva vigencia tarifaria por tiempo de comida. Los
+                registros históricos conservarán la tarifa aplicable en su fecha
+                original.
               </AlertDescription>
             </Alert>
 
@@ -169,35 +187,28 @@ export function NuevaTarifaSheet({
               <CardContent className="space-y-2 p-4">
                 <p className="text-sm font-semibold">Transición Tarifaria</p>
                 <div className="flex items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">Tarifa Actual</span>
+                  <span className="text-muted-foreground">Tarifas actuales</span>
                   <ArrowRight className="size-4 text-muted-foreground" />
                   <span className="border-b-2 border-primary font-semibold text-primary">
-                    Nueva Vigencia
+                    Nueva vigencia
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Tarifa actual: {formatearMonedaTarifa(dieta.tarifaVigente)}.
-                  El periodo actual se cerrará automáticamente en la fecha de
-                  inicio de la nueva tarifa.
+                  Tarifas actuales:{" "}
+                  {formatearResumenTarifas(dieta.tarifasVigentes)}. El periodo
+                  actual se cerrará automáticamente en la fecha de inicio de la
+                  nueva tarifa.
                 </p>
               </CardContent>
             </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="nueva-tarifa-monto">Nueva tarifa (COP)</Label>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  $
-                </span>
-                <Input
-                  id="nueva-tarifa-monto"
-                  className="pl-7"
-                  placeholder="0"
-                  inputMode="numeric"
-                  value={monto}
-                  onChange={(e) => setMonto(e.target.value)}
-                />
-              </div>
+            <div className="space-y-3">
+              <Label>Nuevas tarifas por comida (COP)</Label>
+              <TarifasPorComidaInputs
+                values={tarifasPorComida}
+                onChange={setTarifasPorComida}
+                idPrefix="nueva-tarifa"
+              />
             </div>
 
             <div className="space-y-2">
@@ -236,7 +247,7 @@ export function NuevaTarifaSheet({
           </Button>
           <Button
             type="button"
-            disabled={solapamiento.solapa || montoNum <= 0 || !fechaInicio}
+            disabled={solapamiento.solapa || !tarifasValidas || !fechaInicio}
             onClick={confirmar}
           >
             Confirmar nueva vigencia

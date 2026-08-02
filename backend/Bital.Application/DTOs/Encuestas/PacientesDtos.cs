@@ -10,7 +10,7 @@ public class FiltrosCapturaPresencialDto
     public string? Estado { get; set; }
     public string? Busqueda { get; set; }
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
+    public int PageSize { get; set; } = 24;
 }
 
 public class FiltrosCapturaTelefonicaDto
@@ -22,7 +22,7 @@ public class FiltrosCapturaTelefonicaDto
     public DateTime? FechaCitaDesde { get; set; }
     public DateTime? FechaCitaHasta { get; set; }
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
+    public int PageSize { get; set; } = 24;
 }
 
 public class PacienteCapturaPresencialDto

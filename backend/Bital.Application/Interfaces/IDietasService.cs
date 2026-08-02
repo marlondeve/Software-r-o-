@@ -52,7 +52,7 @@ public interface IDietasService
 
     Task<List<TarifaHistoricoDto>> ObtenerTarifasDietaAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<TarifaHistoricoDto> RegistrarTarifaDietaAsync(Guid id, NuevaTarifaDto dto, string usuario, CancellationToken cancellationToken = default);
+    Task<List<TarifaHistoricoDto>> RegistrarTarifaDietaAsync(Guid id, NuevaTarifaDto dto, string usuario, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Registra una novedad en una dieta

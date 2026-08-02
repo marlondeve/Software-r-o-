@@ -1,15 +1,14 @@
-import type { RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { ReactNode } from "react"
 import {
   createContext,
   useCallback,
   useContext,
   useMemo,
   useState,
-  type ReactNode,
 } from "react"
 
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
-import { obtenerRolDietas, obtenerNombreRolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { obtenerNombreRolDietas } from "@/modules/dietas-cocina/lib/roles"
 import {
   cargarVistaRolAdmin,
   guardarVistaRolAdmin,
@@ -19,26 +18,32 @@ import {
 interface VistaRolAdminContextValue {
   esAdminReal: boolean
   rolReal: string | null
-  rolVistaPreview: RolDietas | null
+  rolVistaPreview: string | null
   rolVistaEfectivo: string | null
   vistaPreviewActiva: boolean
-  setRolVistaPreview: (rol: RolDietas | null) => void
+  setRolVistaPreview: (rol: string | null) => void
 }
 
 const VistaRolAdminContext = createContext<VistaRolAdminContextValue | null>(
   null,
 )
 
-export function VistaRolAdminProvider({ children }: { children: ReactNode }) {
+export function VistaRolAdminProvider({
+  children,
+  rolesPreview = [],
+}: {
+  children: ReactNode
+  rolesPreview?: string[]
+}) {
   const { usuario } = useAuth()
   const rolReal = obtenerNombreRolDietas(usuario)
   const esAdminReal = rolReal?.toLowerCase() === "administrador"
-  const [rolVistaPreview, setRolVistaPreviewState] = useState<RolDietas | null>(
-    () => (esAdminReal ? cargarVistaRolAdmin() : null),
+  const [rolVistaPreview, setRolVistaPreviewState] = useState<string | null>(
+    () => (esAdminReal ? cargarVistaRolAdmin(rolesPreview) : null),
   )
 
   const setRolVistaPreview = useCallback(
-    (rol: RolDietas | null) => {
+    (rol: string | null) => {
       if (!esAdminReal) return
       setRolVistaPreviewState(rol)
       guardarVistaRolAdmin(rol)
@@ -46,10 +51,8 @@ export function VistaRolAdminProvider({ children }: { children: ReactNode }) {
     [esAdminReal],
   )
 
-  const rolVistaEfectivo = resolverRolVistaEfectivo(
-    obtenerRolDietas(usuario),
-    rolVistaPreview,
-  ) ?? rolReal
+  const rolVistaEfectivo =
+    resolverRolVistaEfectivo(rolReal, rolVistaPreview) ?? rolReal
 
   const value = useMemo(
     () => ({

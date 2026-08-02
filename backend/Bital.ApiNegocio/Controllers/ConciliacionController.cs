@@ -44,12 +44,19 @@ public class ConciliacionController : ControllerBase
         [FromQuery] string? proveedor,
         [FromQuery] string? estado,
         [FromQuery] string? formato,
-        CancellationToken cancellationToken)
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize,
+        CancellationToken cancellationToken = default)
     {
-        var lineas = await _conciliacionService.ObtenerConciliacionAsync(
-            busqueda, numeroFactura, periodo, proveedor, estado, cancellationToken);
+        var sinPaginar = string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase);
 
-        if (string.Equals(formato, "csv", StringComparison.OrdinalIgnoreCase))
+        var resultado = await _conciliacionService.ObtenerConciliacionAsync(
+            busqueda, numeroFactura, periodo, proveedor, estado,
+            page, pageSize, sinPaginar, cancellationToken);
+
+        var lineas = resultado.Data;
+
+        if (sinPaginar)
         {
             var csv = CsvExportHelper.Generar(
                 lineas.Select(l => (IReadOnlyList<string?>)[
@@ -77,11 +84,12 @@ public class ConciliacionController : ControllerBase
             {
                 data = lineas,
                 kpis,
-                count = lineas.Count
+                count = resultado.Meta.Total,
+                meta = resultado.Meta
             });
         }
 
-        return Ok(new { data = lineas, count = lineas.Count });
+        return Ok(new { data = lineas, count = resultado.Meta.Total, meta = resultado.Meta });
     }
 
     /// <summary>

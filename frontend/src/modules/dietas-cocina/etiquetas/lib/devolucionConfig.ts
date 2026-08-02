@@ -1,4 +1,5 @@
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+import { rutaLogisticaDevolucion } from "@/modules/dietas-cocina/lib/rutasLogistica"
 
 export type TipoDevolucionEtiqueta = "antes_entrega" | "post_entrega"
 
@@ -160,7 +161,7 @@ export function configDevolucionPorTipo(tipo: TipoDevolucionEtiqueta) {
       "Indica por qué la bandeja no llegará al paciente (aún está en tu custodia).",
       etiquetaMotivo: "Motivo del rechazo",
       estadoDietaApi: "No entregada",
-      rutaExito: "/dietas-cocina/etiquetas/devolucion/antes-entrega",
+      rutaExito: rutaLogisticaDevolucion("antes-entrega"),
       mensajeExito:
         "La bandeja fue registrada como rechazada antes de la entrega al paciente.",
     }
@@ -173,7 +174,7 @@ export function configDevolucionPorTipo(tipo: TipoDevolucionEtiqueta) {
       "Indica cuánto consumió el paciente al recoger la bandeja.",
     etiquetaMotivo: "Estado del consumo",
     estadoDietaApi: "Recogida",
-    rutaExito: "/dietas-cocina/etiquetas/devolucion/paciente",
+    rutaExito: rutaLogisticaDevolucion("paciente"),
     mensajeExito:
       "La recogida de bandeja quedó registrada y cocina podrá conciliarla.",
   }

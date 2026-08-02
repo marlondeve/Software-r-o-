@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import type { ComponentType } from "react"
 import {
   Bookmark,
+  BookOpen,
   ChefHat,
   ClipboardList,
   Eye,
@@ -19,6 +20,10 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { ResultadoAuditoriaBadge } from "@/modules/dietas-cocina/auditoria/components/ResultadoAuditoriaBadge"
+import {
+  acortarRegistroId,
+  etiquetaAccion,
+} from "@/modules/dietas-cocina/auditoria/lib/auditoriaCatalogo"
 import {
   MODULO_LABEL,
   avatarColorPorIniciales,
@@ -42,6 +47,7 @@ const MODULO_ICONOS: Record<
   ComponentType<{ className?: string }>
 > = {
   dietas: UtensilsCrossed,
+  catalogo: BookOpen,
   cocina: ChefHat,
   etiquetas: Tags,
   reportes: FileText,
@@ -51,29 +57,13 @@ const MODULO_ICONOS: Record<
   inicio: Bookmark,
 }
 
-function CambiosCell({ cambios }: { cambios: CambioAuditoria }) {
-  if (cambios.tipo === "texto") {
-    return (
-      <span className="text-xs text-muted-foreground">{cambios.texto}</span>
-    )
-  }
-
-  return (
-    <div className="space-y-0.5 text-xs">
-      {cambios.lineas?.map((linea) => (
-        <p
-          key={`${linea.prefijo}-${linea.texto}`}
-          className={cn(
-            linea.prefijo === "-"
-              ? "text-muted-foreground line-through"
-              : "font-medium text-primary",
-          )}
-        >
-          {linea.prefijo} {linea.texto}
-        </p>
-      ))}
-    </div>
-  )
+function resumenDesdeCambios(cambios: CambioAuditoria): string {
+  if (cambios.resumen) return cambios.resumen
+  if (cambios.tipo === "texto") return cambios.texto ?? "—"
+  const primera = cambios.lineas?.[0]
+  if (!primera) return "—"
+  if (cambios.lineas!.length === 1) return primera.texto
+  return `${primera.texto} (+${cambios.lineas!.length - 1} más)`
 }
 
 export function AuditoriaTabla({
@@ -90,6 +80,7 @@ export function AuditoriaTabla({
     () => [
       {
         accessorKey: "fechaHora",
+        meta: { headerClassName: "w-[130px]", cellClassName: "w-[130px]" },
         header: () => (
           <span className="text-xs font-semibold tracking-wide uppercase">
             Fecha y hora
@@ -103,6 +94,7 @@ export function AuditoriaTabla({
       },
       {
         id: "usuario",
+        meta: { headerClassName: "w-[140px]", cellClassName: "w-[140px]" },
         header: () => (
           <span className="text-xs font-semibold tracking-wide uppercase">
             Usuario
@@ -124,7 +116,7 @@ export function AuditoriaTabla({
                   {usuario.nombre}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {usuario.rol}
+                  {usuario.esSistema ? "Sistema" : usuario.rol}
                 </p>
               </div>
             </div>
@@ -133,6 +125,7 @@ export function AuditoriaTabla({
       },
       {
         id: "moduloAccion",
+        meta: { headerClassName: "w-[150px]", cellClassName: "w-[150px]" },
         header: () => (
           <span className="text-xs font-semibold tracking-wide uppercase">
             Módulo / Acción
@@ -143,12 +136,12 @@ export function AuditoriaTabla({
           return (
             <div className="flex items-start gap-2">
               <Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium text-foreground">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-foreground">
                   {MODULO_LABEL[row.original.modulo]}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  {row.original.accion}
+                <p className="truncate text-xs text-muted-foreground">
+                  {etiquetaAccion(row.original.accion)}
                 </p>
               </div>
             </div>
@@ -157,6 +150,7 @@ export function AuditoriaTabla({
       },
       {
         accessorKey: "registroId",
+        meta: { headerClassName: "w-[100px]", cellClassName: "w-[100px]" },
         header: () => (
           <span className="text-xs font-semibold tracking-wide uppercase">
             Registro
@@ -165,24 +159,37 @@ export function AuditoriaTabla({
         cell: ({ row }) => (
           <button
             type="button"
-            className="text-sm font-medium text-primary hover:underline"
+            className="truncate text-sm font-medium text-primary hover:underline"
+            title={row.original.registroId}
             onClick={() => onVerDetalle(row.original.id)}
           >
-            {row.original.registroId}
+            {acortarRegistroId(row.original.registroId)}
           </button>
         ),
       },
       {
-        id: "cambios",
+        id: "resumen",
+        meta: { headerClassName: "min-w-0", cellClassName: "min-w-0 max-w-[200px]" },
         header: () => (
           <span className="text-xs font-semibold tracking-wide uppercase">
-            Cambios (Ant. vs Nuevo)
+            Resumen
           </span>
         ),
-        cell: ({ row }) => <CambiosCell cambios={row.original.cambios} />,
+        cell: ({ row }) => {
+          const resumen = resumenDesdeCambios(row.original.cambios)
+          return (
+            <span
+              className="block truncate text-xs text-muted-foreground"
+              title={resumen}
+            >
+              {resumen}
+            </span>
+          )
+        },
       },
       {
         accessorKey: "resultado",
+        meta: { headerClassName: "w-[90px]", cellClassName: "w-[90px]" },
         header: () => (
           <span className="text-xs font-semibold tracking-wide uppercase">
             Resultado
@@ -194,12 +201,17 @@ export function AuditoriaTabla({
       },
       {
         id: "accion",
+        meta: {
+          headerClassName: "sticky right-0 z-10 w-10 bg-card",
+          cellClassName: "sticky right-0 z-10 w-10 bg-card",
+        },
         header: () => <span className="sr-only">Ver detalle</span>,
         cell: ({ row }) => (
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
+            className="shrink-0"
             onClick={() => onVerDetalle(row.original.id)}
             aria-label={`Ver detalle de ${row.original.codigoAuditoria}`}
           >
@@ -225,7 +237,10 @@ export function AuditoriaTabla({
         <DataTable
           columns={columnas}
           data={filas}
-          className="rounded-none border-0"
+          className={cn(
+            "rounded-none border-0",
+            "[&_data-slot=table]]:w-full [&_data-slot=table]]:table-fixed",
+          )}
           emptyMessage="No hay eventos de auditoría para los filtros aplicados."
         />
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">

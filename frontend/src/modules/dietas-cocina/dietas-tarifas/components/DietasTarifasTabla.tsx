@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { DietasTarifasAccionesPopover } from "@/modules/dietas-cocina/dietas-tarifas/components/DietasTarifasAccionesPopover"
 import { EstadoDietaCatalogoBadge } from "@/modules/dietas-cocina/dietas-tarifas/components/EstadoDietaCatalogoBadge"
-import { formatearMonedaTarifa } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import { formatearResumenTarifas } from "@/modules/dietas-cocina/dietas-tarifas/lib/tarifasPorComida"
 
 interface DietasTarifasTablaProps {
   dietas: DietaCatalogo[]
@@ -85,11 +85,11 @@ export function DietasTarifasTabla({
       {
         id: "tarifa",
         header: () => (
-          <span className="text-xs font-semibold uppercase">Tarifa vigente</span>
+          <span className="text-xs font-semibold uppercase">Tarifas vigentes</span>
         ),
         cell: ({ row }) => (
           <span className="font-medium tabular-nums">
-            {formatearMonedaTarifa(row.original.tarifaVigente)}
+            {formatearResumenTarifas(row.original.tarifasVigentes)}
           </span>
         ),
       },

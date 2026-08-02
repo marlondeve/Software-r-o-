@@ -7,6 +7,7 @@ public class TarifaHistoricoDto
 {
     public Guid Id { get; set; }
     public int Anio { get; set; }
+    public string TiempoComida { get; set; } = string.Empty;
     public decimal Monto { get; set; }
     public DateTime VigenciaDesde { get; set; }
     public DateTime VigenciaHasta { get; set; }

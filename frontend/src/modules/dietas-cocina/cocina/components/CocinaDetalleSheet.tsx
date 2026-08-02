@@ -2,7 +2,6 @@ import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import {
   AlertTriangle,
-  Loader2,
   ShieldAlert,
   Utensils,
 } from "lucide-react"
@@ -14,6 +13,7 @@ import { obtenerDetalleOrdenCocina } from "@/modules/dietas-cocina/api/services/
 import type { OrdenCocinaApiDto } from "@/modules/dietas-cocina/types/api-dtos"
 
 import { Badge } from "@/components/ui/badge"
+import { SheetDetailSkeleton } from "@/components/shared/skeletons"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -47,6 +47,7 @@ import {
   checklistProgreso,
   enRecuperacionChecklistCocina,
 } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
+import { estadoBadgeTokens } from "@/modules/dietas-cocina/lib/estadosEstilos"
 import { cn } from "@/lib/utils"
 
 interface CocinaDetalleSheetProps {
@@ -188,12 +189,10 @@ export function CocinaDetalleSheet({
 
         <ScrollAreaFlex>
           <div className="w-full space-y-5 px-5 py-4">
-            {cargandoDetalleApi && (
-              <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Sincronizando detalle con el servidor…
-              </p>
-            )}
+            {cargandoDetalleApi && !detalleApi ? (
+              <SheetDetailSkeleton />
+            ) : (
+              <>
             {detalleApi?.observaciones && (
               <section className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
                 {detalleApi.observaciones}
@@ -284,8 +283,8 @@ export function CocinaDetalleSheet({
                   className={cn(
                     "text-[10px] font-medium uppercase tracking-wide",
                     progresoChecklist.completo
-                      ? "bg-primary/10 text-primary"
-                      : "text-amber-700 dark:text-amber-300",
+                      ? estadoBadgeTokens.success
+                      : estadoBadgeTokens.warning,
                   )}
                 >
                   {progresoChecklist.completados}/{progresoChecklist.total}{" "}
@@ -372,6 +371,8 @@ export function CocinaDetalleSheet({
                 </SelectContent>
               </Select>
             </section>
+              </>
+            )}
           </div>
         </ScrollAreaFlex>
 

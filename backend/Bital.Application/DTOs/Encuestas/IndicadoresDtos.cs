@@ -48,7 +48,7 @@ public class FiltrosAnalisisBrechasDto
     public DateTime? Hasta { get; set; }
     public string? Busqueda { get; set; }
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
+    public int PageSize { get; set; } = 24;
 }
 
 public class FilaBrechaDto

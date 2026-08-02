@@ -1,5 +1,7 @@
 import { mapearComidaInterna, normalizarClave } from "@/modules/dietas-cocina/api/utils"
 import { repararTextoUtf8 } from "@/modules/dietas-cocina/api/utils/texto"
+import { normalizarConsistenciaParaComida } from "@/modules/dietas-cocina/lib/comidaOperativa"
+import { resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
 import {
   formatearFechaTrazabilidad,
   formatearSolicitadoEn,
@@ -10,7 +12,7 @@ import type {
   FilaDietaDto,
   SolicitudDietaRequestDto,
 } from "@/modules/dietas-cocina/types/api-dtos"
-import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
+import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 
 export function normalizarEstadoDietaDesdeApi(valor: unknown): EstadoDieta {
   const estado = String(valor ?? "no-solicitada").toLowerCase()
@@ -55,6 +57,7 @@ export function mapFilaDietaDtoToDomain(
       ? repararTextoUtf8(nombresCatalogo.get(String(tipoDietaId))!)
       : repararTextoUtf8(tipoDietaRaw)
   const comidaRaw = String(dto.comida ?? "almuerzo")
+  const pabellon = repararTextoUtf8(String(dto.pabellon ?? ""))
 
   return {
     id: String(dto.id ?? ""),
@@ -64,8 +67,11 @@ export function mapFilaDietaDtoToDomain(
     tipoDocumento: dto.tipoDocumento,
     paciente: repararTextoUtf8(String(dto.paciente ?? "")),
     edad: Number(dto.edad ?? 0),
-    servicio: repararTextoUtf8(String(dto.servicio ?? "")),
-    pabellon: repararTextoUtf8(String(dto.pabellon ?? "")),
+    servicio: resolverServicioClinico(
+      repararTextoUtf8(String(dto.servicio ?? "")),
+      pabellon,
+    ),
+    pabellon,
     habitacion: repararTextoUtf8(String(dto.habitacion ?? "")),
     consistencia: dto.consistencia ?? null,
     tipoDieta: nombreCatalogo,
@@ -175,6 +181,7 @@ function tituloDesdeTipoEvento(tipoEvento: string): string {
 }
 
 export interface DatosSolicitudDietaInput {
+  comida?: TiempoComida
   tipoDieta: string
   consistencia: string
   observaciones?: string
@@ -190,11 +197,15 @@ export function mapSolicitudToRequest(
 ): SolicitudDietaRequestDto {
   const aislado = Boolean(datos.pacienteAislado)
   const alergico = Boolean(datos.alergico)
+  const consistencia =
+    datos.comida != null
+      ? normalizarConsistenciaParaComida(datos.comida, datos.consistencia)
+      : datos.consistencia.trim() || null
 
   return {
     tipoDietaId,
-    consistencia: datos.consistencia,
-    descripcionDieta: datos.tipoDieta,
+    consistencia: consistencia ?? "",
+    descripcionDieta: datos.tipoDieta.trim() || undefined,
     observaciones: datos.observaciones,
     aislado,
     aislamiento: aislado ? "Contacto" : "Ninguno",

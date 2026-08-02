@@ -5,7 +5,7 @@ Configuración del frontend en IIS con certificado SSL, subdominio y proxy al AP
 **Servidor:** `SERVERAPPFCR` (`10.238.97.67` / IP pública `186.190.254.230`)  
 **Sitio IIS:** `BitalFrontend`  
 **Dominio:** `riosoft.clinicadelriomonteria.com`  
-**Estado actual:** frontend en `http://186.190.254.230:8080/` — pendiente certificado SSL
+**Estado actual:** HTTPS en `https://riosoft.clinicadelriomonteria.com:8080`. Ver [CIBERSEGURIDAD-PRODUCCION.md](./CIBERSEGURIDAD-PRODUCCION.md) para checklist de seguridad.
 
 ---
 

@@ -1,7 +1,7 @@
 import { AlertTriangle } from "lucide-react"
-import { Loader2 } from "lucide-react"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { TablePageSkeleton } from "@/components/shared/skeletons"
 import { CategoriasEdadTabla } from "@/modules/dietas-cocina/parametros/components/tipos-paciente/CategoriasEdadTabla"
 import { SimuladorClasificacion } from "@/modules/dietas-cocina/parametros/components/tipos-paciente/SimuladorClasificacion"
 import { useParametrosTiposPaciente } from "@/modules/dietas-cocina/parametros/context/ParametrosTiposPacienteContext"
@@ -18,12 +18,7 @@ export function TiposPacienteView() {
   const haySuperposicion = detectarSuperposicionCategorias(categorias)
 
   if (cargando) {
-    return (
-      <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Cargando categorías de edad…
-      </div>
-    )
+    return <TablePageSkeleton filterCount={2} rows={6} columns={4} />
   }
 
   return (

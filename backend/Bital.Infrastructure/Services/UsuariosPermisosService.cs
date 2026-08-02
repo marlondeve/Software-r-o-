@@ -4,10 +4,9 @@ using Bital.Domain.Entities.DietasCocina;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Bital.Infrastructure.DietasCocina;
+using Bital.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Bital.Infrastructure.Services;
 
@@ -32,6 +31,10 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
     public async Task<ListaUsuariosDto> ObtenerUsuariosAsync(FiltrosUsuariosDto filtros)
     {
+        var (page, pageSize) = PaginacionHelper.Normalizar(filtros.Page, filtros.PageSize);
+        filtros.Page = page;
+        filtros.PageSize = pageSize;
+
         var query = _context.UsuariosModulo
             .Include(u => u.RolModulo)
             .AsQueryable();
@@ -89,7 +92,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             NombreCompleto = dto.NombreCompleto,
             Email = dto.Email,
             Identificacion = identificacion,
-            PasswordHash = HashPassword(identificacion),
+            PasswordHash = PasswordHasher.Hash(identificacion),
             RolModuloId = rol.Id,
             Activo = true,
             Observaciones = dto.Observaciones,
@@ -409,7 +412,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (string.IsNullOrEmpty(identificacion))
             throw new InvalidOperationException("El usuario no tiene nombre de usuario configurado.");
 
-        usuario.PasswordHash = HashPassword(identificacion);
+        usuario.PasswordHash = PasswordHasher.Hash(identificacion);
         usuario.ModificadoEn = DateTime.UtcNow;
         usuario.ModificadoPor = solicitadoPor;
         await _context.SaveChangesAsync();
@@ -445,8 +448,13 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (string.IsNullOrEmpty(usuario.PasswordHash))
             throw new UnauthorizedAccessException("Debe solicitar un restablecimiento de contraseña al administrador.");
 
-        if (!VerificarPassword(dto.Password, usuario.PasswordHash))
+        if (!PasswordHasher.Verify(dto.Password, usuario.PasswordHash))
             throw new UnauthorizedAccessException("Credenciales inválidas.");
+
+        if (PasswordHasher.EsHashLegacy(usuario.PasswordHash))
+        {
+            usuario.PasswordHash = PasswordHasher.Hash(dto.Password);
+        }
 
         usuario.UltimoAcceso = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -490,10 +498,10 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (!usuario.Activo)
             throw new UnauthorizedAccessException("El usuario está inactivo.");
 
-        if (string.IsNullOrEmpty(usuario.PasswordHash) || !VerificarPassword(dto.PasswordActual, usuario.PasswordHash))
+        if (string.IsNullOrEmpty(usuario.PasswordHash) || !PasswordHasher.Verify(dto.PasswordActual, usuario.PasswordHash))
             throw new UnauthorizedAccessException("La contraseña actual es incorrecta.");
 
-        usuario.PasswordHash = HashPassword(dto.PasswordNueva);
+        usuario.PasswordHash = PasswordHasher.Hash(dto.PasswordNueva);
         usuario.ModificadoEn = DateTime.UtcNow;
         usuario.ModificadoPor = usuario.Identificacion ?? usuario.Email;
         await _context.SaveChangesAsync();
@@ -550,14 +558,9 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         return set.OrderBy(r => r).ToList();
     }
 
-    private static bool VerificarPassword(string password, string hash)
-    {
-        return string.Equals(HashPassword(password), hash, StringComparison.OrdinalIgnoreCase);
-    }
-
     private static void EstablecerPasswordDesdeIdentificacion(UsuarioModulo usuario, string identificacion)
     {
-        usuario.PasswordHash = HashPassword(identificacion.Trim());
+        usuario.PasswordHash = PasswordHasher.Hash(identificacion.Trim());
     }
 
     private static bool UsaPasswordPorDefecto(UsuarioModulo usuario, string? identificacionReferencia = null)
@@ -565,12 +568,6 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         var identificacion = identificacionReferencia?.Trim() ?? usuario.Identificacion?.Trim();
         return !string.IsNullOrEmpty(identificacion)
             && !string.IsNullOrEmpty(usuario.PasswordHash)
-            && VerificarPassword(identificacion, usuario.PasswordHash);
-    }
-
-    private static string HashPassword(string password)
-    {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(password));
-        return Convert.ToHexString(bytes);
+            && PasswordHasher.Verify(identificacion, usuario.PasswordHash);
     }
 }

@@ -2,6 +2,8 @@ import type {
   DietaCatalogo,
   TarifaHistorico,
 } from "@/modules/dietas-cocina/types/catalog"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 
 function historicoBase(
   anio: number,
@@ -9,18 +11,27 @@ function historicoBase(
   vigente: boolean,
   registradoPor: string,
   motivo: string,
-): TarifaHistorico {
-  return {
-    id: `TRF-${anio}-01`,
+): TarifaHistorico[] {
+  return COMIDAS_TABS.map((comida, index) => ({
+    id: `TRF-${anio}-${String(index + 1).padStart(2, "0")}`,
     anio,
-    monto,
+    tiempoComida: comida.id,
+    monto: monto + index * 500,
     vigenciaDesde: "01 Ene",
     vigenciaHasta: "31 Dic",
     registradoPor,
     motivoCambio: motivo,
     creadoEn: `15 Dic ${anio - 1}`,
     vigente,
-  }
+  }))
+}
+
+function tarifasVigentesDesdeHistorico(
+  historico: TarifaHistorico[],
+): Partial<Record<TiempoComida, number>> {
+  return Object.fromEntries(
+    historico.filter((item) => item.vigente).map((item) => [item.tiempoComida, item.monto]),
+  )
 }
 
 function crearDieta(
@@ -29,41 +40,51 @@ function crearDieta(
     Pick<DietaCatalogo, "nombre" | "descripcion">,
 ): DietaCatalogo {
   const n = String(index).padStart(3, "0")
-  const tarifa = overrides.tarifaVigente ?? 45_000 + index * 2_500
+  const tarifaBase = overrides.tarifaVigente ?? 45_000 + index * 2_500
+  const historicoTarifas =
+    overrides.historicoTarifas ??
+    [
+      ...historicoBase(
+        2024,
+        tarifaBase,
+        true,
+        "Dra. M. Salinas",
+        "Ajuste por inflación anual e inclusión de nuevos suplementos nutricionales base.",
+      ),
+      ...historicoBase(
+        2023,
+        tarifaBase - 5_000,
+        false,
+        "Admin Sist.",
+        "Actualización estándar de tabulador.",
+      ),
+      ...historicoBase(
+        2022,
+        tarifaBase - 10_000,
+        false,
+        "J. Director",
+        "Creación inicial de la tarifa en el nuevo sistema Bital.",
+      ),
+    ]
+  const tarifasVigentes =
+    overrides.tarifasVigentes ?? tarifasVigentesDesdeHistorico(historicoTarifas)
+
+  const montosVigentes = Object.values(tarifasVigentes).filter((monto) => monto > 0)
+
   return {
     id: `diet-cat-${index}`,
     codigo: `D-${n}`,
     estado: "vigente",
-    tarifaVigente: tarifa,
     fechaInicio: "01 Ene 2024",
     fechaFin: "31 Dic 2024",
     ultimaActualizacion: "15 Mar 2024, 08:30",
     usuario: index % 2 === 0 ? "admin_sistema" : "m.nutricion",
     activa: true,
-    historicoTarifas: [
-      historicoBase(
-        2024,
-        tarifa,
-        true,
-        "Dra. M. Salinas",
-        "Ajuste por inflación anual e inclusión de nuevos suplementos nutricionales base.",
-      ),
-      historicoBase(
-        2023,
-        tarifa - 5_000,
-        false,
-        "Admin Sist.",
-        "Actualización estándar de tabulador.",
-      ),
-      historicoBase(
-        2022,
-        tarifa - 10_000,
-        false,
-        "J. Director",
-        "Creación inicial de la tarifa en el nuevo sistema Bital.",
-      ),
-    ],
     ...overrides,
+    historicoTarifas,
+    tarifasVigentes,
+    tarifaVigente:
+      montosVigentes.length > 0 ? Math.min(...montosVigentes) : tarifaBase,
   }
 }
 
@@ -82,75 +103,71 @@ const DIETAS_BASE: Array<
   },
   {
     nombre: "Hiposódica",
-    descripcion: "Restricción de sodio para pacientes cardiovasculares.",
+    descripcion: "Baja en sodio.",
     tarifaVigente: 48_000,
   },
   {
     nombre: "Blanda Hospitalaria",
-    descripcion: "Textura blanda, fácil masticación y digestión.",
+    descripcion: "Textura blanda para pacientes con dificultad de masticación.",
     tarifaVigente: 46_000,
   },
   {
     nombre: "Proteica",
-    descripcion: "Alto aporte proteico para recuperación.",
+    descripcion: "Alto aporte proteico.",
     tarifaVigente: 58_000,
   },
   {
     nombre: "Líquida clara",
-    descripcion: "Líquidos transparentes, sin residuo.",
+    descripcion: "Líquidos transparentes.",
     tarifaVigente: 38_000,
   },
   {
     nombre: "Líquida completa",
-    descripcion: "Líquidos con lacteos y sopas coladas.",
+    descripcion: "Líquidos opacos permitidos.",
     tarifaVigente: 42_000,
   },
   {
     nombre: "Hipocalórica",
-    descripcion: "Reducción calórica controlada.",
+    descripcion: "Restricción calórica.",
     tarifaVigente: 47_000,
   },
   {
     nombre: "Blanda / Sin sal",
-    descripcion: "Blanda con restricción estricta de sodio.",
+    descripcion: "Blanda con restricción de sodio.",
     tarifaVigente: 49_500,
-    estado: "programada",
-    fechaInicio: "01 Ene 2025",
-    fechaFin: "31 Dic 2025",
   },
+]
+
+const DIETAS_EXTRA: Array<
+  Pick<DietaCatalogo, "nombre" | "descripcion"> & Partial<DietaCatalogo>
+> = [
   {
     nombre: "Renal",
-    descripcion: "Restricción de potasio, fósforo y proteínas.",
+    descripcion: "Restricción de potasio y fósforo.",
     tarifaVigente: 55_000,
   },
   {
     nombre: "Celíaca",
-    descripcion: "Libre de gluten certificado.",
+    descripcion: "Sin gluten.",
     tarifaVigente: 53_000,
   },
   {
     nombre: "Pediatrica",
-    descripcion: "Porciones y consistencias adaptadas a menores.",
+    descripcion: "Porciones adaptadas a pediatría.",
     tarifaVigente: 41_000,
   },
 ]
 
+import { TAMANO_PAGINA_TABLA } from "@/lib/tamanoPaginaTabla"
+
+export const TAMANO_PAGINA_CATALOGO = TAMANO_PAGINA_TABLA
+
 export function crearDietasCatalogoIniciales(): DietaCatalogo[] {
-  const dietas = DIETAS_BASE.map((d, i) => crearDieta(i + 1, d))
-
-  const extras: DietaCatalogo[] = Array.from({ length: 12 }, (_, i) => {
-    const idx = i + 13
-    return crearDieta(idx, {
-      nombre: `Dieta especial ${idx - 12}`,
-      descripcion: `Variante clínica ${idx - 12} para casos específicos.`,
-      tarifaVigente: 40_000 + idx * 1_000,
-      estado: i % 5 === 0 ? "vencida" : "vigente",
-      activa: i % 5 !== 0,
-      fechaFin: i % 5 === 0 ? "31 Dic 2023" : "31 Dic 2024",
-    })
-  })
-
-  return [...dietas, ...extras]
+  const todas = [...DIETAS_BASE, ...DIETAS_EXTRA]
+  return todas.map((item, idx) =>
+    crearDieta(idx + 1, {
+      ...item,
+      tarifaVigente: item.tarifaVigente ?? 40_000 + idx * 1_000,
+    }),
+  )
 }
-
-export const TAMANO_PAGINA_CATALOGO = 10

@@ -6,6 +6,14 @@ import { Card, CardContent } from "@/components/ui/card"
 import {
   formatearMonedaTarifaGrande,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import {
+  agruparHistoricoPorVigencia,
+  labelComidaTarifa,
+} from "@/modules/dietas-cocina/dietas-tarifas/lib/tarifasPorComida"
+import {
+  estadoDietaCatalogoConfig,
+  estadoBadgeTokens,
+} from "@/modules/dietas-cocina/lib/estadosEstilos"
 import { cn } from "@/lib/utils"
 
 interface HistoricoTarifasTimelineProps {
@@ -15,9 +23,9 @@ interface HistoricoTarifasTimelineProps {
 export function HistoricoTarifasTimeline({
   tarifas,
 }: HistoricoTarifasTimelineProps) {
-  const ordenadas = [...tarifas].sort((a, b) => b.anio - a.anio)
+  const grupos = agruparHistoricoPorVigencia(tarifas)
 
-  if (ordenadas.length === 0) {
+  if (grupos.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         No hay tarifas registradas para esta dieta.
@@ -27,19 +35,19 @@ export function HistoricoTarifasTimeline({
 
   return (
     <ul className="space-y-0">
-      {ordenadas.map((tarifa, index) => {
-        const esUltima = index === ordenadas.length - 1
-        const vigente = tarifa.vigente
+      {grupos.map((grupo, index) => {
+        const esUltima = index === grupos.length - 1
+        const vigente = grupo.vigente
 
         return (
-          <li key={tarifa.id} className="flex gap-3">
+          <li key={grupo.clave} className="flex gap-3">
             <div className="flex flex-col items-center">
               <span
                 className={cn(
                   "flex size-8 shrink-0 items-center justify-center rounded-full border-2",
                   vigente
                     ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-muted text-muted-foreground",
+                    : cn("border-border bg-muted", estadoBadgeTokens.neutral),
                 )}
               >
                 {vigente ? (
@@ -62,29 +70,47 @@ export function HistoricoTarifasTimeline({
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-xs font-semibold uppercase text-muted-foreground">
-                    Año {tarifa.anio}
+                    Año {grupo.anio}
                   </span>
                   <Badge
                     variant="outline"
                     className={cn(
                       "text-[10px] font-bold uppercase",
                       vigente
-                        ? "border-primary/30 bg-primary/10 text-primary"
-                        : "text-muted-foreground",
+                        ? estadoDietaCatalogoConfig.vigente.className
+                        : estadoDietaCatalogoConfig.vencida.className,
                     )}
                   >
-                    {vigente ? "Vigente" : "Vencida"}
+                    {vigente ? estadoDietaCatalogoConfig.vigente.label : estadoDietaCatalogoConfig.vencida.label}
                   </Badge>
                 </div>
 
-                <p
-                  className={cn(
-                    "text-2xl font-bold tabular-nums",
-                    vigente ? "text-primary" : "text-muted-foreground",
-                  )}
-                >
-                  {formatearMonedaTarifaGrande(tarifa.monto)}
-                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {grupo.tarifas
+                    .sort((a, b) =>
+                      labelComidaTarifa(a.comida).localeCompare(
+                        labelComidaTarifa(b.comida),
+                      ),
+                    )
+                    .map((tarifa) => (
+                      <div
+                        key={tarifa.id}
+                        className="rounded-md border border-border/60 px-3 py-2"
+                      >
+                        <p className="text-xs font-semibold uppercase text-muted-foreground">
+                          {labelComidaTarifa(tarifa.comida)}
+                        </p>
+                        <p
+                          className={cn(
+                            "text-lg font-bold tabular-nums",
+                            vigente ? "text-primary" : "text-muted-foreground",
+                          )}
+                        >
+                          {formatearMonedaTarifaGrande(tarifa.monto)}
+                        </p>
+                      </div>
+                    ))}
+                </div>
 
                 <div className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
                   <div>
@@ -92,7 +118,7 @@ export function HistoricoTarifasTimeline({
                       Vigencia
                     </p>
                     <p>
-                      {tarifa.vigenciaDesde} - {tarifa.vigenciaHasta}
+                      {grupo.vigenciaDesde} - {grupo.vigenciaHasta}
                     </p>
                   </div>
                   <div>
@@ -101,7 +127,7 @@ export function HistoricoTarifasTimeline({
                     </p>
                     <p className="flex items-center gap-1">
                       <User className="size-3" />
-                      {tarifa.registradoPor}
+                      {grupo.registradoPor}
                     </p>
                   </div>
                 </div>
@@ -110,12 +136,12 @@ export function HistoricoTarifasTimeline({
                   <span className="font-semibold uppercase text-muted-foreground">
                     Motivo del cambio:{" "}
                   </span>
-                  {tarifa.motivoCambio}
+                  {grupo.motivoCambio}
                 </div>
 
                 <div className="flex flex-wrap justify-between gap-2 text-[10px] text-muted-foreground">
-                  <span>ID: {tarifa.id}</span>
-                  <span>Creado: {tarifa.creadoEn}</span>
+                  <span>{grupo.tarifas.length} tarifa(s) por comida</span>
+                  <span>Creado: {grupo.creadoEn}</span>
                 </div>
               </CardContent>
             </Card>

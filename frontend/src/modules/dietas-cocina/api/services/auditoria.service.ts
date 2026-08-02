@@ -16,6 +16,10 @@ import type { DetalleAuditoria, FilaAuditoria } from "@/modules/dietas-cocina/ty
 export interface FiltrosAuditoria {
   modulo?: string
   moduloUi?: string
+  accion?: string
+  accionUi?: string
+  actor?: string
+  actorUi?: string
   resultado?: string
   resultadoUi?: string
   desde?: string

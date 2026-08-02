@@ -3,6 +3,9 @@ import { CalendarDays, RefreshCw } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { CapturaTelefonicaFiltros } from "@/modules/encuestas/captura-telefonica/components/CapturaTelefonicaFiltros"
 import type { CapturaTelefonicaFiltrosState } from "@/modules/encuestas/captura-telefonica/components/CapturaTelefonicaFiltros"
 import { CapturaTelefonicaKpiGrid } from "@/modules/encuestas/captura-telefonica/components/CapturaTelefonicaKpiGrid"
@@ -63,8 +66,13 @@ export function CapturaTelefonicaPage() {
     })
   }, [filas, filtros])
 
+  const paginacion = usePaginacionTabla(filasFiltradas, {
+    resetKey: JSON.stringify(filtros),
+  })
+
   function limpiarFiltros() {
     setFiltros(FILTROS_INICIALES)
+    paginacion.setPaginaActual(1)
   }
 
   function abrirGestionLlamada(fila: FilaCapturaTelefonica) {
@@ -180,7 +188,20 @@ export function CapturaTelefonicaPage() {
         onLimpiar={limpiarFiltros}
       />
 
-      <CapturaTelefonicaTabla filas={filasFiltradas} onLlamar={abrirGestionLlamada} />
+      <Card className="gap-0 overflow-hidden py-0 shadow-none">
+        <CapturaTelefonicaTabla
+          filas={paginacion.filasPagina}
+          onLlamar={abrirGestionLlamada}
+        />
+        <TablaPaginacion
+          paginaDesde={paginacion.paginaDesde}
+          paginaHasta={paginacion.paginaHasta}
+          total={paginacion.total}
+          paginaActual={paginacion.paginaActual}
+          totalPaginas={paginacion.totalPaginas}
+          onCambiarPagina={paginacion.setPaginaActual}
+        />
+      </Card>
 
       <GestionLlamadaSheet
         open={sheetAbierto}

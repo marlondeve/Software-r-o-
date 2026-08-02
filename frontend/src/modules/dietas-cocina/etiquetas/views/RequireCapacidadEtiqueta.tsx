@@ -6,6 +6,7 @@ import {
   usePuedeCapacidadEtiquetas,
   useTieneVistaOperativaBandejas,
 } from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
+import { obtenerPrimeraRutaLogisticaPermitida } from "@/modules/dietas-cocina/lib/rutasLogistica"
 import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 
 interface RequireCapacidadEtiquetaProps {
@@ -34,19 +35,10 @@ export function RequireCapacidadEtiqueta({
       : false
 
   if (!permitido) {
-    return <Navigate to="/dietas-cocina/etiquetas" replace />
+    const destino =
+      obtenerPrimeraRutaLogisticaPermitida(rol) ?? "/dietas-cocina/inicio"
+    return <Navigate to={destino} replace />
   }
 
   return children
-}
-
-/** @deprecated Usar RequireCapacidadEtiqueta con capacidad u operativa. */
-export function RequireEnfermeraEtiquetas({
-  children,
-}: {
-  children: ReactNode
-}) {
-  return (
-    <RequireCapacidadEtiqueta operativa>{children}</RequireCapacidadEtiqueta>
-  )
 }

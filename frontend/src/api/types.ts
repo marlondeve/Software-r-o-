@@ -66,6 +66,7 @@ export interface AtencionHospitalaria {
   nombreCompleto: string
   pabellon: string
   cama: string
+  servicio?: string
 }
 
 export interface HealthResponse {

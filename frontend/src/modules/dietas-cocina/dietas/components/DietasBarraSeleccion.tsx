@@ -37,15 +37,17 @@ export function DietasBarraSeleccion({
             <Download data-icon="inline-start" />
             Exportar
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onAsignarConsistencia}
-          >
-            <UtensilsCrossed data-icon="inline-start" />
-            Asignar consistencia
-          </Button>
+          {onAsignarConsistencia && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onAsignarConsistencia}
+            >
+              <UtensilsCrossed data-icon="inline-start" />
+              Asignar consistencia
+            </Button>
+          )}
           <Button type="button" size="sm" onClick={onConfirmarSeleccionados}>
             <ClipboardCheck data-icon="inline-start" />
             Confirmar seleccionados

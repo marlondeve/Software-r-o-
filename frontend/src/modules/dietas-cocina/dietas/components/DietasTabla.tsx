@@ -5,6 +5,7 @@ import { Eye, MoreHorizontal, PencilLine } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
@@ -23,6 +24,7 @@ import {
   formatearIdentificacionPaciente,
   formatearUbicacionPaciente,
 } from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
+import { etiquetaConsistenciaEnTabla } from "@/modules/dietas-cocina/lib/comidaOperativa"
 import {
   esSolicitudEditable,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
@@ -33,6 +35,12 @@ interface DietasTablaProps {
   comidaActiva: TiempoComida
   rolActivo?: string | null
   resolverEstadoVisible?: (fila: FilaDieta) => EstadoDieta
+  paginaActual: number
+  totalPaginas: number
+  paginaDesde: number
+  paginaHasta: number
+  totalRegistros: number
+  onCambiarPagina: (pagina: number) => void
   onToggleFila: (id: string, checked: boolean) => void
   onToggleTodas: (checked: boolean) => void
   onAbrirSolicitud: (fila: FilaDieta) => void
@@ -47,6 +55,12 @@ export function DietasTabla({
   comidaActiva,
   rolActivo,
   resolverEstadoVisible,
+  paginaActual,
+  totalPaginas,
+  paginaDesde,
+  paginaHasta,
+  totalRegistros,
+  onCambiarPagina,
   onToggleFila,
   onToggleTodas,
   onAbrirSolicitud,
@@ -129,7 +143,10 @@ export function DietasTabla({
         header: "Consistencia",
         cell: ({ row }) => (
           <span className="text-foreground">
-            {row.original.consistencia ?? "Sin asignar"}
+            {etiquetaConsistenciaEnTabla(
+              row.original.comida,
+              row.original.consistencia,
+            )}
           </span>
         ),
       },
@@ -265,6 +282,14 @@ export function DietasTabla({
           getRowClassName={(fila) =>
             cnFilaTabla(seleccionados.has(fila.id))
           }
+        />
+        <TablaPaginacion
+          paginaDesde={paginaDesde}
+          paginaHasta={paginaHasta}
+          total={totalRegistros}
+          paginaActual={paginaActual}
+          totalPaginas={totalPaginas}
+          onCambiarPagina={onCambiarPagina}
         />
       </CardContent>
     </Card>

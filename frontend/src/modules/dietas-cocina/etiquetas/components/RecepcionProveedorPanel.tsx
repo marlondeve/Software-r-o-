@@ -11,6 +11,7 @@ import {
   claseBadgeLogistica,
   etiquetaLogisticaLabel,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
+import { RUTAS_LOGISTICA } from "@/modules/dietas-cocina/lib/rutasLogistica"
 import { cn } from "@/lib/utils"
 
 interface RecepcionProveedorPanelProps {
@@ -47,7 +48,7 @@ export function RecepcionProveedorPanel({
             </p>
           </div>
           <Button variant="outline" size="sm" className="shrink-0 gap-2" asChild>
-            <Link to="/dietas-cocina/etiquetas/pre-entrega">
+            <Link to={RUTAS_LOGISTICA.recepcionEscaneo}>
               <QrCode className="size-4" />
               Escanear bandeja recibida
             </Link>

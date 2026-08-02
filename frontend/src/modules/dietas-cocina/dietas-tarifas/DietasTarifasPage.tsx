@@ -4,6 +4,7 @@ import { Plus } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { TableSkeleton } from "@/components/shared/skeletons"
 import { ActivarDietaDialog } from "@/modules/dietas-cocina/dietas-tarifas/components/ActivarDietaDialog"
 import { CrearDietaSheet } from "@/modules/dietas-cocina/dietas-tarifas/components/CrearDietaSheet"
 import { DesactivarDietaDialog } from "@/modules/dietas-cocina/dietas-tarifas/components/DesactivarDietaDialog"
@@ -13,8 +14,10 @@ import { HistoricoTarifasSheet } from "@/modules/dietas-cocina/dietas-tarifas/co
 import { NuevaTarifaSheet } from "@/modules/dietas-cocina/dietas-tarifas/components/NuevaTarifaSheet"
 import { crearDietasCatalogoIniciales, TAMANO_PAGINA_CATALOGO } from "@/modules/dietas-cocina/dietas-tarifas/datos/mockDietasTarifas"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
+import { RutaDietasSectionGuard } from "@/modules/dietas-cocina/components/RutaDietasSectionGuard"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { mapCatalogoList, mapCatalogoDtoToDieta } from "@/modules/dietas-cocina/api/mappers/catalogo.mapper"
+import { mapearComidaApi } from "@/modules/dietas-cocina/api/utils"
 import {
   actualizarDietaCatalogo,
   crearDietaCatalogo,
@@ -48,8 +51,10 @@ export function DietasTarifasPage() {
     try {
       const catalogo = await obtenerCatalogoDietas()
       setDietas(mapCatalogoList(catalogo))
-    } catch {
-      demoToast("No se pudo cargar el catálogo de dietas.", "error")
+    } catch (error) {
+      const detalle =
+        error instanceof Error && error.message ? `: ${error.message}` : ""
+      demoToast(`No se pudo cargar el catálogo de dietas${detalle}`, "error")
     } finally {
       setCargandoCatalogo(false)
     }
@@ -130,6 +135,7 @@ export function DietasTarifasPage() {
   }
 
   return (
+    <RutaDietasSectionGuard segmento="dietas-tarifas" title="Dietas y tarifas">
     <div className="space-y-5 pb-6">
       <DashboardPageHeader
         title="Dietas y tarifas"
@@ -146,24 +152,22 @@ export function DietasTarifasPage() {
         }
       />
 
-      <DietasTarifasTabla
-        dietas={dietasPagina}
-        paginaActual={paginaActual}
-        totalPaginas={totalPaginas}
-        totalRegistros={totalRegistros}
-        tamanoPagina={TAMANO_PAGINA_CATALOGO}
-        onCambiarPagina={setPaginaActual}
-        onEditar={setEditarDieta}
-        onHistorico={setHistoricoDieta}
-        onNuevaTarifa={abrirNuevaTarifa}
-        onDesactivar={setDesactivarDieta}
-        onActivar={setActivarDieta}
-      />
-
-      {apiActiva && cargandoCatalogo && dietas.length === 0 && (
-        <p className="text-center text-sm text-muted-foreground">
-          Cargando catálogo de dietas…
-        </p>
+      {apiActiva && cargandoCatalogo && dietas.length === 0 ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : (
+        <DietasTarifasTabla
+          dietas={dietasPagina}
+          paginaActual={paginaActual}
+          totalPaginas={totalPaginas}
+          totalRegistros={totalRegistros}
+          tamanoPagina={TAMANO_PAGINA_CATALOGO}
+          onCambiarPagina={setPaginaActual}
+          onEditar={setEditarDieta}
+          onHistorico={setHistoricoDieta}
+          onNuevaTarifa={abrirNuevaTarifa}
+          onDesactivar={setDesactivarDieta}
+          onActivar={setActivarDieta}
+        />
       )}
 
       <CrearDietaSheet
@@ -187,7 +191,12 @@ export function DietasTarifasPage() {
               nombre: dieta.nombre,
               descripcion: dieta.descripcion,
               activa: dieta.activa,
-              tarifaInicial: dieta.tarifaVigente,
+              tarifasIniciales: dieta.historicoTarifas
+                .filter((tarifa) => tarifa.vigente)
+                .map((tarifa) => ({
+                  tiempoComida: mapearComidaApi(tarifa.tiempoComida),
+                  monto: tarifa.monto,
+                })),
               ...(fechaInicio
                 ? { fechaInicio, vigenciaDesde: fechaInicio }
                 : {}),
@@ -233,7 +242,7 @@ export function DietasTarifasPage() {
           }
           try {
             await registrarTarifaDieta(dieta.id, {
-              monto: tarifa.monto,
+              tarifas: tarifa.tarifas,
               vigenciaDesde: tarifa.vigenciaDesde,
               vigenciaHasta: tarifa.vigenciaHasta,
               motivoCambio: tarifa.motivoCambio,
@@ -299,5 +308,6 @@ export function DietasTarifasPage() {
         }}
       />
     </div>
+    </RutaDietasSectionGuard>
   )
 }

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { TableSkeleton } from "@/components/shared/skeletons"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
+import { RutaDietasSectionGuard } from "@/modules/dietas-cocina/components/RutaDietasSectionGuard"
 import { ConciliacionDetalleSheet } from "@/modules/dietas-cocina/conciliacion/components/ConciliacionDetalleSheet"
 import { ConciliacionFiltros } from "@/modules/dietas-cocina/conciliacion/components/ConciliacionFiltros"
 import { ConciliacionKpiGrid } from "@/modules/dietas-cocina/conciliacion/components/ConciliacionKpiGrid"
@@ -38,6 +41,20 @@ export function ConciliacionPage() {
     cargando,
     error,
   } = apiActiva ? apiData : mockData
+
+  const paginacionMock = usePaginacionTabla(filasFiltradas, {
+    resetKey: `${busqueda}-${numeroFactura}-${periodo}-${proveedor}`,
+  })
+
+  const filasTabla = apiActiva ? filasFiltradas : paginacionMock.filasPagina
+  const paginaActual = apiActiva ? apiData.paginaActual : paginacionMock.paginaActual
+  const totalPaginas = apiActiva ? apiData.totalPaginas : paginacionMock.totalPaginas
+  const paginaDesde = apiActiva ? apiData.paginaDesde : paginacionMock.paginaDesde
+  const paginaHasta = apiActiva ? apiData.paginaHasta : paginacionMock.paginaHasta
+  const totalRegistros = apiActiva ? apiData.totalFilas : paginacionMock.total
+  const onCambiarPagina = apiActiva
+    ? apiData.setPaginaActual
+    : paginacionMock.setPaginaActual
 
   const [sheetAbierto, setSheetAbierto] = useState(false)
   const [filaSeleccionada, setFilaSeleccionada] = useState<string | null>(null)
@@ -78,6 +95,7 @@ export function ConciliacionPage() {
   }
 
   return (
+    <RutaDietasSectionGuard segmento="conciliacion" title="Conciliación">
     <div className="space-y-5">
       <DashboardPageHeader title="Conciliación" />
 
@@ -99,17 +117,21 @@ export function ConciliacionPage() {
 
       <ConciliacionKpiGrid kpis={kpis} />
 
-      <ConciliacionTabla
-        filas={filasFiltradas}
-        busqueda={busqueda}
-        onBusquedaChange={setBusqueda}
-        onVerDetalle={abrirDetalle}
-      />
-
-      {apiActiva && cargando && filasFiltradas.length === 0 && (
-        <p className="text-center text-sm text-muted-foreground">
-          Cargando conciliación…
-        </p>
+      {apiActiva && cargando && filasFiltradas.length === 0 ? (
+        <TableSkeleton rows={8} columns={5} />
+      ) : (
+        <ConciliacionTabla
+          filas={filasTabla}
+          busqueda={busqueda}
+          onBusquedaChange={setBusqueda}
+          onVerDetalle={abrirDetalle}
+          paginaActual={paginaActual}
+          totalPaginas={totalPaginas}
+          paginaDesde={paginaDesde}
+          paginaHasta={paginaHasta}
+          totalRegistros={totalRegistros}
+          onCambiarPagina={onCambiarPagina}
+        />
       )}
 
       <ConciliacionDetalleSheet
@@ -127,5 +149,6 @@ export function ConciliacionPage() {
         }}
       />
     </div>
+    </RutaDietasSectionGuard>
   )
 }

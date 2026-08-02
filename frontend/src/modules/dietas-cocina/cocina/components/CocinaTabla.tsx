@@ -5,6 +5,7 @@ import { AlertTriangle, ShieldAlert, Tag } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import {
@@ -23,6 +24,12 @@ import { cn } from "@/lib/utils"
 interface CocinaTablaProps {
   ordenes: OrdenCocina[]
   seleccionados: Set<string>
+  paginaActual: number
+  totalPaginas: number
+  paginaDesde: number
+  paginaHasta: number
+  totalRegistros: number
+  onCambiarPagina: (pagina: number) => void
   onToggleFila: (id: string, checked: boolean) => void
   onToggleTodas: (checked: boolean) => void
   onAbrirDetalle: (orden: OrdenCocina) => void
@@ -54,6 +61,12 @@ function BadgeEstadoCocina({
 export function CocinaTabla({
   ordenes,
   seleccionados,
+  paginaActual,
+  totalPaginas,
+  paginaDesde,
+  paginaHasta,
+  totalRegistros,
+  onCambiarPagina,
   onToggleFila,
   onToggleTodas,
   onAbrirDetalle,
@@ -296,6 +309,14 @@ export function CocinaTabla({
           className="border-0"
           emptyMessage="No hay órdenes para los filtros seleccionados."
           onRowClick={(orden) => onAbrirDetalle(orden)}
+        />
+        <TablaPaginacion
+          paginaDesde={paginaDesde}
+          paginaHasta={paginaHasta}
+          total={totalRegistros}
+          paginaActual={paginaActual}
+          totalPaginas={totalPaginas}
+          onCambiarPagina={onCambiarPagina}
         />
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs text-muted-foreground">
           <span className="font-medium text-foreground">Leyenda etiquetas:</span>

@@ -89,6 +89,7 @@ export function useEscannerQr({
 
   useEffect(() => {
     if (!activo) {
+      iniciandoRef.current = false
       void detener()
       return
     }
@@ -96,7 +97,8 @@ export function useEscannerQr({
     let cancelado = false
 
     async function iniciarCamara() {
-      if (iniciandoRef.current) return
+      if (cancelado) return
+
       iniciandoRef.current = true
       setIniciando(true)
       setErrorCamara(null)
@@ -104,16 +106,21 @@ export function useEscannerQr({
 
       const entorno = diagnosticarEntornoCamara()
       if (!entorno.puedeUsarCamara) {
-        setErrorCamara(entorno)
+        if (!cancelado) setErrorCamara(entorno)
         iniciandoRef.current = false
-        setIniciando(false)
+        if (!cancelado) setIniciando(false)
         return
       }
 
       await detener()
       if (cancelado) {
         iniciandoRef.current = false
-        setIniciando(false)
+        return
+      }
+
+      if (!document.getElementById(contenedorId)) {
+        iniciandoRef.current = false
+        if (!cancelado) setIniciando(false)
         return
       }
 
@@ -122,6 +129,8 @@ export function useEscannerQr({
 
       try {
         const dispositivo = await resolverDispositivoCamara(camaraTrasera)
+        if (cancelado) return
+
         await scanner.start(
           dispositivo,
           { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1 },
@@ -158,10 +167,16 @@ export function useEscannerQr({
       }
     }
 
-    void iniciarCamara()
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void iniciarCamara()
+      })
+    })
 
     return () => {
       cancelado = true
+      iniciandoRef.current = false
+      cancelAnimationFrame(frame)
       void detener()
     }
   }, [activo, camaraTrasera, contenedorId, detener, intento])

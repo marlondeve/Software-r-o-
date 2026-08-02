@@ -85,6 +85,7 @@ export interface CatalogoDietaDto {
   descripcion?: string
   activa?: boolean
   tarifaActual?: number
+  tarifasVigentes?: Record<string, number>
   fechaInicio?: string
   fechaFin?: string | null
   usuario?: string
@@ -96,6 +97,7 @@ export interface CatalogoDietaDto {
 export interface TarifaHistoricoDto {
   id?: string
   anio?: number
+  tiempoComida?: string
   monto?: number
   vigenciaDesde?: string
   vigenciaHasta?: string
@@ -180,6 +182,7 @@ export interface CrearDietaCatalogoRequestDto {
   fechaFin?: string | null
   activa?: boolean
   tarifaInicial?: number
+  tarifasIniciales?: Array<{ tiempoComida: string; monto: number }>
   vigenciaDesde?: string
   vigenciaHasta?: string
   motivoTarifa?: string
@@ -193,7 +196,8 @@ export interface ActualizarDietaCatalogoRequestDto {
 }
 
 export interface NuevaTarifaRequestDto {
-  monto: number
+  monto?: number
+  tarifas?: Array<{ tiempoComida: string; monto: number }>
   vigenciaDesde: string
   vigenciaHasta: string
   motivoCambio?: string

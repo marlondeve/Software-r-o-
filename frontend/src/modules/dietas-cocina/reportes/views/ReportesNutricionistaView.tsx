@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useMemo, useState } from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageLoadingGate, ReportesPageSkeleton } from "@/components/shared/skeletons"
+import { BannerModuloSinConexion } from "@/modules/dietas-cocina/components/BannerModuloSinConexion"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart"
 import { HallazgosPanel } from "@/modules/dietas-cocina/reportes/components/HallazgosPanel"
@@ -18,48 +21,64 @@ import { construirReportesNutricionistaDesdeCiclo } from "@/modules/dietas-cocin
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
   mapReporteDto,
-  reporteViewVacio,
 } from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
 import { obtenerReporteNutricionista } from "@/modules/dietas-cocina/api/services/reportes.service"
 import { REPORTES_FILTROS_UI } from "@/modules/dietas-cocina/config/reportes-ui"
 import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
+import { listarServiciosDesdeFilas } from "@/modules/dietas-cocina/lib/servicioClinico"
+import { useReporteApi } from "@/modules/dietas-cocina/reportes/hooks/useReporteApi"
+import { useConectividadRed } from "@/hooks/useConectividadRed"
 
 export function ReportesNutricionistaView() {
   const base = mockReportesNutricionista
   const { ordenes, etiquetas } = useCicloBandejas()
+  const { filas } = useDietasOperativas()
   const apiActiva = usarApiDietasCocina()
+  const estaOnline = useConectividadRed()
   const [filtros, setFiltros] = useState(crearFiltrosReportesIniciales)
-  const [reporteApi, setReporteApi] = useState<ReturnType<typeof mapReporteDto> | null>(
-    null,
+  const serviciosDisponibles = useMemo(
+    () => (apiActiva ? listarServiciosDesdeFilas(filas) : undefined),
+    [apiActiva, filas],
   )
-  const [cargando, setCargando] = useState(false)
 
-  useEffect(() => {
-    if (!apiActiva) return
-    setCargando(true)
-    void obtenerReporteNutricionista({
+  const cargarReporte = useCallback(
+    () =>
+      obtenerReporteNutricionista({
+        desde: filtros.desde,
+        hasta: filtros.hasta,
+        servicio: filtros.servicio !== "todos" ? filtros.servicio : undefined,
+        horario: filtros.horario !== "todos" ? filtros.horario : undefined,
+      }),
+    [filtros],
+  )
+
+  const { reporteApi, cargando, desdeCache } = useReporteApi({
+    tipo: "clinico",
+    apiActiva,
+    filtros: {
       desde: filtros.desde,
       hasta: filtros.hasta,
       servicio: filtros.servicio !== "todos" ? filtros.servicio : undefined,
       horario: filtros.horario !== "todos" ? filtros.horario : undefined,
-    })
-      .then((resp) => setReporteApi(mapReporteDto(resp)))
-      .catch(() => setReporteApi(reporteViewVacio()))
-      .finally(() => setCargando(false))
-  }, [apiActiva, filtros])
+    },
+    cargar: cargarReporte,
+    mapear: (resp) => mapReporteDto(resp as Parameters<typeof mapReporteDto>[0]),
+  })
 
   const dataCiclo = useMemo(
     () =>
       construirReportesNutricionistaDesdeCiclo(ordenes, etiquetas, filtros, {
         soloDatosReales: apiActiva,
+        filas,
       }),
-    [ordenes, etiquetas, filtros, apiActiva],
+    [ordenes, etiquetas, filtros, apiActiva, filas],
   )
 
   const data = useMemo(() => {
     if (!apiActiva) return dataCiclo
-    return reporteApi ?? reporteViewVacio()
-  }, [apiActiva, reporteApi, dataCiclo])
+    if (!estaOnline && !reporteApi) return dataCiclo
+    return reporteApi ?? dataCiclo
+  }, [apiActiva, reporteApi, dataCiclo, estaOnline])
 
   const ultimaActualizacion = useMemo(
     () =>
@@ -74,14 +93,20 @@ export function ReportesNutricionistaView() {
   return (
     <div className="space-y-5">
       <DashboardPageHeader title="Reportes y analítica" />
+      <BannerModuloSinConexion datosEnCache={desdeCache || !estaOnline} />
 
       <ReportesFiltros
         {...(apiActiva ? REPORTES_FILTROS_UI : base.filtros)}
         filtros={filtros}
+        serviciosDisponibles={serviciosDisponibles}
         ultimaActualizacion={ultimaActualizacion}
         onFiltrosChange={setFiltros}
       />
 
+      <PageLoadingGate
+        loading={apiActiva && estaOnline && cargando && !reporteApi}
+        skeleton={<ReportesPageSkeleton />}
+      >
       <ReportesKpiGrid kpis={data.kpis} />
 
       <div className="grid gap-4 xl:grid-cols-3">
@@ -157,6 +182,7 @@ export function ReportesNutricionistaView() {
 
         <HallazgosPanel hallazgos={data.hallazgos} />
       </div>
+      </PageLoadingGate>
     </div>
   )
 }

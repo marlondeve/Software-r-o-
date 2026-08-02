@@ -1,10 +1,12 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useMemo, useState, useEffect } from "react"
-import { FileText, Loader2, RefreshCw, Tag } from "lucide-react"
+import { FileText, RefreshCw, Tag } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { TablePageSkeleton } from "@/components/shared/skeletons"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { CocinaBarraDespacho } from "@/modules/dietas-cocina/cocina/components/CocinaBarraDespacho"
 import { CocinaDetalleSheet } from "@/modules/dietas-cocina/cocina/components/CocinaDetalleSheet"
 import { CocinaFiltrosBar } from "@/modules/dietas-cocina/cocina/components/CocinaFiltrosBar"
@@ -24,7 +26,9 @@ import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOpera
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
+import { RUTAS_LOGISTICA } from "@/modules/dietas-cocina/lib/rutasLogistica"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
+import { BannerModuloSinConexion } from "@/modules/dietas-cocina/components/BannerModuloSinConexion"
 import {
   demoToast,
   descargarArchivoDemo,
@@ -94,6 +98,10 @@ export function CocinaProveedorView() {
         ordenCoincideFiltros(orden, filtros, getEtiquetaByOrdenId),
     )
   }, [ordenes, comidaActiva, filtros, getEtiquetaByOrdenId])
+
+  const paginacionCocina = usePaginacionTabla(ordenesFiltradas, {
+    resetKey: `${comidaActiva}-${JSON.stringify(filtros)}`,
+  })
 
   const kpis = useMemo(
     () => calcularKpisCocina(ordenes, comidaActiva, getEtiquetaByOrdenId),
@@ -220,7 +228,7 @@ export function CocinaProveedorView() {
           demoToast("No se generaron etiquetas para las bandejas seleccionadas.", "error")
           return
         }
-        navigate("/dietas-cocina/etiquetas", {
+        navigate(RUTAS_LOGISTICA.impresion, {
           state: { preseleccion: etiquetaIds },
         })
       })
@@ -259,7 +267,7 @@ export function CocinaProveedorView() {
     }
 
     if (etiquetaId) {
-      navigate("/dietas-cocina/etiquetas", {
+      navigate(RUTAS_LOGISTICA.impresion, {
         state: { preseleccion: [etiquetaId] },
       })
       return
@@ -271,7 +279,7 @@ export function CocinaProveedorView() {
           demoToast("No se pudo generar la etiqueta para esta bandeja.", "error")
           return
         }
-        navigate("/dietas-cocina/etiquetas", {
+        navigate(RUTAS_LOGISTICA.impresion, {
           state: { preseleccion: ids },
         })
       })
@@ -292,11 +300,10 @@ export function CocinaProveedorView() {
         subtitle={`${formatearFechaOperativa(ultimaActualizacion)} · Actualizado ${formatearHoraActualizacion(ultimaActualizacion)}`}
       />
 
+      {apiActiva && <BannerModuloSinConexion datosEnCache />}
+
       {apiActiva && !hidrato ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-dashed py-16 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Cargando bandejas desde el API…
-        </div>
+        <TablePageSkeleton filterCount={3} rows={10} columns={6} />
       ) : (
         <>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -376,8 +383,14 @@ export function CocinaProveedorView() {
       />
 
       <CocinaTabla
-        ordenes={ordenesFiltradas}
+        ordenes={paginacionCocina.filasPagina}
         seleccionados={seleccionados}
+        paginaActual={paginacionCocina.paginaActual}
+        totalPaginas={paginacionCocina.totalPaginas}
+        paginaDesde={paginacionCocina.paginaDesde}
+        paginaHasta={paginacionCocina.paginaHasta}
+        totalRegistros={paginacionCocina.total}
+        onCambiarPagina={paginacionCocina.setPaginaActual}
         onToggleFila={toggleOrden}
         onToggleTodas={toggleTodas}
         onAbrirDetalle={abrirDetalle}

@@ -8,6 +8,7 @@ import { FiltrosAvanzados } from "@/modules/encuestas/encuestas-realizadas/compo
 import type { FiltrosAvanzadosState } from "@/modules/encuestas/encuestas-realizadas/components/FiltrosAvanzados"
 import { mockEncuestasRealizadas } from "@/modules/encuestas/encuestas-realizadas/datos/mockEncuestasRealizadas"
 import type { FilaEncuestaRealizada } from "@/modules/encuestas/types/completed-surveys"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 
 const FILTROS_INICIALES: FiltrosAvanzadosState = {
   consecutivo: "",
@@ -21,8 +22,6 @@ const FILTROS_INICIALES: FiltrosAvanzadosState = {
   soloRespuestaNegativa: false,
 }
 
-const REGISTROS_POR_PAGINA = 3
-
 export function EncuestasRealizadasPage() {
   const data = mockEncuestasRealizadas
   const [filas, setFilas] = useState<FilaEncuestaRealizada[]>(data.filas)
@@ -31,7 +30,6 @@ export function EncuestasRealizadasPage() {
   )
   const [canal, setCanal] = useState("todos")
   const [filtros, setFiltros] = useState(FILTROS_INICIALES)
-  const [paginaActual, setPaginaActual] = useState(1)
   const [filaParaAnular, setFilaParaAnular] = useState<FilaEncuestaRealizada | null>(
     null,
   )
@@ -70,11 +68,13 @@ export function EncuestasRealizadasPage() {
     })
   }, [filas, canal, filtros])
 
-  const totalPaginas = Math.max(1, Math.ceil(data.totalRegistros / REGISTROS_POR_PAGINA))
+  const paginacion = usePaginacionTabla(filasFiltradas, {
+    resetKey: `${canal}-${JSON.stringify(filtros)}`,
+  })
 
   function limpiarFiltros() {
     setFiltros(FILTROS_INICIALES)
-    setPaginaActual(1)
+    paginacion.setPaginaActual(1)
   }
 
   function ver(fila: FilaEncuestaRealizada) {
@@ -120,13 +120,13 @@ export function EncuestasRealizadasPage() {
       />
 
       <EncuestasRealizadasTabla
-        filas={filasFiltradas}
-        desde={filasFiltradas.length === 0 ? 0 : 1}
-        hasta={filasFiltradas.length}
-        totalRegistros={data.totalRegistros}
-        paginaActual={paginaActual}
-        totalPaginas={totalPaginas}
-        onCambiarPagina={setPaginaActual}
+        filas={paginacion.filasPagina}
+        desde={paginacion.paginaDesde}
+        hasta={paginacion.paginaHasta}
+        totalRegistros={paginacion.total}
+        paginaActual={paginacion.paginaActual}
+        totalPaginas={paginacion.totalPaginas}
+        onCambiarPagina={paginacion.setPaginaActual}
         onVer={ver}
         onDescartar={descartar}
       />

@@ -1,4 +1,4 @@
-import type { DetalleAuditoria } from "@/modules/dietas-cocina/types/audit"
+import type { CambioLegible, DetalleAuditoria } from "@/modules/dietas-cocina/types/audit"
 import type { ComponentType, ReactNode } from "react"
 import {
   AlertTriangle,
@@ -24,6 +24,7 @@ import {
   avatarColorPorIniciales,
   impactoNivelColor,
 } from "@/modules/dietas-cocina/auditoria/lib/auditoriaEstilos"
+import { estadoBadgeTokens } from "@/modules/dietas-cocina/lib/estadosEstilos"
 import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { cn } from "@/lib/utils"
 
@@ -59,6 +60,72 @@ function SeccionTitulo({ children }: { children: ReactNode }) {
   )
 }
 
+function CambioLegibleItem({ cambio }: { cambio: CambioLegible }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+      <p className="mb-1 text-xs font-medium text-muted-foreground">
+        {cambio.campo}
+      </p>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {cambio.anterior && (
+          <span className="text-muted-foreground line-through">{cambio.anterior}</span>
+        )}
+        {cambio.anterior && cambio.nuevo && (
+          <span className="text-muted-foreground">→</span>
+        )}
+        {cambio.nuevo && (
+          <span className="font-semibold text-primary">{cambio.nuevo}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DetalleTecnicoCollapsible({
+  jsonTecnico,
+  valorAnterior,
+  valorNuevo,
+}: {
+  jsonTecnico?: { antes?: string; despues?: string }
+  valorAnterior?: string
+  valorNuevo?: string
+}) {
+  const antes = jsonTecnico?.antes ?? valorAnterior
+  const despues = jsonTecnico?.despues ?? valorNuevo
+  if (!antes && !despues) return null
+
+  return (
+    <details className="group rounded-lg border border-border bg-muted/10">
+      <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-medium text-muted-foreground marker:content-none [&::-webkit-details-marker]:hidden">
+        <span className="group-open:hidden">Ver detalle técnico</span>
+        <span className="hidden group-open:inline">Ocultar detalle técnico</span>
+      </summary>
+      <div className="space-y-2 border-t border-border px-3 py-3">
+        {antes && (
+          <div>
+            <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              Datos anteriores (JSON)
+            </p>
+            <pre className="overflow-x-auto rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+              {antes}
+            </pre>
+          </div>
+        )}
+        {despues && (
+          <div>
+            <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+              Datos nuevos (JSON)
+            </p>
+            <pre className="overflow-x-auto rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+              {despues}
+            </pre>
+          </div>
+        )}
+      </div>
+    </details>
+  )
+}
+
 export function AuditoriaDetalleSheet({
   open,
   onOpenChange,
@@ -66,7 +133,12 @@ export function AuditoriaDetalleSheet({
 }: AuditoriaDetalleSheetProps) {
   if (!detalle) return null
 
-  const muestraForense = Boolean(detalle.valorAnterior || detalle.valorNuevo)
+  const cambiosLegibles = detalle.cambiosLegibles ?? []
+  const muestraCambios =
+    cambiosLegibles.length > 0 ||
+    Boolean(detalle.resumenCambios) ||
+    Boolean(detalle.valorAnterior || detalle.valorNuevo)
+
   const metadatosVisibles =
     (detalle.metadatos.ip && detalle.metadatos.ip !== "—") ||
     (detalle.metadatos.dispositivo && detalle.metadatos.dispositivo !== "—") ||
@@ -84,7 +156,7 @@ export function AuditoriaDetalleSheet({
           </p>
           <SheetTitle className="text-lg">{detalle.codigoAuditoria}</SheetTitle>
           <SheetDescription className="sr-only">
-            Detalle forense del registro {detalle.codigoAuditoria}
+            Detalle del registro {detalle.codigoAuditoria}
           </SheetDescription>
         </SheetHeader>
 
@@ -122,7 +194,10 @@ export function AuditoriaDetalleSheet({
                 {detalle.entidad.estado && (
                   <Badge
                     variant="outline"
-                    className="rounded-full border-primary/20 bg-primary/10 text-[10px] font-semibold text-primary uppercase"
+                    className={cn(
+                      "rounded-full text-[10px] font-semibold uppercase",
+                      estadoBadgeTokens.neutral,
+                    )}
                   >
                     {detalle.entidad.estado}
                   </Badge>
@@ -142,39 +217,58 @@ export function AuditoriaDetalleSheet({
               </section>
             )}
 
-            {muestraForense && (
-              <section className="space-y-2">
-                <SeccionTitulo>Análisis forense del cambio</SeccionTitulo>
-                <p className="text-xs text-muted-foreground">
-                  {detalle.parametro ? (
-                    <>
-                      Parámetro:{" "}
-                      <span className="font-medium text-foreground">
-                        {detalle.parametro}
-                      </span>
-                    </>
-                  ) : (
-                    "Cambios registrados en la operación"
+            {muestraCambios && (
+              <section className="space-y-3">
+                <SeccionTitulo>Qué cambió</SeccionTitulo>
+                {detalle.parametro && (
+                  <p className="text-xs text-muted-foreground">
+                    Registro:{" "}
+                    <span className="font-medium text-foreground">
+                      {detalle.parametro}
+                    </span>
+                  </p>
+                )}
+                {detalle.resumenCambios && cambiosLegibles.length === 0 && (
+                  <p className="text-sm leading-relaxed text-foreground">
+                    {detalle.resumenCambios}
+                  </p>
+                )}
+                {cambiosLegibles.length > 0 && (
+                  <div className="space-y-2">
+                    {cambiosLegibles.map((cambio) => (
+                      <CambioLegibleItem
+                        key={`${cambio.campo}-${cambio.anterior ?? ""}-${cambio.nuevo ?? ""}`}
+                        cambio={cambio}
+                      />
+                    ))}
+                  </div>
+                )}
+                {cambiosLegibles.length === 0 &&
+                  (detalle.valorAnterior || detalle.valorNuevo) && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="rounded-lg border border-border bg-muted/30 p-3">
+                        <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                          Valor anterior
+                        </p>
+                        <p className="text-sm text-muted-foreground line-through">
+                          {detalle.valorAnterior ?? "—"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-primary/25 bg-primary/5 p-3">
+                        <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                          Valor nuevo
+                        </p>
+                        <p className="text-sm font-semibold text-primary">
+                          {detalle.valorNuevo ?? "—"}
+                        </p>
+                      </div>
+                    </div>
                   )}
-                </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="min-w-0 rounded-lg border border-border bg-muted/30 p-3">
-                    <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                      Valor anterior
-                    </p>
-                    <p className="text-sm leading-snug text-muted-foreground line-through">
-                      {detalle.valorAnterior ?? "—"}
-                    </p>
-                  </div>
-                  <div className="min-w-0 rounded-lg border border-primary/25 bg-primary/5 p-3">
-                    <p className="mb-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                      Valor nuevo
-                    </p>
-                    <p className="text-sm leading-snug font-semibold text-primary">
-                      {detalle.valorNuevo ?? "—"}
-                    </p>
-                  </div>
-                </div>
+                <DetalleTecnicoCollapsible
+                  jsonTecnico={detalle.jsonTecnico}
+                  valorAnterior={detalle.valorAnterior}
+                  valorNuevo={detalle.valorNuevo}
+                />
               </section>
             )}
 

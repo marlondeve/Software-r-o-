@@ -2,6 +2,7 @@ import { Outlet } from "react-router-dom"
 
 import { CicloBandejasProvider } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { DietasOperativasProvider } from "@/modules/dietas-cocina/context/DietasOperativasContext"
+import { SincronizarBandejasPendientes } from "@/modules/dietas-cocina/context/SincronizarBandejasPendientes"
 import { SincronizarCocinaDesdeDietas } from "@/modules/dietas-cocina/context/SincronizarCocinaDesdeDietas"
 import { CargarPermisosRolesModulo } from "@/modules/dietas-cocina/components/CargarPermisosRolesModulo"
 
@@ -12,6 +13,7 @@ export function DietasCocinaLayout() {
       <DietasOperativasProvider>
         <CargarPermisosRolesModulo />
         <SincronizarCocinaDesdeDietas />
+        <SincronizarBandejasPendientes />
         <Outlet />
       </DietasOperativasProvider>
     </CicloBandejasProvider>

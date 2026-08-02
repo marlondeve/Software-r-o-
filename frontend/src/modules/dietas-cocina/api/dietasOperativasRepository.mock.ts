@@ -1,4 +1,4 @@
-import { mockDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { mockDietas, MOCK_CATALOGO_DIETAS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { obtenerTrazabilidad } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
 import type { DatosSolicitudDietaInput } from "@/modules/dietas-cocina/api/mappers"
 import type { DietasOperativasRepository } from "@/modules/dietas-cocina/types/repositories"
@@ -66,6 +66,6 @@ export const dietasOperativasRepositoryMock: DietasOperativasRepository = {
     return { ...fila, ...payload, estado: "confirmada" as const }
   },
   async obtenerCatalogo() {
-    return mockDietas.tiposDieta.map((nombre) => ({ id: nombre, nombre }))
+    return MOCK_CATALOGO_DIETAS.map((item) => ({ ...item }))
   },
 }

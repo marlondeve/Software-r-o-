@@ -35,6 +35,10 @@ export function fusionarFilaDietaCenso(
     id: remota.id || local.id,
     pacienteId: remota.pacienteId || local.pacienteId,
     comida: remota.comida || local.comida,
+    paciente: remota.paciente,
+    servicio: remota.servicio,
+    pabellon: remota.pabellon,
+    habitacion: remota.habitacion,
   }
 }
 

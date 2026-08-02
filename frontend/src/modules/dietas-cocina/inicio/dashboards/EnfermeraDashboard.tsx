@@ -9,6 +9,7 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { KpiGridSkeleton } from "@/components/shared/skeletons"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import {
   dashboardEnfermeraVacio,
@@ -93,16 +94,9 @@ export function EnfermeraDashboard() {
         }
       />
 
-      {dashboardApi.apiActiva && dashboardApi.cargando && (
-        <p className="text-sm text-muted-foreground">Cargando indicadores…</p>
-      )}
-
-      {dashboardApi.apiActiva && dashboardApi.error && (
-        <p className="text-sm text-amber-700 dark:text-amber-300">
-          No se pudieron cargar todos los indicadores del servidor. Mostrando datos operativos locales.
-        </p>
-      )}
-
+      {dashboardApi.apiActiva && dashboardApi.cargando && !dashboardApi.data ? (
+        <KpiGridSkeleton count={3} />
+      ) : (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCardSimple
           label={kpis[0].label}
@@ -121,6 +115,13 @@ export function EnfermeraDashboard() {
           className="border-l-[3px] border-l-destructive"
         />
       </div>
+      )}
+
+      {dashboardApi.apiActiva && dashboardApi.error && (
+        <p className="text-sm text-amber-700 dark:text-amber-300">
+          No se pudieron cargar todos los indicadores del servidor. Mostrando datos operativos locales.
+        </p>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <DashboardCard

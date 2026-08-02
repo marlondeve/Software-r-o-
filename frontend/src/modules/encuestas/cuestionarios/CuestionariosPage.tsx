@@ -3,6 +3,9 @@ import { Plus } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { CuestionariosFiltros } from "@/modules/encuestas/cuestionarios/components/CuestionariosFiltros"
 import type { CuestionariosFiltrosState } from "@/modules/encuestas/cuestionarios/components/CuestionariosFiltros"
 import { CuestionariosTabla } from "@/modules/encuestas/cuestionarios/components/CuestionariosTabla"
@@ -38,6 +41,10 @@ export function CuestionariosPage() {
       return true
     })
   }, [cuestionarios, filtros])
+
+  const paginacion = usePaginacionTabla(cuestionariosFiltrados, {
+    resetKey: JSON.stringify(filtros),
+  })
 
   function editar(cuestionario: Cuestionario) {
     navigate(`/encuestas/cuestionarios/${cuestionario.id}/editor`)
@@ -91,14 +98,24 @@ export function CuestionariosPage() {
 
       <CuestionariosFiltros filtros={filtros} onChange={setFiltros} />
 
-      <CuestionariosTabla
-        cuestionarios={cuestionariosFiltrados}
-        onEditar={editar}
-        onVerPreguntas={verPreguntas}
-        onDuplicar={duplicar}
-        onToggleEstado={toggleEstado}
-        onEliminar={eliminar}
-      />
+      <Card className="gap-0 overflow-hidden py-0 shadow-none">
+        <CuestionariosTabla
+          cuestionarios={paginacion.filasPagina}
+          onEditar={editar}
+          onVerPreguntas={verPreguntas}
+          onDuplicar={duplicar}
+          onToggleEstado={toggleEstado}
+          onEliminar={eliminar}
+        />
+        <TablaPaginacion
+          paginaDesde={paginacion.paginaDesde}
+          paginaHasta={paginacion.paginaHasta}
+          total={paginacion.total}
+          paginaActual={paginacion.paginaActual}
+          totalPaginas={paginacion.totalPaginas}
+          onCambiarPagina={paginacion.setPaginaActual}
+        />
+      </Card>
     </div>
   )
 }

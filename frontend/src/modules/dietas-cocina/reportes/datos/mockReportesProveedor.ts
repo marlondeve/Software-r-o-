@@ -1,3 +1,11 @@
+import {
+  chartPaletteComidas,
+  colorCategoricoPorIndice,
+  colorMotivoRechazoPorIndice,
+  colorMotivoRecogidaPorIndice,
+  segmentoResumenMockColores,
+} from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
+
 export const mockReportesProveedor = {
   filtros: {
     rangoFechas: "Seleccionar rango",
@@ -91,31 +99,35 @@ export const mockReportesProveedor = {
     total: "1.8k",
     totalNumerico: 1850,
     segmentos: [
-      { label: "Entregado (68%)", value: 1258, color: "#006671" },
-      { label: "En tránsito (22%)", value: 407, color: "#00818f" },
-      { label: "En preparación (10%)", value: 185, color: "#bbf244" },
+      { label: "Entregado (68%)", value: 1258, color: segmentoResumenMockColores.entregado },
+      { label: "En tránsito (22%)", value: 407, color: segmentoResumenMockColores.enTransito },
+      {
+        label: "En preparación (10%)",
+        value: 185,
+        color: segmentoResumenMockColores.enPreparacion,
+      },
     ],
   },
   tiposDieta: [
-    { label: "General", value: 38, color: "#006671" },
-    { label: "Baja en sodio", value: 24, color: "#00818f" },
-    { label: "Líquida estricta", value: 16, color: "#7c6ba8" },
-    { label: "Hipocalórica", value: 14, color: "#4a6700" },
-    { label: "Blanda", value: 8, color: "#94a3b8" },
+    { label: "General", value: 38, color: colorCategoricoPorIndice(0) },
+    { label: "Baja en sodio", value: 24, color: colorCategoricoPorIndice(1) },
+    { label: "Líquida estricta", value: 16, color: colorCategoricoPorIndice(2) },
+    { label: "Hipocalórica", value: 14, color: colorCategoricoPorIndice(3) },
+    { label: "Blanda", value: 8, color: colorCategoricoPorIndice(4) },
   ],
   motivosDevolucion: [
-    { label: "Temperatura", value: 40, color: "#ef4444" },
-    { label: "Demora entrega", value: 35, color: "#f97316" },
-    { label: "Error etiquetado", value: 25, color: "#eab308" },
+    { label: "Temperatura", value: 40, color: colorMotivoRechazoPorIndice(0) },
+    { label: "Demora entrega", value: 35, color: colorMotivoRechazoPorIndice(1) },
+    { label: "Error etiquetado", value: 25, color: colorMotivoRechazoPorIndice(2) },
   ],
   motivosRecogida: [
-    { label: "Se consumió", value: 38, color: "#60a5fa" },
-    { label: "Bandeja sin abrir", value: 34, color: "#38bdf8" },
-    { label: "Consumo parcial", value: 28, color: "#0ea5e9" },
+    { label: "Se consumió", value: 38, color: colorMotivoRecogidaPorIndice(0) },
+    { label: "Bandeja sin abrir", value: 34, color: colorMotivoRecogidaPorIndice(1) },
+    { label: "Consumo parcial", value: 28, color: colorMotivoRecogidaPorIndice(2) },
   ],
   distribucionServicio: [
-    { label: "Desayuno", value: 28, color: "#e879a9" },
-    { label: "Almuerzo", value: 34, color: "#60a5fa" },
-    { label: "Cena", value: 38, color: "#a78bfa" },
+    { label: "Desayuno", value: 28, color: chartPaletteComidas.desayuno },
+    { label: "Almuerzo", value: 34, color: chartPaletteComidas.almuerzo },
+    { label: "Cena", value: 38, color: chartPaletteComidas.cena },
   ],
 }

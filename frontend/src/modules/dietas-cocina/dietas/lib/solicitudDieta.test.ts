@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import {
+  esFormularioSolicitudDietaValido,
   evaluarAccionesDietaClinica,
   validarCondicionesClinicasFormulario,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
@@ -156,5 +157,49 @@ describe("validarCondicionesClinicasFormulario", () => {
       alergias: "Maní",
     })
     expect(r.valido).toBe(true)
+  })
+})
+
+describe("esFormularioSolicitudDietaValido", () => {
+  const base = {
+    pacienteAislado: false,
+    observacionAislamiento: "",
+    alergico: false,
+    alergias: "",
+    tipoDieta: "Normal",
+    consistencia: "",
+  }
+
+  it("exige consistencia en almuerzo", () => {
+    expect(
+      esFormularioSolicitudDietaValido({
+        ...base,
+        comida: "almuerzo",
+        consistencia: "Sólida",
+      }),
+    ).toBe(true)
+    expect(
+      esFormularioSolicitudDietaValido({
+        ...base,
+        comida: "almuerzo",
+      }),
+    ).toBe(false)
+  })
+
+  it("no exige consistencia en meriendas pero sí tipo de dieta", () => {
+    expect(
+      esFormularioSolicitudDietaValido({
+        ...base,
+        comida: "merienda-manana",
+        tipoDieta: "Merienda mañana",
+      }),
+    ).toBe(true)
+    expect(
+      esFormularioSolicitudDietaValido({
+        ...base,
+        comida: "merienda-manana",
+        tipoDieta: "",
+      }),
+    ).toBe(false)
   })
 })

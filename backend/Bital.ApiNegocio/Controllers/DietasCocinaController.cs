@@ -299,10 +299,10 @@ public class DietasCocinaController : ControllerBase
     }
 
     [HttpPost("catalogo/{id:guid}/tarifas")]
-    [ProducesResponseType(typeof(TarifaHistoricoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(List<TarifaHistoricoDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<TarifaHistoricoDto>> RegistrarTarifaCatalogo(
+    public async Task<ActionResult<List<TarifaHistoricoDto>>> RegistrarTarifaCatalogo(
         Guid id,
         [FromBody] NuevaTarifaDto dto,
         CancellationToken cancellationToken)
@@ -310,8 +310,8 @@ public class DietasCocinaController : ControllerBase
         try
         {
             var usuario = User.GetUsuarioIdentificacion();
-            var tarifa = await _dietasService.RegistrarTarifaDietaAsync(id, dto, usuario, cancellationToken);
-            return CreatedAtAction(nameof(ObtenerTarifasCatalogo), new { id }, tarifa);
+            var tarifas = await _dietasService.RegistrarTarifaDietaAsync(id, dto, usuario, cancellationToken);
+            return CreatedAtAction(nameof(ObtenerTarifasCatalogo), new { id }, tarifas);
         }
         catch (KeyNotFoundException)
         {

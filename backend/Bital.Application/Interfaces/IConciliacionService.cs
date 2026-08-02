@@ -12,14 +12,17 @@ namespace Bital.Application.Interfaces;
 public interface IConciliacionService
 {
     /// <summary>
-    /// Obtiene líneas de conciliación con filtros opcionales
+    /// Obtiene líneas de conciliación con filtros opcionales (paginado, máx. 24 por página).
     /// </summary>
-    Task<List<FilaConciliacionDto>> ObtenerConciliacionAsync(
+    Task<ListaConciliacionDto> ObtenerConciliacionAsync(
         string? busqueda = null,
         string? numeroFactura = null,
         string? periodo = null,
         string? proveedor = null,
         string? estado = null,
+        int page = 1,
+        int pageSize = 24,
+        bool sinPaginar = false,
         CancellationToken cancellationToken = default);
 
     /// <summary>

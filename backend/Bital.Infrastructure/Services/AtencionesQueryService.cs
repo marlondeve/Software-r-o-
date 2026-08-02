@@ -1,5 +1,6 @@
 using Bital.Shared.Contracts.Responses;
 using Bital.Shared.Contracts.Services;
+using Bital.Infrastructure.DietasCocina;
 using Bital.Infrastructure.Data;
 using Bital.Infrastructure.Data.Entities;
 using Microsoft.Data.SqlClient;
@@ -172,7 +173,13 @@ public class AtencionesQueryService : IAtencionesQueryService
                     Cedula = reader.IsDBNull(reader.GetOrdinal("Cedula")) ? string.Empty : reader.GetString(reader.GetOrdinal("Cedula")).Trim(),
                     NombreCompleto = reader.IsDBNull(reader.GetOrdinal("NombreCompleto")) ? string.Empty : reader.GetString(reader.GetOrdinal("NombreCompleto")).Trim(),
                     Empresa = reader.IsDBNull(reader.GetOrdinal("Empresa")) ? null : reader.GetString(reader.GetOrdinal("Empresa")).Trim(),
-                    Servicio = reader.IsDBNull(reader.GetOrdinal("Servicio")) ? string.Empty : reader.GetString(reader.GetOrdinal("Servicio")).Trim(),
+                    Servicio = DietasReglasNegocio.ResolverServicioClinico(
+                        reader.IsDBNull(reader.GetOrdinal("Servicio"))
+                            ? null
+                            : reader.GetString(reader.GetOrdinal("Servicio")).Trim(),
+                        reader.IsDBNull(reader.GetOrdinal("Pabellon"))
+                            ? string.Empty
+                            : reader.GetString(reader.GetOrdinal("Pabellon")).Trim()),
                     CodigoPabellon = reader.IsDBNull(reader.GetOrdinal("CodigoPabellon")) ? null : reader.GetString(reader.GetOrdinal("CodigoPabellon")).Trim(),
                     Pabellon = reader.IsDBNull(reader.GetOrdinal("Pabellon")) ? string.Empty : reader.GetString(reader.GetOrdinal("Pabellon")).Trim(),
                     Cama = reader.IsDBNull(reader.GetOrdinal("Cama")) ? string.Empty : reader.GetString(reader.GetOrdinal("Cama")).Trim(),
@@ -316,6 +323,7 @@ public class AtencionesQueryService : IAtencionesQueryService
                 i.MPTDoc AS TipoDocumento, 
                 i.MPcedu AS Cedula, 
                 CONCAT_WS(' ', RTRIM(LTRIM(cap.MPNom1)), RTRIM(LTRIM(cap.MPNom2)), RTRIM(LTRIM(cap.MPApe1)), RTRIM(LTRIM(cap.MPApe2))) AS NombreCompleto, 
+                RTRIM(LTRIM(ISNULL(i.ClaPro, ''))) AS Servicio,
                 map.MPNomP AS Pabellon,
                 i.MPNumC AS Cama
             FROM INGRESOS i 
@@ -506,6 +514,13 @@ public class AtencionesQueryService : IAtencionesQueryService
                     NombreCompleto = reader.IsDBNull(reader.GetOrdinal("NombreCompleto")) 
                         ? string.Empty 
                         : reader.GetString(reader.GetOrdinal("NombreCompleto")).Trim(),
+                    Servicio = DietasReglasNegocio.ResolverServicioClinico(
+                        reader.IsDBNull(reader.GetOrdinal("Servicio"))
+                            ? null
+                            : reader.GetString(reader.GetOrdinal("Servicio")).Trim(),
+                        reader.IsDBNull(reader.GetOrdinal("Pabellon"))
+                            ? string.Empty
+                            : reader.GetString(reader.GetOrdinal("Pabellon")).Trim()),
                     Pabellon = reader.IsDBNull(reader.GetOrdinal("Pabellon")) 
                         ? string.Empty 
                         : reader.GetString(reader.GetOrdinal("Pabellon")).Trim(),

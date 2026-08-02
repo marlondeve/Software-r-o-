@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Bital.Application.DTOs.Encuestas;
 using Bital.Application.Interfaces;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -29,7 +30,7 @@ public class EncuestasAdministracionController : ControllerBase
         [FromQuery] DateTime? hasta,
         [FromQuery] string? usuario,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20)
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize)
     {
         var resultadoQuery = await _service.ObtenerAuditoriaAsync(new FiltrosAuditoriaEncuestasDto
         {
@@ -62,7 +63,7 @@ public class EncuestasAdministracionController : ControllerBase
         [FromQuery] string? rol,
         [FromQuery] bool? estado,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize)
     {
         var resultado = await _service.ObtenerUsuariosAsync(new FiltrosUsuariosEncuestasDto
         {

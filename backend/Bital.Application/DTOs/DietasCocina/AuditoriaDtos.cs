@@ -5,12 +5,14 @@ namespace Bital.Application.DTOs.DietasCocina;
 public record FiltrosAuditoriaDto
 {
     public string? Modulo { get; init; }
+    public string? Accion { get; init; }
+    public string? Actor { get; init; }
     public string? Resultado { get; init; }
     public DateTime? Desde { get; init; }
     public DateTime? Hasta { get; init; }
     public string? Usuario { get; init; }
     public int Page { get; init; } = 1;
-    public int PageSize { get; init; } = 20;
+    public int PageSize { get; init; } = 24;
 }
 
 // ===== Lista de eventos =====

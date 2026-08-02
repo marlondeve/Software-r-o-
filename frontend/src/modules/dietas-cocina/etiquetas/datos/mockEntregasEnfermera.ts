@@ -105,7 +105,7 @@ export function calcularKpisEnfermera(
     },
     {
       id: "pendientes-entrega",
-      label: "PENDIENTES ENTREGA",
+      label: "RECIBIDAS EN PISO",
       value: pendientesEntrega,
       variant: "info",
     },

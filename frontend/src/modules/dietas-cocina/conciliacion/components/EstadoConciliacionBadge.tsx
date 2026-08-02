@@ -1,15 +1,8 @@
 import type { EstadoConciliacion } from "@/modules/dietas-cocina/types/enums"
+import { estadoConciliacionConfig } from "@/modules/dietas-cocina/lib/estadosEstilos"
+
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
-import { badgeClassPorEstado } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionEstilos"
-
-const ESTADO_LABEL: Record<EstadoConciliacion, string> = {
-  coincide: "Coincide",
-  "dif-cantidad": "Dif. Cantidad",
-  "dif-tarifa": "Dif. Tarifa",
-  pendiente: "Pendiente",
-  "conciliado-manual": "Conciliado Manual",
-}
 
 interface EstadoConciliacionBadgeProps {
   estado: EstadoConciliacion
@@ -20,16 +13,17 @@ export function EstadoConciliacionBadge({
   estado,
   className,
 }: EstadoConciliacionBadgeProps) {
+  const config = estadoConciliacionConfig[estado]
   return (
     <Badge
       variant="outline"
       className={cn(
         "rounded-full font-medium",
-        badgeClassPorEstado(estado),
+        config.className,
         className,
       )}
     >
-      {ESTADO_LABEL[estado]}
+      {config.label}
     </Badge>
   )
 }

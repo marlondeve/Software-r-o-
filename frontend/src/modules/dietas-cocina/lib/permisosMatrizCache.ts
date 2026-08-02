@@ -54,7 +54,7 @@ export function obtenerRutasPermitidasDesdeApi(rol: string | null): RutaDietas[]
     matrizPermisosApi.find((item) => item.rol?.toLowerCase() === clave) ??
     matrizPermisosApi.find((item) => item.rolId === rol)
 
-  if (!entry?.permisos) return null
+  if (!entry?.permisos) return []
   return permisosRecordToRutas(entry.permisos) as RutaDietas[]
 }
 

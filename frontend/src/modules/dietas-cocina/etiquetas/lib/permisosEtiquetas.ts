@@ -1,11 +1,11 @@
 import { cargarConfigAccesoModulos } from "@/lib/configAccesoModulos"
-import { normalizarRolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { rutaDietasPermitida } from "@/modules/dietas-cocina/lib/permisos"
 import { capacidadesDesdeRutasApi } from "@/modules/dietas-cocina/api/mappers/permisos.mapper"
 import {
   obtenerMatrizPermisosApi,
   useMatrizPermisosVersion,
 } from "@/modules/dietas-cocina/lib/permisosMatrizCache"
-import type { CapacidadEtiquetas, RolDietas } from "@/modules/dietas-cocina/types/enums"
+import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 
 /** Flujos en piso: entrega, rechazo y recogida (cualquier rol con permiso). */
 export const CAPACIDADES_BANDEJAS_PISO: CapacidadEtiquetas[] = [
@@ -51,48 +51,53 @@ export const CAPACIDADES_ETIQUETAS: {
 export const TODAS_CAPACIDADES_ETIQUETAS: CapacidadEtiquetas[] =
   CAPACIDADES_ETIQUETAS.map((item) => item.id)
 
-const CAPACIDADES_POR_ROL_DEFAULT: Record<RolDietas, CapacidadEtiquetas[]> = {
-  Administrador: TODAS_CAPACIDADES_ETIQUETAS,
-  Proveedor: ["impresion_proveedor"],
-  Enfermera: ["recepcion_proveedor"],
-  "Auxiliar de Cocina": [...CAPACIDADES_BANDEJAS_PISO],
-  Nutricionista: [],
-  Doctor: [],
-}
+const RUTA_LISTAR_ETIQUETAS = 20
 
-export function obtenerCapacidadesEtiquetasDefault(
-  rol: string | null,
-): CapacidadEtiquetas[] {
-  if (!rol) return []
-  const normalizado = normalizarRolDietas(rol)
-  if (normalizado) {
-    return [...(CAPACIDADES_POR_ROL_DEFAULT[normalizado] ?? [])]
+function capacidadesDesdeMatrizApi(rol: string): CapacidadEtiquetas[] {
+  const matriz = obtenerMatrizPermisosApi()
+  if (!matriz) return []
+
+  const clave = rol.trim().toLowerCase()
+  const entry =
+    matriz.find((item) => item.rol?.toLowerCase() === clave) ??
+    matriz.find((item) => item.rolId === rol)
+
+  if (!entry?.rutas?.length) return []
+
+  const caps = capacidadesDesdeRutasApi(entry.rutas)
+  if (caps.length === 0 && entry.rutas.includes(RUTA_LISTAR_ETIQUETAS)) {
+    return [...TODAS_CAPACIDADES_ETIQUETAS]
   }
-  return []
+  return caps
 }
 
 export function obtenerCapacidadesEtiquetas(
   rol: string | null,
 ): CapacidadEtiquetas[] {
   if (!rol) return []
-  if (rol === "Administrador") return TODAS_CAPACIDADES_ETIQUETAS
 
   const matriz = obtenerMatrizPermisosApi()
-  if (matriz) {
-    const clave = rol.trim().toLowerCase()
-    const entry =
-      matriz.find((item) => item.rol?.toLowerCase() === clave) ??
-      matriz.find((item) => item.rolId === rol)
-    if (entry?.rutas?.length) {
-      return capacidadesDesdeRutasApi(entry.rutas)
-    }
+  if (matriz !== null) {
+    return capacidadesDesdeMatrizApi(rol)
   }
 
   const config = cargarConfigAccesoModulos()
-  const personalizadas = config.capacidadesEtiquetas?.[rol]
-  if (personalizadas) return [...personalizadas]
+  const capsConfig = config.capacidadesEtiquetas?.[rol]
+  if (capsConfig && capsConfig.length > 0) {
+    return capsConfig
+  }
 
-  return obtenerCapacidadesEtiquetasDefault(rol)
+  const caps: CapacidadEtiquetas[] = []
+  if (rutaDietasPermitida(rol, "impresion-etiquetas")) {
+    caps.push("impresion_proveedor")
+  }
+  if (rutaDietasPermitida(rol, "recepcion-proveedor")) {
+    caps.push("recepcion_proveedor")
+  }
+  if (rutaDietasPermitida(rol, "bandejas-piso")) {
+    caps.push(...CAPACIDADES_BANDEJAS_PISO)
+  }
+  return caps
 }
 
 export function puedeCapacidadEtiquetas(
@@ -102,9 +107,6 @@ export function puedeCapacidadEtiquetas(
   return obtenerCapacidadesEtiquetas(rol).includes(capacidad)
 }
 
-export function tieneVistaImpresionEtiquetas(rol: string | null): boolean {
-  return puedeCapacidadEtiquetas(rol, "impresion_proveedor")
-}
 
 export function puedeRecepcionProveedor(rol: string | null): boolean {
   return puedeCapacidadEtiquetas(rol, "recepcion_proveedor")
@@ -121,30 +123,6 @@ export function tieneVistaOperativaBandejas(rol: string | null): boolean {
   return (
     puedeRecepcionProveedor(rol) || tieneOperacionBandejasPiso(rol)
   )
-}
-
-export function resolverTituloEtiquetasOperativas(rol: string | null): string {
-  const recepcion = puedeRecepcionProveedor(rol)
-  const piso = tieneOperacionBandejasPiso(rol)
-
-  if (recepcion && piso) return "Recepción y entrega de bandejas"
-  if (recepcion) return "Recepción de bandejas del proveedor"
-  if (piso) return "Entrega y recogida de bandejas"
-  return "Etiquetas de bandejas"
-}
-
-export function filtrarCapacidadesEtiquetas(
-  rol: string | null,
-  capacidades: CapacidadEtiquetas[],
-): CapacidadEtiquetas[] {
-  const permitidas = new Set(obtenerCapacidadesEtiquetas(rol))
-  return capacidades.filter((capacidad) => permitidas.has(capacidad))
-}
-
-/** Hook reactivo a la matriz API de permisos. */
-export function useCapacidadesEtiquetas(rol: string | null): CapacidadEtiquetas[] {
-  useMatrizPermisosVersion()
-  return obtenerCapacidadesEtiquetas(rol)
 }
 
 export function usePuedeCapacidadEtiquetas(

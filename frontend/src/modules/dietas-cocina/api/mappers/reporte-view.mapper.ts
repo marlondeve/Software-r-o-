@@ -1,5 +1,11 @@
 import type { ReporteDto } from "@/modules/dietas-cocina/types/api-dtos"
 import { normalizarClave } from "@/modules/dietas-cocina/api/utils"
+import {
+  chartColorHex,
+  colorCategoricoPorIndice,
+  colorMotivoRechazoPorIndice,
+  colorMotivoRecogidaPorIndice,
+} from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
 
 type Segmento = { label: string; value: number; color: string }
 type BarItem = { label: string; value: number; color: string }
@@ -46,7 +52,20 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value as Record<string, unknown>
 }
 
-const SEGMENT_COLORS = ["#006671", "#00818f", "#bbf244", "#7c6ba8", "#94a3b8", "#e879a9"]
+function mapBarItems(items: unknown, resolverColor = colorCategoricoPorIndice): BarItem[] {
+  if (!Array.isArray(items)) return []
+  return items.map((raw, index) => {
+    const item = asRecord(raw) ?? {}
+    return {
+      label: String(
+        leerCampo(item, "label", "nombre", "etiqueta", "Etiqueta", "categoria", "Categoria") ??
+          "",
+      ),
+      value: Number(leerCampo(item, "value", "cantidad", "valor", "Valor") ?? 0),
+      color: String(item.color ?? resolverColor(index)),
+    }
+  })
+}
 
 function formatearValorKpi(item: Record<string, unknown>): string {
   const valor = Number(leerCampo(item, "value", "valor", "Valor") ?? 0)
@@ -98,23 +117,6 @@ export function reporteTieneContenido(
   )
 }
 
-function mapBarItems(items: unknown, fallbackColor = "#006671"): BarItem[] {
-  if (!Array.isArray(items)) return []
-  return items.map((raw, index) => {
-    const item = asRecord(raw) ?? {}
-    return {
-      label: String(
-        leerCampo(item, "label", "nombre", "etiqueta", "Etiqueta", "categoria", "Categoria") ??
-          "",
-      ),
-      value: Number(leerCampo(item, "value", "cantidad", "valor", "Valor") ?? 0),
-      color: String(
-        item.color ?? SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? fallbackColor,
-      ),
-    }
-  })
-}
-
 function tituloGrafico(grafico: Record<string, unknown>): string {
   return String(grafico.titulo ?? grafico.Titulo ?? "").toLowerCase()
 }
@@ -146,7 +148,7 @@ function mapGraficoABarItems(grafico: Record<string, unknown> | null): BarItem[]
   return categorias.map((categoria, index) => ({
     label: String(categoria),
     value: Number(valores[index] ?? 0),
-    color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#006671",
+    color: colorCategoricoPorIndice(index),
   }))
 }
 
@@ -154,7 +156,7 @@ function mapGraficoAPie(grafico: Record<string, unknown> | null): Segmento[] {
   if (!grafico) return []
   return mapGraficoABarItems(grafico).map((item, index) => ({
     ...item,
-    color: SEGMENT_COLORS[index % SEGMENT_COLORS.length] ?? "#006671",
+    color: colorCategoricoPorIndice(index),
   }))
 }
 
@@ -205,7 +207,7 @@ export function mapReporteDto(dto: ReporteDto) {
   )
   const segmentosDesdeObjeto = mapBarItems(
     graficosObj?.estadoDietas ?? graficosObj?.distribucionEstados,
-    "#006671",
+    () => chartColorHex.success,
   )
   const segmentos =
     mapGraficoAPie(estadoGrafico).length > 0
@@ -225,8 +227,14 @@ export function mapReporteDto(dto: ReporteDto) {
           "tipos de dieta",
         )
 
-  const motivosRechazoDesdeObjeto = mapBarItems(graficosObj?.motivosDevolucion, "#e879a9")
-  const motivosRecogidaDesdeObjeto = mapBarItems(graficosObj?.motivosRecogida, "#60a5fa")
+  const motivosRechazoDesdeObjeto = mapBarItems(
+    graficosObj?.motivosDevolucion,
+    colorMotivoRechazoPorIndice,
+  )
+  const motivosRecogidaDesdeObjeto = mapBarItems(
+    graficosObj?.motivosRecogida,
+    colorMotivoRecogidaPorIndice,
+  )
   const motivosDevolucion =
     motivosRechazoDesdeObjeto.length > 0
       ? motivosRechazoDesdeObjeto
@@ -256,7 +264,12 @@ export function mapReporteDto(dto: ReporteDto) {
   const distribucionTurno =
     turnoDesdeObjeto.length > 0
       ? turnoDesdeObjeto
-      : mapGraficosBarraPorTitulo(graficosRaw, "distribución por turno", "por turno")
+      : mapGraficosBarraPorTitulo(
+          graficosRaw,
+          "volumen por comida",
+          "distribución por turno",
+          "por turno",
+        )
 
   const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
 

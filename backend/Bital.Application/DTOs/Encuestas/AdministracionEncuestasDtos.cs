@@ -10,7 +10,7 @@ public class FiltrosAuditoriaEncuestasDto
     public DateTime? Hasta { get; set; }
     public string? Usuario { get; set; }
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public int PageSize { get; set; } = 24;
 }
 
 public class DetalleAuditoriaEncuestaCampoDto
@@ -71,7 +71,7 @@ public class FiltrosUsuariosEncuestasDto
     public string? Rol { get; set; }
     public bool? Activo { get; set; }
     public int Page { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
+    public int PageSize { get; set; } = 24;
 }
 
 public class CrearUsuarioEncuestasDto

@@ -1,11 +1,16 @@
 import type { CatalogoDietaDto, TarifaHistoricoDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type { DietaCatalogo, TarifaHistorico } from "@/modules/dietas-cocina/types/catalog"
-import type { EstadoDietaCatalogo } from "@/modules/dietas-cocina/types/enums"
+import type { EstadoDietaCatalogo, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { normalizarClave } from "@/modules/dietas-cocina/api/utils"
 import {
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import {
+  normalizarTiempoComidaTarifa,
+  resolverTarifaVigenteMinima,
+  tarifasVigentesDesdeHistorico,
+} from "@/modules/dietas-cocina/dietas-tarifas/lib/tarifasPorComida"
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null
@@ -45,6 +50,29 @@ function resolverEstadoCatalogo(
   return activa ? "vigente" : "inactiva"
 }
 
+function mapTarifasVigentesApi(
+  registro: Record<string, unknown>,
+  historicoTarifas: TarifaHistorico[],
+): Partial<Record<TiempoComida, number>> {
+  const tarifasRaw = normalizarClave(registro, "tarifasVigentes", "TarifasVigentes")
+  const tarifas: Partial<Record<TiempoComida, number>> = {}
+
+  if (tarifasRaw && typeof tarifasRaw === "object") {
+    for (const [clave, monto] of Object.entries(tarifasRaw as Record<string, unknown>)) {
+      const valor = Number(monto)
+      if (valor > 0) {
+        tarifas[normalizarTiempoComidaTarifa(clave)] = valor
+      }
+    }
+  }
+
+  if (Object.keys(tarifas).length === 0) {
+    return tarifasVigentesDesdeHistorico(historicoTarifas)
+  }
+
+  return tarifas
+}
+
 function mapTarifaHistoricoDto(dto: TarifaHistoricoDto | Record<string, unknown>): TarifaHistorico {
   const registro = asRecord(dto) ?? {}
   const anio = Number(normalizarClave(registro, "anio", "Anio") ?? 0)
@@ -55,6 +83,9 @@ function mapTarifaHistoricoDto(dto: TarifaHistoricoDto | Record<string, unknown>
   return {
     id: String(normalizarClave(registro, "id", "Id") ?? `TRF-${anio}`),
     anio,
+    tiempoComida: normalizarTiempoComidaTarifa(
+      normalizarClave(registro, "tiempoComida", "TiempoComida") ?? "almuerzo",
+    ),
     monto: Number(normalizarClave(registro, "monto", "Monto") ?? 0),
     vigenciaDesde: formatearFechaApi(vigenciaDesde),
     vigenciaHasta: formatearFechaApi(vigenciaHasta),
@@ -79,14 +110,14 @@ export function mapCatalogoDtoToDieta(
     normalizarClave(registro, "codigo", "Codigo") ?? `D-${String(index + 1).padStart(3, "0")}`,
   )
   const activa = Boolean(normalizarClave(registro, "activa", "Activa") ?? true)
-  const tarifaActual = Number(
-    normalizarClave(registro, "tarifaActual", "TarifaActual") ?? 0,
-  )
   const historicoRaw = normalizarClave(registro, "historicoTarifas", "HistoricoTarifas")
   const historicoTarifas = Array.isArray(historicoRaw)
     ? historicoRaw.map((item) => mapTarifaHistoricoDto(item as TarifaHistoricoDto))
     : []
-  const tarifaVigenteHistorico = historicoTarifas.find((tarifa) => tarifa.vigente)?.monto
+  const tarifasVigentes = mapTarifasVigentesApi(registro, historicoTarifas)
+  const tarifaActual = Number(
+    normalizarClave(registro, "tarifaActual", "TarifaActual") ?? 0,
+  )
   const fechaFinRaw = normalizarClave(registro, "fechaFin", "FechaFin")
 
   return {
@@ -95,7 +126,12 @@ export function mapCatalogoDtoToDieta(
     nombre: String(normalizarClave(registro, "nombre", "Nombre") ?? "Sin nombre"),
     descripcion: String(normalizarClave(registro, "descripcion", "Descripcion") ?? ""),
     estado: resolverEstadoCatalogo(registro, activa),
-    tarifaVigente: tarifaActual || tarifaVigenteHistorico || 0,
+    tarifasVigentes,
+    tarifaVigente:
+      tarifaActual ||
+      resolverTarifaVigenteMinima(tarifasVigentes) ||
+      historicoTarifas.find((tarifa) => tarifa.vigente)?.monto ||
+      0,
     fechaInicio: formatearFechaApi(
       normalizarClave(registro, "fechaInicio", "FechaInicio"),
     ),

@@ -86,12 +86,16 @@ export async function listarRoles(): Promise<RolModuloDto[]> {
 export async function crearRol(input: {
   nombre: string
   permisos: Record<string, boolean>
+  capacidadesEtiquetas?: CapacidadEtiquetas[]
 }): Promise<RolModuloDto> {
   const { data } = await apiClient.post<ApiResponse<unknown>>(
     buildDietasCocinaPath("/roles"),
     {
       nombre: input.nombre,
-      ...mapPermisosUiToActualizarRequest(input.permisos),
+      ...mapPermisosUiToActualizarRequest(
+        input.permisos,
+        input.capacidadesEtiquetas,
+      ),
     },
   )
   const body = extraerCuerpoApi(data)

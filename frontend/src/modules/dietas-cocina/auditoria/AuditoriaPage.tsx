@@ -3,7 +3,9 @@ import { Bookmark, CalendarDays, Download } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import { TableSkeleton } from "@/components/shared/skeletons"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
+import { RutaDietasSectionGuard } from "@/modules/dietas-cocina/components/RutaDietasSectionGuard"
 import { AuditoriaDetalleSheet } from "@/modules/dietas-cocina/auditoria/components/AuditoriaDetalleSheet"
 import { AuditoriaFiltros } from "@/modules/dietas-cocina/auditoria/components/AuditoriaFiltros"
 import { AuditoriaTabla } from "@/modules/dietas-cocina/auditoria/components/AuditoriaTabla"
@@ -35,7 +37,7 @@ export function AuditoriaPage() {
   const [busqueda, setBusqueda] = useState("")
   const [modulo, setModulo] = useState("todos")
   const [accion, setAccion] = useState("todas")
-  const [rol, setRol] = useState("todos")
+  const [actor, setActor] = useState("todos")
   const [resultado, setResultado] = useState("todos")
   const [paginaActual, setPaginaActual] = useState(1)
   const [detalleApi, setDetalleApi] = useState<DetalleAuditoria | null>(null)
@@ -52,6 +54,8 @@ export function AuditoriaPage() {
       page: paginaActual,
       pageSize: TAMANO_PAGINA_AUDITORIA,
       moduloUi: modulo,
+      accionUi: accion,
+      actorUi: actor,
       resultadoUi: resultado,
       usuario: busquedaApi || undefined,
     })
@@ -74,24 +78,12 @@ export function AuditoriaPage() {
         )
       })
       .finally(() => setCargandoAuditoria(false))
-  }, [apiActiva, paginaActual, modulo, resultado, busquedaApi])
+  }, [apiActiva, paginaActual, modulo, accion, actor, resultado, busquedaApi])
 
   const filasBase = apiActiva ? filasApi : data.filas
 
   const filasFiltradas = useMemo(() => {
-    if (apiActiva) {
-      return filasBase.filter((fila) => {
-        const coincideAccion =
-          accion === "todas" ||
-          fila.accion.toLowerCase().includes(accion.toLowerCase())
-        const coincideRol =
-          rol === "todos" ||
-          (rol === "Sistema"
-            ? fila.usuario.esSistema
-            : fila.usuario.rol.includes(rol))
-        return coincideAccion && coincideRol
-      })
-    }
+    if (apiActiva) return filasBase
 
     return filasBase.filter((fila) => {
       const termino = busqueda.trim().toLowerCase()
@@ -107,11 +99,11 @@ export function AuditoriaPage() {
         accion === "todas" ||
         fila.accion.toLowerCase().includes(accion.toLowerCase())
 
-      const coincideRol =
-        rol === "todos" ||
-        (rol === "Sistema"
+      const coincideActor =
+        actor === "todos" ||
+        (actor === "sistema"
           ? fila.usuario.esSistema
-          : fila.usuario.rol.includes(rol))
+          : !fila.usuario.esSistema)
 
       const coincideResultado =
         resultado === "todos" || fila.resultado === resultado
@@ -120,11 +112,11 @@ export function AuditoriaPage() {
         coincideBusqueda &&
         coincideModulo &&
         coincideAccion &&
-        coincideRol &&
+        coincideActor &&
         coincideResultado
       )
     })
-  }, [apiActiva, filasBase, busqueda, modulo, accion, rol, resultado])
+  }, [apiActiva, filasBase, busqueda, modulo, accion, actor, resultado])
 
   const totalFiltradas = apiActiva && metaApi ? metaApi.total : filasFiltradas.length
   const totalPaginas = apiActiva && metaApi
@@ -146,7 +138,7 @@ export function AuditoriaPage() {
 
   useEffect(() => {
     setPaginaActual(1)
-  }, [busqueda, modulo, accion, rol, resultado])
+  }, [busqueda, modulo, accion, actor, resultado])
 
   useEffect(() => {
     if (paginaActual > totalPaginas) {
@@ -193,7 +185,7 @@ export function AuditoriaPage() {
     setBusqueda("")
     setModulo("todos")
     setAccion("todas")
-    setRol("todos")
+    setActor("todos")
     setResultado("todos")
   }
 
@@ -201,6 +193,8 @@ export function AuditoriaPage() {
     if (apiActiva) {
       void exportarAuditoriaCsvApi({
         moduloUi: modulo,
+        accionUi: accion,
+        actorUi: actor,
         resultadoUi: resultado,
         usuario: busquedaApi || undefined,
       })
@@ -228,6 +222,7 @@ export function AuditoriaPage() {
   }
 
   return (
+    <RutaDietasSectionGuard segmento="auditoria" title="Auditoría y trazabilidad">
     <div className="space-y-5">
       <DashboardPageHeader
         title="Auditoría y trazabilidad"
@@ -267,36 +262,34 @@ export function AuditoriaPage() {
       <AuditoriaFiltros
         moduloLabel={data.filtros.modulo}
         accionLabel={data.filtros.accion}
-        rolLabel={data.filtros.rol}
+        actorLabel="Todos"
         resultadoLabel={data.filtros.resultado}
         busqueda={busqueda}
         modulo={modulo}
         accion={accion}
-        rol={rol}
+        actor={actor}
         resultado={resultado}
         onBusquedaChange={setBusqueda}
         onModuloChange={setModulo}
         onAccionChange={setAccion}
-        onRolChange={setRol}
+        onActorChange={setActor}
         onResultadoChange={setResultado}
         onLimpiar={limpiarFiltros}
       />
 
-      <AuditoriaTabla
-        filas={filasPagina}
-        paginaDesde={paginaDesde}
-        paginaHasta={paginaHasta}
-        total={totalFiltradas}
-        paginaActual={paginaActual}
-        totalPaginas={totalPaginas}
-        onCambiarPagina={setPaginaActual}
-        onVerDetalle={abrirDetalle}
-      />
-
-      {apiActiva && cargandoAuditoria && filasPagina.length === 0 && (
-        <p className="text-center text-sm text-muted-foreground">
-          Cargando registros de auditoría…
-        </p>
+      {apiActiva && cargandoAuditoria && filasPagina.length === 0 ? (
+        <TableSkeleton rows={8} columns={6} />
+      ) : (
+        <AuditoriaTabla
+          filas={filasPagina}
+          paginaDesde={paginaDesde}
+          paginaHasta={paginaHasta}
+          total={totalFiltradas}
+          paginaActual={paginaActual}
+          totalPaginas={totalPaginas}
+          onCambiarPagina={setPaginaActual}
+          onVerDetalle={abrirDetalle}
+        />
       )}
 
       <AuditoriaDetalleSheet
@@ -305,5 +298,6 @@ export function AuditoriaPage() {
         detalle={detalle}
       />
     </div>
+    </RutaDietasSectionGuard>
   )
 }

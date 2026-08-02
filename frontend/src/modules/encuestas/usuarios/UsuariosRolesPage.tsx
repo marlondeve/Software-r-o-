@@ -4,6 +4,8 @@ import { Plus, Shield, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { DashboardPageHeader } from "@/modules/encuestas/inicio/components/DashboardPageHeader"
 import { CambiarRolDialog } from "@/modules/encuestas/usuarios/components/CambiarRolDialog"
 import { RolesPermisosPanel } from "@/modules/encuestas/usuarios/components/RolesPermisosPanel"
@@ -28,6 +30,10 @@ export function UsuariosRolesPage() {
       return coincideRol && coincideEstado
     })
   }, [usuarios, rolFiltro, estadoFiltro])
+
+  const paginacion = usePaginacionTabla(usuariosFiltrados, {
+    resetKey: `${rolFiltro}-${estadoFiltro}`,
+  })
 
   function abrirCambiarRol(usuario: UsuarioEncuestasModulo) {
     setUsuarioRolEdit(usuario)
@@ -91,12 +97,9 @@ export function UsuariosRolesPage() {
             <UsuariosFiltros
               rolLabel={data.filtros.rol}
               estadoLabel={data.filtros.estado}
-              paginaDesde={data.pagina.desde}
-              paginaHasta={Math.min(
-                data.pagina.hasta,
-                usuariosFiltrados.length || data.pagina.hasta,
-              )}
-              total={data.total}
+              paginaDesde={paginacion.paginaDesde}
+              paginaHasta={paginacion.paginaHasta}
+              total={paginacion.total}
               rolSeleccionado={rolFiltro}
               estadoSeleccionado={estadoFiltro}
               onRolChange={setRolFiltro}
@@ -104,12 +107,20 @@ export function UsuariosRolesPage() {
             />
             <CardContent className="p-0">
               <UsuariosTabla
-                usuarios={usuariosFiltrados}
+                usuarios={paginacion.filasPagina}
                 onEditar={() => undefined}
                 onCambiarRol={abrirCambiarRol}
                 onToggleEstado={toggleEstado}
                 onRestablecerClave={() => undefined}
                 onEliminar={eliminarUsuario}
+              />
+              <TablaPaginacion
+                paginaDesde={paginacion.paginaDesde}
+                paginaHasta={paginacion.paginaHasta}
+                total={paginacion.total}
+                paginaActual={paginacion.paginaActual}
+                totalPaginas={paginacion.totalPaginas}
+                onCambiarPagina={paginacion.setPaginaActual}
               />
             </CardContent>
           </Card>

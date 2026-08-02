@@ -11,6 +11,7 @@ import {
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { KpiGridSkeleton } from "@/components/shared/skeletons"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import {
@@ -24,6 +25,7 @@ import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/Dashboa
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { KpiCardProgress } from "@/modules/dietas-cocina/inicio/components/KpiCardProgress"
 import { ProgressStat } from "@/modules/dietas-cocina/inicio/components/ProgressBar"
+import { RUTAS_LOGISTICA } from "@/modules/dietas-cocina/lib/rutasLogistica"
 import { mockCocina } from "@/modules/dietas-cocina/cocina/datos/mockCocina"
 import { mockProveedor } from "@/modules/dietas-cocina/inicio/datos/mockProveedor"
 import { mapDashboardProveedorAlertas } from "@/modules/dietas-cocina/api/mappers/dashboard-view.mapper"
@@ -208,7 +210,7 @@ export function ProveedorDashboard() {
                 aria-label={accionLabel}
                 onClick={() => {
                   if (row.original.etiquetaGenerada && !puedeDesp) {
-                    navigate("/dietas-cocina/etiquetas")
+                    navigate(RUTAS_LOGISTICA.impresion)
                     return
                   }
                   if (puedeDesp) {
@@ -260,7 +262,7 @@ export function ProveedorDashboard() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate("/dietas-cocina/etiquetas")}
+              onClick={() => navigate(RUTAS_LOGISTICA.impresion)}
             >
               <LayoutGrid data-icon="inline-start" />
               Generar etiquetas QR
@@ -273,14 +275,9 @@ export function ProveedorDashboard() {
         }
       />
 
-      {dashboardApi.apiActiva && dashboardApi.cargando && (
-        <p className="text-sm text-muted-foreground">Cargando indicadores…</p>
-      )}
-
-      {dashboardApi.apiActiva && dashboardApi.error && (
-        <p className="text-sm text-destructive">{dashboardApi.error}</p>
-      )}
-
+      {dashboardApi.apiActiva && dashboardApi.cargando && !dashboardApi.data ? (
+        <KpiGridSkeleton count={4} />
+      ) : (
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpisMostrar.map((kpi) => (
           <KpiCardProgress
@@ -294,6 +291,11 @@ export function ProveedorDashboard() {
           />
         ))}
       </div>
+      )}
+
+      {dashboardApi.apiActiva && dashboardApi.error && (
+        <p className="text-sm text-destructive">{dashboardApi.error}</p>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <DashboardCard

@@ -22,18 +22,15 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Switch } from "@/components/ui/switch"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import {
-  ROLES_DIETAS,
   ROLES_ENCUESTAS,
-  RUTAS_DIETAS,
   RUTAS_ENCUESTAS,
   alternarAccesoModulo,
-  alternarPermisoRutaDietas,
   alternarPermisoRutaEncuestas,
   type RolEncuestas,
 } from "@/lib/configAccesoModulos"
 import { modulosConfig } from "@/lib/modulos"
 import { encuestasHabilitado } from "@/lib/modulosFlags"
-import type { RolDietas } from "@/modules/dietas-cocina/lib/roles"
+import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { cn } from "@/lib/utils"
 
 interface ConfiguracionAccesoModulosDialogProps {
@@ -95,9 +92,9 @@ export function ConfiguracionAccesoModulosDialog({
   open,
   onOpenChange,
 }: ConfiguracionAccesoModulosDialogProps) {
+  const apiDietasActiva = usarApiDietasCocina()
   const { config, actualizar, restablecer } = useConfigAccesoModulos()
   const [borrador, setBorrador] = useState(config)
-  const [rolDietasActivo, setRolDietasActivo] = useState<RolDietas>("Nutricionista")
   const [rolEncuestasActivo, setRolEncuestasActivo] =
     useState<RolEncuestas>("Analista SIAO")
 
@@ -116,9 +113,6 @@ export function ConfiguracionAccesoModulosDialog({
     setBorrador(defaultConfig)
   }
 
-  const rolDietasTieneAcceso = borrador.rolesConAcceso["dietas-cocina"].includes(
-    rolDietasActivo,
-  )
   const rolEncuestasTieneAcceso = borrador.rolesConAcceso.encuestas.includes(
     rolEncuestasActivo,
   )
@@ -148,81 +142,11 @@ export function ConfiguracionAccesoModulosDialog({
 
           <TabsContent value="dietas-cocina" className="overflow-hidden">
             <TabPanelScroll>
-            <section>
-              <h3 className="mb-2 text-sm font-medium text-foreground">
-                Acceso al módulo
-              </h3>
-              <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-                {ROLES_DIETAS.map((rol) => (
-                  <SwitchFila
-                    key={rol}
-                    id={`acceso-dietas-${rol}`}
-                    label={rol}
-                    checked={borrador.rolesConAcceso["dietas-cocina"].includes(rol)}
-                    onChange={(activo) =>
-                      setBorrador((prev) =>
-                        alternarAccesoModulo(prev, "dietas-cocina", rol, activo),
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            </section>
-
-            <Separator />
-
-            <section>
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="text-sm font-medium text-foreground">
-                  Permisos por sección
-                </h3>
-                <Select
-                  value={rolDietasActivo}
-                  onValueChange={(v) => setRolDietasActivo(v as RolDietas)}
-                >
-                  <SelectTrigger className="h-8 w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ROLES_DIETAS.map((rol) => (
-                      <SelectItem key={rol} value={rol}>
-                        {rol}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {!rolDietasTieneAcceso ? (
-                <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
-                  Este rol no tiene acceso al módulo. Actívalo arriba para
-                  configurar sus secciones.
-                </p>
-              ) : (
-                <div className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-card">
-                  {RUTAS_DIETAS.map((ruta) => (
-                    <SwitchFila
-                      key={ruta.id}
-                      id={`permiso-dietas-${rolDietasActivo}-${ruta.id}`}
-                      label={ruta.label}
-                      checked={(borrador.permisosDietas[rolDietasActivo] ?? []).includes(
-                        ruta.id,
-                      )}
-                      onChange={(activo) =>
-                        setBorrador((prev) =>
-                          alternarPermisoRutaDietas(
-                            prev,
-                            rolDietasActivo,
-                            ruta.id,
-                            activo,
-                          ),
-                        )
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
+              <p className="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+                {apiDietasActiva
+                  ? "Dietas y cocina usa roles dinámicos. Cree roles y asigne permisos en Usuarios y roles dentro del módulo."
+                  : "Dietas y cocina requiere conexión con el API para gestionar roles dinámicos."}
+              </p>
             </TabPanelScroll>
           </TabsContent>
 

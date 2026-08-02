@@ -18,6 +18,7 @@ interface ReportesFiltrosProps {
   horario: string
   ultimaActualizacion: string
   filtros: FiltrosReportes
+  serviciosDisponibles?: string[]
   onFiltrosChange: (filtros: FiltrosReportes) => void
 }
 
@@ -27,6 +28,7 @@ export function ReportesFiltros({
   horario,
   ultimaActualizacion,
   filtros,
+  serviciosDisponibles,
   onFiltrosChange,
 }: ReportesFiltrosProps) {
   function exportar() {
@@ -63,9 +65,24 @@ export function ReportesFiltros({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos los servicios</SelectItem>
-            <SelectItem value="cardiologia">Cardiología · Pab Central</SelectItem>
-            <SelectItem value="pediatria">Pediatría · Pab Norte</SelectItem>
-            <SelectItem value="urgencias">Urgencias · Pab Sur</SelectItem>
+            {(serviciosDisponibles?.length
+              ? serviciosDisponibles
+              : [
+                  { value: "cardiologia", label: "Cardiología · Pab Central" },
+                  { value: "pediatria", label: "Pediatría · Pab Norte" },
+                  { value: "urgencias", label: "Urgencias · Pab Sur" },
+                ]
+            ).map((item) =>
+              typeof item === "string" ? (
+                <SelectItem key={item} value={item}>
+                  {item}
+                </SelectItem>
+              ) : (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ),
+            )}
           </SelectContent>
         </Select>
         <Select

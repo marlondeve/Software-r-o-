@@ -1,4 +1,5 @@
 import type { DietaCatalogo } from "@/modules/dietas-cocina/types/catalog"
+import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 const ALIAS_TIPO_DIETA: Record<string, string> = {
   General: "Normal",
   NORMAL: "Normal",
@@ -34,6 +35,16 @@ export function resolverTarifaPorTipoDieta(
           normalizado.toLowerCase().includes(d.nombre.toLowerCase())),
     ) ?? catalogo.find((d) => d.nombre === "Normal")
   )
+}
+
+export function resolverTarifaPorTipoDietaYComida(
+  tipoDieta: string,
+  comida: TiempoComida,
+  catalogo: DietaCatalogo[],
+): number {
+  const dieta = resolverTarifaPorTipoDieta(tipoDieta, catalogo)
+  if (!dieta) return 45_000
+  return dieta.tarifasVigentes[comida] ?? dieta.tarifaVigente ?? 45_000
 }
 
 export function formatearTarifaCOP(monto: number): string {

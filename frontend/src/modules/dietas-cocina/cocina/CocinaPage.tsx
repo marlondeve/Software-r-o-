@@ -1,18 +1,14 @@
-import { SectionPage } from "@/components/shared/SectionPage"
+import { RutaDietasSectionGuard } from "@/modules/dietas-cocina/components/RutaDietasSectionGuard"
 import { CocinaProveedorView } from "@/modules/dietas-cocina/cocina/views/CocinaProveedorView"
-import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 
 export function CocinaPage() {
-  const rol = useRolVistaEfectivo()
-
-  if (rol === "Proveedor" || rol === "Administrador") {
-    return <CocinaProveedorView />
-  }
-
   return (
-    <SectionPage
+    <RutaDietasSectionGuard
+      segmento="cocina"
       title="Cocina y seguimiento"
-      description="Esta sección está disponible para el proveedor de cocina y administradores."
-    />
+      description="No tiene permisos para esta sección. Si su rol opera bandejas en planta, use la sección Etiquetas."
+    >
+      <CocinaProveedorView />
+    </RutaDietasSectionGuard>
   )
 }

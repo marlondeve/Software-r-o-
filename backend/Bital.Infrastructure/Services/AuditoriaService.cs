@@ -5,6 +5,7 @@ using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
 using Bital.Domain.Entities.DietasCocina;
 using Bital.Infrastructure.Data;
+using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 
 namespace Bital.Infrastructure.Services;
@@ -20,11 +21,22 @@ public class AuditoriaService : IAuditoriaService
 
     public async Task<ListaEventosAuditoriaDto> ObtenerEventosAsync(FiltrosAuditoriaDto filtros)
     {
+        var (page, pageSize) = PaginacionHelper.Normalizar(filtros.Page, filtros.PageSize);
+        filtros = filtros with { Page = page, PageSize = pageSize };
+
         var query = _context.EventosAuditoria.AsQueryable();
 
         // Aplicar filtros
         if (!string.IsNullOrWhiteSpace(filtros.Modulo))
             query = query.Where(e => e.Modulo == filtros.Modulo);
+
+        if (!string.IsNullOrWhiteSpace(filtros.Accion))
+            query = query.Where(e => e.Accion == filtros.Accion);
+
+        if (string.Equals(filtros.Actor, "sistema", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(e => e.Usuario.ToLower() == "system" || e.Usuario.ToLower() == "sistema");
+        else if (string.Equals(filtros.Actor, "usuario", StringComparison.OrdinalIgnoreCase))
+            query = query.Where(e => e.Usuario.ToLower() != "system" && e.Usuario.ToLower() != "sistema");
 
         if (!string.IsNullOrWhiteSpace(filtros.Resultado))
             query = query.Where(e => e.Resultado == filtros.Resultado);

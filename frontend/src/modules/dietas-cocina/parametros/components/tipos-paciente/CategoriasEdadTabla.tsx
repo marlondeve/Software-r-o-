@@ -1,4 +1,5 @@
 import type { CategoriaEdad } from "@/modules/dietas-cocina/types/parameters"
+import { estadoCategoriaConfig } from "@/modules/dietas-cocina/lib/estadosEstilos"
 import { useMemo } from "react"
 import { PencilLine, SlidersHorizontal, Trash2 } from "lucide-react"
 
@@ -41,18 +42,14 @@ export function CategoriasEdadTabla({
       {
         accessorKey: "estado",
         header: "Estado",
-        cell: ({ row }) => (
-          <Badge
-            variant="outline"
-            className={cn(
-              row.original.estado === "activo"
-                ? "border-primary/30 bg-primary/10 text-primary"
-                : "text-muted-foreground",
-            )}
-          >
-            {row.original.estado === "activo" ? "Activo" : "Borrador"}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const config = estadoCategoriaConfig[row.original.estado]
+          return (
+            <Badge variant="outline" className={cn("font-medium", config.className)}>
+              {config.label}
+            </Badge>
+          )
+        },
       },
       {
         id: "acciones",

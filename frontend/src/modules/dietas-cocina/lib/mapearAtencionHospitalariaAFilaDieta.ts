@@ -2,6 +2,7 @@ import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { AtencionHospitalaria } from "@/api/types"
 import { repararTextoUtf8 } from "@/modules/dietas-cocina/api/utils/texto"
+import { resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
 const DEFAULTS_OPERATIVOS = {
   consistencia: null as string | null,
   tipoDieta: null as string | null,
@@ -11,21 +12,6 @@ const DEFAULTS_OPERATIVOS = {
   observacionAislamiento: "",
   observaciones: "",
   estado: "no-solicitada" as const,
-}
-
-function inferirServicioClinico(pabellon: string): string {
-  const normalizado = pabellon.toUpperCase()
-  if (normalizado.includes("UCI")) return "UCI"
-  if (normalizado.includes("URGENCI")) return "Urgencias"
-  if (normalizado.includes("NEONATAL")) return "Neonatal"
-  if (normalizado.includes("HOSPITALIZ") || normalizado.includes("PISO")) {
-    return "Hospitalización"
-  }
-  return pabellon
-    .toLowerCase()
-    .split(" ")
-    .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
-    .join(" ")
 }
 
 export function formatearDocumentoPaciente(fila: FilaDieta): string {
@@ -72,7 +58,10 @@ export function mapearAtencionHospitalariaAFilaDieta(
     tipoDocumento: atencion.tipoDocumento,
     paciente: repararTextoUtf8(atencion.nombreCompleto),
     edad: opciones.edad ?? 0,
-    servicio: inferirServicioClinico(repararTextoUtf8(atencion.pabellon)),
+    servicio: resolverServicioClinico(
+      atencion.servicio ? repararTextoUtf8(atencion.servicio) : null,
+      repararTextoUtf8(atencion.pabellon),
+    ),
     pabellon: repararTextoUtf8(atencion.pabellon),
     habitacion: repararTextoUtf8(atencion.cama),
     comida,
