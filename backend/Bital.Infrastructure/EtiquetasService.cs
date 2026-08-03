@@ -501,6 +501,8 @@ public class EtiquetasService : IEtiquetasService
             Paciente = fila?.Paciente ?? "",
             Cedula = fila?.Cedula ?? "",
             Edad = fila?.Edad ?? 0,
+            IdIngreso = fila?.IdIngreso,
+            TipoDocumento = fila?.TipoDocumento,
             Aislado = aislado,
             ObservacionAislamiento = fila?.ObservacionAislamiento,
             Alergico = fila?.Alergico ?? false,

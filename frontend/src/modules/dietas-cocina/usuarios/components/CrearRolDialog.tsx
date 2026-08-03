@@ -27,7 +27,6 @@ import {
 } from "@/modules/dietas-cocina/usuarios/components/CapacidadesEtiquetasForm"
 import {
   CAPACIDADES_ETIQUETAS,
-  CAPACIDADES_BANDEJAS_PISO,
 } from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
 import {
   diffPermisosRol,
@@ -57,9 +56,7 @@ export function CrearRolDialog({
 }: CrearRolDialogProps) {
   const [nombre, setNombre] = useState("")
   const [rutas, setRutas] = useState<RutaDietasConfig[]>(["inicio"])
-  const [capacidades, setCapacidades] = useState<CapacidadEtiquetas[]>([
-    ...CAPACIDADES_BANDEJAS_PISO,
-  ])
+  const [capacidades, setCapacidades] = useState<CapacidadEtiquetas[]>([])
   const [confirmacionAbierta, setConfirmacionAbierta] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
@@ -73,7 +70,7 @@ export function CrearRolDialog({
   function cerrarDialogo() {
     setNombre("")
     setRutas(["inicio"])
-    setCapacidades([...CAPACIDADES_BANDEJAS_PISO])
+    setCapacidades([])
     onOpenChange(false)
   }
 
@@ -154,9 +151,12 @@ export function CrearRolDialog({
               <PermisosRolForm
                 rutas={rutas}
                 idPrefix="crear-rol"
-                onAlternar={(ruta, activo) =>
+                onAlternar={(ruta, activo) => {
                   setRutas((prev) => alternarRutaPermiso(prev, ruta, activo))
-                }
+                  if (ruta === "bandejas-piso") {
+                    setCapacidades([])
+                  }
+                }}
               />
               {rutas.includes("bandejas-piso") && (
                 <CapacidadesEtiquetasForm

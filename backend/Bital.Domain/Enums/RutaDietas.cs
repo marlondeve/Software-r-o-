@@ -27,6 +27,8 @@ public enum RutaDietas
     EntregaPaciente = 23,
     RechazoAntesEntrega = 24,
     RecogidaBandeja = 25,
+    /// <summary>Acceso al hub de bandejas en piso sin flujos operativos (23–25).</summary>
+    VerBandejasPiso = 26,
 
     // Conciliación
     ListarConciliacion = 30,

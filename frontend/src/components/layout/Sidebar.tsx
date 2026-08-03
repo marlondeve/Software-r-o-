@@ -84,6 +84,10 @@ const mainNavItems: Record<ModuleType, NavItem[]> = {
   ],
 }
 
+function rutaNavEsPrefijo(pathname: string, to: string): boolean {
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
+
 function SidebarNavItem({
   item,
   onNavigate,
@@ -101,7 +105,7 @@ function SidebarNavItem({
         const activo =
           isActive ||
           (item.to !== "/dietas-cocina/inicio" &&
-            location.pathname.startsWith(item.to))
+            rutaNavEsPrefijo(location.pathname, item.to))
         return cn(
           "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
           activo

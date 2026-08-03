@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { useConfigAccesoModulos } from "@/hooks/useConfigAccesoModulos"
 import { alternarPermisoRutaDietas } from "@/lib/configAccesoModulos"
 import { actualizarPermisosRol, obtenerPermisosRoles } from "@/modules/dietas-cocina/api/services/usuarios.service"
@@ -32,6 +31,7 @@ import {
   validarPermisosRol,
 } from "@/modules/dietas-cocina/usuarios/lib/permisosValidaciones"
 import {
+  capacidadesBandejasDesdePermisosApi,
   permisosPorRolDesdeApi,
   rutasToPermisosRecord,
 } from "@/modules/dietas-cocina/usuarios/lib/permisosApiBridge"
@@ -44,6 +44,16 @@ import type { CapacidadEtiquetas } from "@/modules/dietas-cocina/types/enums"
 
 function etiquetaCapacidad(id: CapacidadEtiquetas): string {
   return CAPACIDADES_ETIQUETAS.find((item) => item.id === id)?.label ?? id
+}
+
+function fusionarCapacidadesBandejas(
+  actuales: CapacidadEtiquetas[],
+  bandejasPendientes: CapacidadEtiquetas[],
+): CapacidadEtiquetas[] {
+  const sinBandejas = actuales.filter(
+    (cap) => !CAPACIDADES_BANDEJAS_PISO.includes(cap),
+  )
+  return [...sinBandejas, ...bandejasPendientes]
 }
 
 interface EditarPermisosRolDialogProps {
@@ -85,31 +95,41 @@ export function EditarPermisosRolDialog({
   )
 
   function abrirDialogo() {
-    setRutasPendientes([...rutasActuales])
-    const capsBandejasActuales = capacidadesActuales.filter((cap) =>
-      CAPACIDADES_BANDEJAS_PISO.includes(cap),
-    )
-    const capsIniciales =
-      capsBandejasActuales.length > 0
-        ? [...capsBandejasActuales]
-        : rutasActuales.includes("bandejas-piso")
-          ? [...CAPACIDADES_BANDEJAS_PISO]
-          : []
-    setCapacidadesPendientes(capsIniciales)
+    const rutas = [...rutasActuales]
+    setRutasPendientes(rutas)
+
+    const capsBandejas = apiActiva
+      ? capacidadesBandejasDesdePermisosApi(permisosApi, rolNombre)
+      : capacidadesActuales.filter((cap) => CAPACIDADES_BANDEJAS_PISO.includes(cap))
+
+    setCapacidadesPendientes([...capsBandejas])
     setDialogAbierto(true)
   }
 
+  function alternarRutaPendiente(ruta: RutaDietasConfig, activo: boolean) {
+    setRutasPendientes((prev) => alternarRutaPermiso(prev, ruta, activo))
+    if (ruta === "bandejas-piso") {
+      setCapacidadesPendientes([])
+    }
+  }
+
+  const capacidadesBandejasActuales = useMemo(
+    () =>
+      capacidadesActuales.filter((cap) => CAPACIDADES_BANDEJAS_PISO.includes(cap)),
+    [capacidadesActuales],
+  )
+
   const diffCapacidades = useMemo(() => {
-    const anteriores = new Set(capacidadesActuales)
+    const anteriores = new Set(capacidadesBandejasActuales)
     const nuevas = new Set(capacidadesPendientes)
     return {
       agregadas: capacidadesPendientes.filter((item) => !anteriores.has(item)),
-      removidas: capacidadesActuales.filter((item) => !nuevas.has(item)),
+      removidas: capacidadesBandejasActuales.filter((item) => !nuevas.has(item)),
       sinCambios:
-        capacidadesActuales.length === capacidadesPendientes.length &&
-        capacidadesActuales.every((item) => nuevas.has(item)),
+        capacidadesBandejasActuales.length === capacidadesPendientes.length &&
+        capacidadesBandejasActuales.every((item) => nuevas.has(item)),
     }
-  }, [capacidadesActuales, capacidadesPendientes])
+  }, [capacidadesBandejasActuales, capacidadesPendientes])
 
   const diff = useMemo(
     () => diffPermisosRol(rutasActuales, rutasPendientes),
@@ -150,7 +170,10 @@ export function EditarPermisosRolDialog({
             ...config,
             capacidadesEtiquetas: {
               ...config.capacidadesEtiquetas,
-              [rolNombre]: [...capacidadesPendientes],
+              [rolNombre]: fusionarCapacidadesBandejas(
+                capacidadesActuales,
+                capacidadesPendientes,
+              ),
             },
           })
           setDialogAbierto(false)
@@ -178,7 +201,10 @@ export function EditarPermisosRolDialog({
       ...nextConfig,
       capacidadesEtiquetas: {
         ...nextConfig.capacidadesEtiquetas,
-        [rolNombre]: [...capacidadesPendientes],
+        [rolNombre]: fusionarCapacidadesBandejas(
+          capacidadesActuales,
+          capacidadesPendientes,
+        ),
       },
     }
     actualizar(nextConfig)
@@ -217,13 +243,11 @@ export function EditarPermisosRolDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-72 rounded-lg border px-4 py-2">
+          <div className="max-h-72 overflow-y-auto rounded-lg border px-4 py-2">
             <PermisosRolForm
               rutas={rutasPendientes}
               idPrefix={`${rolId}-dialog`}
-              onAlternar={(ruta, activo) =>
-                setRutasPendientes((prev) => alternarRutaPermiso(prev, ruta, activo))
-              }
+              onAlternar={alternarRutaPendiente}
             />
             {rutasPendientes.includes("bandejas-piso") && (
               <CapacidadesEtiquetasForm
@@ -237,7 +261,7 @@ export function EditarPermisosRolDialog({
                 }
               />
             )}
-          </ScrollArea>
+          </div>
 
           {!validacion.valido && validacion.mensaje && (
             <p className="text-sm text-destructive">{validacion.mensaje}</p>

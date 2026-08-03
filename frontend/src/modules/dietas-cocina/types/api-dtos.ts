@@ -138,6 +138,8 @@ export interface EtiquetaDto {
   ordenCocinaId?: string
   filaDietaId?: string
   cedula?: string
+  idIngreso?: number
+  tipoDocumento?: string
   generadaEn?: string
   fechaOperativa?: string
   impresaEn?: string

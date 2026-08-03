@@ -9,6 +9,7 @@ import { useEtiquetasOperativas } from "@/modules/dietas-cocina/etiquetas/hooks/
 import {
   CAPACIDADES_BANDEJAS_PISO,
   puedeCapacidadEtiquetas,
+  tieneOperacionBandejasPiso,
 } from "@/modules/dietas-cocina/etiquetas/lib/permisosEtiquetas"
 import { AccionesFlujoHub } from "@/modules/dietas-cocina/etiquetas/views/EtiquetasEnfermeraFlowLayout"
 import { BadgePendientesSync } from "@/modules/dietas-cocina/etiquetas/components/BadgePendientesSync"
@@ -99,6 +100,12 @@ function BandejasPisoPageContent() {
           </p>
         </div>
         <AccionesFlujoHub capacidades={[...CAPACIDADES_BANDEJAS_PISO]} />
+        {!tieneOperacionBandejasPiso(rol) && (
+          <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
+            Tiene acceso a esta sección, pero no tiene flujos operativos
+            asignados (entrega, rechazo o recogida).
+          </p>
+        )}
         {pendientesEntrega.length > 0 && (
           <ListadoBandejasRecibidasEnPiso bandejas={pendientesEntrega} />
         )}

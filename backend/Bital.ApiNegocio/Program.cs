@@ -250,6 +250,18 @@ try
         Log.Error(ex, "Error al sembrar catálogo FCR al iniciar. Revise esquema BD y migraciones.");
     }
 
+    try
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<Bital.Infrastructure.Data.BitalNegocioDbContext>();
+        await Bital.Infrastructure.DietasCocina.RolModuloDefaultsSeed.EnsureDefaultRolesAsync(db);
+        Log.Information("Roles por defecto del módulo dietas verificados.");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "Error al verificar roles por defecto del módulo dietas.");
+    }
+
     // Swagger en todos los entornos (para desarrollo/staging)
     if (app.Environment.IsDevelopment() || app.Environment.IsStaging())
     {

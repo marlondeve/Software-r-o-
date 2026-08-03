@@ -8,6 +8,20 @@ import type {
 } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 
+function resolverIdIngresoEtiqueta(registro: Record<string, unknown>): number | undefined {
+  const raw = normalizarClave(registro, "idIngreso", "IdIngreso")
+  if (raw == null || raw === "") return undefined
+  const numero = Number(raw)
+  return Number.isFinite(numero) && numero > 0 ? numero : undefined
+}
+
+function resolverTipoDocumentoEtiqueta(registro: Record<string, unknown>): string | undefined {
+  const raw = normalizarClave(registro, "tipoDocumento", "TipoDocumento")
+  if (typeof raw !== "string") return undefined
+  const tipo = raw.trim()
+  return tipo || undefined
+}
+
 function normalizarEstadoEtiqueta(valor: unknown): EstadoEtiqueta {
   const v = String(valor ?? "pendiente").toLowerCase()
   if (
@@ -123,6 +137,8 @@ export function mapEtiquetaDtoToDomain(dto: EtiquetaDto): EtiquetaEnfermera {
     id: String(dto.id ?? ""),
     codigo: String(dto.codigo ?? ""),
     pacienteId: String(dto.pacienteId ?? ""),
+    idIngreso: resolverIdIngresoEtiqueta(registro),
+    tipoDocumento: resolverTipoDocumentoEtiqueta(registro),
     paciente: String(dto.paciente ?? ""),
     documento: String(dto.documento ?? dto.cedula ?? ""),
     edad: Number(normalizarClave(registro, "edad", "Edad") ?? dto.edad ?? 0),

@@ -35,6 +35,8 @@ public class EtiquetaEnfermeraDto
     public string? Observaciones { get; set; }
     public bool Aislado { get; set; }
     public int Edad { get; set; }
+    public int? IdIngreso { get; set; }
+    public string? TipoDocumento { get; set; }
     public string? ObservacionAislamiento { get; set; }
     public bool Alergico { get; set; }
     public string? Alergias { get; set; }

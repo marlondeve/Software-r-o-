@@ -43,7 +43,7 @@ function fechaVentanaCerrada(): Date {
 function evaluar(
   estadoVisible: EstadoDieta,
   opts?: {
-    rol?: "Enfermera" | "Nutricionista" | "Doctor" | "Administrador"
+    rol?: "Enfermera" | "Nutricionista" | "Administrador"
     fecha?: Date
     comida?: TiempoComida
   },

@@ -33,7 +33,7 @@ internal static class DietasReglasNegocio
 
     private static readonly HashSet<string> RolesCancelarTardia =
     [
-        "Administrador",
+        RolModuloSeed.NombreAdministrador,
     ];
 
     internal static bool PermiteRegistrarNovedad(EstadoDieta estado) =>
@@ -121,7 +121,7 @@ internal static class DietasReglasNegocio
     private static string NormalizarRol(string rol) =>
         rol.Trim() switch
         {
-            "admin" or "Admin" => "Administrador",
+            "admin" or "Admin" => RolModuloSeed.NombreAdministrador,
             _ => rol.Trim(),
         };
 

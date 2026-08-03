@@ -38,6 +38,11 @@ export function CapacidadesEtiquetasForm({
           ? "Flujos en bandejas en piso"
           : "Permisos de bandejas (Etiquetas)"}
       </p>
+      {soloGrupo === "bandejas" && (
+        <p className="text-xs text-muted-foreground">
+          Opcional. Puede dejar la sección activa sin asignar flujos operativos.
+        </p>
+      )}
       {gruposVisibles.map((grupo) => {
         const items = CAPACIDADES_ETIQUETAS.filter((item) => item.grupo === grupo.id)
         if (items.length === 0) return null
@@ -51,6 +56,7 @@ export function CapacidadesEtiquetasForm({
               <div
                 key={item.id}
                 className="flex items-center justify-between gap-3 py-2 pl-1"
+                onPointerDown={(event) => event.stopPropagation()}
               >
                 <div className="min-w-0 flex-1">
                   <label
@@ -67,7 +73,9 @@ export function CapacidadesEtiquetasForm({
                   id={`${idPrefix}-${item.id}`}
                   checked={capacidades.includes(item.id)}
                   disabled={disabled}
-                  onCheckedChange={(activo) => onAlternar(item.id, activo === true)}
+                  className="shrink-0"
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onCheckedChange={(activo) => onAlternar(item.id, activo)}
                   aria-label={item.label}
                 />
               </div>

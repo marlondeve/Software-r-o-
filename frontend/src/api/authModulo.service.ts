@@ -32,7 +32,7 @@ export function mapLoginResponseToUsuario(payload: unknown): Usuario {
   const rolNombre = String(
     normalizarClave(registro, "rolNombre", "RolNombre") ?? "Usuario",
   )
-  const esAdministrador = rolNombre.toLowerCase() === "administrador"
+  const esAdministrador = rolNombre.trim().toLowerCase() === "administrador"
   const accesos: AccesoModulo[] = esAdministrador
     ? [
         { moduloId: "dietas-cocina", rol: rolNombre },

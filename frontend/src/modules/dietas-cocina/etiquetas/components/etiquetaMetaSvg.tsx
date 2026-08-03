@@ -1,13 +1,16 @@
+import { TIPOGRAFIA_IMPRESION } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaImpresionLayout"
+
 const C = {
   black85: "#1a1a1a",
   black50: "#808080",
   black25: "#bfbfbf",
 } as const
 
-const LINEA_ALTO = 12
-const ICONO_OFFSET_X = 11
-const TEXTO_Y = 9.5
-const META_FONT_SIZE = 8.5
+const LINEA_ALTO = 15
+const ICONO_OFFSET_X = 12
+const TEXTO_Y = 11.5
+const META_FONT_SIZE = TIPOGRAFIA_IMPRESION.meta
+const META_FONT_WEIGHT = 700
 
 export type IconoMetaTipo =
   | "idCard"
@@ -157,7 +160,7 @@ export function FilaMetaSvg({
         return (
           <g key={i} transform={`translate(${segX}, 0)`}>
             <g
-              transform="translate(0, 1) scale(0.38)"
+              transform="translate(0, 1) scale(0.42)"
               fill="none"
               stroke={C.black50}
               strokeWidth={2}
@@ -170,6 +173,7 @@ export function FilaMetaSvg({
               x={ICONO_OFFSET_X}
               y={TEXTO_Y}
               fontSize={META_FONT_SIZE}
+              fontWeight={META_FONT_WEIGHT}
               fill={C.black85}
               fontFamily="Arial, Helvetica, sans-serif"
             >

@@ -15,6 +15,7 @@ public class PermisosOperativosService : IPermisosOperativosService
         RutaDietas.EntregaPaciente,
         RutaDietas.RechazoAntesEntrega,
         RutaDietas.RecogidaBandeja,
+        RutaDietas.VerBandejasPiso,
     ];
 
     private readonly BitalNegocioDbContext _context;

@@ -51,8 +51,6 @@ export const CAPACIDADES_ETIQUETAS: {
 export const TODAS_CAPACIDADES_ETIQUETAS: CapacidadEtiquetas[] =
   CAPACIDADES_ETIQUETAS.map((item) => item.id)
 
-const RUTA_LISTAR_ETIQUETAS = 20
-
 function capacidadesDesdeMatrizApi(rol: string): CapacidadEtiquetas[] {
   const matriz = obtenerMatrizPermisosApi()
   if (!matriz) return []
@@ -65,9 +63,6 @@ function capacidadesDesdeMatrizApi(rol: string): CapacidadEtiquetas[] {
   if (!entry?.rutas?.length) return []
 
   const caps = capacidadesDesdeRutasApi(entry.rutas)
-  if (caps.length === 0 && entry.rutas.includes(RUTA_LISTAR_ETIQUETAS)) {
-    return [...TODAS_CAPACIDADES_ETIQUETAS]
-  }
   return caps
 }
 
@@ -82,9 +77,9 @@ export function obtenerCapacidadesEtiquetas(
   }
 
   const config = cargarConfigAccesoModulos()
-  const capsConfig = config.capacidadesEtiquetas?.[rol]
-  if (capsConfig && capsConfig.length > 0) {
-    return capsConfig
+  const capsExplicitas = config.capacidadesEtiquetas?.[rol]
+  if (capsExplicitas !== undefined) {
+    return capsExplicitas
   }
 
   const caps: CapacidadEtiquetas[] = []

@@ -220,17 +220,15 @@ DECLARE @RolAdmin uniqueidentifier = '11111111-1111-1111-1111-111111000001';
 DECLARE @RolNutricionista uniqueidentifier = '11111111-1111-1111-1111-111111000002';
 DECLARE @RolProveedor uniqueidentifier = '11111111-1111-1111-1111-111111000003';
 DECLARE @RolEnfermera uniqueidentifier = '11111111-1111-1111-1111-111111000004';
-DECLARE @RolDoctor uniqueidentifier = '11111111-1111-1111-1111-111111000005';
 DECLARE @RolAuxiliar uniqueidentifier = '11111111-1111-1111-1111-111111000006';
 
 ;WITH RolesSeed AS (
     SELECT *
     FROM (VALUES
-        (@RolAdmin,         N'Administrador', 1),
-        (@RolNutricionista, N'Nutricionista', 1),
-        (@RolProveedor,     N'Proveedor',     1),
-        (@RolEnfermera,     N'Enfermera',     1),
-        (@RolDoctor,        N'Doctor',        1),
+        (@RolAdmin,         N'Administrador',      1),
+        (@RolNutricionista, N'Nutricionista',      1),
+        (@RolProveedor,     N'Proveedor',          1),
+        (@RolEnfermera,     N'Enfermera',          1),
         (@RolAuxiliar,      N'Auxiliar de Cocina', 1)
     ) AS v(Id, Nombre, EsSistema)
 )
@@ -239,7 +237,14 @@ USING RolesSeed AS src
     ON tgt.Id = src.Id
 WHEN NOT MATCHED BY TARGET THEN
     INSERT (Id, Nombre, EsSistema, Activo, CreadoEn, CreadoPor)
-    VALUES (src.Id, src.Nombre, src.EsSistema, 1, @AhoraUtc, N'Migracion');
+    VALUES (src.Id, src.Nombre, src.EsSistema, 1, @AhoraUtc, N'Migracion')
+WHEN MATCHED AND tgt.Nombre <> src.Nombre THEN
+    UPDATE SET
+        tgt.Nombre = src.Nombre,
+        tgt.EsSistema = src.EsSistema,
+        tgt.Activo = 1,
+        tgt.ModificadoEn = @AhoraUtc,
+        tgt.ModificadoPor = N'Migracion';
 
 ;WITH UsuariosSeed AS (
     SELECT *
@@ -309,15 +314,11 @@ WHERE NOT EXISTS (
     WHERE p.RolModuloId = rr.RolModuloId AND p.Ruta = rr.Ruta
 );
 
--- Doctor: mismos permisos que Nutricionista (rol clínico)
-INSERT INTO bital.PermisosRol (Id, RolModuloId, Ruta, Permitido, CreadoEn, CreadoPor)
-SELECT NEWID(), @RolDoctor, p.Ruta, p.Permitido, @AhoraUtc, N'Migracion'
-FROM bital.PermisosRol p
-WHERE p.RolModuloId = @RolNutricionista
-  AND NOT EXISTS (
-    SELECT 1 FROM bital.PermisosRol d
-    WHERE d.RolModuloId = @RolDoctor AND d.Ruta = p.Ruta
-  );
+
+-- Desactivar rol legado Doctor (fuera del catálogo por defecto)
+UPDATE bital.RolesModulo
+SET Activo = 0, ModificadoEn = @AhoraUtc, ModificadoPor = N'Migracion'
+WHERE Id = '11111111-1111-1111-1111-111111000005' AND Activo = 1;
 
 PRINT 'Usuarios, roles y permisos: OK';
 GO

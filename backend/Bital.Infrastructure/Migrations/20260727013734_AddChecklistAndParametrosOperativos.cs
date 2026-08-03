@@ -18,44 +18,29 @@ namespace Bital.Infrastructure.Migrations
                 type: "nvarchar(max)",
                 nullable: true);
 
-            migrationBuilder.AddColumn<int>(
-                name: "Nps",
-                schema: "bital",
-                table: "CapturasEncuesta",
-                type: "int",
-                nullable: true);
+            migrationBuilder.Sql("""
+                IF COL_LENGTH('bital.CapturasEncuesta', 'Nps') IS NULL
+                    ALTER TABLE [bital].[CapturasEncuesta] ADD [Nps] int NULL;
+                IF COL_LENGTH('bital.CapturasEncuesta', 'RequiereSeguimiento') IS NULL
+                    ALTER TABLE [bital].[CapturasEncuesta] ADD [RequiereSeguimiento] bit NOT NULL CONSTRAINT [DF_CapturasEncuesta_RequiereSeguimiento] DEFAULT 0;
+                IF COL_LENGTH('bital.CapturasEncuesta', 'Sat') IS NULL
+                    ALTER TABLE [bital].[CapturasEncuesta] ADD [Sat] int NULL;
+                """);
 
-            migrationBuilder.AddColumn<bool>(
-                name: "RequiereSeguimiento",
-                schema: "bital",
-                table: "CapturasEncuesta",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
-
-            migrationBuilder.AddColumn<int>(
-                name: "Sat",
-                schema: "bital",
-                table: "CapturasEncuesta",
-                type: "int",
-                nullable: true);
-
-            migrationBuilder.CreateTable(
-                name: "ParametrosOperativos",
-                schema: "dietas",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    ModoCarga = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
-                    CreadoEn = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreadoPor = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    ModificadoEn = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ModificadoPor = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ParametrosOperativos", x => x.Id);
-                });
+            migrationBuilder.Sql("""
+                IF OBJECT_ID(N'[dietas].[ParametrosOperativos]', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE [dietas].[ParametrosOperativos](
+                        [Id] uniqueidentifier NOT NULL,
+                        [ModoCarga] nvarchar(50) NOT NULL,
+                        [CreadoEn] datetime2 NOT NULL,
+                        [CreadoPor] nvarchar(100) NOT NULL,
+                        [ModificadoEn] datetime2 NULL,
+                        [ModificadoPor] nvarchar(100) NULL,
+                        CONSTRAINT [PK_ParametrosOperativos] PRIMARY KEY ([Id])
+                    );
+                END
+                """);
 
             migrationBuilder.AddColumn<string>(
                 name: "FacturaDocumentoUrl",

@@ -12,6 +12,16 @@ export function obtenerRolDietas(usuario: Usuario | null): string | null {
   return obtenerNombreRolDietas(usuario)
 }
 
+export const ROLES_DIETAS_DEFAULT = [
+  "Nutricionista",
+  "Enfermera",
+  "Proveedor",
+  "Administrador",
+  "Auxiliar de Cocina",
+] as const
+
+export type RolDietasDefault = (typeof ROLES_DIETAS_DEFAULT)[number]
+
 export function esRolAdministrador(rol: string | null | undefined): boolean {
   return rol?.trim().toLowerCase() === "administrador"
 }

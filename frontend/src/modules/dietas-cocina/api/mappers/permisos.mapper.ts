@@ -15,6 +15,8 @@ export const CAPACIDAD_A_RUTA_API: Record<CapacidadEtiquetas, number> = {
 
 const RUTAS_CAPACIDAD_ETIQUETAS = Object.values(CAPACIDAD_A_RUTA_API)
 export const RUTA_LISTAR_ETIQUETAS = 20
+/** Hub de bandejas en piso sin flujos operativos (23–25). */
+export const RUTA_BANDEJAS_PISO = 26
 export const RUTA_EXPORTAR_REPORTES = 41
 
 /** Códigos API que sugieren reportes clínicos vs producción (comparten 41). */
@@ -29,12 +31,7 @@ const RUTA_UI_A_API: Record<RutaDietasConfig, number[]> = {
   cocina: [10, 11, 12, 13],
   "impresion-etiquetas": [RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.impresion_proveedor],
   "recepcion-proveedor": [RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.recepcion_proveedor],
-  "bandejas-piso": [
-    RUTA_LISTAR_ETIQUETAS,
-    CAPACIDAD_A_RUTA_API.entrega_paciente,
-    CAPACIDAD_A_RUTA_API.rechazo_antes_entrega,
-    CAPACIDAD_A_RUTA_API.recogida_bandeja,
-  ],
+  "bandejas-piso": [RUTA_LISTAR_ETIQUETAS, RUTA_BANDEJAS_PISO],
   conciliacion: [30, 31, 32],
   "reportes-clinicos": [RUTA_EXPORTAR_REPORTES],
   "reportes-produccion": [RUTA_EXPORTAR_REPORTES],
@@ -83,12 +80,14 @@ function inferirRutasLogisticaDesdeApi(setApi: Set<number>): Record<string, bool
     setApi.has(CAPACIDAD_A_RUTA_API.impresion_proveedor) ||
     (tieneListar && caps.length === 0)
   const recepcion = setApi.has(CAPACIDAD_A_RUTA_API.recepcion_proveedor)
-  const piso = RUTAS_CAPACIDAD_ETIQUETAS.some(
-    (codigo) =>
-      codigo !== CAPACIDAD_A_RUTA_API.impresion_proveedor &&
-      codigo !== CAPACIDAD_A_RUTA_API.recepcion_proveedor &&
-      setApi.has(codigo),
-  )
+  const piso =
+    setApi.has(RUTA_BANDEJAS_PISO) ||
+    RUTAS_CAPACIDAD_ETIQUETAS.some(
+      (codigo) =>
+        codigo !== CAPACIDAD_A_RUTA_API.impresion_proveedor &&
+        codigo !== CAPACIDAD_A_RUTA_API.recepcion_proveedor &&
+        setApi.has(codigo),
+    )
 
   return {
     "impresion-etiquetas": impresion,
@@ -227,6 +226,7 @@ export function mapPermisosUiToActualizarRequest(
   rutas = rutas.filter(
     (codigo) =>
       codigo !== RUTA_LISTAR_ETIQUETAS &&
+      codigo !== RUTA_BANDEJAS_PISO &&
       !RUTAS_CAPACIDAD_ETIQUETAS.includes(codigo) &&
       codigo !== RUTA_EXPORTAR_REPORTES,
   )
@@ -239,20 +239,20 @@ export function mapPermisosUiToActualizarRequest(
   }
   if (permisos["bandejas-piso"]) {
     rutas.push(RUTA_LISTAR_ETIQUETAS)
-    const capsBandejas =
-      capacidadesEtiquetas && capacidadesEtiquetas.length > 0
-        ? capacidadesEtiquetas.filter((cap) =>
-            (
-              [
-                "entrega_paciente",
-                "rechazo_antes_entrega",
-                "recogida_bandeja",
-              ] as CapacidadEtiquetas[]
-            ).includes(cap),
-          )
-        : (["entrega_paciente", "rechazo_antes_entrega", "recogida_bandeja"] as CapacidadEtiquetas[])
+    const capsBandejas = (capacidadesEtiquetas ?? []).filter((cap) =>
+      (
+        [
+          "entrega_paciente",
+          "rechazo_antes_entrega",
+          "recogida_bandeja",
+        ] as CapacidadEtiquetas[]
+      ).includes(cap),
+    )
     for (const cap of capsBandejas) {
       rutas.push(CAPACIDAD_A_RUTA_API[cap])
+    }
+    if (capsBandejas.length === 0) {
+      rutas.push(RUTA_BANDEJAS_PISO)
     }
   }
 

@@ -32,7 +32,7 @@ function esperarImagenes(contenedor: HTMLElement): Promise<void> {
   ).then(() => undefined)
 }
 
-/** Captura el nodo de la etiqueta (115×72 mm) para html2canvas. */
+/** Captura el nodo de la etiqueta (120×80 mm) para html2canvas. */
 async function capturarNodoImpresion(nodo: HTMLElement): Promise<HTMLCanvasElement> {
   await esperarImagenes(nodo)
 

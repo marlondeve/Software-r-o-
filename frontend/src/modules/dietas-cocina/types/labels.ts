@@ -16,6 +16,10 @@ export interface EtiquetaDieta {
   id: string
   codigo: string
   pacienteId: string
+  /** Consecutivo de ingreso en el HIS (Vital). */
+  idIngreso?: number
+  /** Tipo de documento (CC, TI, etc.). */
+  tipoDocumento?: string
   paciente: string
   documento: string
   edad: number

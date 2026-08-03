@@ -5,7 +5,7 @@ const ROL_IDS = {
   Nutricionista: "11111111-1111-1111-1111-111111000002",
   Proveedor: "11111111-1111-1111-1111-111111000003",
   Enfermera: "11111111-1111-1111-1111-111111000004",
-  Doctor: "11111111-1111-1111-1111-111111000005",
+  AuxiliarCocina: "11111111-1111-1111-1111-111111000006",
 } as const
 
 export const mockUsuariosDietas = {
@@ -57,16 +57,16 @@ export const mockUsuariosDietas = {
     },
     {
       id: "4",
-      nombre: "Dr. Ramírez",
-      usuario: "dramirez",
-      correo: "dramirez@clinicadelrio.com",
-      rolId: ROL_IDS.Doctor,
-      rol: "Doctor",
-      servicioArea: "Medicina Interna",
+      nombre: "Aux. Cocina Pabellón",
+      usuario: "aux_cocina",
+      correo: "aux.cocina@clinicadelrio.com",
+      rolId: ROL_IDS.AuxiliarCocina,
+      rol: "Auxiliar de Cocina",
+      servicioArea: "Bandejas en piso",
       orgProveedora: null,
       estado: "activo",
       ultimoAcceso: "Hace 1 hora",
-      origen: "Vital API",
+      origen: "RioSoft",
     },
     {
       id: "5",
@@ -149,10 +149,10 @@ export const mockUsuariosDietas = {
   ] satisfies UsuarioModulo[],
 }
 
-export const mockRolesDietas = Object.entries(ROL_IDS).map(([nombre, id]) => ({
-  id,
-  nombre,
-  esSistema: true,
-  activo: true,
-  totalPermisos: 0,
-}))
+export const mockRolesDietas = [
+  { id: ROL_IDS.Nutricionista, nombre: "Nutricionista", esSistema: true, activo: true, totalPermisos: 0 },
+  { id: ROL_IDS.Enfermera, nombre: "Enfermera", esSistema: true, activo: true, totalPermisos: 0 },
+  { id: ROL_IDS.Proveedor, nombre: "Proveedor", esSistema: true, activo: true, totalPermisos: 0 },
+  { id: ROL_IDS.Administrador, nombre: "Administrador", esSistema: true, activo: true, totalPermisos: 0 },
+  { id: ROL_IDS.AuxiliarCocina, nombre: "Auxiliar de Cocina", esSistema: true, activo: true, totalPermisos: 0 },
+]
