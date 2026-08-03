@@ -6,14 +6,12 @@ La idea es que sirva como guía práctica para formularios, pantallas operativas
 
 ## Base URL
 
-- Local: `http://localhost:8080`
-- Producción: `http://186.190.254.230:8080`
+| Entorno | URL |
+|---|---|
+| Desarrollo local | `http://localhost:8080` |
+| Producción (vía proxy IIS) | `https://riosoft.clinicadelriomonteria.com:8080` — rutas relativas `/api/v1` |
 
-Todos los endpoints usan versión:
-
-```http
-/api/v1
-```
+Prefijo de versión: `/api/v1`
 
 ---
 
@@ -513,13 +511,12 @@ PUT /api/v1/dietas-cocina/roles/{rol}/permisos
 
 ## 8. Recomendaciones para frontend
 
-- Usar siempre la versión `/api/v1`.
+- Usar siempre la versión `/api/v1` con cookie de sesión (`withCredentials: true`).
 - Antes de enviar formularios de confirmación, cancelación o asignación masiva, mostrar una validación o modal de confirmación.
 - Manejar `404` cuando una dieta, etiqueta, usuario o evento no exista.
-- Algunos endpoints siguen usando valores temporales de usuario en backend mientras se integra autenticación real.
+- En producción usar URLs relativas (`/api/v1/...`) — el proxy IIS reenvía a `127.0.0.1:8081`.
 - Los body exactos dependen de los DTOs del proyecto; esta guía resume los contratos visibles para consumo frontend.
-- En tablas y formularios, conservar el identificador devuelto por el backend para poder consultar detalle, historial o estado posterior.
-- Si se consume en producción, usar `http://186.190.254.230:8080`.
+- En tablas y formularios, conservar el identificador devuelto por el backend para consultar detalle, historial o estado posterior.
 
 ---
 

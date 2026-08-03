@@ -6,14 +6,14 @@ La idea es que esta guía sirva como apoyo directo para el formulario y para las
 
 ## Base URL
 
-- Local: `http://localhost:8080`
-- Producción: `http://186.190.254.230:8080`
+| Entorno | URL |
+|---|---|
+| Desarrollo local | `http://localhost:8080` |
+| Producción (vía proxy IIS) | `https://riosoft.clinicadelriomonteria.com:8080` — rutas relativas `/api/v1` |
 
-Todos los endpoints usan versión:
+Prefijo de versión: `/api/v1`
 
-```http
-/api/v1
-```
+> Todos los endpoints requieren cookie de sesión JWT salvo los marcados como anónimos. Ver [FRONTEND-API-GUIDE.md](../FRONTEND-API-GUIDE.md#autenticación).
 
 ---
 

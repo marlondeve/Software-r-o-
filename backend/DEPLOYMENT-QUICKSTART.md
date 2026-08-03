@@ -1,216 +1,88 @@
-# 🚀 Despliegue Rápido - Bital.ApiNegocio en IIS
+# Despliegue Rápido — RioSoft en IIS
 
-## 📋 Resumen de Infraestructura
+**Versión:** 1.1.0
 
-| Componente | Dirección | Puerto | Descripción |
-|------------|-----------|--------|-------------|
-| **API Server** | `10.238.97.67` (interna)<br>`186.190.254.230` (pública) | `2000` | IIS Windows Server |
-| **Database** | `10.238.97.69` | `1433` | SQL Server - Vital HIS |
+**Última actualización:** 2026-08-03
 
-## ⚡ Despliegue en 3 Pasos
+## Infraestructura
 
-### 📦 Paso 1: Publicar (en tu máquina de desarrollo)
-
-```powershell
-cd backend
-.\publish-to-iis.ps1
-```
-
-Este script:
-- Compila la API en modo Release
-- Publica en `C:\temp\bital-api-consultas-deploy`
-- Verifica todos los archivos necesarios
-
-**⚠️ IMPORTANTE**: Antes de publicar, edita `backend/Bital.ApiNegocio/appsettings.Production.json` y reemplaza:
-
-```json
-"Password=#{VITAL_DB_PASSWORD}#"
-```
-
-Por la contraseña real del usuario `bital_readonly`.
+| Componente | Detalle |
+|---|---|
+| Frontend público | `https://riosoft.clinicadelriomonteria.com:8080` |
+| API interna | `http://127.0.0.1:8081` (proxy desde frontend) |
+| BD BitalNegocio | `10.238.97.66:1433` |
+| BD Vital | `10.238.97.69:1433` (Hosvital_Pruebas) |
 
 ---
 
-### 🖥️ Paso 2: Configurar IIS (en el servidor 10.238.97.67)
+## Paso 1 — Build (dev)
 
-1. **Copiar el script al servidor**:
-   - Archivo: `backend/setup-iis-server.ps1`
-   - Destino: cualquier ubicación en el servidor
+```powershell
+pnpm install
+pnpm build:iis
+```
 
-2. **Ejecutar como Administrador**:
-   ```powershell
-   .\setup-iis-server.ps1
-   ```
-
-Este script automáticamente:
-- ✅ Crea Application Pool `.NET 8`
-- ✅ Crea sitio web en puerto 2000
-- ✅ Configura permisos de carpeta
-- ✅ Abre puerto en firewall
-- ✅ Inicia el sitio
+Salida: `deploy/apinegocio/` + `deploy/frontend/`
 
 ---
 
-### 📂 Paso 3: Copiar archivos publicados
+## Paso 2 — Copiar al servidor
 
-**Desde** (tu máquina): `C:\temp\bital-api-negocio-deploy\`  
-**Hacia** (servidor): `C:\inetpub\wwwroot\bital-api-negocio\`
+| Origen | Destino |
+|---|---|
+| `deploy/apinegocio/*` | `C:\inetpub\wwwroot\bital-api-negocio\` |
+| `deploy/frontend/*` | `C:\inetpub\wwwroot\bital-frontend\` |
 
-**Métodos**:
-
-#### Opción A: RDP (más simple)
-1. Conectar a `10.238.97.67` por Remote Desktop
-2. Copiar/pegar carpeta completa
-
-#### Opción B: PowerShell Remoting
-```powershell
-$session = New-PSSession -ComputerName 10.238.97.67
-Copy-Item -Path "C:\temp\bital-api-consultas-deploy\*" `
-		  -Destination "C:\inetpub\wwwroot\bital-api-consultas\" `
-		  -ToSession $session -Recurse -Force
-Remove-PSSession $session
-```
+Verificar `appsettings.Production.json` antes de publicar (JWT, connection strings).
 
 ---
 
-## ✅ Verificación Post-Despliegue
+## Paso 3 — IIS
 
-### En el servidor (10.238.97.67)
+### API (interno)
 
-```powershell
-# Health check
-Invoke-RestMethod http://localhost:8080/health
+- Pool: `BitalApiNegocioPool` — No Managed Code
+- Sitio: `BitalApiNegocio` → `C:\inetpub\wwwroot\bital-api-negocio`
+- Binding: `http://127.0.0.1:8081`
 
-# Info de la API
-Invoke-RestMethod http://localhost:8080/
+### Frontend (público)
 
-# Abrir Swagger
-Start-Process "http://localhost:8080/swagger"
-```
+- Pool: `BitalFrontendPool` — No Managed Code
+- Sitio: `BitalFrontend` → `C:\inetpub\wwwroot\bital-frontend`
+- Binding: **HTTPS** puerto **8080** + certificado SSL
+- Habilitar **ARR proxy** + **URL Rewrite**
 
-### Desde cualquier máquina (acceso externo)
-
-```powershell
-# Health check público
-Invoke-RestMethod http://186.190.254.230:8080/health
-
-# Swagger público
-Start-Process "http://186.190.254.230:8080/swagger"
-
-# Probar endpoint de pacientes
-Invoke-RestMethod "http://186.190.254.230:8080/api/v1/pacientes/search?termino=lopez"
-
-# Probar endpoint de atenciones
-Invoke-RestMethod "http://186.190.254.230:8080/api/v1/atenciones/1"
-```
+Guía HTTPS: [docs/PASOS-HTTPS-IIS-FRONTEND.md](../docs/PASOS-HTTPS-IIS-FRONTEND.md)
 
 ---
 
-## 🔍 Logs y Troubleshooting
-
-### Ver logs de la aplicación
+## Verificación
 
 ```powershell
 # En el servidor
-Get-Content "C:\inetpub\wwwroot\bital-api-negocio\logs\app-*.log" -Tail 100 -Wait
+Invoke-RestMethod http://127.0.0.1:8081/health
+Invoke-RestMethod https://riosoft.clinicadelriomonteria.com:8080/health
+
+# Login de prueba (después de migración SQL)
+# usuario: admin / password: admin
 ```
 
-### Ver logs de IIS
+---
+
+## Logs y reinicio
 
 ```powershell
-Get-Content "C:\inetpub\wwwroot\bital-api-negocio\logs\stdout*.log" -Tail 50
-```
-
-### Reiniciar el sitio
-
-```powershell
+Get-Content "C:\logs\bital-api-negocio\app-*.log" -Tail 50
 Restart-WebAppPool -Name BitalApiNegocioPool
-Restart-Website -Name BitalApiNegocio
-```
-
-### Verificar estado
-
-```powershell
-Get-Website -Name BitalApiNegocio
-Get-WebAppPoolState -Name BitalApiNegocioPool
+Restart-Website -Name BitalFrontend
 ```
 
 ---
 
-## 🆘 Problemas Comunes
+## Documentación completa
 
-### ❌ Error 500.19 - web.config inválido
-**Causa**: ASP.NET Core Module no instalado  
-**Solución**: Instalar .NET 8 Hosting Bundle desde https://dotnet.microsoft.com/download/dotnet/8.0
+- [DEPLOYMENT-IIS-GUIDE.md](./DEPLOYMENT-IIS-GUIDE.md)
+- [CIBERSEGURIDAD-PRODUCCION.md](../docs/CIBERSEGURIDAD-PRODUCCION.md)
+- [FRONTEND-API-GUIDE.md](./FRONTEND-API-GUIDE.md)
 
-### ❌ Error 500.30 - No puede iniciar la app
-**Causa**: Runtime .NET 8 faltante o permisos incorrectos  
-**Solución**: 
-```powershell
-# Verificar runtime
-dotnet --list-runtimes
-
-# Verificar permisos
-icacls "C:\inetpub\wwwroot\bital-api-consultas" /grant IIS_IUSRS:F /T
-```
-
-### ❌ No puede conectar a SQL Server
-**Solución**:
-```powershell
-# Probar conectividad desde el servidor IIS
-Test-NetConnection -ComputerName 10.238.97.69 -Port 1433
-```
-
----
-
-## 📚 Documentación Completa
-
-- **Guía Detallada**: `backend/DEPLOYMENT-IIS-GUIDE.md`
-- **Documentación API**: `backend/FRONTEND-API-GUIDE.md`
-- **README Principal**: `backend/README.md`
-
----
-
-## 🌐 URLs Finales
-
-| Endpoint | URL Externa |
-|----------|-------------|
-| **Swagger UI** | http://186.190.254.230:8080/swagger |
-| **Health Check** | http://186.190.254.230:8080/health |
-| **API Base** | http://186.190.254.230:8080/api/v1/ |
-| **Pacientes** | http://186.190.254.230:8080/api/v1/pacientes/search?termino=... |
-| **Atenciones** | http://186.190.254.230:8080/api/v1/atenciones/{id} |
-| **Atenciones Hospitalarias** | http://186.190.254.230:8080/api/v1/atenciones/hospitalarias |
-
----
-
-## 📞 Soporte
-
-**Equipo Bital**: soporte.bital@clinicadelrio.com
-
----
-
-## 🔄 Actualizaciones Futuras
-
-Para actualizar la API después del primer despliegue:
-
-```powershell
-# 1. Publicar nueva versión
-cd backend
-.\publish-to-iis.ps1
-
-# 2. En el servidor, detener el sitio
-Stop-Website -Name BitalApiNegocio
-
-# 3. Copiar archivos actualizados
-# (usando RDP o PowerShell Remoting)
-
-# 4. Reiniciar el sitio
-Start-Website -Name BitalApiNegocio
-```
-
----
-
-**Última actualización**: $(Get-Date -Format "yyyy-MM-dd")  
-**Versión**: 1.0  
-**Plataforma**: .NET 8 + IIS + Windows Server
+**Soporte:** soporte@clinicadelrio.com

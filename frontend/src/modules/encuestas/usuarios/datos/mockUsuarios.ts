@@ -30,7 +30,7 @@ export const mockUsuariosEncuestas = {
       orgProveedora: null,
       estado: "activo",
       ultimoAcceso: "Ayer, 14:30",
-      origen: "Bital",
+      origen: "RioSoft",
     },
   ] satisfies UsuarioEncuestasModulo[],
 }

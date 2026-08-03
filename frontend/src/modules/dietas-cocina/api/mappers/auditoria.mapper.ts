@@ -196,7 +196,7 @@ export function mapDetalleAuditoriaDto(dto: DetalleAuditoriaDto): DetalleAuditor
     metadatos: {
       ip: String(metadata.ip ?? dto.metadatos?.ip ?? dto.direccionIp ?? "—"),
       dispositivo: String(metadata.dispositivo ?? dto.metadatos?.dispositivo ?? "—"),
-      sistema: String(metadata.sistema ?? dto.metadatos?.sistema ?? dto.modulo ?? "Bital"),
+      sistema: String(metadata.sistema ?? dto.metadatos?.sistema ?? dto.modulo ?? "RioSoft"),
     },
     historial: (dto.historial ?? []).map((h) => ({
       titulo: String(h.titulo ?? ""),

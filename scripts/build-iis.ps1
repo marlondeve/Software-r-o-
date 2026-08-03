@@ -90,6 +90,26 @@ function Build-Frontend {
 		throw "No se encontró la carpeta frontend"
 	}
 
+	$envProduction = Join-Path $frontendDir ".env.production"
+	$envProductionExample = Join-Path $frontendDir ".env.production.example"
+	if (-not (Test-Path $envProductionExample)) {
+		throw "Falta frontend/.env.production.example"
+	}
+	if (-not (Test-Path $envProduction)) {
+		Copy-Item $envProductionExample $envProduction -Force
+		Write-Ok "Generado frontend/.env.production desde .env.production.example"
+	} else {
+		$versionLine = "VITE_APP_VERSION=$productVersion"
+		$content = Get-Content $envProduction -Raw
+		if ($content -match '(?m)^VITE_APP_VERSION=.*$') {
+			$content = [regex]::Replace($content, '(?m)^VITE_APP_VERSION=.*$', $versionLine)
+		} else {
+			$content = $content.TrimEnd() + "`n$versionLine`n"
+		}
+		Set-Content -Path $envProduction -Value $content -NoNewline
+		Write-Ok "Sincronizado VITE_APP_VERSION=$productVersion en .env.production"
+	}
+
 	Push-Location $repoRoot
 	try {
 		pnpm --filter frontend build:iis
@@ -123,13 +143,18 @@ if ([string]::IsNullOrWhiteSpace($OutputRoot)) {
 	$OutputRoot = Join-Path $repoRoot "deploy"
 }
 
+$frontendPkg = Get-Content (Join-Path $repoRoot "frontend\package.json") -Raw | ConvertFrom-Json
+$productVersion = $frontendPkg.version
+
 Write-Host @"
 
 ╔═══════════════════════════════════════════════════════════╗
-║          Bital - Build para despliegue IIS                ║
+║     RioSoft $productVersion — Build para despliegue IIS       ║
 ╚═══════════════════════════════════════════════════════════╝
 
 "@ -ForegroundColor Magenta
+
+Write-Ok "Versión producto: $productVersion"
 
 Write-Step "Verificando herramientas..."
 $dotnetVersion = dotnet --version

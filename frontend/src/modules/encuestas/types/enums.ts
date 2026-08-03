@@ -67,4 +67,4 @@ export type EstadoRegla = "activa" | "borrador"
 export type ResultadoAuditoriaEncuestas = "exito" | "denegado"
 
 export type EstadoUsuarioEncuestas = "activo" | "inactivo"
-export type OrigenUsuarioEncuestas = "Vital API" | "Bital"
+export type OrigenUsuarioEncuestas = "Vital API" | "RioSoft"

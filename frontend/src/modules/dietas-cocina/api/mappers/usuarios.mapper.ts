@@ -51,7 +51,7 @@ export function mapUsuarioDtoToDomain(dto: unknown): UsuarioModulo {
     ultimoAcceso: formatearUltimoAcceso(
       normalizarClave(registro, "ultimoAcceso", "UltimoAcceso"),
     ),
-    origen: (String(normalizarClave(registro, "origen", "Origen") ?? "Bital") as OrigenUsuario),
+    origen: (String(normalizarClave(registro, "origen", "Origen") ?? "RioSoft") as OrigenUsuario),
   }
 }
 

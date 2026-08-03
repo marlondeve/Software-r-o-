@@ -1,6 +1,8 @@
 # Migración de usuarios — Dietas y Cocina
 
-Guía para migrar usuarios institucionales desde el sistema de la clínica hacia BITAL (módulo **Dietas y Cocina**). El módulo **Encuestas** comparte la misma tabla de usuarios en base de datos.
+Guía para migrar usuarios institucionales hacia **RioSoft**. El módulo **Encuestas** comparte la misma tabla `bital.UsuariosModulo`.
+
+**Última actualización:** 2026-08-03
 
 ---
 
@@ -16,7 +18,7 @@ Guía para migrar usuarios institucionales desde el sistema de la clínica hacia
 | **Org. Proveedora** | Parte de `Observaciones` (`Org: …`) o derivado en UI | No — solo si rol Proveedor |
 | **Estado** | `Activo` (`true` / `false`) | Sí |
 | **Último acceso** | `UltimoAcceso` | No — se llena al iniciar sesión |
-| **Origen** | No existe en BD | No — la UI muestra `"Bital"` por defecto |
+| **Origen** | No existe en BD | No — la UI muestra `"RioSoft"` por defecto |
 
 > **Nota:** La UI muestra columnas que no tienen columna propia en base de datos. Para la migración solo importan los campos de la sección siguiente.
 
@@ -93,7 +95,7 @@ Referencia en código: `backend/Bital.Infrastructure/DietasCocina/RolModuloSeed.
 
 ## Mapeo desde datos típicos de la clínica
 
-| Dato en sistema anterior | Campo destino en BITAL |
+| Dato en sistema anterior | Campo destino en RioSoft |
 |--------------------------|------------------------|
 | Nombre y apellidos | `NombreCompleto` |
 | Usuario / login / cédula usada como login | `Identificacion` |
@@ -115,21 +117,22 @@ Referencia en código: `backend/Bital.Infrastructure/DietasCocina/RolModuloSeed.
 
 ## Contraseñas en la migración
 
-Política actual del sistema:
+Política actual:
 
-1. **Creación normal:** password = valor de `Identificacion` (hasheada).
-2. **Login:** usa `Identificacion` + password.
-3. **Restablecer clave:** vuelve a poner password = `Identificacion`.
+1. **Creación por API:** password inicial = valor de `Identificacion` (hasheada con PBKDF2).
+2. **Migración SQL (`02-MigrateData.sql`):** hash **SHA-256 hex** del `Identificacion` (legacy).
+3. **Primer login:** si el hash es legacy, se verifica y se **re-hashea a PBKDF2** automáticamente.
+4. **Restablecer clave (admin):** vuelve a poner password = `Identificacion`.
 
-### Hash para migración SQL
-
-En `backend/scripts/02-MigrateData.sql` el hash se genera así (SHA-256 en hex mayúsculas):
+### Hash para migración SQL (legacy)
 
 ```sql
 UPPER(CONVERT(varchar(64), HASHBYTES('SHA2_256', CAST(Identificacion AS varchar(100))), 2))
 ```
 
-Ejemplo: usuario `nutricionista` → contraseña inicial `nutricionista`.
+Ejemplo: login `nutricionista` → contraseña inicial `nutricionista` → hash SHA-256 en BD → PBKDF2 tras primer acceso.
+
+Implementación: `backend/Bital.Infrastructure/Security/PasswordHasher.cs`
 
 ---
 
@@ -148,7 +151,7 @@ El script:
 
 | NombreCompleto | Email | Identificacion | Rol |
 |----------------|-------|----------------|-----|
-| Administrador BITAL | admin@clinicadelrio.com | admin | Administrador |
+| Administrador RioSoft | admin@clinicadelrio.com | admin | Administrador |
 | Nutricionista Clínica | nutricionista@clinicadelrio.com | nutricionista | Nutricionista |
 | Jefe de Cocina | cocinero@clinicadelrio.com | cocinero | Proveedor |
 | Enfermería Pabellón | enfermera@clinicadelrio.com | enfermera | Enfermera |
@@ -195,7 +198,7 @@ El mapper en `frontend/src/modules/dietas-cocina/api/mappers/usuarios.mapper.ts`
 | `orgProveedora` | Concatenado en `observaciones` al crear/editar |
 | `estado` | `activo` |
 | `ultimoAcceso` | `ultimoAcceso` |
-| `origen` | No se persiste — default `"Bital"` |
+| `origen` | No se persiste — default `"RioSoft"` |
 
 Formulario de alta/edición: `frontend/src/modules/dietas-cocina/usuarios/components/NuevoUsuarioDialog.tsx`
 

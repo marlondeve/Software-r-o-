@@ -1,26 +1,39 @@
-# BITAL — Monorepo
+# RioSoft — Monorepo
 
-**BITAL** es el nombre código del software en desarrollo para **Clínica del Río**. La institución aún no ha definido el nombre comercial definitivo de la plataforma.
+**RioSoft** es la plataforma de gestión hospitalaria de **Clínica del Río** (dietas, cocina, encuestas SIAO y administración).
 
 Monorepo con frontend React y backend .NET 8, gestionado con **pnpm workspaces**.
 
+**Versión actual del producto:** `1.1.0` — ver [CHANGELOG.md](./CHANGELOG.md)
+
+> Los proyectos .NET y la base de datos conservan el prefijo técnico `Bital` del desarrollo inicial (`Bital.ApiNegocio`, `BitalNegocio`).
 ## Documentación
 
 | Documento | Contenido |
 |---|---|
-| [frontend/README.md](./frontend/README.md) | Stack, módulos, despliegue IIS, variables de entorno |
-| [docs/PASOS-DESPLIEGUE-IIS.md](./docs/PASOS-DESPLIEGUE-IIS.md) | **Guía paso a paso** — frontend :8080 + API interna :8081 |
-| [docs/DEPLOYMENT-IIS.md](./docs/DEPLOYMENT-IIS.md) | Arquitectura y detalle técnico IIS |
+| [CHANGELOG.md](./CHANGELOG.md) | Historial de versiones |
+| **[docs/MANUAL-TECNICO.md](./docs/MANUAL-TECNICO.md)** | **Manual técnico completo (parte operativa)** |
+| [frontend/README.md](./frontend/README.md) | Stack, módulos, variables de entorno, despliegue IIS |
 | [backend/README.md](./backend/README.md) | Arquitectura .NET, ejecución local, configuración |
-| [backend/FRONTEND-API-GUIDE.md](./backend/FRONTEND-API-GUIDE.md) | Referencia de endpoints de ApiConsultas (Vital HIS) |
+| [backend/FRONTEND-API-GUIDE.md](./backend/FRONTEND-API-GUIDE.md) | Endpoints compartidos (auth, pacientes, atenciones) |
+| [backend/Bital.ApiNegocio/README-ENDPOINTS-DIETAS.md](./backend/Bital.ApiNegocio/README-ENDPOINTS-DIETAS.md) | Endpoints del módulo Dietas y Cocina |
+| [backend/Bital.ApiNegocio/README-ENDPOINTS-ENCUESTAS.md](./backend/Bital.ApiNegocio/README-ENDPOINTS-ENCUESTAS.md) | Endpoints del módulo Encuestas SIAO |
+| [backend/DEPLOYMENT-IIS-GUIDE.md](./backend/DEPLOYMENT-IIS-GUIDE.md) | Despliegue completo en IIS (frontend + API) |
+| [backend/DEPLOYMENT-QUICKSTART.md](./backend/DEPLOYMENT-QUICKSTART.md) | Despliegue rápido |
+| [docs/PASOS-HTTPS-IIS-FRONTEND.md](./docs/PASOS-HTTPS-IIS-FRONTEND.md) | HTTPS en IIS para el frontend |
+| [docs/CIBERSEGURIDAD-PRODUCCION.md](./docs/CIBERSEGURIDAD-PRODUCCION.md) | Checklist de seguridad en producción |
+| [docs/MIGRACION_SQL_SERVER.md](./docs/MIGRACION_SQL_SERVER.md) | Migración de base de datos BitalNegocio |
+| [docs/MIGRACION-USUARIOS.md](./docs/MIGRACION-USUARIOS.md) | Migración de usuarios institucionales |
 
 ## Estructura
 
 ```text
-bital/
+Software-r-o-/
 ├── frontend/              # SPA React (Vite + TypeScript)
-├── backend/               # Solución .NET 8 (ApiNegocio + ApiConsultas)
-├── package.json           # Scripts del monorepo
+├── backend/               # Solución .NET 8 (Bital.ApiNegocio)
+├── scripts/               # build-iis.ps1 y utilidades de despliegue
+├── deploy/                # Salida de publicación (generada, no versionada)
+├── package.json
 ├── pnpm-workspace.yaml
 └── README.md
 ```
@@ -46,50 +59,48 @@ corepack prepare pnpm@11.15.1 --activate
 # Instalar dependencias (raíz + workspaces)
 pnpm install
 
-# Frontend → http://localhost:5173
+# Terminal 1 — Frontend → http://localhost:5173
 pnpm dev
 
-# Backend .NET (en terminales separadas)
-dotnet run --project backend/Bital.ApiConsultas   # → http://localhost:5013
-dotnet run --project backend/Bital.ApiNegocio     # → http://localhost:5042
+# Terminal 2 — Backend → http://localhost:8080
+dotnet run --project backend/Bital.ApiNegocio
 ```
+
+El frontend en desarrollo usa proxy Vite hacia `http://localhost:8080` (configurable con `VITE_DEV_API_PROXY_TARGET` en `.env.local`).
 
 ## Scripts del monorepo
 
 | Comando | Descripción |
 |---|---|
 | `pnpm dev` | Servidor de desarrollo del frontend |
-| `pnpm dev:front` | Igual que `pnpm dev` |
-| `pnpm dev:back` | Placeholder Node del workspace backend (puerto 3000, no es el backend .NET) |
-| `pnpm build` | Build de producción del frontend |
-| `pnpm build:front` | Igual que `pnpm build` |
-| `pnpm build:back` | Build del workspace backend (placeholder) |
+| `pnpm build:iis` | Build frontend + publicación API en `deploy/` |
+| `pnpm build:iis:frontend` | Solo build del frontend |
+| `pnpm build:iis:apinegocio` | Solo publicación de la API |
 | `pnpm lint` | Lint del frontend (oxlint) |
 | `pnpm preview` | Preview del build del frontend |
 
 ## Arquitectura
 
 ```text
-Frontend (React/Vite, puerto 5173)
+Frontend (React/Vite, puerto 5173 en dev)
+      ↓  /api/v1, /health
+Bital.ApiNegocio (puerto 8080 en dev, 127.0.0.1:8081 en prod IIS)
       ↓
-Bital.ApiNegocio (puerto 5042)     ← único punto de entrada del frontend
-      ↓
-Bital.ApiConsultas (puerto 5013)   ← bridge read-only hacia Vital HIS
-      ↓
-SQL Server (Vital)
+SQL Server BitalNegocio + SQL Server Vital (Hosvital_Pruebas, read-only)
 ```
+
+En producción IIS el frontend es público en **HTTPS :8080** y hace proxy interno al API en **127.0.0.1:8081**. El navegador nunca accede al API directamente.
 
 ## Estado del proyecto
 
 | Componente | Estado |
 |---|---|
-| Módulo Dietas y Cocina | Prototipo funcional (único módulo con flujos operativos completos) |
-| Módulos Encuestas y Administración | Scaffold de pantallas; no son prototipos funcionales |
-| Frontend React | Shell compartido (auth, layout, routing); ver detalle en [frontend/README.md](./frontend/README.md) |
-| ApiConsultas | Implementada (pacientes, atenciones, health, Swagger) |
-| ApiNegocio | Scaffold; pendiente exposición de endpoints de negocio |
-| Autenticación real | Pendiente (mock en frontend) |
-| Integración frontend ↔ backend | Preparada en repositorios HTTP; activación progresiva |
+| Módulo Dietas y Cocina | Operativo con backend (`VITE_DIETAS_COCINA_API=true`) |
+| Módulo Encuestas SIAO | Backend implementado; frontend deshabilitado por defecto (`VITE_ENCUESTAS_ENABLED=false`) |
+| Administración plataforma | Scaffold de pantallas |
+| Bital.ApiNegocio | Implementada — API backend de RioSoft (único punto de entrada del frontend) |
+| Autenticación | Cookie de sesión segura en HTTPS mismo origen (`/api/v1/auth/*`) |
+| Integración Vital HIS | Read-only vía capa de infraestructura |
 
 ## Desarrollo por paquete
 
@@ -98,7 +109,7 @@ SQL Server (Vital)
 cd frontend && pnpm dev
 
 # Solo backend .NET
-cd backend && dotnet run --project Bital.ApiConsultas
+cd backend && dotnet run --project Bital.ApiNegocio
 ```
 
-Detalle de módulos, usuarios de prueba e IIS: [frontend/README.md](./frontend/README.md)
+Detalle de módulos, login institucional e IIS: [frontend/README.md](./frontend/README.md)

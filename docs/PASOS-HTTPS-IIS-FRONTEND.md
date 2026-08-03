@@ -1,342 +1,149 @@
-# Guía paso a paso — Frontend BITAL en HTTPS (IIS)
+# HTTPS en IIS — Frontend RioSoft
 
-Configuración del frontend en IIS con certificado SSL, subdominio y proxy al API interno.
+Guía para configurar **HTTPS** en el sitio frontend de RioSoft.
 
-**Servidor:** `SERVERAPPFCR` (`10.238.97.67` / IP pública `186.190.254.230`)  
-**Sitio IIS:** `BitalFrontend`  
-**Dominio:** `riosoft.clinicadelriomonteria.com`  
-**Estado actual:** HTTPS en `https://riosoft.clinicadelriomonteria.com:8080`. Ver [CIBERSEGURIDAD-PRODUCCION.md](./CIBERSEGURIDAD-PRODUCCION.md) para checklist de seguridad.
+**URL de producción:** `https://riosoft.clinicadelriomonteria.com:8080`
 
----
+**Última actualización:** 2026-08-03
 
-## Arquitectura objetivo
-
-```text
-https://riosoft.clinicadelriomonteria.com  (puerto 443, certificado SSL)
-        │
-        ├── /login, /dietas-cocina/*  →  archivos estáticos (React)
-        ├── /api/v1/*                 →  proxy → 127.0.0.1:8081
-        └── /health                   →  proxy → 127.0.0.1:8081
-```
-
-El API escucha solo en `127.0.0.1:8081`. El `web.config` del frontend hace proxy interno; no es necesario exponer el API públicamente.
+Ver también: [CIBERSEGURIDAD-PRODUCCION.md](./CIBERSEGURIDAD-PRODUCCION.md) · [backend/DEPLOYMENT-IIS-GUIDE.md](../backend/DEPLOYMENT-IIS-GUIDE.md)
 
 ---
 
-## Prerrequisitos (verificar antes de continuar)
+## Resumen
 
-- [ ] DNS de `riosoft.clinicadelriomonteria.com` apunta a `186.190.254.230`
-- [ ] Sitio **`BitalFrontend`** creado en IIS
-- [ ] CSR (`.req`) generado **en `SERVERAPPFCR`** (mismo servidor donde se instalará el certificado)
-- [ ] **URL Rewrite** instalado en IIS
-- [ ] **Application Request Routing (ARR)** instalado y proxy habilitado
-- [ ] API corriendo en `127.0.0.1:8081`
-
-### Habilitar proxy ARR
-
-1. IIS Manager → clic en el **servidor** (`SERVERAPPFCR`)
-2. **Application Request Routing Cache** → **Server Proxy Settings**
-3. Marcar **Enable proxy** → **Apply**
-
-### Verificar DNS
-
-```powershell
-nslookup riosoft.clinicadelriomonteria.com
-```
-
-Debe resolver a `186.190.254.230`.
-
----
-
-## Fase 1 — Instalar el certificado en IIS
-
-> **Importante:** El archivo `.req` es la **solicitud** (CSR). El certificado entregado por TI/CA es un archivo **`.cer`**, **`.crt`** o **`.p7b`**. No uses el `.req` en "Completar solicitud de certificado".
-
-### 1. Copiar el archivo al servidor
-
-Guardar el certificado entregado por TI en:
-
-```text
-C:\temp\riosoft.clinicadelriomonteria.com.cer
-```
-
-### 2. Completar la solicitud de certificado
-
-1. IIS Manager → clic en el **servidor** → **Certificados de servidor**
-2. Panel derecho → **Completar solicitud de certificado...**
-3. Configuración:
-
-| Campo | Valor |
+| Elemento | Valor |
 |---|---|
-| Archivo que contiene la respuesta | `C:\temp\riosoft.clinicadelriomonteria.com.cer` |
-| Nombre descriptivo | `riosoft.clinicadelriomonteria.com` |
-| Almacén de certificados | **Personal** |
+| Sitio IIS | `BitalFrontend` |
+| Ruta física | `C:\inetpub\wwwroot\bital-frontend\` |
+| Binding HTTPS | Puerto **8080**, SNI, certificado válido |
+| Redirect HTTP→HTTPS | Regla en `frontend/public/web.config` |
+| Proxy API | `/api/v1/*` y `/health` → `http://127.0.0.1:8081` |
 
-4. **Aceptar**
-
-### 3. Verificar instalación
-
-En la lista de certificados debe aparecer `riosoft.clinicadelriomonteria.com` con emisor y fecha de vencimiento.
-
-### Error frecuente
-
-Si aparece:
-
-> *"No se encuentra la solicitud de certificado asociada con este archivo..."*
-
-Causas:
-
-1. Se seleccionó el `.req` en lugar del `.cer` entregado por la CA
-2. El `.req` se generó en **otro equipo** distinto a `SERVERAPPFCR`
-
-**Solución:** Generar un nuevo `.req` en `SERVERAPPFCR` y pedir a TI que emita el certificado con ese CSR, o pedir un `.pfx` con clave privada para importar directamente.
+El certificado va en el **sitio frontend**, no en el sitio API interno.
 
 ---
 
-## Fase 2 — Configurar HTTPS en BitalFrontend
+## Prerrequisitos
 
-### 4. Agregar binding HTTPS
-
-1. IIS → **Sitios** → **`BitalFrontend`**
-2. Panel derecho → **Enlaces...**
-3. **Agregar...**
-
-| Campo | Valor |
-|---|---|
-| Tipo | `https` |
-| Dirección IP | Todas las no asignadas |
-| Puerto | `443` |
-| Nombre de host | `riosoft.clinicadelriomonteria.com` |
-| Certificado SSL | `riosoft.clinicadelriomonteria.com` |
-| Requerir Indicación de nombre de servidor | ✅ (si aparece la opción) |
-
-4. **Aceptar**
-
-### 5. (Opcional) Binding HTTP para redirección
-
-Si se desea redirigir `http://` → `https://`:
-
-1. **Enlaces...** → **Agregar...**
-2. Tipo: `http`, Puerto: `80`, Nombre de host: `riosoft.clinicadelriomonteria.com`
+1. Certificado SSL emitido para `riosoft.clinicadelriomonteria.com` (o wildcard `*.clinicadelriomonteria.com`)
+2. DNS apuntando al servidor IIS
+3. Puertos **8080** TCP abiertos en firewall (entrada HTTPS)
+4. Módulos IIS: **URL Rewrite**, **ARR** (proxy habilitado)
+5. Build desplegado con `pnpm build:iis` (incluye `web.config` con reglas HTTPS y proxy)
 
 ---
 
-## Fase 3 — Desplegar el frontend
+## Paso 1 — Importar certificado
 
-### 6. Build en máquina de desarrollo
+1. Abrir **IIS Manager** → servidor → **Server Certificates**
+2. **Import…** o **Complete Certificate Request…** según el proveedor
+3. Verificar que el certificado aparece con fecha de expiración válida
+
+Alternativa PowerShell (certificado en archivo PFX):
 
 ```powershell
-cd frontend
-pnpm build:iis
-```
-
-### 7. Copiar archivos al servidor
-
-Copiar **todo** el contenido de `frontend/dist/` a la carpeta física del sitio `BitalFrontend` (ver ruta en IIS → **Configuración básica...**).
-
-Debe quedar en la raíz del sitio:
-
-- `index.html`
-- carpeta `assets/`
-- **`web.config`**
-
-### 8. Permisos de carpeta
-
-```powershell
-$path = "C:\inetpub\wwwroot\bital-frontend"   # ajustar si la ruta es distinta
-$acl = Get-Acl $path
-$rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-    "IIS_IUSRS", "ReadAndExecute", "ContainerInherit,ObjectInherit", "None", "Allow"
-)
-$acl.SetAccessRule($rule)
-Set-Acl $path $acl
+$pwd = Read-Host "Contraseña PFX" -AsSecureString
+Import-PfxCertificate -FilePath "C:\certs\riosoft.pfx" -CertStoreLocation Cert:\LocalMachine\My -Password $pwd
 ```
 
 ---
 
-## Fase 4 — Firewall
+## Paso 2 — Binding HTTPS en el sitio frontend
 
-### 9. Abrir puertos
+1. IIS Manager → **Sites** → `BitalFrontend` → **Bindings…**
+2. **Add…**
+   - Type: `https`
+   - IP address: All Unassigned (o IP específica del servidor)
+   - Port: **8080**
+   - Host name: `riosoft.clinicadelriomonteria.com`
+   - SSL certificate: seleccionar el certificado importado
+   - ✅ Require Server Name Indication (SNI)
+3. **OK** y reiniciar el sitio
 
-En PowerShell como Administrador:
+Binding HTTP opcional (solo para redirect):
 
-```powershell
-New-NetFirewallRule -DisplayName "BITAL Frontend HTTPS 443" `
-  -Direction Inbound -LocalPort 443 -Protocol TCP -Action Allow
-```
-
-Si se agregó redirección HTTP:
-
-```powershell
-New-NetFirewallRule -DisplayName "BITAL Frontend HTTP 80" `
-  -Direction Inbound -LocalPort 80 -Protocol TCP -Action Allow
-```
-
-Confirmar con el equipo de redes que el NAT/firewall perimetral permita tráfico entrante a `443` (y `80` si aplica) hacia `10.238.97.67`.
+- Type: `http`, Port: **8080**, mismo host
+- El `web.config` redirige automáticamente a HTTPS
 
 ---
 
-## Fase 5 — Redirección HTTP → HTTPS (opcional)
+## Paso 3 — Habilitar ARR proxy
 
-### 10. Editar web.config
+1. IIS Manager → seleccionar el **servidor** (nodo raíz)
+2. **Application Request Routing Cache** → **Server Proxy Settings…**
+3. ✅ **Enable proxy**
+4. Apply
 
-Agregar esta regla **al inicio** de `<rules>`, antes del proxy al API:
-
-```xml
-<rule name="HTTP to HTTPS" stopProcessing="true">
-  <match url="(.*)" />
-  <conditions>
-    <add input="{HTTPS}" pattern="off" ignoreCase="true" />
-  </conditions>
-  <action type="Redirect" url="https://{HTTP_HOST}/{R:1}" redirectType="Permanent" />
-</rule>
-```
-
-El `web.config` completo del frontend incluye además:
-
-- Proxy `/api/v1/*` → `http://127.0.0.1:8081/api/v1/{R:1}`
-- Proxy `/health` → `http://127.0.0.1:8081/health`
-- Fallback SPA para React Router
-
-Ver: [`frontend/public/web.config`](../frontend/public/web.config)
+Sin este paso, las reglas de rewrite hacia `127.0.0.1:8081` devuelven 502.
 
 ---
 
-## Fase 6 — CORS en el API
+## Paso 4 — Verificar web.config
 
-### 11. Actualizar appsettings.Production.json
+El build copia `frontend/public/web.config` a la raíz del sitio. Debe incluir:
 
-En `backend/Bital.ApiNegocio/appsettings.Production.json`, agregar el origen HTTPS:
+- Regla **HTTP to HTTPS** (puerto 8080)
+- Regla **API proxy** → `http://127.0.0.1:8081/api/v1/{R:1}`
+- Regla **Health proxy** → `http://127.0.0.1:8081/health`
+- Regla **SPA fallback** → `/index.html`
+- Headers: HSTS, CSP, X-Frame-Options, etc.
+
+No editar manualmente salvo ajustes de CSP; regenerar con `pnpm build:iis:frontend` si se pierde.
+
+---
+
+## Paso 5 — CORS en el API
+
+En `appsettings.Production.json` del API, `Cors:AllowedOrigins` debe incluir:
 
 ```json
-"Cors": {
-  "AllowedOrigins": [
-    "https://riosoft.clinicadelriomonteria.com",
-    "http://186.190.254.230:8080"
-  ]
-}
+"https://riosoft.clinicadelriomonteria.com:8080"
 ```
 
-Reiniciar el Application Pool del API:
+Reiniciar el pool `BitalApiNegocioPool` tras cambios.
+
+---
+
+## Validación
 
 ```powershell
-Restart-WebAppPool -Name "NombreDelPoolDelAPI"
+# Redirect HTTP → HTTPS
+curl -I http://riosoft.clinicadelriomonteria.com:8080
+
+# Headers de seguridad
+curl -I https://riosoft.clinicadelriomonteria.com:8080
+
+# Health vía proxy
+curl https://riosoft.clinicadelriomonteria.com:8080/health
+
+# SPA
+curl -I https://riosoft.clinicadelriomonteria.com:8080/login
 ```
 
-> Usar el nombre real del pool en IIS (por ejemplo `ApiBitaNegocioPred` u otro según el servidor).
+En el navegador (DevTools → Application → Cookies), tras login:
+
+Tras login (DevTools → Cookies): `bital_access_token` con **Secure**, **HttpOnly** y **SameSite=Strict**.
+
+Herramientas externas: [SSL Labs](https://www.ssllabs.com/ssltest/), [Security Headers](https://securityheaders.com/).
 
 ---
 
-## Fase 7 — Pruebas
+## Troubleshooting
 
-### 12. Desde el servidor
-
-```powershell
-Invoke-WebRequest https://localhost/login -UseBasicParsing
-Invoke-RestMethod https://localhost/health
-```
-
-### 13. Desde cualquier PC
-
-| URL | Resultado esperado |
+| Problema | Solución |
 |---|---|
-| `https://riosoft.clinicadelriomonteria.com/login` | Pantalla de login, candado verde |
-| `https://riosoft.clinicadelriomonteria.com/health` | `Healthy` |
-| `https://riosoft.clinicadelriomonteria.com/dietas-cocina/inicio` | Carga correctamente al recargar (F5) |
-| DevTools → Network | Llamadas a `/api/v1/...` sin errores CORS |
+| ERR_SSL_PROTOCOL_ERROR | Verificar binding HTTPS :8080 y certificado asignado |
+| 502 Bad Gateway en `/api/v1` | API caída o ARR proxy deshabilitado; probar `127.0.0.1:8081/health` |
+| Cookie sin flag Secure | Acceder solo por HTTPS; verificar `AuthCookieExtensions` en prod |
+| Mixed content | Frontend debe usar URLs relativas (`/api/v1`) |
+| Certificado expirado | Renovar e importar; actualizar binding |
 
 ---
 
-## Fase 8 — Retirar acceso por :8080
+## Renovación de certificado
 
-Cuando HTTPS funcione correctamente:
-
-1. IIS → sitio que escucha en `:8080` → **Enlaces...**
-2. Eliminar el binding `http :8080`
-3. (Opcional) Deshabilitar regla de firewall del puerto 8080
-
-El frontend quedará accesible solo en:
-
-```text
-https://riosoft.clinicadelriomonteria.com
-```
-
----
-
-## Alternativa — Certificado en formato .pfx
-
-Si TI entrega un `.pfx` (certificado + clave privada) en lugar de `.cer`:
-
-1. IIS → **Certificados de servidor** → **Importar...**
-2. Seleccionar el `.pfx` e ingresar la contraseña
-3. Almacén: **Personal**
-4. Continuar desde la **Fase 2** (configurar binding HTTPS)
-
----
-
-## Datos del CSR (referencia)
-
-Al generar la solicitud de certificado, usar:
-
-| Campo | Valor |
-|---|---|
-| Nombre común | `riosoft.clinicadelriomonteria.com` |
-| Organización | Clinica del Rio |
-| Unidad organizativa | Clinica del Rio |
-| Ciudad | Montería |
-| Estado/provincia | Cordoba |
-| País | `CO` (Colombia) |
-
-> **No** usar solo `RIOSOFT` como nombre común ni `ES` como país.
-
----
-
-## Tiempos estimados de entrega del certificado
-
-| Tipo | Tiempo típico |
-|---|---|
-| Autofirmado (pruebas) | Inmediato |
-| Let's Encrypt (win-acme) | 2–10 minutos |
-| CA interna de la clínica | 1–3 días hábiles |
-| CA comercial (DV) | 15 min – 24 h |
-| CA comercial (OV/EV) | 3–10 días hábiles |
-
----
-
-## Problemas frecuentes
-
-| Síntoma | Causa probable | Solución |
-|---|---|---|
-| Error al completar solicitud | Se usó `.req` en lugar de `.cer` | Importar el `.cer` entregado por la CA |
-| Error al completar solicitud | CSR generado en otro servidor | Regenerar `.req` en `SERVERAPPFCR` o importar `.pfx` |
-| Certificado inválido en navegador | CN distinto al dominio | CN debe ser `riosoft.clinicadelriomonteria.com` |
-| 502 en `/api/v1` o `/health` | API no corre o ARR deshabilitado | Verificar API en `:8081` y proxy ARR |
-| 404 al recargar rutas SPA | Falta regla en `web.config` | Confirmar `web.config` en la raíz del sitio |
-| CORS en consola del navegador | Origen HTTPS no en `AllowedOrigins` | Actualizar CORS y reiniciar pool del API |
-
----
-
-## Checklist final
-
-```text
-[ ] Certificado .cer / .pfx copiado a C:\temp\
-[ ] Completar solicitud de certificado (con .cer, NO .req)
-[ ] Certificado visible en Certificados de servidor
-[ ] Binding HTTPS 443 en BitalFrontend
-[ ] Build frontend (pnpm build:iis) copiado a carpeta del sitio
-[ ] web.config presente en la raíz
-[ ] URL Rewrite instalado
-[ ] ARR proxy habilitado
-[ ] Firewall 443 abierto
-[ ] CORS actualizado en appsettings.Production.json
-[ ] Pruebas OK en https://riosoft.clinicadelriomonteria.com
-[ ] Binding :8080 retirado
-```
-
----
-
-## Documentación relacionada
-
-- [frontend/README.md](../frontend/README.md) — Stack, build y despliegue IIS
-- [backend/DEPLOYMENT-IIS-GUIDE.md](../backend/DEPLOYMENT-IIS-GUIDE.md) — Despliegue del API en IIS
-- [frontend/public/web.config](../frontend/public/web.config) — Proxy y fallback SPA
+1. Importar nuevo certificado en **Server Certificates**
+2. Editar binding HTTPS del sitio → seleccionar nuevo certificado
+3. Verificar con `curl -I` y SSL Labs
+4. Programar recordatorio 30 días antes del vencimiento

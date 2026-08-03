@@ -40,7 +40,7 @@ export const mockUsuariosDietas = {
       orgProveedora: null,
       estado: "activo",
       ultimoAcceso: "Ayer, 14:30",
-      origen: "Bital",
+      origen: "RioSoft",
     },
     {
       id: "3",
@@ -53,7 +53,7 @@ export const mockUsuariosDietas = {
       orgProveedora: "Catering Hospitalario SL",
       estado: "activo",
       ultimoAcceso: "Hace 5 min",
-      origen: "Bital",
+      origen: "RioSoft",
     },
     {
       id: "4",
@@ -79,7 +79,7 @@ export const mockUsuariosDietas = {
       orgProveedora: null,
       estado: "activo",
       ultimoAcceso: "Hace 30 min",
-      origen: "Bital",
+      origen: "RioSoft",
     },
     {
       id: "6",
@@ -105,7 +105,7 @@ export const mockUsuariosDietas = {
       orgProveedora: "Catering Hospitalario SL",
       estado: "inactivo",
       ultimoAcceso: "Hace 2 semanas",
-      origen: "Bital",
+      origen: "RioSoft",
     },
     {
       id: "8",
@@ -131,7 +131,7 @@ export const mockUsuariosDietas = {
       orgProveedora: null,
       estado: "activo",
       ultimoAcceso: "Hace 15 min",
-      origen: "Bital",
+      origen: "RioSoft",
     },
     {
       id: "10",
@@ -144,7 +144,7 @@ export const mockUsuariosDietas = {
       orgProveedora: "Catering Hospitalario SL",
       estado: "activo",
       ultimoAcceso: "Hace 10 min",
-      origen: "Bital",
+      origen: "RioSoft",
     },
   ] satisfies UsuarioModulo[],
 }

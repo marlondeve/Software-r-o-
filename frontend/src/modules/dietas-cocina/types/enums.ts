@@ -68,7 +68,7 @@ export type ModuloAuditoria =
 
 export type EstadoUsuario = "activo" | "inactivo"
 
-export type OrigenUsuario = "Vital API" | "Bital"
+export type OrigenUsuario = "Vital API" | "RioSoft"
 
 export type FiltroSeguimientoCocina =
   | "Todos"

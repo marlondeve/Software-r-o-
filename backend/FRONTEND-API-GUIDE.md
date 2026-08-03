@@ -1,6 +1,9 @@
 # Referencia de API — Bital.ApiNegocio
 
-> **Alcance:** Este documento describe los endpoints de **Bital.ApiNegocio**. El frontend debe consumir únicamente este host.
+> **Alcance:** Endpoints **compartidos** de Bital.ApiNegocio (autenticación, pacientes, atenciones, health).  
+> Los módulos de negocio tienen guías propias:
+> - [README-ENDPOINTS-DIETAS.md](./Bital.ApiNegocio/README-ENDPOINTS-DIETAS.md)
+> - [README-ENDPOINTS-ENCUESTAS.md](./Bital.ApiNegocio/README-ENDPOINTS-ENCUESTAS.md)
 
 Setup, arquitectura y ejecución local: [README.md](./README.md)
 
@@ -8,22 +11,20 @@ Setup, arquitectura y ejecución local: [README.md](./README.md)
 
 ## URL base
 
-**Development (local):**
+| Entorno | Base URL | Swagger |
+|---|---|---|
+| Desarrollo local | `http://localhost:8080` | `http://localhost:8080/swagger` |
+| Producción IIS | `https://riosoft.clinicadelriomonteria.com:8080` (mismo origen) | Solo red interna / diagnóstico |
 
-```text
-http://localhost:5042
-```
+En producción el frontend consume rutas relativas (`/api/v1`, `/health`); IIS hace proxy a `127.0.0.1:8081`.
 
-**Swagger UI:**
-
-```text
-http://localhost:5042/swagger
-```
+Prefijo de versión: `/api/v1`
 
 ---
 
 ## Índice de endpoints
 
+- [Autenticación](#autenticación)
 - [Pacientes](#pacientes)
   - [Buscar por documento](#1-buscar-paciente-por-documento)
   - [Obtener por ID](#2-obtener-paciente-por-id)
@@ -34,6 +35,49 @@ http://localhost:5042/swagger
   - [Listar por paciente](#3-listar-atenciones-por-paciente)
   - [Atenciones hospitalarias (Dietas)](#4-atenciones-hospitalarias-para-módulo-de-dietas)
 - [Health Check](#health-check)
+
+---
+
+## Autenticación
+
+El API emite el JWT en la cookie de sesión `bital_access_token`. El frontend usa `withCredentials: true` y **nunca accede al token desde JavaScript**.
+
+| Entorno | Comportamiento |
+|---|---|
+| **Producción (HTTPS)** | Cookie `Secure` + `HttpOnly` + `SameSite=Strict`. Frontend y API comparten origen (`https://…:8080` → proxy IIS → `127.0.0.1:8081`). |
+| **Desarrollo** | Proxy Vite (`/api` → `localhost:8080`). Cookie con `SameSite=Lax`; `Secure` si la petición es HTTPS o el ambiente es Production. |
+
+| Endpoint | Auth | Descripción |
+|---|---|---|
+| `POST /api/v1/auth/login` | Anónimo | Login — body: `{ "usuario", "password" }` |
+| `GET /api/v1/auth/me` | Cookie | Sesión actual |
+| `POST /api/v1/auth/logout` | Cookie | Cierra sesión |
+| `POST /api/v1/auth/cambiar-password` | Anónimo | Cambio de contraseña (rate limit 10/min por IP) |
+
+**Login de ejemplo:**
+
+```bash
+curl -X POST "http://localhost:8080/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"usuario":"admin","password":"admin"}' \
+  -c cookies.txt
+```
+
+**Respuesta exitosa (200):**
+
+```json
+{
+  "data": {
+    "id": "...",
+    "usuario": "admin",
+    "email": "admin@clinicadelrio.com",
+    "nombreCompleto": "Administrador RioSoft",
+    "rolNombre": "Administrador"
+  }
+}
+```
+
+Los endpoints de negocio (`/dietas-cocina/*`, `/encuestas/*`) requieren cookie de sesión válida salvo los marcados `[AllowAnonymous]`.
 
 ---
 
@@ -57,7 +101,7 @@ GET /api/v1/pacientes/buscar
 **Ejemplo de Request:**
 
 ```bash
-curl -X GET "http://localhost:5013/api/v1/pacientes/buscar?numeroDocumento=1003195163&tipoDocumento=CC"
+curl -X GET "http://localhost:8080/api/v1/pacientes/buscar?numeroDocumento=1003195163&tipoDocumento=CC" -b cookies.txt -c cookies.txt
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -120,7 +164,7 @@ GET /api/v1/pacientes/{id}
 **Ejemplo de Request:**
 
 ```bash
-curl -X GET "http://localhost:5013/api/v1/pacientes/1003195163-CC"
+curl -X GET "http://localhost:8080/api/v1/pacientes/1003195163-CC"
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -171,7 +215,7 @@ GET /api/v1/pacientes/search
 **Ejemplo de Request:**
 
 ```bash
-curl -X GET "http://localhost:5013/api/v1/pacientes/search?termino=MANUEL&maxResults=10"
+curl -X GET "http://localhost:8080/api/v1/pacientes/search?termino=MANUEL&maxResults=10"
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -232,10 +276,10 @@ GET /api/v1/atenciones
 
 ```bash
 # Todas las atenciones activas
-curl -X GET "http://localhost:5013/api/v1/atenciones"
+curl -X GET "http://localhost:8080/api/v1/atenciones"
 
 # Filtradas por servicio
-curl -X GET "http://localhost:5013/api/v1/atenciones?servicioId=3"
+curl -X GET "http://localhost:8080/api/v1/atenciones?servicioId=3"
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -300,7 +344,7 @@ GET /api/v1/atenciones/{id}
 **Ejemplo de Request:**
 
 ```bash
-curl -X GET "http://localhost:5013/api/v1/atenciones/1"
+curl -X GET "http://localhost:8080/api/v1/atenciones/1"
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -361,7 +405,7 @@ GET /api/v1/atenciones/paciente
 **Ejemplo de Request:**
 
 ```bash
-curl -X GET "http://localhost:5013/api/v1/atenciones/paciente?numeroDocumento=1003195163&tipoDocumento=CC"
+curl -X GET "http://localhost:8080/api/v1/atenciones/paciente?numeroDocumento=1003195163&tipoDocumento=CC"
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -420,7 +464,7 @@ Endpoint especializado que retorna pacientes hospitalizados activos en pabellone
 **Ejemplo de Request:**
 
 ```bash
-curl -X GET "http://localhost:5013/api/v1/atenciones/hospitalarias"
+curl -X GET "http://localhost:8080/api/v1/atenciones/hospitalarias"
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -482,7 +526,7 @@ GET /health
 **Ejemplo de Request:**
 
 ```bash
-curl -X GET "http://localhost:5013/health"
+curl -X GET "http://localhost:8080/health"
 ```
 
 **Respuesta Exitosa (200 OK):**
@@ -538,14 +582,6 @@ Todas las respuestas exitosas siguen este formato:
   "instance": "/api/v1/pacientes/buscar"
 }
 ```
-
----
-
-## Seguridad y Autenticación
-
-**Estado actual:** el API no requiere autenticación en desarrollo.
-
-**Producción (planificado):** JWT Bearer tokens, API Keys y CORS restringido a dominios permitidos.
 
 ---
 

@@ -244,7 +244,7 @@ WHEN NOT MATCHED BY TARGET THEN
 ;WITH UsuariosSeed AS (
     SELECT *
     FROM (VALUES
-        (N'Administrador BITAL',   N'admin@clinicadelrio.com',         N'admin',         @RolAdmin),
+        (N'Administrador RioSoft',   N'admin@clinicadelrio.com',         N'admin',         @RolAdmin),
         (N'Nutricionista Clínica', N'nutricionista@clinicadelrio.com', N'nutricionista', @RolNutricionista),
         (N'Jefe de Cocina',        N'cocinero@clinicadelrio.com',      N'cocinero',      @RolProveedor),
         (N'Enfermería Pabellón',   N'enfermera@clinicadelrio.com',     N'enfermera',      @RolEnfermera)

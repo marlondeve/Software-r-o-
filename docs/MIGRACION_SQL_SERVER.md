@@ -3,7 +3,7 @@
 Guía para desplegar la base de datos operativa **BitalNegocio** e importar datos iniciales desde el HIS Vital (**Hosvital_Pruebas**).
 
 **Audiencia:** DevOps / backend / DBA  
-**Última actualización:** 2026-07-28
+**Última actualización:** 2026-08-03
 
 ---
 
@@ -11,7 +11,7 @@ Guía para desplegar la base de datos operativa **BitalNegocio** e importar dato
 
 | Base | Rol | Acceso |
 |------|-----|--------|
-| **BitalNegocio** | Datos operativos Bital (dietas, cocina, usuarios, auditoría) | Lectura/escritura — `Bital.ApiNegocio` |
+| **BitalNegocio** | Datos operativos RioSoft (dietas, cocina, usuarios, auditoría) | Lectura/escritura — `Bital.ApiNegocio` |
 | **Hosvital_Pruebas** | HIS Vital (pacientes, ingresos hospitalarios) | Solo lectura — no se modifica |
 
 La migración **no escribe en Vital**. Solo lee el censo hospitalario activo y lo replica en `dietas.FilasDietas`.
@@ -122,19 +122,20 @@ sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -E -C -f 65001 `
 
 ## Usuarios seed (login institucional)
 
-Contraseña temporal para todos: **`Bital2026!`**  
-(Cambiar en el primer acceso vía pestaña *Cambiar contraseña* en login.)
+Contraseña inicial = valor de **`Identificacion`** (el login). Ejemplo: usuario `admin` → contraseña `admin`.
 
-| Email | Rol | RolModuloId |
-|-------|-----|-------------|
-| `admin@clinicadelrio.com` | Administrador | `11111111-1111-1111-1111-111111000001` |
-| `nutricionista@clinicadelrio.com` | Nutricionista | `11111111-1111-1111-1111-111111000002` |
-| `cocinero@clinicadelrio.com` | Proveedor | `11111111-1111-1111-1111-111111000003` |
-| `enfermera@clinicadelrio.com` | Enfermera | `11111111-1111-1111-1111-111111000004` |
+El hash en BD se guarda como **SHA-256 hex** (legacy). En el **primer login** el sistema verifica el hash legacy y lo **reemplaza automáticamente por PBKDF2** (`PasswordHasher.cs`).
 
-Los roles de sistema se crean en la migración EF `AddRolesModuloDinamicos`. El script `02-MigrateData.sql` solo inserta usuarios/permisos faltantes (idempotente).
+| Email | Login (`Identificacion`) | Rol |
+|-------|--------------------------|-----|
+| `admin@clinicadelrio.com` | `admin` | Administrador |
+| `nutricionista@clinicadelrio.com` | `nutricionista` | Nutricionista |
+| `cocinero@clinicadelrio.com` | `cocinero` | Proveedor |
+| `enfermera@clinicadelrio.com` | `enfermera` | Enfermera |
 
-El hash almacenado es **SHA-256 hex** (mismo algoritmo que `UsuariosPermisosService.HashPassword`).
+Los roles de sistema se crean en la migración EF `AddRolesModuloDinamicos`. El script `02-MigrateData.sql` inserta usuarios/permisos faltantes (idempotente).
+
+Tras el primer acceso, el usuario debe **cambiar la contraseña** (mínimo 8 caracteres) desde la pantalla de login.
 
 ---
 
@@ -179,11 +180,12 @@ El hash almacenado es **SHA-256 hex** (mismo algoritmo que `UsuariosPermisosServ
 
    ```powershell
    dotnet run --project backend/Bital.ApiNegocio
+   # → http://localhost:8080
    ```
 
-3. Frontend: `VITE_DIETAS_COCINA_API=true` en `.env.local`.
+3. Frontend: copiar `.env.example` → `.env.local` con `VITE_DIETAS_COCINA_API=true`.
 
-4. Login institucional con usuarios seed → cambiar contraseña.
+4. Login institucional (`admin` / `admin`) → cambiar contraseña.
 
 5. Verificar censo: `GET /api/v1/dietas-cocina/censo?fecha=YYYY-MM-DD&comida=Desayuno`
 
@@ -222,7 +224,7 @@ En operación normal, la API también sincroniza censo al llamar `GET /censo` (`
 
 ## Referencias
 
-- [DEPLOYMENT_PLAN.md](./DEPLOYMENT_PLAN.md) — checklist producción
-- [ARQUITECTURA_DETALLADA.md](./ARQUITECTURA_DETALLADA.md) — modelo de datos Vital vs Bital
-- [GUIA_CONSUMO_FRONTEND.md](./GUIA_CONSUMO_FRONTEND.md) — integración frontend
-- Migración EF más reciente: `20260728120000_AddRolesModuloDinamicos` (roles dinámicos `RolesModulo`)
+- [backend/README.md](../backend/README.md) — arquitectura y ejecución local
+- [backend/DEPLOYMENT-IIS-GUIDE.md](../backend/DEPLOYMENT-IIS-GUIDE.md) — despliegue en producción
+- [MIGRACION-USUARIOS.md](./MIGRACION-USUARIOS.md) — migración de usuarios institucionales
+- Migración EF: aplicar con `dotnet ef database update --context BitalNegocioDbContext` (última migración en `Bital.Infrastructure/Migrations/`)

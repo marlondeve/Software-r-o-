@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using Asp.Versioning;
 using Bital.ApiNegocio.Extensions;
@@ -75,11 +76,11 @@ try
         options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
         {
             Version = "v1",
-            Title = "Bital API Negocio",
-            Description = "API de lógica de negocio para módulos Bital (Dietas-Cocina, Encuestas SIAO)",
+            Title = "RioSoft API",
+            Description = "API de lógica de negocio para RioSoft (Dietas-Cocina, Encuestas SIAO)",
             Contact = new Microsoft.OpenApi.Models.OpenApiContact
             {
-                Name = "Equipo Bital - Clínica del Río",
+                Name = "Equipo RioSoft - Clínica del Río",
                 Email = "soporte.bital@clinicadelrio.com"
             }
         });
@@ -255,7 +256,7 @@ try
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Bital API Negocio v1");
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "RioSoft API v1");
             c.RoutePrefix = "swagger";
         });
     }
@@ -277,10 +278,16 @@ try
 
     app.MapHealthChecks("/health");
 
+    var productVersion = Assembly.GetExecutingAssembly()
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+        ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
+        ?? "1.1.0";
+
     app.MapGet("/", () => new
     {
-        Service = "Bital.ApiNegocio",
-        Version = "1.0",
+        Service = "RioSoft.ApiNegocio",
+        Product = "RioSoft",
+        Version = productVersion,
         Status = "Running",
         Environment = app.Environment.EnvironmentName,
         Timestamp = DateTime.UtcNow

@@ -86,7 +86,7 @@ export function NuevoUsuarioDialog({
         nombreRol.toLowerCase() === "proveedor" ? "Catering Hospitalario SL" : null,
       estado: usuarioEdit?.estado ?? "activo",
       ultimoAcceso: usuarioEdit?.ultimoAcceso ?? "Recién creado",
-      origen: usuarioEdit?.origen ?? "Bital",
+      origen: usuarioEdit?.origen ?? "RioSoft",
     } satisfies Omit<UsuarioModulo, "id">
 
     if (usuarioEdit && onActualizar) {
