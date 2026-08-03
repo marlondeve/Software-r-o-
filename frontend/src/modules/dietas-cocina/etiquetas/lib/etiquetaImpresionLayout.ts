@@ -1,28 +1,39 @@
 import type { CSSProperties } from "react"
 
-/** Tipografía exclusiva del modo impresión (PDF / impresora ST48). */
+import {
+  ETIQUETA_ANCHO_CAPTURA_PX,
+  ETIQUETA_QR_COL_RATIO,
+  pxCapturaImpresion,
+} from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
+
+/** Tipografía legible para PDF 168 × 88 mm (sin iconos). */
 export const TIPOGRAFIA_IMPRESION = {
-  comida: 15,
-  fechaHora: 12,
-  paciente: 14,
-  meta: 11.5,
-  dietaLabel: 10.5,
-  dietaValor: 13,
-  obsLabel: 10.5,
-  obsTexto: 11.5,
-  codigoCorto: 9.5,
-  codigoMedio: 9,
-  codigoLargo: 8.5,
+  comida: pxCapturaImpresion(20),
+  fechaHora: pxCapturaImpresion(14.5),
+  paciente: pxCapturaImpresion(19),
+  meta: pxCapturaImpresion(14.5),
+  dietaLabel: pxCapturaImpresion(12.5),
+  dietaValor: pxCapturaImpresion(15.5),
+  obsLabel: pxCapturaImpresion(12.5),
+  obsTexto: pxCapturaImpresion(14),
+  codigoCorto: pxCapturaImpresion(13.5),
+  codigoMedio: pxCapturaImpresion(12.5),
+  codigoLargo: pxCapturaImpresion(11.5),
 } as const
 
-/** Elementos gráficos del modo impresión (escalan con el tamaño de etiqueta). */
 export const ELEMENTOS_IMPRESION = {
-  logoAlto: 30,
-  qrSize: 102,
-  badgeFontSize: 10,
+  logoAlto: pxCapturaImpresion(36),
+  qrSize: Math.round(anchoColumnaQrCaptura() * 0.84),
+  badgeFontSize: pxCapturaImpresion(13),
+  badgePadV: pxCapturaImpresion(4),
+  badgePadH: pxCapturaImpresion(10),
+  badgeRadius: pxCapturaImpresion(6),
 } as const
 
-/** Ajuste del código ETQ para que quepa en la columna QR al imprimir. */
+function anchoColumnaQrCaptura(): number {
+  return Math.round(ETIQUETA_ANCHO_CAPTURA_PX * ETIQUETA_QR_COL_RATIO)
+}
+
 export function estiloCodigoEtiqueta(
   codigo: string,
   esImpresion: boolean,
@@ -48,30 +59,31 @@ export function estiloCodigoEtiqueta(
   }
 
   const largo = codigo.trim().length
+  const colorCodigo = "#1a1a1a"
   if (largo > 28) {
     return {
       ...base,
-      padding: "0 3px 8px",
+      padding: `0 ${pxCapturaImpresion(4)}px ${pxCapturaImpresion(8)}px`,
       fontSize: TIPOGRAFIA_IMPRESION.codigoLargo,
       fontWeight: 700,
-      color: "#595959",
+      color: colorCodigo,
     }
   }
   if (largo > 22) {
     return {
       ...base,
-      padding: "0 4px 8px",
+      padding: `0 ${pxCapturaImpresion(4)}px ${pxCapturaImpresion(8)}px`,
       fontSize: TIPOGRAFIA_IMPRESION.codigoMedio,
       fontWeight: 700,
-      color: "#595959",
+      color: colorCodigo,
     }
   }
 
   return {
     ...base,
-    padding: "0 5px 8px",
+    padding: `0 ${pxCapturaImpresion(5)}px ${pxCapturaImpresion(8)}px`,
     fontSize: TIPOGRAFIA_IMPRESION.codigoCorto,
     fontWeight: 700,
-    color: "#595959",
+    color: colorCodigo,
   }
 }

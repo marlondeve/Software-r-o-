@@ -25,8 +25,9 @@ export function EtiquetaCard({
     let activo = true
     const payload = payloadQrEtiqueta(etiqueta.codigo)
     QRCode.toDataURL(payload, {
-      margin: 0,
+      margin: 1,
       width: ETIQUETA_QR_RESolucion,
+      errorCorrectionLevel: "M",
       color: { dark: "#000000", light: "#ffffff" },
     }).then((url) => {
       if (activo) setQrSrc(url)

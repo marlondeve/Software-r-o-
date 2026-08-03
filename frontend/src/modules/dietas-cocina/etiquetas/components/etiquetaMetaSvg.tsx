@@ -1,4 +1,5 @@
 import { TIPOGRAFIA_IMPRESION } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaImpresionLayout"
+import { pxCapturaImpresion } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
 
 const C = {
   black85: "#1a1a1a",
@@ -6,9 +7,9 @@ const C = {
   black25: "#bfbfbf",
 } as const
 
-const LINEA_ALTO = 15
-const ICONO_OFFSET_X = 12
-const TEXTO_Y = 11.5
+const LINEA_ALTO = pxCapturaImpresion(11)
+const ICONO_OFFSET_X = pxCapturaImpresion(10)
+const TEXTO_Y = pxCapturaImpresion(9)
 const META_FONT_SIZE = TIPOGRAFIA_IMPRESION.meta
 const META_FONT_WEIGHT = 700
 

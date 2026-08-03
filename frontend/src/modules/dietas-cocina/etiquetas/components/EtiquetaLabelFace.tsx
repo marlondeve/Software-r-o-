@@ -1,19 +1,16 @@
 import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
-import type { ReactNode, SVGProps } from "react"
+import type { CSSProperties, ReactNode, SVGProps } from "react"
 
 import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import logoClinica from "@/assets/Logo-Clinica-del-Rio.png"
 import { etiquetaComidaLabel } from "@/modules/dietas-cocina/etiquetas/datos/mockEtiquetas"
 import {
-  ETIQUETA_ALTO_PX,
-  ETIQUETA_ANCHO_PX,
+  ETIQUETA_ALTO_CAPTURA_PX,
+  ETIQUETA_ANCHO_CAPTURA_PX,
   ETIQUETA_QR_COL_RATIO,
   dimensionesEtiquetaPantalla,
+  pxCapturaImpresion,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
-import {
-  ChipIconoTexto,
-  FilaMetaSvg,
-} from "@/modules/dietas-cocina/etiquetas/components/etiquetaMetaSvg"
 import {
   ELEMENTOS_IMPRESION,
   estiloCodigoEtiqueta,
@@ -27,7 +24,7 @@ import {
 export interface EtiquetaLabelFaceProps {
   etiqueta: EtiquetaDieta
   qrSrc: string
-  /** `impresion` usa tamaño real (120×80 mm) para captura PDF. */
+  /** `impresion` → PDF 168×88 mm; `pantalla` → preview 120×80 mm. */
   modo?: "pantalla" | "impresion"
 }
 
@@ -173,29 +170,67 @@ function Separador() {
 }
 
 function BadgeEscanear({ esImpresion = false }: { esImpresion?: boolean }) {
+  if (esImpresion) {
+    return (
+      <div
+        style={{
+          display: "inline-block",
+          background: C.black,
+          color: C.white,
+          fontSize: ELEMENTOS_IMPRESION.badgeFontSize,
+          fontWeight: 700,
+          fontFamily: "Arial, Helvetica, sans-serif",
+          letterSpacing: "0.04em",
+          lineHeight: 1.2,
+          padding: `${ELEMENTOS_IMPRESION.badgePadV}px ${ELEMENTOS_IMPRESION.badgePadH}px`,
+          borderRadius: ELEMENTOS_IMPRESION.badgeRadius,
+          whiteSpace: "nowrap",
+          textAlign: "center",
+        }}
+      >
+        ESCANEAR
+      </div>
+    )
+  }
+
   return (
     <svg
       width={72}
       height={20}
-      viewBox="0 0 72 20"
+      viewBox="0 0 84 22"
       role="img"
       aria-label="Escanear"
       style={{ display: "block" }}
     >
-      <rect x={0} y={0} width={72} height={20} rx={5} fill={C.black} />
+      <rect x={0} y={0} width={84} height={22} rx={5} fill={C.black} />
       <text
-        x={36}
-        y={14}
+        x={42}
+        y={15}
         textAnchor="middle"
         fill={C.white}
-        fontSize={esImpresion ? ELEMENTOS_IMPRESION.badgeFontSize : 8}
+        fontSize={8}
         fontWeight={700}
         fontFamily="Arial, Helvetica, sans-serif"
-        letterSpacing="0.6"
+        letterSpacing="0.3"
       >
         ESCANEAR
       </text>
     </svg>
+  )
+}
+
+function SeparadorImpresion() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        color: C.black25,
+        margin: `0 ${pxCapturaImpresion(5)}px`,
+        fontWeight: 400,
+      }}
+    >
+      |
+    </span>
   )
 }
 
@@ -213,27 +248,37 @@ function MetaPaciente({
   const documento = textoDocumentoEtiqueta(etiqueta)
 
   if (modo === "impresion") {
-    const filaSuperior = ingreso
-      ? [
-          { tipo: "idCard" as const, texto: ingreso },
-          { tipo: "calendar" as const, texto: `Edad: ${etiqueta.edad}` },
-        ]
-      : [{ tipo: "calendar" as const, texto: `Edad: ${etiqueta.edad}` }]
+    const estiloMeta: CSSProperties = {
+      margin: 0,
+      fontSize: TIPOGRAFIA_IMPRESION.meta,
+      fontWeight: 700,
+      lineHeight: 1.3,
+      color: C.black85,
+    }
 
     return (
-      <div style={{ paddingBottom: 4, color: C.black85, flexShrink: 0 }}>
-        <div style={{ marginBottom: 3 }}>
-          <FilaMetaSvg chips={filaSuperior} />
-        </div>
-        <div style={{ marginBottom: 3 }}>
-          <FilaMetaSvg chips={[{ tipo: "mapPin", texto: ubicacion }]} />
-        </div>
-        <FilaMetaSvg
-          chips={[
-            { tipo: "user", texto: documento },
-            { tipo: "shield", texto: `Aislamiento: ${aislamiento}` },
-          ]}
-        />
+      <div
+        style={{
+          paddingBottom: pxCapturaImpresion(4),
+          flexShrink: 0,
+        }}
+      >
+        <p style={estiloMeta}>
+          {ingreso ? (
+            <>
+              {ingreso}
+              <SeparadorImpresion />
+            </>
+          ) : null}
+          Edad: {etiqueta.edad}
+          <SeparadorImpresion />
+          {documento}
+        </p>
+        <p style={{ ...estiloMeta, marginTop: pxCapturaImpresion(3) }}>
+          {ubicacion}
+          <SeparadorImpresion />
+          Aislamiento: {aislamiento}
+        </p>
       </div>
     )
   }
@@ -313,13 +358,20 @@ function EtiquetaLabelContenido({
   const esImpresion = modo === "impresion"
   const comida = etiquetaComidaLabel(etiqueta.comida)
   const ubicacion = `${etiqueta.pabellon} - Hab ${etiqueta.habitacion}`
-  const padContenido = esImpresion ? "11px 13px 12px" : "8px 10px 8px"
-  const padDieta = esImpresion ? "6px 9px" : "5px 7px"
-  const padObs = esImpresion ? "6px 9px 7px" : "5px 7px 6px"
-  const mtObs = esImpresion ? 6 : 5
-  const mtNombre = esImpresion ? 3 : 4
-  const pbHeader = esImpresion ? 5 : 5
-  const pbQr = esImpresion ? 4 : 2
+  const pxI = (valor: number) => pxCapturaImpresion(valor)
+  const padContenido = esImpresion
+    ? `${pxI(10)}px ${pxI(12)}px ${pxI(10)}px`
+    : "8px 10px 8px"
+  const padDieta = esImpresion ? `${pxI(6)}px ${pxI(9)}px` : "5px 7px"
+  const padObs = esImpresion
+    ? `${pxI(6)}px ${pxI(9)}px ${pxI(7)}px`
+    : "5px 7px 6px"
+  const mtObs = esImpresion ? pxI(6) : 5
+  const mtNombre = esImpresion ? pxI(4) : 4
+  const pbHeader = esImpresion ? pxI(5) : 5
+  const pbQr = esImpresion ? pxI(4) : 2
+  const gapHeader = esImpresion ? pxI(6) : 6
+  const bordePx = esImpresion ? pxI(1) : 1
   const logoAlto = esImpresion ? ELEMENTOS_IMPRESION.logoAlto : 26
 
   return (
@@ -328,7 +380,7 @@ function EtiquetaLabelContenido({
         width: "100%",
         height: "100%",
         overflow: "hidden",
-        borderRadius: 6,
+        borderRadius: esImpresion ? pxI(6) : 6,
         display: "grid",
         gridTemplateColumns: `minmax(0, 1fr) ${QR_COL}`,
         fontFamily,
@@ -349,8 +401,8 @@ function EtiquetaLabelContenido({
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "space-between",
-            gap: 6,
-            borderBottom: `1px solid ${C.black15}`,
+            gap: gapHeader,
+            borderBottom: `${bordePx}px solid ${C.black15}`,
             paddingBottom: pbHeader,
             flexShrink: 0,
           }}
@@ -362,7 +414,7 @@ function EtiquetaLabelContenido({
               display: "block",
               height: logoAlto,
               width: "auto",
-              maxWidth: esImpresion ? 118 : 108,
+              maxWidth: esImpresion ? pxI(120) : 108,
               objectFit: "contain",
               objectPosition: "left center",
             }}
@@ -381,7 +433,7 @@ function EtiquetaLabelContenido({
             </p>
             <p
               style={{
-                margin: "2px 0 0",
+                margin: esImpresion ? `${pxI(2)}px 0 0` : "2px 0 0",
                 fontSize: esImpresion ? TIPOGRAFIA_IMPRESION.fechaHora : 8.5,
                 fontWeight: esImpresion ? 700 : 400,
                 color: esImpresion ? C.black85 : C.black65,
@@ -395,11 +447,11 @@ function EtiquetaLabelContenido({
         <h3
           style={{
             marginTop: mtNombre,
-            marginBottom: 4,
+            marginBottom: esImpresion ? pxI(3) : 4,
             fontSize: esImpresion ? TIPOGRAFIA_IMPRESION.paciente : 11,
             fontWeight: 700,
             textTransform: "uppercase",
-            lineHeight: 1.2,
+            lineHeight: 1.15,
             letterSpacing: "-0.025em",
             flexShrink: 0,
           }}
@@ -411,8 +463,8 @@ function EtiquetaLabelContenido({
 
         <div
           style={{
-            border: `1px solid ${C.black}`,
-            borderRadius: 2,
+            border: `${bordePx}px solid ${C.black}`,
+            borderRadius: esImpresion ? pxI(2) : 2,
             overflow: "hidden",
             flexShrink: 0,
           }}
@@ -422,7 +474,7 @@ function EtiquetaLabelContenido({
               style={{
                 minWidth: 0,
                 padding: padDieta,
-                borderRight: `1px solid ${C.black}`,
+                borderRight: `${bordePx}px solid ${C.black}`,
               }}
             >
               <p
@@ -483,24 +535,30 @@ function EtiquetaLabelContenido({
         <div
           style={{
             marginTop: mtObs,
-            border: `1px solid ${C.black}`,
-            borderRadius: 2,
+            border: `${bordePx}px solid ${C.black}`,
+            borderRadius: esImpresion ? pxI(2) : 2,
             padding: padObs,
             flex: 1,
-            minHeight: esImpresion ? 34 : 28,
+            minHeight: 0,
             display: "flex",
             flexDirection: "column",
+            overflow: "hidden",
           }}
         >
           {esImpresion ? (
-            <ChipIconoTexto
-              tipo="message"
-              texto="Observaciones"
-              fontSize={TIPOGRAFIA_IMPRESION.obsLabel}
-              fontWeight={700}
-              color={C.black}
-              stroke={C.black}
-            />
+            <p
+              style={{
+                margin: 0,
+                fontSize: TIPOGRAFIA_IMPRESION.obsLabel,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "0.03em",
+                color: C.black,
+                flexShrink: 0,
+              }}
+            >
+              Observaciones
+            </p>
           ) : (
             <p
               style={{
@@ -521,12 +579,16 @@ function EtiquetaLabelContenido({
           )}
           <p
             style={{
-              margin: esImpresion ? "3px 0 0" : "3px 0 0",
+              margin: esImpresion ? `${pxI(3)}px 0 0` : "3px 0 0",
               fontSize: esImpresion ? TIPOGRAFIA_IMPRESION.obsTexto : 9,
               fontWeight: esImpresion ? 700 : 400,
-              lineHeight: 1.35,
+              lineHeight: esImpresion ? 1.3 : 1.35,
               color: C.black85,
               flex: 1,
+              overflow: esImpresion ? "hidden" : undefined,
+              display: esImpresion ? "-webkit-box" : undefined,
+              WebkitLineClamp: esImpresion ? 5 : undefined,
+              WebkitBoxOrient: esImpresion ? "vertical" : undefined,
             }}
           >
             {etiqueta.observaciones || "—"}
@@ -538,17 +600,18 @@ function EtiquetaLabelContenido({
         style={{
           display: "flex",
           flexDirection: "column",
-          borderLeft: `1px solid ${C.black}`,
+          borderLeft: `${bordePx}px solid ${C.black}`,
           height: "100%",
           boxSizing: "border-box",
           minWidth: 0,
+          overflow: "hidden",
         }}
       >
         <div
           style={{
             display: "flex",
             justifyContent: "center",
-            paddingTop: 8,
+            paddingTop: esImpresion ? pxI(8) : 8,
             paddingBottom: pbQr,
             flexShrink: 0,
           }}
@@ -562,7 +625,7 @@ function EtiquetaLabelContenido({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            padding: "0 6px",
+            padding: esImpresion ? `0 ${pxI(6)}px` : "0 6px",
             minHeight: 0,
           }}
         >
@@ -577,6 +640,7 @@ function EtiquetaLabelContenido({
                 width: qrSize,
                 height: qrSize,
                 objectFit: "contain",
+                imageRendering: esImpresion ? "pixelated" : undefined,
               }}
             />
           ) : (
@@ -605,8 +669,8 @@ export function EtiquetaLabelFace({
 }: EtiquetaLabelFaceProps) {
   const esImpresion = modo === "impresion"
   const { ancho: anchoPantalla, alto: altoPantalla } = dimensionesEtiquetaPantalla()
-  const ancho = esImpresion ? ETIQUETA_ANCHO_PX : anchoPantalla
-  const alto = esImpresion ? ETIQUETA_ALTO_PX : altoPantalla
+  const ancho = esImpresion ? ETIQUETA_ANCHO_CAPTURA_PX : anchoPantalla
+  const alto = esImpresion ? ETIQUETA_ALTO_CAPTURA_PX : altoPantalla
   const qrSize = esImpresion ? ELEMENTOS_IMPRESION.qrSize : 88
   const fontFamily = esImpresion
     ? "Arial, Helvetica, sans-serif"
@@ -620,8 +684,10 @@ export function EtiquetaLabelFace({
         boxSizing: "border-box",
         width: ancho,
         height: alto,
-        border: esImpresion ? `2px solid ${C.black}` : "2px solid rgba(0, 0, 0, 0.8)",
-        borderRadius: 8,
+        border: esImpresion ? "none" : "2px solid rgba(0, 0, 0, 0.8)",
+        borderRadius: esImpresion ? 0 : 8,
+        WebkitFontSmoothing: esImpresion ? "antialiased" : undefined,
+        textRendering: esImpresion ? "geometricPrecision" : undefined,
         background: C.white,
         color: C.black,
         fontFamily,

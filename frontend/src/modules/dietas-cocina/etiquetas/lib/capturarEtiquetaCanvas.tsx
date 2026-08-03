@@ -5,13 +5,17 @@ import html2canvas from "html2canvas"
 import QRCode from "qrcode"
 
 import { EtiquetaLabelFace } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaLabelFace"
-import { ETIQUETA_QR_RESolucion } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
+import {
+  CAPTURA_HTML2CANVAS_SCALE,
+  ETIQUETA_QR_RESolucion,
+} from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 
 async function generarQrDataUrl(payload: string): Promise<string> {
   return QRCode.toDataURL(payload, {
-    margin: 0,
+    margin: 1,
     width: ETIQUETA_QR_RESolucion,
+    errorCorrectionLevel: "M",
     color: { dark: "#000000", light: "#ffffff" },
   })
 }
@@ -32,15 +36,16 @@ function esperarImagenes(contenedor: HTMLElement): Promise<void> {
   ).then(() => undefined)
 }
 
-/** Captura el nodo de la etiqueta (120×80 mm) para html2canvas. */
+/** Captura el nodo de la etiqueta (168×88 mm) para html2canvas. */
 async function capturarNodoImpresion(nodo: HTMLElement): Promise<HTMLCanvasElement> {
   await esperarImagenes(nodo)
+  await document.fonts?.ready
 
   const ancho = nodo.offsetWidth
   const alto = nodo.offsetHeight
 
   return html2canvas(nodo, {
-    scale: 4,
+    scale: CAPTURA_HTML2CANVAS_SCALE,
     backgroundColor: "#ffffff",
     useCORS: true,
     allowTaint: true,
@@ -49,6 +54,8 @@ async function capturarNodoImpresion(nodo: HTMLElement): Promise<HTMLCanvasEleme
     height: alto,
     windowWidth: ancho,
     windowHeight: alto,
+    imageTimeout: 0,
+    removeContainer: false,
   })
 }
 
@@ -72,7 +79,7 @@ async function capturarEtiquetaImpresion(
       )
     })
 
-    await new Promise((resolve) => setTimeout(resolve, 80))
+    await new Promise((resolve) => setTimeout(resolve, 150))
 
     const nodo = contenedor.querySelector(
       "[data-etiqueta-print]",
