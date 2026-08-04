@@ -180,7 +180,7 @@ public class AtencionesQueryService : IAtencionesQueryService
         _logger.LogInformation("Consultando atenciones hospitalarias activas para módulo de Dietas");
 
         var sql = @"
-            SELECT
+                SELECT
                 i.IngCsc AS IdIngreso,
                 i.MPTDoc AS TipoDocumento, 
                 i.MPcedu AS Cedula, 
@@ -188,10 +188,10 @@ public class AtencionesQueryService : IAtencionesQueryService
                 map.MPNomP AS Pabellon,
                 i.MPNumC AS Cama
             FROM INGRESOS i 
-            INNER JOIN CAPBAS cap ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu))
-                AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))
-            INNER JOIN MAEPAB map ON map.MPCodP = i.MPCodP
-            WHERE i.MPCodP IN (3,4,5,6,7) 
+            INNER JOIN CAPBAS cap ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu)) AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))           
+            INNER JOIN TMPFAC tmp ON tmp.TFCedu = i.MPCedu
+            INNER JOIN MAEPAB map ON map.MPCodP = tmp.TFcCodPab
+            WHERE map.MPCodP IN (3,4,5,6,7) 
               AND i.IngFecEgr = '1753-01-01 00:00:00.000' 
               AND (i.IngEstSld = 0)
               AND (i.INGATNACT = 2)
