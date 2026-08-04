@@ -56,7 +56,7 @@ public class DietasService : IDietasService
                 Cedula = p.Cedula,
                 TipoDocumento = p.TipoDocumento,
                 NombreCompleto = p.NombreCompleto,
-                Servicio = p.Servicio,
+                Servicio = DietasReglasNegocio.ResolverServicioClinico(null, p.Pabellon),
                 Pabellon = p.Pabellon,
                 Cama = p.Cama
             })
