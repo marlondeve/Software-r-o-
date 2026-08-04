@@ -376,9 +376,6 @@ public class AtencionesQueryService : IAtencionesQueryService
                     NombreCompleto = reader.IsDBNull(reader.GetOrdinal("NombreCompleto")) 
                         ? string.Empty 
                         : reader.GetString(reader.GetOrdinal("NombreCompleto")).Trim(),
-                    Servicio = reader.IsDBNull(reader.GetOrdinal("Servicio"))
-                        ? string.Empty
-                        : reader.GetString(reader.GetOrdinal("Servicio")).Trim(),
                     Pabellon = reader.IsDBNull(reader.GetOrdinal("Pabellon")) 
                         ? string.Empty 
                         : reader.GetString(reader.GetOrdinal("Pabellon")).Trim(),
