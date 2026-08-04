@@ -17,12 +17,17 @@ export const PX_POR_MM = 96 / 25.4
 
 export const ETIQUETA_QR_COL_RATIO = 0.3
 
-export const ETIQUETA_QR_RESolucion = 2048
-export const CAPTURA_DOM_SCALE = 2
-export const CAPTURA_HTML2CANVAS_SCALE = 4
+/** Resolución alta para QR escaneable en térmica. */
+export const ETIQUETA_QR_RESolucion = 4096
+
+/** DOM ampliado 5× sobre el diseño base (antes 2×). */
+export const CAPTURA_DOM_SCALE = 5
+
+/** html2canvas 8× sobre el DOM ampliado (antes 4×). ~25 000 px de ancho efectivo. */
+export const CAPTURA_HTML2CANVAS_SCALE = 8
 
 /** Calidad JPEG embebido en PDF (misma resolución de captura, ~5–10× menos peso que PNG). */
-export const PDF_JPEG_CALIDAD = 0.94
+export const PDF_JPEG_CALIDAD = 0.96
 
 export const ETIQUETA_ANCHO_PX = Math.round(ANCHO_ETIQUETA_MM * PX_POR_MM)
 export const ETIQUETA_ALTO_PX = Math.round(ALTO_ETIQUETA_MM * PX_POR_MM)
