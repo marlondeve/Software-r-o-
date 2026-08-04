@@ -69,7 +69,7 @@ export const mockCocina = {
   pabellones: ["Todos", "Pab Sur", "Pab Central", "Pab Norte"],
   habitaciones: ["Todas", "204B", "301-A", "112-C", "402"],
   tiposDieta: ["Todos", "HIPOSÓDICA", "BLANDA", "DIABÉTICA", "PROTEICA", "NORMAL"],
-  consistencias: ["Todas", "Blanda", "Normal", "Papilla"],
+  consistencias: ["Todas", "Normal", "Blanda", "Blanda mecánica"],
   estadosCocina: ["Todos", "por_iniciar", "en_preparacion", "lista", "despachada"],
   ordenes: [
     crearOrden("ord-1", {
@@ -165,7 +165,7 @@ export const mockCocina = {
       habitacion: "402",
       cama: "Cama 1",
       tipoDieta: "HIPOSÓDICA",
-      consistencia: "Papilla",
+      consistencia: "Blanda mecánica",
       aislado: true,
       alergias: ["Lactosa"],
       observaciones: "ALERGIA: Lactosa. Usar sustitutos.",

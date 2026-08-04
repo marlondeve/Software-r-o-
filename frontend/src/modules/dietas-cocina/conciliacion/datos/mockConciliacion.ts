@@ -30,7 +30,7 @@ export const mockConciliacion = {
     {
       id: "1",
       tipo: "Dieta Normal",
-      consistencia: "Sólida",
+      consistencia: "Normal",
       tiempo: "Almuerzo",
       tarifa: "$10.00",
       cantSist: 120,
@@ -42,7 +42,7 @@ export const mockConciliacion = {
     {
       id: "2",
       tipo: "Dieta Hiposódica",
-      consistencia: "Líquida Clara",
+      consistencia: "Blanda mecánica",
       tiempo: "Desayuno",
       tarifa: "$10.00",
       cantSist: 50,
@@ -54,7 +54,7 @@ export const mockConciliacion = {
     {
       id: "3",
       tipo: "Dieta Diabética",
-      consistencia: "Sólida",
+      consistencia: "Normal",
       tiempo: "Cena",
       tarifa: "$8.50",
       tarifaAlerta: true,
@@ -67,7 +67,7 @@ export const mockConciliacion = {
     {
       id: "4",
       tipo: "Dieta Blanda",
-      consistencia: "Sólida",
+      consistencia: "Normal",
       tiempo: "Almuerzo",
       tarifa: "$9.00",
       cantSist: 45,
@@ -79,7 +79,7 @@ export const mockConciliacion = {
     {
       id: "5",
       tipo: "Dieta Líquida",
-      consistencia: "Líquida",
+      consistencia: "Blanda mecánica",
       tiempo: "Cena",
       tarifa: "$10.00",
       cantSist: 30,

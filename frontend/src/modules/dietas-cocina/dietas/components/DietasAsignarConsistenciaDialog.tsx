@@ -28,11 +28,11 @@ export function DietasAsignarConsistenciaDialog({
   consistencias,
   onConfirmar,
 }: DietasAsignarConsistenciaDialogProps) {
-  const [consistencia, setConsistencia] = useState(consistencias[0] ?? "Sólida")
+  const [consistencia, setConsistencia] = useState(consistencias[0] ?? "Normal")
 
   useEffect(() => {
     if (open) {
-      setConsistencia(consistencias[0] ?? "Sólida")
+      setConsistencia(consistencias[0] ?? "Normal")
     }
   }, [open, consistencias])
 

@@ -17,7 +17,7 @@ function filaBase(estado: EstadoDieta = "confirmada"): FilaDieta {
     servicio: "Medicina",
     pabellon: "P1",
     habitacion: "101",
-    consistencia: "Sólida",
+    consistencia: "Normal",
     tipoDieta: "Normal",
     aislado: false,
     aislamiento: "Ninguno",
@@ -175,7 +175,7 @@ describe("esFormularioSolicitudDietaValido", () => {
       esFormularioSolicitudDietaValido({
         ...base,
         comida: "almuerzo",
-        consistencia: "Sólida",
+        consistencia: "Normal",
       }),
     ).toBe(true)
     expect(
