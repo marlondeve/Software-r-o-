@@ -323,7 +323,6 @@ public class AtencionesQueryService : IAtencionesQueryService
                 i.MPTDoc AS TipoDocumento, 
                 i.MPcedu AS Cedula, 
                 CONCAT_WS(' ', RTRIM(LTRIM(cap.MPNom1)), RTRIM(LTRIM(cap.MPNom2)), RTRIM(LTRIM(cap.MPApe1)), RTRIM(LTRIM(cap.MPApe2))) AS NombreCompleto, 
-                RTRIM(LTRIM(ISNULL(i.ClaPro, ''))) AS Servicio,
                 map.MPNomP AS Pabellon,
                 i.MPNumC AS Cama
             FROM INGRESOS i 
@@ -514,13 +513,6 @@ public class AtencionesQueryService : IAtencionesQueryService
                     NombreCompleto = reader.IsDBNull(reader.GetOrdinal("NombreCompleto")) 
                         ? string.Empty 
                         : reader.GetString(reader.GetOrdinal("NombreCompleto")).Trim(),
-                    Servicio = DietasReglasNegocio.ResolverServicioClinico(
-                        reader.IsDBNull(reader.GetOrdinal("Servicio"))
-                            ? null
-                            : reader.GetString(reader.GetOrdinal("Servicio")).Trim(),
-                        reader.IsDBNull(reader.GetOrdinal("Pabellon"))
-                            ? string.Empty
-                            : reader.GetString(reader.GetOrdinal("Pabellon")).Trim()),
                     Pabellon = reader.IsDBNull(reader.GetOrdinal("Pabellon")) 
                         ? string.Empty 
                         : reader.GetString(reader.GetOrdinal("Pabellon")).Trim(),

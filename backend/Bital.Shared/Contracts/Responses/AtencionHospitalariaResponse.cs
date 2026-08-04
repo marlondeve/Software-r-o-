@@ -8,8 +8,4 @@ public class AtencionHospitalariaResponse
     public string NombreCompleto { get; set; } = string.Empty;
     public string Pabellon { get; set; } = string.Empty;
     public string Cama { get; set; } = string.Empty;
-    /// <summary>
-    /// Servicio clínico (clase de procedimiento del ingreso en Vital).
-    /// </summary>
-    public string Servicio { get; set; } = string.Empty;
 }
