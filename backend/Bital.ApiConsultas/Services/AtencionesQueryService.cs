@@ -186,7 +186,7 @@ public class AtencionesQueryService : IAtencionesQueryService
                 i.MPcedu AS Cedula, 
                 CONCAT_WS(' ', RTRIM(LTRIM(cap.MPNom1)), RTRIM(LTRIM(cap.MPNom2)), RTRIM(LTRIM(cap.MPApe1)), RTRIM(LTRIM(cap.MPApe2))) AS NombreCompleto,
                 map.MPNomP AS Pabellon,
-                i.MPNumC AS Cama
+                tmp.TFcCodCam AS Cama
             FROM INGRESOS i 
             INNER JOIN CAPBAS cap ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu)) AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))           
             INNER JOIN TMPFAC tmp ON tmp.TFCedu = i.MPCedu
