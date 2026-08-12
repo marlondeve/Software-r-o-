@@ -4,7 +4,7 @@
 
 Monorepo con frontend React y backend .NET 8, gestionado con **pnpm workspaces**.
 
-**Versión actual del producto:** `1.1.0` — ver [CHANGELOG.md](./CHANGELOG.md)
+**Versión actual del producto:** `1.2.0` — ver [CHANGELOG.md](./CHANGELOG.md)
 
 > Los proyectos .NET y la base de datos conservan el prefijo técnico `Bital` del desarrollo inicial (`Bital.ApiNegocio`, `BitalNegocio`).
 ## Documentación

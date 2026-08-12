@@ -133,7 +133,7 @@ Copiar [`.env.example`](.env.example) → `.env.local` para desarrollo.
 | `VITE_DIETAS_COCINA_API` | `true` | Repositorios HTTP en dietas-cocina |
 | `VITE_ENCUESTAS_ENABLED` | `false` | Muestra/oculta módulo Encuestas en UI |
 | `VITE_ENCUESTAS_API` | `false` | Repositorios HTTP en encuestas |
-| `VITE_APP_VERSION` | `1.1.0` | Versión mostrada en la app |
+| `VITE_APP_VERSION` | `1.2.0` | Versión mostrada en la app |
 
 En producción IIS las URLs son relativas (`/api/v1`, `/health`); el proxy en `public/web.config` las reenvía a `127.0.0.1:8081`.
 

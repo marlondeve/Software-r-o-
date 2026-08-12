@@ -11,7 +11,7 @@ export const APP_DEVELOPER = "MeritumDev"
 /** Año de inicio del copyright (mostrado como rango si difiere del actual). */
 export const APP_COPYRIGHT_SINCE = 2026
 
-export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "1.1.0"
+export const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? "1.2.0"
 
 export function obtenerTextoCopyright(anio = new Date().getFullYear()): string {
   const rango =

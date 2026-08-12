@@ -2,6 +2,28 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.0] — 2026-08-12
+
+### Añadido
+
+- Scripts de instalación limpia de BD (`00-DropAndCreateDatabase`, `05-QuestionnaireBootstrap`, `06-SeedCleanInstall`, `Initialize-BitalNegocioClean.ps1`) con catálogo FCR, parámetros, 5 roles predefinidos y usuario admin inicial.
+- Ruta operativa `VerBandejasPiso` y normalización de roles del módulo (`RolModuloDefaultsSeed`, migración `NormalizarRolesModuloDefault`).
+- Utilidades de identificación y layout de etiquetas para impresión térmica (`textoIdentificacionEtiqueta`, conversión px/mm).
+
+### Cambiado
+
+- Etiquetas: tamaño de impresión 168×88 mm, QR de mayor resolución/corrección de error y escalado DOM/html2canvas para mejor legibilidad en impresoras térmicas.
+- Consulta de atenciones hospitalarias (ApiConsultas / censo Vital): filtros SQL refinados, cama y asignación de servicio clínico.
+- Conexiones de producción Vital: `Hosvital_Pruebas` → `Hosvital_Produccion`.
+- Consistencias dietéticas por defecto alineadas a “Normal” en mocks y diálogos.
+
+### Corregido
+
+- Permisos de bandejas: toggles editables y mensaje en piso cuando no hay flujos operativos.
+- Sidebar con doble ítem activo en rutas anidadas (`dietas` vs `dietas-tarifas`).
+- Migración `AddChecklistAndParametrosOperativos` con columnas condicionales.
+- Campo `servicio` eliminado de la respuesta hospitalaria (contrato limpio).
+
 ## [1.1.0] — 2026-08-03
 
 ### Añadido
@@ -37,5 +59,6 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.0]: https://github.com/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/releases/tag/v1.0.0

@@ -293,7 +293,7 @@ try
     var productVersion = Assembly.GetExecutingAssembly()
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
-        ?? "1.1.0";
+        ?? "1.2.0";
 
     app.MapGet("/", () => new
     {
