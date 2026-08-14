@@ -1,31 +1,34 @@
 -- ============================================================================
 -- Script de Creación de Base de Datos BitalNegocio
 -- Compatible con SQL Server 2019+ (Express, Standard, Enterprise)
+--
+-- sqlcmd -S localhost\SQLEXPRESS -E -C -f 65001 ^
+--   -v DatabaseName="BitalNegocio" ^
+--   -i backend\scripts\01-CreateDatabase.sql
 -- ============================================================================
+
+:setvar DatabaseName BitalNegocio
 
 USE master;
 GO
 
--- Crear la base de datos si no existe
-IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = 'BitalNegocio')
+IF DB_ID(N'$(DatabaseName)') IS NULL
 BEGIN
-	CREATE DATABASE BitalNegocio;
-	PRINT 'Base de datos BitalNegocio creada exitosamente.';
+	CREATE DATABASE [$(DatabaseName)];
+	PRINT 'Base de datos $(DatabaseName) creada exitosamente.';
 END
 ELSE
 BEGIN
-	PRINT 'La base de datos BitalNegocio ya existe.';
+	PRINT 'La base de datos $(DatabaseName) ya existe.';
 END
 GO
 
--- Usar la base de datos
-USE BitalNegocio;
+USE [$(DatabaseName)];
 GO
 
--- Crear el esquema dietas si no existe
-IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'dietas')
+IF SCHEMA_ID(N'dietas') IS NULL
 BEGIN
-	EXEC('CREATE SCHEMA dietas');
+	EXEC(N'CREATE SCHEMA [dietas]');
 	PRINT 'Esquema dietas creado exitosamente.';
 END
 ELSE
@@ -34,10 +37,9 @@ BEGIN
 END
 GO
 
--- Crear el esquema bital si no existe
-IF NOT EXISTS (SELECT * FROM sys.schemas WHERE name = 'bital')
+IF SCHEMA_ID(N'bital') IS NULL
 BEGIN
-	EXEC('CREATE SCHEMA bital');
+	EXEC(N'CREATE SCHEMA [bital]');
 	PRINT 'Esquema bital creado exitosamente.';
 END
 ELSE
@@ -46,23 +48,34 @@ BEGIN
 END
 GO
 
--- Dar permisos al usuario Dev
-USE BitalNegocio;
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.database_principals WHERE name = 'Dev')
+-- Usuario Dev: solo si existe el login a nivel de servidor (no falla en SQL 2019 sin ese login)
+IF SUSER_ID(N'Dev') IS NOT NULL
 BEGIN
-	CREATE USER [Dev] FOR LOGIN [Dev];
-	PRINT 'Usuario Dev creado en la base de datos.';
+	IF DATABASE_PRINCIPAL_ID(N'Dev') IS NULL
+	BEGIN
+		CREATE USER [Dev] FOR LOGIN [Dev];
+		PRINT 'Usuario Dev creado en la base de datos.';
+	END
+
+	IF NOT EXISTS (
+		SELECT 1
+		FROM sys.database_role_members rm
+		INNER JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id AND r.name = N'db_owner'
+		INNER JOIN sys.database_principals m ON m.principal_id = rm.member_principal_id AND m.name = N'Dev'
+	)
+	BEGIN
+		ALTER ROLE db_owner ADD MEMBER [Dev];
+		PRINT 'Rol db_owner asignado a Dev.';
+	END
+END
+ELSE
+BEGIN
+	PRINT 'Login Dev no existe en el servidor; se omite CREATE USER (use Windows Auth o SQL Auth).';
 END
 GO
 
--- Asignar roles al usuario Dev
-ALTER ROLE db_owner ADD MEMBER [Dev];
-GO
-
 PRINT '============================================';
-PRINT 'Base de datos BitalNegocio configurada!';
-PRINT 'Usuario: Dev con permisos db_owner';
+PRINT 'Base de datos $(DatabaseName) configurada.';
+PRINT 'Compatible con SQL Server 2019+ (nivel 150).';
 PRINT '============================================';
 GO

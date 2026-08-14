@@ -1,7 +1,10 @@
 /*
   Tablas de cuestionarios (migracion 20260726020000_AddCuestionarios no registrada en EF).
   Ejecutar antes de AddParametrosEncuestas en instalaciones limpias.
+  Compatible con SQL Server 2019+.
 */
+:setvar DatabaseName BitalNegocio
+
 SET NOCOUNT ON;
 
 USE [$(DatabaseName)];
@@ -99,6 +102,17 @@ BEGIN
     );
     CREATE UNIQUE INDEX [IX_LogicaPreguntaCuestionario_Pregunta] ON [bital].[LogicasPreguntaCuestionario] ([PreguntaCuestionarioId]);
 END;
+
+IF OBJECT_ID(N'[__EFMigrationsHistory]', N'U') IS NOT NULL
+   AND NOT EXISTS (
+       SELECT 1 FROM [__EFMigrationsHistory]
+       WHERE [MigrationId] = N'20260726020000_AddCuestionarios'
+   )
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20260726020000_AddCuestionarios', N'8.0.13');
+    PRINT 'Migración EF AddCuestionarios registrada (evita CREATE TABLE duplicado).';
+END
 
 PRINT 'Tablas de cuestionarios: OK';
 GO

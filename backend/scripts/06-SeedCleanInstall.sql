@@ -20,6 +20,8 @@
 ================================================================================
 */
 
+:setvar DatabaseName BitalNegocio
+
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
@@ -30,6 +32,12 @@ IF OBJECT_ID(N'dietas.DietasCatalogo', N'U') IS NULL
    OR OBJECT_ID(N'bital.RolesModulo', N'U') IS NULL
 BEGIN
     RAISERROR(N'Aplique primero las migraciones EF (dotnet ef database update).', 16, 1);
+    RETURN;
+END
+
+IF COL_LENGTH(N'dietas.TarifasHistorico', N'TiempoComida') IS NULL
+BEGIN
+    RAISERROR(N'Falta dietas.TarifasHistorico.TiempoComida. Aplique migraciones EF (o 04-TiempoComidaTarifaHistorico.sql).', 16, 1);
     RETURN;
 END
 GO

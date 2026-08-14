@@ -121,7 +121,12 @@ Write-Host "  Fecha censo  : $FechaOperativa"
 
 if (-not $SkipCreateDatabase) {
     Write-Step "Creando base y esquemas ($BitalDatabase)"
-    Invoke-SqlFile -FilePath (Join-Path $ScriptRoot "01-CreateDatabase.sql") -Database "master"
+    Invoke-SqlFile `
+        -FilePath (Join-Path $ScriptRoot "01-CreateDatabase.sql") `
+        -Database "master" `
+        -Variables @{
+            DatabaseName = $BitalDatabase
+        }
 }
 
 if (-not $SkipEfMigration) {
@@ -149,8 +154,9 @@ if (-not $SkipDataMigration) {
         -FilePath (Join-Path $ScriptRoot "02-MigrateData.sql") `
         -Database $BitalDatabase `
         -Variables @{
-            VitalDatabase   = $VitalDatabase
-            FechaOperativa  = $FechaOperativa
+            DatabaseName   = $BitalDatabase
+            VitalDatabase  = $VitalDatabase
+            FechaOperativa = $FechaOperativa
         }
 }
 
@@ -160,9 +166,8 @@ Write-Host @"
 Proximos pasos:
   1. Verificar connection string en Bital.ApiNegocio/appsettings.Development.json
   2. Iniciar API: dotnet run --project backend/Bital.ApiNegocio
-  3. Login institucional con usuarios seed (@clinicadelrio.com)
-     Clave temporal: Bital2026!
-  4. Cambiar contrase?a en primer acceso
+  3. Login institucional: identificacion = contraseña inicial (ej. admin / admin)
+  4. Cambiar contraseña en el primer acceso
   5. Roles dinamicos: gestionar en Usuarios y roles > Crear rol
 
 "@ -ForegroundColor Green

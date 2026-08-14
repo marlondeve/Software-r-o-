@@ -2,24 +2,33 @@
 ================================================================================
   BITAL — Migración de datos SQL Server 2019+
   Base destino : BitalNegocio (esquemas bital + dietas)
-  Base origen  : Hosvital_Pruebas (HIS Vital, solo lectura)
+  Base origen  : Hosvital (HIS Vital, solo lectura)
+
+  Replica GetAtencionesHospitalariasAsync:
+    INGRESOS + CAPBAS + TMPFAC + MAEPAB
+    IngFecEgr = 1753-01-01 (centinela Vital, no NULL)
+    IngEstSld = 0, INGATNACT = 2, pabellones 3-7 vía TMPFAC.TFcCodPab
 
   Ejecutar DESPUÉS de aplicar migraciones EF:
     dotnet ef database update --project Bital.Infrastructure --startup-project Bital.ApiNegocio --context BitalNegocioDbContext
 
   Uso con sqlcmd (UTF-8):
     sqlcmd -S localhost\SQLEXPRESS -d BitalNegocio -f 65001 ^
-      -v VitalDatabase="Hosvital_Pruebas" FechaOperativa="2026-07-26" ^
+      -v DatabaseName="BitalNegocio" VitalDatabase="Hosvital_Pruebas" FechaOperativa="2026-08-13" ^
       -i backend\scripts\02-MigrateData.sql
 
   O usar:  .\backend\scripts\Migrate-BitalNegocio.ps1
 ================================================================================
 */
 
+:setvar DatabaseName BitalNegocio
+:setvar VitalDatabase Hosvital_Pruebas
+:setvar FechaOperativa ""
+
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-USE [BitalNegocio];
+USE [$(DatabaseName)];
 GO
 
 IF SCHEMA_ID(N'dietas') IS NULL EXEC(N'CREATE SCHEMA [dietas];');
@@ -27,12 +36,23 @@ IF SCHEMA_ID(N'bital') IS NULL EXEC(N'CREATE SCHEMA [bital];');
 GO
 
 DECLARE @VitalDb sysname = N'$(VitalDatabase)';
-DECLARE @FechaOperativa date = TRY_CONVERT(date, N'$(FechaOperativa)', 23);
-DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
-DECLARE @Anio int = YEAR(ISNULL(@FechaOperativa, GETDATE()));
+DECLARE @FechaOperativa date = TRY_CONVERT(date, NULLIF(N'$(FechaOperativa)', N''), 23);
 
 IF @FechaOperativa IS NULL
     SET @FechaOperativa = CAST(GETDATE() AS date);
+
+IF OBJECT_ID(N'dietas.TarifasHistorico', N'U') IS NULL
+   OR OBJECT_ID(N'bital.RolesModulo', N'U') IS NULL
+BEGIN
+    RAISERROR(N'Faltan tablas de esquema. Ejecute primero: dotnet ef database update --context BitalNegocioDbContext', 16, 1);
+    RETURN;
+END
+
+IF COL_LENGTH(N'dietas.TarifasHistorico', N'TiempoComida') IS NULL
+BEGIN
+    RAISERROR(N'Falta dietas.TarifasHistorico.TiempoComida. Aplique migraciones EF (o 04-TiempoComidaTarifaHistorico.sql).', 16, 1);
+    RETURN;
+END
 
 IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = @VitalDb)
 BEGIN
@@ -41,103 +61,146 @@ BEGIN
 END
 
 PRINT '============================================================';
-PRINT 'BITAL — Inicio migración de datos';
+PRINT 'BITAL — Inicio migración de datos (SQL Server 2019+)';
+PRINT '  Motor      : ' + CAST(SERVERPROPERTY('ProductVersion') AS varchar(32));
+PRINT '  Destino    : ' + DB_NAME();
 PRINT '  Vital      : ' + @VitalDb;
 PRINT '  Fecha op.  : ' + CONVERT(varchar(10), @FechaOperativa, 120);
 PRINT '============================================================';
 GO
 
 /* ============================================================================
-   1. CATÁLOGO DE DIETAS + TARIFAS (idempotente por Codigo / Anio)
+   1. CATÁLOGO FCR + TARIFAS POR TIEMPO DE COMIDA (idempotente)
+      Fuente: CatalogoDietasFcrSeed.cs / 06-SeedCleanInstall.sql
    ============================================================================ */
-USE [BitalNegocio];
+USE [$(DatabaseName)];
 GO
 
 DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
-DECLARE @Anio int = YEAR(CAST(N'$(FechaOperativa)' AS date));
 
-;WITH CatalogoSeed AS (
+;WITH DietasSeed AS (
     SELECT *
     FROM (VALUES
-        ('DN001', N'Dieta Normal',           N'Dieta completa y balanceada sin restricciones especiales',                    25000.00),
-        ('DB001', N'Dieta Blanda',           N'Alimentos de fácil digestión y textura suave',                                28000.00),
-        ('DL001', N'Dieta Líquida',          N'Solo líquidos claros o completos según indicación',                          22000.00),
-        ('DD001', N'Dieta Diabética',        N'Control de carbohidratos y azúcares para pacientes diabéticos',                32000.00),
-        ('DH001', N'Dieta Hiposódica',       N'Baja en sodio para pacientes con hipertensión o problemas renales',          30000.00)
-    ) AS v(Codigo, Nombre, Descripcion, Monto2025)
+        ('aaaaaaaa-0001-4000-8000-000000000001', N'D-001', N'Normales y derivadas',              N'Tarifa FCR — Normales y derivadas'),
+        ('aaaaaaaa-0002-4000-8000-000000000002', N'D-002', N'Hiperproteico',                     N'Tarifa FCR — Hiperproteico'),
+        ('aaaaaaaa-0003-4000-8000-000000000003', N'D-003', N'Hipoproteico',                      N'Tarifa FCR — Hipoproteico'),
+        ('aaaaaaaa-0004-4000-8000-000000000004', N'D-004', N'Renal',                             N'Tarifa FCR — Renal'),
+        ('aaaaaaaa-0005-4000-8000-000000000005', N'D-005', N'Líquidos claros',                   N'Tarifa FCR — Líquidos claros'),
+        ('aaaaaaaa-0006-4000-8000-000000000006', N'D-006', N'Niños de 6 a 10 meses',             N'Tarifa FCR — Niños de 6 a 10 meses'),
+        ('aaaaaaaa-0007-4000-8000-000000000007', N'D-007', N'Niños de 10 m en adelante',         N'Tarifa FCR — Niños de 10 m en adelante'),
+        ('aaaaaaaa-0008-4000-8000-000000000008', N'D-008', N'Líquido completa',                  N'Tarifa FCR — Líquido completa'),
+        ('aaaaaaaa-0009-4000-8000-000000000009', N'D-009', N'Hiperproteico licuado completa',    N'Tarifa FCR — Hiperproteico licuado completa'),
+        ('aaaaaaaa-0010-4000-8000-000000000010', N'D-010', N'Merienda mañana',                   N'Tarifa FCR — Merienda mañana'),
+        ('aaaaaaaa-0011-4000-8000-000000000011', N'D-011', N'Merienda tarde',                    N'Tarifa FCR — Merienda tarde'),
+        ('aaaaaaaa-0012-4000-8000-000000000012', N'D-012', N'Merienda noche',                    N'Tarifa FCR — Merienda noche')
+    ) AS v(Id, Codigo, Nombre, Descripcion)
 )
 MERGE dietas.DietasCatalogo AS tgt
-USING CatalogoSeed AS src
+USING DietasSeed AS src
     ON tgt.Codigo = src.Codigo
 WHEN NOT MATCHED BY TARGET THEN
     INSERT (Id, Codigo, Nombre, Descripcion, FechaInicio, FechaFin, Usuario, Activa, CreadoEn, CreadoPor)
-    VALUES (NEWID(), src.Codigo, src.Nombre, src.Descripcion, '2025-01-01', NULL, N'Sistema', 1, @AhoraUtc, N'Migracion');
-GO
+    VALUES (
+        CAST(src.Id AS uniqueidentifier),
+        src.Codigo,
+        src.Nombre,
+        src.Descripcion,
+        '2026-01-01',
+        NULL,
+        N'seed-fcr',
+        1,
+        @AhoraUtc,
+        N'Migracion'
+    )
+WHEN MATCHED THEN
+    UPDATE SET
+        tgt.Nombre = src.Nombre,
+        tgt.Descripcion = src.Descripcion,
+        tgt.Activa = 1,
+        tgt.ModificadoEn = @AhoraUtc,
+        tgt.ModificadoPor = N'Migracion';
 
-DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
-DECLARE @Anio int = YEAR(CAST(N'$(FechaOperativa)' AS date));
+-- Catálogo legado (DN001…) deja de usarse; el seed FCR de la API no corre si hay filas
+UPDATE dietas.DietasCatalogo
+SET Activa = 0, ModificadoEn = @AhoraUtc, ModificadoPor = N'Migracion'
+WHERE Codigo IN (N'DN001', N'DB001', N'DL001', N'DD001', N'DH001')
+  AND Activa = 1;
 
+;WITH TarifasSeed AS (
+    SELECT *
+    FROM (VALUES
+        (N'D-001', 1, 2025,  9766.00, 0), (N'D-001', 1, 2026, 10743.00, 1),
+        (N'D-001', 3, 2025, 12479.00, 0), (N'D-001', 3, 2026, 13727.00, 1),
+        (N'D-001', 5, 2025, 12479.00, 0), (N'D-001', 5, 2026, 13727.00, 1),
+
+        (N'D-002', 1, 2025, 11108.00, 0), (N'D-002', 1, 2026, 12219.00, 1),
+        (N'D-002', 3, 2025, 13213.00, 0), (N'D-002', 3, 2026, 14534.00, 1),
+        (N'D-002', 5, 2025, 12862.00, 0), (N'D-002', 5, 2026, 14148.00, 1),
+
+        (N'D-003', 1, 2025,  8770.00, 0), (N'D-003', 1, 2026,  9647.00, 1),
+        (N'D-003', 3, 2025,  9354.00, 0), (N'D-003', 3, 2026, 10289.00, 1),
+        (N'D-003', 5, 2025, 10407.00, 0), (N'D-003', 5, 2026, 11448.00, 1),
+
+        (N'D-004', 3, 2025, 12021.00, 0), (N'D-004', 3, 2026, 13223.00, 1),
+        (N'D-004', 5, 2025, 12646.00, 0), (N'D-004', 5, 2026, 13911.00, 1),
+
+        (N'D-005', 1, 2025,  5518.00, 0), (N'D-005', 1, 2026,  6070.00, 1),
+        (N'D-005', 3, 2025,  6300.00, 0), (N'D-005', 3, 2026,  6930.00, 1),
+        (N'D-005', 5, 2025,  5518.00, 0), (N'D-005', 5, 2026,  6070.00, 1),
+
+        (N'D-006', 3, 2025,  8185.00, 0), (N'D-006', 3, 2026,  9004.00, 1),
+        (N'D-006', 5, 2025,  8185.00, 0), (N'D-006', 5, 2026,  9004.00, 1),
+
+        (N'D-007', 1, 2025,  7016.00, 0), (N'D-007', 1, 2026,  7718.00, 1),
+        (N'D-007', 3, 2025, 12269.00, 0), (N'D-007', 3, 2026, 13496.00, 1),
+        (N'D-007', 5, 2025, 12269.00, 0), (N'D-007', 5, 2026, 13496.00, 1),
+
+        (N'D-008', 1, 2025,  8419.00, 0), (N'D-008', 1, 2026,  9261.00, 1),
+        (N'D-008', 3, 2025,  9289.00, 0), (N'D-008', 3, 2026, 10218.00, 1),
+        (N'D-008', 5, 2025,  9939.00, 0), (N'D-008', 5, 2026, 10933.00, 1),
+
+        (N'D-009', 1, 2025, 11108.00, 0), (N'D-009', 1, 2026, 12219.00, 1),
+        (N'D-009', 3, 2025, 13213.00, 0), (N'D-009', 3, 2026, 14534.00, 1),
+        (N'D-009', 5, 2025, 12862.00, 0), (N'D-009', 5, 2026, 14148.00, 1),
+
+        (N'D-010', 2, 2025,  6080.00, 0), (N'D-010', 2, 2026,  6688.00, 1),
+        (N'D-011', 4, 2025,  6080.00, 0), (N'D-011', 4, 2026,  6688.00, 1),
+        (N'D-012', 6, 2025,  6080.00, 0), (N'D-012', 6, 2026,  6688.00, 1)
+    ) AS v(Codigo, TiempoComida, Anio, Monto, Activa)
+)
 INSERT INTO dietas.TarifasHistorico (
-    Id, DietaCatalogoId, Anio, Monto, VigenciaDesde, VigenciaHasta, Activa, CreadoEn, CreadoPor
+    Id, DietaCatalogoId, TiempoComida, Anio, Monto,
+    VigenciaDesde, VigenciaHasta, Activa, Observaciones, CreadoEn, CreadoPor
 )
 SELECT
     NEWID(),
     dc.Id,
-    2025,
-    v.Monto,
-    '2025-01-01',
-    '2025-12-31',
-    1,
+    ts.TiempoComida,
+    ts.Anio,
+    ts.Monto,
+    DATEFROMPARTS(ts.Anio, 1, 1),
+    DATEFROMPARTS(ts.Anio, 12, 31),
+    ts.Activa,
+    CASE WHEN ts.Anio = 2025 THEN N'Tarifa FCR 2025 (histórico)' ELSE N'Propuesta tarifa FCR 2026 (+10%)' END,
     @AhoraUtc,
     N'Migracion'
-FROM dietas.DietasCatalogo dc
-INNER JOIN (VALUES
-    ('DN001', 25000.00),
-    ('DB001', 28000.00),
-    ('DL001', 22000.00),
-    ('DD001', 32000.00),
-    ('DH001', 30000.00)
-) AS v(Codigo, Monto) ON v.Codigo = dc.Codigo
+FROM TarifasSeed ts
+INNER JOIN dietas.DietasCatalogo dc ON dc.Codigo = ts.Codigo
 WHERE NOT EXISTS (
     SELECT 1
     FROM dietas.TarifasHistorico th
-    WHERE th.DietaCatalogoId = dc.Id AND th.Anio = 2025
+    WHERE th.DietaCatalogoId = dc.Id
+      AND th.TiempoComida = ts.TiempoComida
+      AND th.Anio = ts.Anio
 );
 
-INSERT INTO dietas.TarifasHistorico (
-    Id, DietaCatalogoId, Anio, Monto, VigenciaDesde, VigenciaHasta, Activa, CreadoEn, CreadoPor
-)
-SELECT
-    NEWID(),
-    dc.Id,
-    @Anio,
-    v.Monto,
-    DATEFROMPARTS(@Anio, 1, 1),
-    DATEFROMPARTS(@Anio, 12, 31),
-    1,
-    @AhoraUtc,
-    N'Migracion'
-FROM dietas.DietasCatalogo dc
-INNER JOIN (VALUES
-    ('DN001', 26500.00),
-    ('DB001', 29500.00),
-    ('DL001', 23500.00),
-    ('DD001', 33500.00),
-    ('DH001', 31500.00)
-) AS v(Codigo, Monto) ON v.Codigo = dc.Codigo
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM dietas.TarifasHistorico th
-    WHERE th.DietaCatalogoId = dc.Id AND th.Anio = @Anio
-);
-
-PRINT 'Catálogo y tarifas: OK';
+PRINT 'Catálogo FCR y tarifas: OK';
 GO
 
 /* ============================================================================
    2. PARÁMETROS OPERATIVOS + TIEMPOS DE COMIDA
    ============================================================================ */
-USE [BitalNegocio];
+USE [$(DatabaseName)];
 GO
 
 DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
@@ -204,14 +267,7 @@ GO
    Contraseña inicial por defecto: igual al nombre de usuario (Identificacion)
    Hash: SHA-256 en hex mayúsculas, igual que la API (.NET Convert.ToHexString)
    ============================================================================ */
-USE [BitalNegocio];
-GO
-
-IF OBJECT_ID(N'bital.RolesModulo', N'U') IS NULL
-BEGIN
-    RAISERROR(N'La tabla bital.RolesModulo no existe. Ejecute primero: dotnet ef database update --context BitalNegocioDbContext', 16, 1);
-    RETURN;
-END
+USE [$(DatabaseName)];
 GO
 
 DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
@@ -291,16 +347,22 @@ WHERE u.Identificacion IS NOT NULL
         OR u.PasswordHash = UPPER(N'3ab36e2aa3c89926e88a03fbfcfc86dc08c7aa3e1823781c63e1154f577a22e2')
       );
 
--- Permisos: insertar rutas faltantes por rol (no duplicar)
 ;WITH RutasPorRol AS (
     SELECT @RolAdmin AS RolModuloId, r.Ruta
     FROM (VALUES
-        (1),(2),(3),(4),(5),(6),(7),(8),(10),(11),(12),(13),(20),(21),(22),(23),(24),(25),(30),(31),(32),(40),(41),(50),(51),(60),(70),(71)
+        (1),(2),(3),(4),(5),(6),(7),(8),
+        (10),(11),(12),(13),
+        (20),(21),(22),(23),(24),(25),(26),
+        (30),(31),(32),
+        (40),(41),
+        (50),(51),
+        (60),
+        (70),(71)
     ) AS r(Ruta)
     UNION ALL
-    SELECT @RolNutricionista, r.Ruta FROM (VALUES (1),(2),(3),(5),(6),(7),(8),(10),(40),(41),(50),(60)) AS r(Ruta)
+    SELECT @RolNutricionista, r.Ruta FROM (VALUES (1),(2),(3),(5),(6),(7),(8),(10),(30),(40),(41),(50),(60)) AS r(Ruta)
     UNION ALL
-    SELECT @RolProveedor, r.Ruta FROM (VALUES (10),(11),(12),(13),(20),(21),(40)) AS r(Ruta)
+    SELECT @RolProveedor, r.Ruta FROM (VALUES (10),(11),(12),(13),(20),(21),(40),(41)) AS r(Ruta)
     UNION ALL
     SELECT @RolEnfermera, r.Ruta FROM (VALUES (1),(20),(22),(40)) AS r(Ruta)
     UNION ALL
@@ -314,8 +376,9 @@ WHERE NOT EXISTS (
     WHERE p.RolModuloId = rr.RolModuloId AND p.Ruta = rr.Ruta
 );
 
+DELETE FROM bital.PermisosRol
+WHERE RolModuloId = @RolEnfermera AND Ruta = 21;
 
--- Desactivar rol legado Doctor (fuera del catálogo por defecto)
 UPDATE bital.RolesModulo
 SET Activo = 0, ModificadoEn = @AhoraUtc, ModificadoPor = N'Migracion'
 WHERE Id = '11111111-1111-1111-1111-111111000005' AND Activo = 1;
@@ -324,20 +387,49 @@ PRINT 'Usuarios, roles y permisos: OK';
 GO
 
 /* ============================================================================
-   4. SINCRONIZAR CENSO DESDE VITAL (Hosvital_Pruebas)
-      Replica la lógica de GetAtencionesHospitalariasAsync + ObtenerCensoAsync
+   4. SINCRONIZAR CENSO DESDE VITAL
+      Misma lógica que GetAtencionesHospitalariasAsync + ObtenerCensoAsync
    ============================================================================ */
-USE [BitalNegocio];
+USE [$(DatabaseName)];
 GO
 
 DECLARE @VitalDb sysname = N'$(VitalDatabase)';
-DECLARE @FechaOperativa date = TRY_CONVERT(date, N'$(FechaOperativa)', 23);
+DECLARE @FechaOperativa date = TRY_CONVERT(date, NULLIF(N'$(FechaOperativa)', N''), 23);
 DECLARE @AhoraUtc datetime2 = SYSUTCDATETIME();
 DECLARE @Sql nvarchar(max);
 DECLARE @Insertados int = 0;
+DECLARE @VitalObject nvarchar(261);
 
 IF @FechaOperativa IS NULL
     SET @FechaOperativa = CAST(GETDATE() AS date);
+
+SET @VitalObject = @VitalDb + N'.dbo.INGRESOS';
+IF OBJECT_ID(@VitalObject, N'U') IS NULL
+BEGIN
+    RAISERROR(N'No existe %s. Verifique VitalDatabase y el esquema HIS.', 16, 1, @VitalObject);
+    RETURN;
+END
+
+SET @VitalObject = @VitalDb + N'.dbo.CAPBAS';
+IF OBJECT_ID(@VitalObject, N'U') IS NULL
+BEGIN
+    RAISERROR(N'No existe %s.', 16, 1, @VitalObject);
+    RETURN;
+END
+
+SET @VitalObject = @VitalDb + N'.dbo.TMPFAC';
+IF OBJECT_ID(@VitalObject, N'U') IS NULL
+BEGIN
+    RAISERROR(N'No existe %s (cama/pabellón actual del ingreso). La consulta de censo la requiere.', 16, 1, @VitalObject);
+    RETURN;
+END
+
+SET @VitalObject = @VitalDb + N'.dbo.MAEPAB';
+IF OBJECT_ID(@VitalObject, N'U') IS NULL
+BEGIN
+    RAISERROR(N'No existe %s.', 16, 1, @VitalObject);
+    RETURN;
+END
 
 SET @Sql = N'
 ;WITH Comidas AS (
@@ -345,32 +437,51 @@ SET @Sql = N'
 ),
 CensoVital AS (
     SELECT
-        i.IngCsc AS IdIngreso,
-        RTRIM(LTRIM(i.MPTDoc)) AS TipoDocumento,
-        RTRIM(LTRIM(i.MPcedu)) AS Cedula,
-        LTRIM(RTRIM(CONCAT(
-            RTRIM(LTRIM(cap.MPNom1)), N'' '',
-            RTRIM(LTRIM(ISNULL(cap.MPNom2, N''''))), N'' '',
-            RTRIM(LTRIM(cap.MPApe1)), N'' '',
-            RTRIM(LTRIM(ISNULL(cap.MPApe2, N'''')))
-        ))) AS NombreCompleto,
-        RTRIM(LTRIM(map.MPNomP)) AS Pabellon,
-        RTRIM(LTRIM(i.MPNumC)) AS Cama,
-        CASE
-            WHEN cap.MPFchN IS NULL THEN 0
-            ELSE DATEDIFF(year, cap.MPFchN, GETDATE())
-                - CASE WHEN DATEADD(year, DATEDIFF(year, cap.MPFchN, GETDATE()), cap.MPFchN) > GETDATE() THEN 1 ELSE 0 END
-        END AS Edad
-    FROM ' + QUOTENAME(@VitalDb) + N'.dbo.INGRESOS i
-    INNER JOIN ' + QUOTENAME(@VitalDb) + N'.dbo.CAPBAS cap
-        ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu))
-       AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))
-    INNER JOIN ' + QUOTENAME(@VitalDb) + N'.dbo.MAEPAB map
-        ON map.MPCodP = i.MPCodP
-    WHERE i.MPCodP IN (3, 4, 5, 6, 7)
-      AND i.IngFecEgr IS NULL
-      AND (i.IngEstSld = 0 OR i.IngEstSld IS NULL)
-      AND (i.IngHsp = ''S'' OR i.IngHsp IS NULL)
+        IdIngreso, TipoDocumento, Cedula, NombreCompleto, Pabellon, Cama, Edad, Servicio
+    FROM (
+        SELECT
+            i.IngCsc AS IdIngreso,
+            RTRIM(LTRIM(i.MPTDoc)) AS TipoDocumento,
+            RTRIM(LTRIM(i.MPcedu)) AS Cedula,
+            LTRIM(RTRIM(CONCAT_WS(N'' '',
+                NULLIF(RTRIM(LTRIM(cap.MPNom1)), N''''),
+                NULLIF(RTRIM(LTRIM(cap.MPNom2)), N''''),
+                NULLIF(RTRIM(LTRIM(cap.MPApe1)), N''''),
+                NULLIF(RTRIM(LTRIM(cap.MPApe2)), N'''')
+            ))) AS NombreCompleto,
+            RTRIM(LTRIM(map.MPNomP)) AS Pabellon,
+            RTRIM(LTRIM(tmp.TFcCodCam)) AS Cama,
+            CASE
+                WHEN cap.MPFchN IS NULL THEN 0
+                ELSE DATEDIFF(year, cap.MPFchN, GETDATE())
+                    - CASE WHEN DATEADD(year, DATEDIFF(year, cap.MPFchN, GETDATE()), cap.MPFchN) > GETDATE() THEN 1 ELSE 0 END
+            END AS Edad,
+            CASE
+                WHEN map.MPNomP LIKE N''%UCI%'' THEN N''UCI''
+                WHEN map.MPNomP LIKE N''%URGENCI%'' THEN N''Urgencias''
+                WHEN map.MPNomP LIKE N''%NEONATAL%'' THEN N''Neonatal''
+                WHEN map.MPNomP LIKE N''%HOSPITALIZ%'' OR map.MPNomP LIKE N''%PISO%'' THEN N''Hospitalización''
+                WHEN NULLIF(RTRIM(LTRIM(map.MPNomP)), N'''') IS NULL THEN N''Sin servicio''
+                ELSE RTRIM(LTRIM(map.MPNomP))
+            END AS Servicio,
+            ROW_NUMBER() OVER (
+                PARTITION BY i.IngCsc, RTRIM(LTRIM(i.MPcedu)), RTRIM(LTRIM(i.MPTDoc))
+                ORDER BY tmp.TFcCodCam
+            ) AS rn
+        FROM ' + QUOTENAME(@VitalDb) + N'.dbo.INGRESOS i
+        INNER JOIN ' + QUOTENAME(@VitalDb) + N'.dbo.CAPBAS cap
+            ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu))
+           AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))
+        INNER JOIN ' + QUOTENAME(@VitalDb) + N'.dbo.TMPFAC tmp
+            ON RTRIM(LTRIM(tmp.TFCedu)) = RTRIM(LTRIM(i.MPCedu))
+        INNER JOIN ' + QUOTENAME(@VitalDb) + N'.dbo.MAEPAB map
+            ON map.MPCodP = tmp.TFcCodPab
+        WHERE map.MPCodP IN (3, 4, 5, 6, 7)
+          AND i.IngFecEgr = CONVERT(datetime, ''17530101'', 112)
+          AND i.IngEstSld = 0
+          AND i.INGATNACT = 2
+    ) x
+    WHERE rn = 1
 )
 INSERT INTO dietas.FilasDietas (
     Id, PacienteId, IdIngreso, Cedula, TipoDocumento, Paciente, Edad,
@@ -386,7 +497,7 @@ SELECT
     cv.TipoDocumento,
     LEFT(cv.NombreCompleto, 200),
     cv.Edad,
-    N''Hospitalización'',
+    LEFT(cv.Servicio, 100),
     LEFT(cv.Pabellon, 50),
     LEFT(ISNULL(NULLIF(cv.Cama, N''''), N''—''), 50),
     c.Comida,
@@ -410,7 +521,7 @@ WHERE NOT EXISTS (
       AND f.Comida = c.Comida
 );
 
-    SET @Insertados = @@ROWCOUNT;
+SET @Insertados = @@ROWCOUNT;
 ';
 
 EXEC sp_executesql
@@ -426,7 +537,7 @@ GO
 /* ============================================================================
    5. RESUMEN
    ============================================================================ */
-USE [BitalNegocio];
+USE [$(DatabaseName)];
 GO
 
 SELECT N'Resumen post-migración' AS Seccion, Metrica, Valor
@@ -447,7 +558,7 @@ FROM (
     UNION ALL
     SELECT N'Filas censo hoy', COUNT(*)
     FROM dietas.FilasDietas
-    WHERE FechaOperativa = TRY_CONVERT(date, N'$(FechaOperativa)', 23)
+    WHERE FechaOperativa = ISNULL(TRY_CONVERT(date, NULLIF(N'$(FechaOperativa)', N''), 23), CAST(GETDATE() AS date))
 ) AS r;
 
 PRINT '============================================================';

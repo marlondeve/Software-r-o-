@@ -79,10 +79,10 @@ BEGIN TRY
         WHERE p.RolModuloId = @RolAuxiliar AND p.Ruta = r.Ruta
     );
 
-    PRINT '==> Administrador: rutas granulares 22-25';
+    PRINT '==> Administrador: rutas granulares 22-26';
     INSERT INTO bital.PermisosRol (Id, RolModuloId, Ruta, Permitido, CreadoEn, CreadoPor)
     SELECT NEWID(), @RolAdmin, r.Ruta, 1, @AhoraUtc, N'SQL-03-EtiquetasCapacidades'
-    FROM (VALUES (22), (23), (24), (25)) AS r(Ruta)
+    FROM (VALUES (22), (23), (24), (25), (26)) AS r(Ruta)
     WHERE NOT EXISTS (
         SELECT 1 FROM bital.PermisosRol p
         WHERE p.RolModuloId = @RolAdmin AND p.Ruta = r.Ruta
@@ -142,13 +142,14 @@ SELECT
         WHEN 23 THEN N'EntregaPaciente'
         WHEN 24 THEN N'RechazoAntesEntrega'
         WHEN 25 THEN N'RecogidaBandeja'
+        WHEN 26 THEN N'VerBandejasPiso'
         WHEN 40 THEN N'VerDashboard'
         WHEN  1 THEN N'ListarDietas'
         ELSE N'Otro'
     END AS Descripcion
 FROM bital.PermisosRol p
 INNER JOIN bital.RolesModulo rm ON rm.Id = p.RolModuloId
-WHERE p.Ruta IN (1, 20, 21, 22, 23, 24, 25, 40)
+WHERE p.Ruta IN (1, 20, 21, 22, 23, 24, 25, 26, 40)
   AND rm.Nombre IN (N'Administrador', N'Enfermera', N'Proveedor', N'Auxiliar de Cocina')
 ORDER BY rm.Nombre, p.Ruta;
 GO

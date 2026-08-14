@@ -1,11 +1,13 @@
--- Script SQL para datos iniciales del catálogo de dietas
--- Base de datos: BitalNegocio
--- Ejecutar después de aplicar las migraciones EF
--- IMPORTANTE: usar UTF-8 → sqlcmd ... -f 65001
---
--- NOTA: Para migración completa (catálogo + usuarios + censo Vital) preferir:
+-- LEGACY — no usar en instalaciones nuevas.
+-- El catálogo vigente es FCR (D-001 … D-012) con TiempoComida en TarifasHistorico.
+-- Preferir:
+--   .\backend\scripts\Initialize-BitalNegocioClean.ps1
 --   .\backend\scripts\Migrate-BitalNegocio.ps1
---   o backend\scripts\02-MigrateData.sql
+--   backend\scripts\06-SeedCleanInstall.sql
+--   backend\scripts\02-MigrateData.sql
+--
+-- Base de datos: BitalNegocio | SQL Server 2019+
+-- IMPORTANTE: usar UTF-8 → sqlcmd ... -f 65001
 
 USE BitalNegocio;
 GO

@@ -12,6 +12,9 @@
 ================================================================================
 */
 
+:setvar DatabaseName BitalNegocio
+:setvar DropExisting 0
+
 SET NOCOUNT ON;
 
 DECLARE @Db sysname = N'$(DatabaseName)';
