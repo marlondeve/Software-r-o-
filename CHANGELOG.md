@@ -2,6 +2,21 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.1] — 2026-08-21
+
+### Cambiado
+
+- Captura PDF de etiquetas térmicas: DPI acotado a 2400 y escalas DOM/html2canvas recalculadas para no superar el tope de canvas del navegador; QR fuente a 8192 px.
+
+### Corregido
+
+- Filtro de censo hospitalario: se elimina el código `MPCodP = 7` en ApiConsultas e Infrastructure.
+- Scripts de instalación/migración de `BitalNegocio` alineados con SQL Server 2019 y el censo Vital actual (TMPFAC, fecha mínima, INGATNACT, catálogo FCR / TiempoComida).
+
+### Seguridad
+
+- `appsettings.Production.json` deja de versionarse y se añade a `.gitignore`.
+
 ## [1.2.0] — 2026-08-12
 
 ### Añadido
@@ -59,6 +74,7 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.1]: https://github.com/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/releases/tag/v1.0.0

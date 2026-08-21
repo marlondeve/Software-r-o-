@@ -13,21 +13,34 @@ export const MARGEN_PDF_MM = 0
 export const ANCHO_PAGINA_PDF_MM = ANCHO_ETIQUETA_MM + MARGEN_PDF_MM * 2
 export const ALTO_PAGINA_PDF_MM = ALTO_ETIQUETA_MM + MARGEN_PDF_MM * 2
 
+/** CSS px/mm de pantalla (96 dpi). Solo preview; el PDF usa PDF_CAPTURA_DPI. */
 export const PX_POR_MM = 96 / 25.4
 
 export const ETIQUETA_QR_COL_RATIO = 0.3
 
-/** Resolución alta para QR escaneable en térmica. */
-export const ETIQUETA_QR_RESolucion = 4096
+/**
+ * DPI del raster embebido en el PDF (solo captura impresión).
+ * 2400 dpi ≈ 15 870 × 8 315 px — máximo práctico bajo el tope típico del
+ * canvas (~16 384 px por lado). Antes 5×8≈3840 dpi teórico (~25k px) se
+ * recortaba/fallaba en el navegador.
+ */
+export const PDF_CAPTURA_DPI = 2400
 
-/** DOM ampliado 5× sobre el diseño base (antes 2×). */
-export const CAPTURA_DOM_SCALE = 5
+/** Resolución del QR fuente (debe cubrir la columna QR a PDF_CAPTURA_DPI). */
+export const ETIQUETA_QR_RESolucion = 8192
 
-/** html2canvas 8× sobre el DOM ampliado (antes 4×). ~25 000 px de ancho efectivo. */
-export const CAPTURA_HTML2CANVAS_SCALE = 8
+/**
+ * html2canvas aporta supersampling; el DOM se escala para que
+ * DOM × html2canvas ≈ PDF_CAPTURA_DPI / 96.
+ */
+export const CAPTURA_HTML2CANVAS_SCALE = 2
+
+/** DOM ampliado para tipografía nítida antes de rasterizar. */
+export const CAPTURA_DOM_SCALE =
+  Math.round((PDF_CAPTURA_DPI / 96 / CAPTURA_HTML2CANVAS_SCALE) * 1000) / 1000
 
 /** Calidad JPEG embebido en PDF (misma resolución de captura, ~5–10× menos peso que PNG). */
-export const PDF_JPEG_CALIDAD = 0.96
+export const PDF_JPEG_CALIDAD = 0.98
 
 export const ETIQUETA_ANCHO_PX = Math.round(ANCHO_ETIQUETA_MM * PX_POR_MM)
 export const ETIQUETA_ALTO_PX = Math.round(ALTO_ETIQUETA_MM * PX_POR_MM)
