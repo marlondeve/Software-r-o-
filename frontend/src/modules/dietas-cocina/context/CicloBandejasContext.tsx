@@ -332,6 +332,8 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
   const estaOnlineRef = useRef(estaOnline)
   estaOnlineRef.current = estaOnline
   const sincronizandoRef = useRef(false)
+  /** Órdenes con PATCH de checklist en vuelo: el poll/GET no pisa el estado local. */
+  const checklistPendienteRef = useRef(new Map<string, number>())
 
   useEffect(() => {
     return suscribirConectividadRed(setEstaOnline)
@@ -1383,6 +1385,9 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
               return { ...o, checklist, estadoCocina }
             }
 
+            const pendientes = checklistPendienteRef.current
+            pendientes.set(ordenId, (pendientes.get(ordenId) ?? 0) + 1)
+
             void actualizarChecklistOrdenCocina(ordenApiId, {
               items: checklist.map((item) => ({
                 id: item.id,
@@ -1391,13 +1396,18 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
             })
               .then((ordenApi) => {
                 const checklistApi = mapChecklistFromApi(ordenApi.checklist)
-                guardarChecklistOrden(ordenId, checklistApi)
+                // Conservar ticks locales marcados mientras el PATCH viajaba.
                 setOrdenes((current) =>
-                  current.map((orden) =>
-                    orden.id === ordenId
-                      ? { ...orden, checklist: checklistApi, ordenCocinaApiId: ordenApiId }
-                      : orden,
-                  ),
+                  current.map((orden) => {
+                    if (orden.id !== ordenId) return orden
+                    const merged = checklistMasCompleto(orden.checklist, checklistApi)
+                    guardarChecklistOrden(ordenId, merged)
+                    return {
+                      ...orden,
+                      checklist: merged,
+                      ordenCocinaApiId: ordenApiId,
+                    }
+                  }),
                 )
               })
               .catch((error) => {
@@ -1407,6 +1417,11 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
                     : "No se pudo guardar el checklist.",
                   "error",
                 )
+              })
+              .finally(() => {
+                const n = (pendientes.get(ordenId) ?? 1) - 1
+                if (n <= 0) pendientes.delete(ordenId)
+                else pendientes.set(ordenId, n)
               })
           }
 
@@ -1418,12 +1433,17 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
   )
 
   const sincronizarChecklistOrden = useCallback(
-    (ordenId: string, checklist: OrdenCocina["checklist"]) => {
-      guardarChecklistOrden(ordenId, checklist)
+    (ordenId: string, checklistRemoto: OrdenCocina["checklist"]) => {
+      // No pisar mientras el usuario tiene mutaciones en vuelo.
+      if ((checklistPendienteRef.current.get(ordenId) ?? 0) > 0) return
+
       setOrdenes((prev) =>
-        prev.map((orden) =>
-          orden.id === ordenId ? { ...orden, checklist } : orden,
-        ),
+        prev.map((orden) => {
+          if (orden.id !== ordenId) return orden
+          const checklist = checklistMasCompleto(orden.checklist, checklistRemoto)
+          guardarChecklistOrden(ordenId, checklist)
+          return { ...orden, checklist }
+        }),
       )
     },
     [],

@@ -11,9 +11,11 @@ interface EtiquetasToolbarProps {
   parcialmenteSeleccionado: boolean
   imprimiendo: boolean
   reimprimiendo: boolean
+  imprimiendoPrueba?: boolean
   onToggleTodas: (checked: boolean) => void
   onImprimir: () => void
   onReimprimir: () => void
+  onImprimirPrueba?: () => void
 }
 
 export function EtiquetasToolbar({
@@ -23,12 +25,15 @@ export function EtiquetasToolbar({
   parcialmenteSeleccionado,
   imprimiendo,
   reimprimiendo,
+  imprimiendoPrueba = false,
   onToggleTodas,
   onImprimir,
   onReimprimir,
+  onImprimirPrueba,
 }: EtiquetasToolbarProps) {
   const checkedState =
     todoSeleccionado ? true : parcialmenteSeleccionado ? "indeterminate" : false
+  const ocupado = imprimiendo || reimprimiendo || imprimiendoPrueba
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -48,11 +53,23 @@ export function EtiquetasToolbar({
       </div>
 
       <div className="flex flex-wrap gap-2">
+        {onImprimirPrueba && (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={ocupado}
+            onClick={onImprimirPrueba}
+          >
+            <Printer data-icon="inline-start" />
+            {imprimiendoPrueba ? "Generando prueba…" : "Etiqueta de prueba"}
+          </Button>
+        )}
         <Button
           type="button"
           size="sm"
           variant="outline"
-          disabled={seleccionados === 0 || reimprimiendo || imprimiendo}
+          disabled={seleccionados === 0 || ocupado}
           onClick={onReimprimir}
         >
           <Printer data-icon="inline-start" />
@@ -61,7 +78,7 @@ export function EtiquetasToolbar({
         <Button
           type="button"
           size="sm"
-          disabled={seleccionados === 0 || imprimiendo || reimprimiendo}
+          disabled={seleccionados === 0 || ocupado}
           onClick={onImprimir}
         >
           <Printer data-icon="inline-start" />

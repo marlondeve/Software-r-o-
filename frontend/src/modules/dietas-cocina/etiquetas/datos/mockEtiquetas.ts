@@ -1,6 +1,7 @@
 import type { TiempoComida, EstadoEtiqueta } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaDieta, KpiEtiqueta } from "@/modules/dietas-cocina/types/labels"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
+import { crearEtiquetaPruebaImpresion } from "@/modules/dietas-cocina/etiquetas/lib/crearEtiquetaPruebaImpresion"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 
 export const COMIDAS_ETIQUETAS = COMIDAS_TABS
@@ -50,6 +51,7 @@ export const mockEtiquetas = {
   habitaciones: ["Todas las Habitaciones", "204B", "301-A", "112-C"],
   tiposDieta: ["Todas", "HIPOSÓDICA", "BLANDA", "DIABÉTICA", "NORMAL"],
   etiquetas: [
+    crearEtiquetaPruebaImpresion(),
     crearEtiqueta("etq-1", "LBL-9021-X", "generada"),
     crearEtiqueta("etq-2", "LBL-9022-X", "generada", {
       paciente: "TORRES, ELENA",

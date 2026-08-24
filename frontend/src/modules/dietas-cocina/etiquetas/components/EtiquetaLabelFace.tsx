@@ -234,6 +234,21 @@ function SeparadorImpresion() {
   )
 }
 
+function TituloValorImpresion({
+  titulo,
+  valor,
+}: {
+  titulo: string
+  valor: string | number
+}) {
+  return (
+    <>
+      <span style={{ fontWeight: 700 }}>{titulo}: </span>
+      <span style={{ fontWeight: 700, textTransform: "uppercase" }}>{valor}</span>
+    </>
+  )
+}
+
 function MetaPaciente({
   etiqueta,
   ubicacion,
@@ -246,6 +261,9 @@ function MetaPaciente({
   const aislamiento = etiqueta.aislamiento ? "Sí" : "No"
   const ingreso = textoIngresoEtiqueta(etiqueta)
   const documento = textoDocumentoEtiqueta(etiqueta)
+  const documentoPartes = documento.split(/:\s*/)
+  const documentoTitulo = documentoPartes[0] ?? "CC"
+  const documentoValor = documentoPartes.slice(1).join(": ") || documento
 
   if (modo === "impresion") {
     const estiloMeta: CSSProperties = {
@@ -266,18 +284,27 @@ function MetaPaciente({
         <p style={estiloMeta}>
           {ingreso ? (
             <>
-              {ingreso}
+              <TituloValorImpresion
+                titulo="Ingreso"
+                valor={ingreso.replace(/^Ingreso:\s*/i, "")}
+              />
               <SeparadorImpresion />
             </>
           ) : null}
-          Edad: {etiqueta.edad}
+          <TituloValorImpresion titulo="Edad" valor={etiqueta.edad} />
           <SeparadorImpresion />
-          {documento}
+          <TituloValorImpresion titulo={documentoTitulo} valor={documentoValor} />
         </p>
-        <p style={{ ...estiloMeta, marginTop: pxCapturaImpresion(3) }}>
+        <p
+          style={{
+            ...estiloMeta,
+            marginTop: pxCapturaImpresion(3),
+            textTransform: "uppercase",
+          }}
+        >
           {ubicacion}
           <SeparadorImpresion />
-          Aislamiento: {aislamiento}
+          <TituloValorImpresion titulo="Aislamiento" valor={aislamiento} />
         </p>
       </div>
     )
@@ -436,6 +463,7 @@ function EtiquetaLabelContenido({
                 margin: esImpresion ? `${pxI(2)}px 0 0` : "2px 0 0",
                 fontSize: esImpresion ? TIPOGRAFIA_IMPRESION.fechaHora : 8.5,
                 fontWeight: esImpresion ? 700 : 400,
+                textTransform: esImpresion ? "uppercase" : undefined,
                 color: esImpresion ? C.black85 : C.black65,
               }}
             >
@@ -522,6 +550,7 @@ function EtiquetaLabelContenido({
                   margin: "1px 0 0",
                   fontSize: esImpresion ? TIPOGRAFIA_IMPRESION.dietaValor : 10,
                   fontWeight: 700,
+                  textTransform: esImpresion ? "uppercase" : undefined,
                   lineHeight: 1.2,
                   wordBreak: "break-word",
                 }}
@@ -582,6 +611,7 @@ function EtiquetaLabelContenido({
               margin: esImpresion ? `${pxI(3)}px 0 0` : "3px 0 0",
               fontSize: esImpresion ? TIPOGRAFIA_IMPRESION.obsTexto : 9,
               fontWeight: esImpresion ? 700 : 400,
+              textTransform: esImpresion ? "uppercase" : undefined,
               lineHeight: esImpresion ? 1.3 : 1.35,
               color: C.black85,
               flex: 1,

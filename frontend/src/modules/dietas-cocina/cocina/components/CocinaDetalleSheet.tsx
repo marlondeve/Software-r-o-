@@ -5,7 +5,7 @@ import {
   ShieldAlert,
   Utensils,
 } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
 import { mapChecklistFromApi } from "@/modules/dietas-cocina/api/mappers/ordenCocina.mapper"
@@ -13,7 +13,6 @@ import { obtenerDetalleOrdenCocina } from "@/modules/dietas-cocina/api/services/
 import type { OrdenCocinaApiDto } from "@/modules/dietas-cocina/types/api-dtos"
 
 import { Badge } from "@/components/ui/badge"
-import { SheetDetailSkeleton } from "@/components/shared/skeletons"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
@@ -84,45 +83,39 @@ export function CocinaDetalleSheet({
 }: CocinaDetalleSheetProps) {
   const apiActiva = usarApiDietasCocina()
   const [detalleApi, setDetalleApi] = useState<OrdenCocinaApiDto | null>(null)
-  const [cargandoDetalleApi, setCargandoDetalleApi] = useState(false)
-  const ultimoChecklistSync = useRef<string>("")
 
+  // Checklist: siempre desde el contexto (`orden`). El GET solo aporta observaciones
+  // y se fusiona en el store (no se pinta encima → evita el snap-back del checkbox).
   useEffect(() => {
     if (!open || !orden?.ordenCocinaApiId || !apiActiva) {
       setDetalleApi(null)
-      ultimoChecklistSync.current = ""
       return
     }
 
-    setCargandoDetalleApi(true)
-    void obtenerDetalleOrdenCocina(orden.ordenCocinaApiId)
-      .then(setDetalleApi)
-      .catch(() => setDetalleApi(null))
-      .finally(() => setCargandoDetalleApi(false))
-  }, [open, orden?.ordenCocinaApiId, apiActiva])
+    const ordenId = orden.id
+    const apiId = orden.ordenCocinaApiId
+    let cancelado = false
 
-  useEffect(() => {
-    if (!orden?.id || !detalleApi?.checklist?.length || !onSincronizarChecklist) return
-    const checklist = mapChecklistFromApi(detalleApi.checklist)
-    const firma = JSON.stringify(checklist)
-    if (firma === ultimoChecklistSync.current) return
-    ultimoChecklistSync.current = firma
-    onSincronizarChecklist(orden.id, checklist)
-  }, [detalleApi, onSincronizarChecklist, orden?.id])
+    void obtenerDetalleOrdenCocina(apiId)
+      .then((dto) => {
+        if (cancelado) return
+        setDetalleApi(dto)
+        if (dto.checklist?.length && onSincronizarChecklist) {
+          onSincronizarChecklist(ordenId, mapChecklistFromApi(dto.checklist))
+        }
+      })
+      .catch(() => {
+        if (!cancelado) setDetalleApi(null)
+      })
 
-  const ordenActiva = useMemo(() => {
-    if (!orden) return null
-    if (!detalleApi?.checklist?.length) return orden
-    return {
-      ...orden,
-      checklist: mapChecklistFromApi(detalleApi.checklist),
+    return () => {
+      cancelado = true
     }
-  }, [orden, detalleApi])
+  }, [open, orden?.id, orden?.ordenCocinaApiId, apiActiva, onSincronizarChecklist])
 
-  if (!ordenActiva) return null
+  if (!orden) return null
 
-  const vista = ordenActiva
-
+  const vista = orden
   const etiqueta = getEtiquetaByOrdenId(vista.id)
   const progresoChecklist = checklistProgreso(vista)
   const checklistEditable = puedeEditarChecklist(vista)
@@ -189,10 +182,6 @@ export function CocinaDetalleSheet({
 
         <ScrollAreaFlex>
           <div className="w-full space-y-5 px-5 py-4">
-            {cargandoDetalleApi && !detalleApi ? (
-              <SheetDetailSkeleton />
-            ) : (
-              <>
             {detalleApi?.observaciones && (
               <section className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
                 {detalleApi.observaciones}
@@ -309,7 +298,7 @@ export function CocinaDetalleSheet({
                 </p>
               )}
               <ul className="space-y-2">
-                {ordenActiva.checklist.map((item) => (
+                {vista.checklist.map((item) => (
                   <li
                     key={item.id}
                     className={cn(
@@ -325,7 +314,7 @@ export function CocinaDetalleSheet({
                       disabled={!checklistEditable}
                       onCheckedChange={(checked) =>
                         onChecklistChange(
-                          ordenActiva.id,
+                          vista.id,
                           item.id,
                           checked === true,
                         )
@@ -371,8 +360,6 @@ export function CocinaDetalleSheet({
                 </SelectContent>
               </Select>
             </section>
-              </>
-            )}
           </div>
         </ScrollAreaFlex>
 

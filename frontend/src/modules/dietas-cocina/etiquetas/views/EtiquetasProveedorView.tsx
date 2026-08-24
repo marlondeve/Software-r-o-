@@ -27,7 +27,8 @@ import {
   filtrosDesdeKpiEtiqueta,
   type FiltrosEstadoEtiqueta,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEstilos"
-import { generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
+import { generarPdfEtiquetaIndividual, generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
+import { crearEtiquetaPruebaImpresion } from "@/modules/dietas-cocina/etiquetas/lib/crearEtiquetaPruebaImpresion"
 import { devLog } from "@/lib/devLog"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { filtrarEtiquetasDelPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
@@ -66,6 +67,7 @@ export function EtiquetasProveedorView() {
   const [kpiActivo, setKpiActivo] = useState<string | undefined>()
   const [imprimiendo, setImprimiendo] = useState(false)
   const [reimprimiendo, setReimprimiendo] = useState(false)
+  const [imprimiendoPrueba, setImprimiendoPrueba] = useState(false)
 
   useEffect(() => {
     if (!apiActiva) return
@@ -275,6 +277,20 @@ export function EtiquetasProveedorView() {
     }
   }
 
+  /** Mismo pipeline que Imprimir: EtiquetaLabelFace → html2canvas → jsPDF. */
+  async function imprimirEtiquetaPrueba() {
+    setImprimiendoPrueba(true)
+    try {
+      await generarPdfEtiquetaIndividual(crearEtiquetaPruebaImpresion())
+      demoToast("PDF de prueba generado (mismo layout que la impresión real).", "success")
+    } catch (error) {
+      devLog.error("Error al generar etiqueta de prueba:", error)
+      window.alert("No se pudo generar la etiqueta de prueba.")
+    } finally {
+      setImprimiendoPrueba(false)
+    }
+  }
+
   return (
     <div className="space-y-5 pb-6">
       <DashboardPageHeader
@@ -330,9 +346,11 @@ export function EtiquetasProveedorView() {
             parcialmenteSeleccionado={parcialmenteSeleccionado}
             imprimiendo={imprimiendo}
             reimprimiendo={reimprimiendo}
+            imprimiendoPrueba={imprimiendoPrueba}
             onToggleTodas={toggleTodas}
             onImprimir={imprimirSeleccionadas}
             onReimprimir={reimprimirSeleccionadas}
+            onImprimirPrueba={imprimirEtiquetaPrueba}
           />
 
           {apiActiva && !hidrato ? (

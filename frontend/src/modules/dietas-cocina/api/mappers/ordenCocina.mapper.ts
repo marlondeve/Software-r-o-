@@ -210,7 +210,7 @@ export function enriquecerOrdenesConApi(
       ...orden,
       ordenCocinaApiId: apiId,
       checklist: ordenApi?.checklist
-        ? mapChecklistFromApi(ordenApi.checklist)
+        ? checklistMasCompleto(orden.checklist, mapChecklistFromApi(ordenApi.checklist))
         : orden.checklist,
       ...(estadoApi
         ? { estadoCocina: preferirEstadoCocina(orden.estadoCocina, estadoApi) }

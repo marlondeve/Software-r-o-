@@ -2,6 +2,22 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.4] — 2026-08-24
+
+### Añadido
+
+- Botón **Etiqueta de prueba** en Impresión de etiquetas: genera el mismo PDF del flujo real (`EtiquetaLabelFace` + html2canvas + jsPDF).
+
+### Cambiado
+
+- Tipografía de etiqueta térmica: valores en mayúsculas con el mismo peso que el código de etiqueta.
+- Checklist de cocina: el detalle usa el estado del contexto (no el snapshot del GET) para evitar que el tick se desmarque.
+
+### Corregido
+
+- Sync de checklist: fusión con lo local, no reemplazo; se ignora el poll mientras hay PATCH en vuelo.
+- Build IIS: propiedades duplicadas `codigo`/`qrPayload` en la etiqueta de prueba.
+
 ## [1.2.3] — 2026-08-23
 
 ### Añadido
@@ -93,6 +109,7 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.4]: https://github.com/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/compare/v1.2.1...v1.2.3
 [1.2.1]: https://github.com/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/compare/v1.1.0...v1.2.0
