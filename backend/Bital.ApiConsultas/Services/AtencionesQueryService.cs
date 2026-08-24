@@ -180,22 +180,49 @@ public class AtencionesQueryService : IAtencionesQueryService
         _logger.LogInformation("Consultando atenciones hospitalarias activas para módulo de Dietas");
 
         var sql = @"
-                SELECT
-                i.IngCsc AS IdIngreso,
-                i.MPTDoc AS TipoDocumento, 
-                i.MPcedu AS Cedula, 
-                CONCAT_WS(' ', RTRIM(LTRIM(cap.MPNom1)), RTRIM(LTRIM(cap.MPNom2)), RTRIM(LTRIM(cap.MPApe1)), RTRIM(LTRIM(cap.MPApe2))) AS NombreCompleto,
-                map.MPNomP AS Pabellon,
-                tmp.TFcCodCam AS Cama
-            FROM INGRESOS i 
-            INNER JOIN CAPBAS cap ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu)) AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))           
-            INNER JOIN TMPFAC tmp ON tmp.TFCedu = i.MPCedu
-            INNER JOIN MAEPAB map ON map.MPCodP = tmp.TFcCodPab
-            WHERE map.MPCodP IN (3,4,5,6) 
-              AND i.IngFecEgr = '1753-01-01 00:00:00.000' 
-              AND (i.IngEstSld = 0)
-              AND (i.INGATNACT = 2)
-            ORDER BY map.MPNomP, i.MPNumC";
+               WITH IngresoMayor AS (
+    SELECT
+        i.*,
+        ROW_NUMBER() OVER (
+            PARTITION BY RTRIM(LTRIM(i.MPCedu)), RTRIM(LTRIM(i.MPTDoc))
+            ORDER BY i.IngCsc DESC
+        ) AS rn
+    FROM INGRESOS i
+    WHERE i.IngFecEgr = '1753-01-01 00:00:00.000'
+      AND i.IngEstSld = 0
+      AND i.INGATNACT IN (2,3)
+)
+SELECT
+    i.IngCsc AS IdIngreso,
+    i.MPTDoc AS TipoDocumento, 
+    i.MPcedu AS Cedula, 
+    CONCAT_WS(
+        ' ',
+        RTRIM(LTRIM(cap.MPNom1)),
+        RTRIM(LTRIM(cap.MPNom2)),
+        RTRIM(LTRIM(cap.MPApe1)),
+        RTRIM(LTRIM(cap.MPApe2))
+    ) AS NombreCompleto,
+    map.MPNomP AS Pabellon,
+    tmp.TFcCodCam AS Cama,
+    tmp.TmCtvIng
+FROM IngresoMayor i
+
+INNER JOIN CAPBAS cap 
+    ON RTRIM(LTRIM(cap.MPCedu)) = RTRIM(LTRIM(i.MPcedu))
+    AND RTRIM(LTRIM(cap.MPTDoc)) = RTRIM(LTRIM(i.MPTDoc))
+
+INNER JOIN TMPFAC tmp 
+    ON RTRIM(LTRIM(tmp.TFCedu)) = RTRIM(LTRIM(i.MPCedu))
+    AND tmp.TmCtvIng = i.IngCsc
+
+INNER JOIN MAEPAB map 
+    ON map.MPCodP = tmp.TFcCodPab
+
+WHERE i.rn = 1
+  AND map.MPCodP IN (3,4,5,6)
+
+ORDER BY map.MPNomP, i.MPNumC;";
 
         var resultados = await EjecutarQueryHospitalariasAsync(sql, cancellationToken);
 
