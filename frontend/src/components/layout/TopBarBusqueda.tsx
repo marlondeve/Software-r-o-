@@ -1,8 +1,8 @@
 import {
-  FormEvent,
   useEffect,
   useRef,
   useState,
+  type FormEvent,
   type KeyboardEvent,
 } from "react"
 import { Search } from "lucide-react"

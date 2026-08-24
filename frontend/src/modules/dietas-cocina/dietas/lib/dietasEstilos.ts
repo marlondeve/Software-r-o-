@@ -101,7 +101,7 @@ export function filaCoincideBusqueda(fila: FilaDieta, termino: string): boolean 
     fila.paciente.toLowerCase().includes(q) ||
     fila.pacienteId.toLowerCase().includes(q) ||
     fila.habitacion.toLowerCase().includes(q) ||
-    (fila.cama?.toLowerCase().includes(q) ?? false)
+    fila.pabellon.toLowerCase().includes(q)
   )
 }
 
