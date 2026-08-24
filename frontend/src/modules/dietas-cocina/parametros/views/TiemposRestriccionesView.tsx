@@ -70,6 +70,7 @@ export function TiemposRestriccionesView() {
         )
         setConfig(nextConfig)
         setConfigGuardada(nextConfig)
+        guardarConfigTiempos(nextConfig)
       })
       .catch(() => {
         demoToast("No se pudieron cargar los tiempos desde el API.", "error")
@@ -79,6 +80,7 @@ export function TiemposRestriccionesView() {
         )
         setConfig(fallback)
         setConfigGuardada(fallback)
+        guardarConfigTiempos(fallback)
       })
       .finally(() => setCargando(false))
   }, [apiActiva])
@@ -128,6 +130,7 @@ export function TiemposRestriccionesView() {
           )
           setConfig(nextConfig)
           setConfigGuardada(nextConfig)
+          guardarConfigTiempos(nextConfig)
           demoToast("Configuración de tiempos guardada correctamente.", "success")
         })
         .catch((error) => {

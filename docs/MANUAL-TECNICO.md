@@ -1,7 +1,7 @@
 # Manual técnico — RioSoft
 
 **Cliente:** Clínica del Río (Montería, Colombia)  
-**Versión del documento:** 1.2 — RioSoft **1.2.1** — 2026-08-21  
+**Versión del documento:** 1.2 — RioSoft **1.2.2** — 2026-08-23  
 **Alcance:** Componentes **operativos en producción** — módulo **Dietas y Cocina**, autenticación, API, base de datos, despliegue IIS.
 
 > **Fuera de alcance:** Módulo Encuestas SIAO (backend preparado, UI deshabilitada), Administración de plataforma (scaffold).
@@ -204,7 +204,7 @@ Archivo: `frontend/.env.local` (copiar desde `.env.example`)
 | `VITE_DEV_API_PROXY_TARGET` | `http://localhost:8080` | Target del proxy en desarrollo |
 | `VITE_DIETAS_COCINA_API` | `true` | **Obligatorio** para modo operativo HTTP |
 | `VITE_ENCUESTAS_ENABLED` | `false` | Módulo encuestas oculto |
-| `VITE_APP_VERSION` | `1.2.1` | Versión mostrada en UI |
+| `VITE_APP_VERSION` | `1.2.2` | Versión mostrada en UI |
 
 ### 4.4 Configuración backend (desarrollo)
 
@@ -806,4 +806,4 @@ Correo: soporte@clinicadelrio.com
 
 ---
 
-*Fin del manual técnico operativo RioSoft v1.2.1*
+*Fin del manual técnico operativo RioSoft v1.2.2*

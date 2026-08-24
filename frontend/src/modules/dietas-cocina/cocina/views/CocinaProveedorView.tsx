@@ -2,7 +2,7 @@ import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useMemo, useState, useEffect } from "react"
 import { FileText, RefreshCw, Tag } from "lucide-react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { Button } from "@/components/ui/button"
 import { TablePageSkeleton } from "@/components/shared/skeletons"
@@ -62,6 +62,7 @@ export function CocinaProveedorView() {
   const apiActiva = usarApiDietasCocina()
   const data = mockCocina
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const {
     ordenes,
     hidrato,
@@ -86,6 +87,13 @@ export function CocinaProveedorView() {
   const [ordenDetalle, setOrdenDetalle] = useState<OrdenCocina | null>(null)
   const [detalleAbierto, setDetalleAbierto] = useState(false)
   const [ultimaActualizacion, setUltimaActualizacion] = useState(() => new Date())
+
+  useEffect(() => {
+    const q = searchParams.get("q")?.trim()
+    if (q) {
+      setFiltros((prev) => ({ ...prev, busqueda: q }))
+    }
+  }, [searchParams])
 
   useEffect(() => {
     setUltimaActualizacion(new Date())

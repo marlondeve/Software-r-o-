@@ -53,6 +53,38 @@ export function formatearUbicacion(fila: FilaDieta): string {
   return `${normalizarPabellon(fila.pabellon)} · Hab. ${fila.habitacion}`
 }
 
+/** Clave de filtro: solo pabellón/área (sin habitación). */
+export function claveUbicacionFila(fila: FilaDieta): string {
+  return normalizarPabellon(fila.pabellon).trim()
+}
+
+export interface OpcionUbicacionFila {
+  value: string
+  label: string
+}
+
+/** Opciones únicas de ubicación (pabellón/área), sin habitaciones. */
+export function listarUbicacionesDesdeFilas(filas: FilaDieta[]): OpcionUbicacionFila[] {
+  const opciones = new Map<string, string>()
+
+  for (const fila of filas) {
+    const clave = claveUbicacionFila(fila)
+    if (!clave) continue
+    opciones.set(clave, clave)
+  }
+
+  return [...opciones.entries()]
+    .map(([value, label]) => ({ value, label }))
+    .sort((a, b) =>
+      a.label.localeCompare(b.label, "es", { sensitivity: "base", numeric: true }),
+    )
+}
+
+export function filaCoincideUbicacion(fila: FilaDieta, ubicacion: string): boolean {
+  if (ubicacion === "todas") return true
+  return claveUbicacionFila(fila) === ubicacion
+}
+
 /** Unifica alias históricos del HIS para evitar duplicidad visual. */
 export function normalizarPabellon(pabellon: string): string {
   const alias: Record<string, string> = {
@@ -68,7 +100,8 @@ export function filaCoincideBusqueda(fila: FilaDieta, termino: string): boolean 
   return (
     fila.paciente.toLowerCase().includes(q) ||
     fila.pacienteId.toLowerCase().includes(q) ||
-    fila.habitacion.toLowerCase().includes(q)
+    fila.habitacion.toLowerCase().includes(q) ||
+    (fila.cama?.toLowerCase().includes(q) ?? false)
   )
 }
 

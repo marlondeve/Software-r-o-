@@ -33,13 +33,50 @@ export function inferirServicioDesdePabellon(pabellon: string): string {
     .join(" ")
 }
 
+/** Especialidades que se leen del pabellón aunque el HIS traiga otro servicio. */
+function especialidadDesdePabellon(pabellon: string): string | null {
+  const normalizado = pabellon.toUpperCase()
+  if (normalizado.includes("UCI")) return "UCI"
+  if (normalizado.includes("URGENCI")) return "Urgencias"
+  if (normalizado.includes("NEONATAL")) return "Neonatal"
+  return null
+}
+
 /** Resuelve el servicio clínico legible desde HIS o pabellón. */
 export function resolverServicioClinico(
   servicio?: string | null,
   pabellon?: string | null,
 ): string {
+  const pab = pabellon?.trim() ?? ""
+  const especialidad = especialidadDesdePabellon(pab)
+  // UCI ADULTO / UCI PEDIÁTRICA, etc.: el pabellón manda sobre un servicio genérico del HIS.
+  if (especialidad) return especialidad
   if (esServicioDescriptivo(servicio)) return servicio!.trim()
-  return inferirServicioDesdePabellon(pabellon?.trim() ?? "")
+  return inferirServicioDesdePabellon(pab)
+}
+
+/** Compara filtro de servicio con la fila (UCI abarca UCI ADULTO y variantes). */
+export function servicioCoincideFila(
+  fila: { servicio?: string | null; pabellon?: string | null },
+  filtroServicio: string,
+): boolean {
+  if (filtroServicio === "todos") return true
+  const resuelto = resolverServicioClinico(fila.servicio, fila.pabellon)
+  if (resuelto === filtroServicio) return true
+
+  const filtro = filtroServicio.trim().toUpperCase()
+  const pabellon = (fila.pabellon ?? "").toUpperCase()
+  const servicio = (fila.servicio ?? "").toUpperCase()
+
+  if (filtro === "UCI") {
+    return pabellon.includes("UCI") || servicio.includes("UCI") || resuelto === "UCI"
+  }
+
+  return (
+    pabellon.includes(filtro) ||
+    servicio.includes(filtro) ||
+    resuelto.toUpperCase().includes(filtro)
+  )
 }
 
 export function listarServiciosDesdeFilas(

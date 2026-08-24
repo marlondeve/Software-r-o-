@@ -11,9 +11,16 @@ import {
   minutosDesdeHora24,
   sumarMinutosHora,
 } from "@/modules/dietas-cocina/parametros/lib/horasOperativas"
+import { formatearHora24 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : null
+}
+
+function normalizarHoraApi(hora: string): string {
+  const match = hora.trim().match(/^(\d{1,2}):(\d{2})/)
+  if (!match) return formatearHora24(hora.trim() || "07:00")
+  return formatearHora24(`${match[1]}:${match[2]}`)
 }
 
 function plantillasTiemposMock(): ParametrosTiempoComida[] {
@@ -37,20 +44,26 @@ function mapTiempoComidaApiRegistro(
   dto: Record<string, unknown>,
   plantilla: ParametrosTiempoComida,
 ): ParametrosTiempoComida {
-  const horaPreparacion = String(
-    normalizarClave(dto, "horaPreparacion", "HoraPreparacion") ??
-      plantilla.hitos.find((hito) => hito.id === "solicitud")?.hora ??
-      "07:00",
+  const horaPreparacion = normalizarHoraApi(
+    String(
+      normalizarClave(dto, "horaPreparacion", "HoraPreparacion") ??
+        plantilla.hitos.find((hito) => hito.id === "solicitud")?.hora ??
+        "07:00",
+    ),
   )
-  const horaCierre = String(
-    normalizarClave(dto, "horaCierre", "HoraCierre") ??
-      plantilla.hitos.find((hito) => hito.id === "novedades")?.hora ??
-      "07:30",
+  const horaCierre = normalizarHoraApi(
+    String(
+      normalizarClave(dto, "horaCierre", "HoraCierre") ??
+        plantilla.hitos.find((hito) => hito.id === "novedades")?.hora ??
+        "07:30",
+    ),
   )
-  const horaEntrega = String(
-    normalizarClave(dto, "horaEntrega", "HoraEntrega") ??
-      plantilla.hitos.find((hito) => hito.id === "llegada")?.hora ??
-      "08:00",
+  const horaEntrega = normalizarHoraApi(
+    String(
+      normalizarClave(dto, "horaEntrega", "HoraEntrega") ??
+        plantilla.hitos.find((hito) => hito.id === "llegada")?.hora ??
+        "08:00",
+    ),
   )
   const activo = Boolean(normalizarClave(dto, "activo", "Activo") ?? plantilla.activo)
 

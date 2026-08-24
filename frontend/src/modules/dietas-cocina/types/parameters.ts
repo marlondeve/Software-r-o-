@@ -7,7 +7,7 @@ import type {
 export interface HitoTiempo {
   id: string
   label: string
-  /** Hora en formato 24 h (HH:mm) para inputs nativos */
+  /** Hora interna/API en HH:mm (0–23); en UI siempre se muestra en 12 h. */
   hora: string
 }
 

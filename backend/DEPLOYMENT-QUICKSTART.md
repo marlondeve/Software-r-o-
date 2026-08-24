@@ -1,6 +1,6 @@
 # Despliegue Rápido — RioSoft en IIS
 
-**Versión:** 1.2.1
+**Versión:** 1.2.2
 
 **Última actualización:** 2026-08-03
 

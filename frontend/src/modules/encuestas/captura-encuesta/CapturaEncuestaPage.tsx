@@ -42,6 +42,7 @@ function formatearFechaHoraActual() {
   const hora = ahora.toLocaleTimeString("es-CO", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
   })
   return `${fecha}, ${hora}`
 }

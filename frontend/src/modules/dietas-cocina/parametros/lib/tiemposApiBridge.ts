@@ -1,6 +1,7 @@
 import type { TiempoComida, ModoCargaAnticipada } from "@/modules/dietas-cocina/types/enums"
 import type { ConfigTiempos, ParametrosTiempoComida } from "@/modules/dietas-cocina/types/parameters"
 import { mockParametrosTiempos } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+import { normalizarHoraConfig } from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
 
 export function parametrosToConfig(
   tiempos: ParametrosTiempoComida[],
@@ -16,7 +17,9 @@ export function parametrosToConfig(
     horasPorComida[comida.id] = Object.fromEntries(
       comida.hitos.map((hito) => [
         hito.id,
-        api?.hitos.find((item) => item.id === hito.id)?.hora ?? hito.hora,
+        normalizarHoraConfig(
+          api?.hitos.find((item) => item.id === hito.id)?.hora ?? hito.hora,
+        ),
       ]),
     ) as Record<string, string>
   }

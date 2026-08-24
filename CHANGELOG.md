@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.2] — 2026-08-23
+
+### Añadido
+
+- Búsqueda en topbar con sugerencias en vivo (rutas y acciones del módulo).
+- Sincronización de tiempos de comida desde API hacia `localStorage` al entrar a Dietas y Cocina, para alinear solicitud/novedades con Parámetros.
+
+### Cambiado
+
+- Gestión de dietas: filtros siempre en cliente sobre el censo; filtro de ubicación por pabellón; orden estable (“Sin solicitud” primero, luego por último cambio).
+- Horas en UI en formato 12 h (a. m. / p. m.) en ventanas, turnos y actividad reciente.
+- Servicio clínico: el pabellón manda en especialidades (p. ej. UCI) frente a códigos genéricos del HIS.
+
+### Corregido
+
+- Ventana de solicitud: tras el cierre del día muestra “Ventana cerrada” en lugar de “Abre en 21h…” hasta el día siguiente.
+- Rangos horarios que cruzan medianoche y formato `HH:mm` (0–23) al exponer tiempos desde el API de parámetros.
+
 ## [1.2.1] — 2026-08-21
 
 ### Cambiado
@@ -74,6 +92,7 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.2]: https://github.com/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/compare/v1.0.0...v1.1.0

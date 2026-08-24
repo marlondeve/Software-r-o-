@@ -110,15 +110,21 @@ public class ParametrosService : IParametrosService
     {
         Id = t.Id,
         Comida = t.Comida.ToString(),
-        HoraPreparacion = t.HoraPreparacion.ToString(@"hh\:mm"),
-        HoraCierre = t.HoraCierre.ToString(@"hh\:mm"),
-        HoraEntrega = t.HoraEntrega.ToString(@"hh\:mm"),
+        HoraPreparacion = FormatearHora(t.HoraPreparacion),
+        HoraCierre = FormatearHora(t.HoraCierre),
+        HoraEntrega = FormatearHora(t.HoraEntrega),
         Activo = t.Activo,
         MinutosAlertaCierre = t.MinutosAlertaCierre,
         Observaciones = t.Observaciones,
         ModificadoPor = t.ModificadoPor,
         ModificadoEn = t.ModificadoEn,
     };
+
+    /// <summary>
+    /// HH:mm en ciclo 0–23. Evita ambigüedad de formatos custom de TimeSpan.
+    /// </summary>
+    private static string FormatearHora(TimeSpan t) =>
+        $"{t.Hours:D2}:{t.Minutes:D2}";
 
     public async Task<List<CategoriaEdadDto>> ObtenerCategoriasEdadAsync()
     {

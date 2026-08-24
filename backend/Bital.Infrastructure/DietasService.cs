@@ -920,7 +920,9 @@ public class DietasService : IDietasService
             var busqueda = filtros.Busqueda;
             query = query.Where(f =>
                 f.Paciente.Contains(busqueda) ||
-                (f.Cedula != null && f.Cedula.Contains(busqueda)));
+                (f.Cedula != null && f.Cedula.Contains(busqueda)) ||
+                f.Habitacion.Contains(busqueda) ||
+                f.Pabellon.Contains(busqueda));
         }
 
         if (filtros.SoloPendientes)
@@ -931,7 +933,7 @@ public class DietasService : IDietasService
         if (!string.IsNullOrEmpty(filtros.Servicio))
         {
             filas = filas
-                .Where(f => DietasReglasNegocio.ResolverServicioClinico(f.Servicio, f.Pabellon) == filtros.Servicio)
+                .Where(f => ServicioCoincideFiltro(f.Servicio, f.Pabellon, filtros.Servicio))
                 .ToList();
         }
 
@@ -980,6 +982,27 @@ public class DietasService : IDietasService
             AuditoriaSnapshot.Json(antes),
             AuditoriaSnapshot.Json(despues),
             contexto: _contextoAuditoria);
+    }
+
+    private static bool ServicioCoincideFiltro(string? servicio, string pabellon, string filtro)
+    {
+        if (string.IsNullOrWhiteSpace(filtro))
+            return true;
+
+        var resuelto = DietasReglasNegocio.ResolverServicioClinico(servicio, pabellon);
+        if (string.Equals(resuelto, filtro, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var filtroNorm = filtro.Trim().ToUpperInvariant();
+        var pabellonNorm = (pabellon ?? string.Empty).ToUpperInvariant();
+        var servicioNorm = (servicio ?? string.Empty).ToUpperInvariant();
+
+        if (filtroNorm == "UCI")
+            return pabellonNorm.Contains("UCI") || servicioNorm.Contains("UCI") || resuelto == "UCI";
+
+        return pabellonNorm.Contains(filtroNorm)
+            || servicioNorm.Contains(filtroNorm)
+            || resuelto.ToUpperInvariant().Contains(filtroNorm);
     }
 
     private static FilaDietaDto MapearADto(FilaDieta fila)

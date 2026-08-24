@@ -15,11 +15,14 @@ import { ESTADO_FILTRO_LABEL } from "@/modules/dietas-cocina/dietas/lib/dietasEs
 interface DietasFiltrosProps {
   busqueda: string
   servicio: string
+  ubicacion: string
   estado: string
   soloPendientes: boolean
   servicios: string[]
+  ubicaciones: Array<{ value: string; label: string }>
   onBusquedaChange: (value: string) => void
   onServicioChange: (value: string) => void
+  onUbicacionChange: (value: string) => void
   onEstadoChange: (value: string) => void
   onSoloPendientesChange: (value: boolean) => void
   onLimpiar: () => void
@@ -28,18 +31,21 @@ interface DietasFiltrosProps {
 export function DietasFiltros({
   busqueda,
   servicio,
+  ubicacion,
   estado,
   soloPendientes,
   servicios,
+  ubicaciones,
   onBusquedaChange,
   onServicioChange,
+  onUbicacionChange,
   onEstadoChange,
   onSoloPendientesChange,
   onLimpiar,
 }: DietasFiltrosProps) {
   return (
     <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-      <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid flex-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
           <Label
             htmlFor="dietas-busqueda"
@@ -75,6 +81,28 @@ export function DietasFiltros({
               {servicios.map((item) => (
                 <SelectItem key={item} value={item}>
                   {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="dietas-ubicacion"
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Ubicación
+          </Label>
+          <Select value={ubicacion} onValueChange={onUbicacionChange}>
+            <SelectTrigger id="dietas-ubicacion" className="h-9 w-full bg-card">
+              <SelectValue placeholder="Ubicación (Todas)" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todas">Ubicación (Todas)</SelectItem>
+              {ubicaciones.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -30,6 +30,7 @@ import {
 } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
 import { MOTIVOS_NOVEDAD } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
 import { resolverEstadoVentanaComida } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
+import { CONFIG_TIEMOS_CAMBIO_EVENTO } from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
 import {
   validarCondicionesClinicasFormulario,
 } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
@@ -121,7 +122,12 @@ export function DietasNovedadSheet({
     if (!open) return
     setAhora(new Date())
     const timer = window.setInterval(() => setAhora(new Date()), 60_000)
-    return () => window.clearInterval(timer)
+    const onConfig = () => setAhora(new Date())
+    window.addEventListener(CONFIG_TIEMOS_CAMBIO_EVENTO, onConfig)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener(CONFIG_TIEMOS_CAMBIO_EVENTO, onConfig)
+    }
   }, [open, formulario?.comida])
 
   useEffect(() => {

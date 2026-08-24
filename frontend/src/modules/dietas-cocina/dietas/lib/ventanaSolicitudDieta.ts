@@ -5,8 +5,10 @@ import {
 } from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
 import { formatearHora12 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import {
+  estaEnRangoHorario,
   minutosDelDia,
   minutosDesdeHora24,
+  minutosHastaHora,
 } from "@/modules/dietas-cocina/parametros/lib/horasOperativas"
 
 export interface EstadoVentanaComida {
@@ -61,25 +63,31 @@ export function resolverEstadoVentanaComida(
   }
 
   const cargaAnticipada = config.modoCarga === "todas-desde-manana"
-  const dentroPeriodoOperativo = ahora >= inicio && ahora <= finDist
-  const dentroVentanaCambios = ahora >= inicio && ahora <= finNovedades
+  const dentroPeriodoOperativo = estaEnRangoHorario(ahora, inicio, finDist)
+  const dentroVentanaCambios = estaEnRangoHorario(ahora, inicio, finNovedades)
   const ventanaAbierta = cargaAnticipada
     ? dentroPeriodoOperativo
     : dentroVentanaCambios
 
   if (ventanaAbierta) {
-    const minutosHastaCierreCambios = finNovedades - ahora
+    const minutosHastaCierreCambios = minutosHastaHora(ahora, finNovedades)
 
-    if (minutosHastaCierreCambios > 0) {
-      return {
-        ventanaTexto,
-        mensajeCierre: `Cierre en: ${formatearMinutosRestantes(minutosHastaCierreCambios)}`,
-        ventanaAbierta: true,
-        variante: minutosHastaCierreCambios <= 15 ? "destructive" : "default",
+    // Si fin < inicio (cruza medianoche) y estamos antes del fin, el cierre es hoy.
+    // minutosHastaHora ya contempla el wrap al día siguiente.
+    if (minutosHastaCierreCambios > 0 && minutosHastaCierreCambios < 24 * 60) {
+      // Evitar mostrar "Cierre en: 23h…" cuando ya pasó el fin de novedades
+      // en modo carga anticipada pero aún hay distribución.
+      if (!cargaAnticipada || minutosHastaCierreCambios <= 12 * 60) {
+        return {
+          ventanaTexto,
+          mensajeCierre: `Cierre en: ${formatearMinutosRestantes(minutosHastaCierreCambios)}`,
+          ventanaAbierta: true,
+          variante: minutosHastaCierreCambios <= 15 ? "destructive" : "default",
+        }
       }
     }
 
-    if (cargaAnticipada && ahora <= finDist) {
+    if (cargaAnticipada && dentroPeriodoOperativo) {
       return {
         ventanaTexto,
         mensajeCierre: `Solicitud abierta hasta ${formatearHora12(finDistHora)}`,
@@ -96,10 +104,42 @@ export function resolverEstadoVentanaComida(
     }
   }
 
-  if (ahora < inicio) {
+  if (!estaEnRangoHorario(ahora, inicio, finNovedades)) {
+    // Ventana normal (mismo día): distingue "aún no abre" vs "ya cerró hoy".
+    if (inicio <= finNovedades) {
+      if (ahora > finNovedades) {
+        return {
+          ventanaTexto,
+          mensajeCierre: `Ventana cerrada (cerró a las ${formatearHora12(finNovedadesHora)})`,
+          ventanaAbierta: false,
+          variante: "destructive",
+        }
+      }
+
+      const minutosParaAbrir = inicio - ahora
+      return {
+        ventanaTexto,
+        mensajeCierre: `Abre en: ${formatearMinutosRestantes(minutosParaAbrir)}`,
+        ventanaAbierta: false,
+        variante: "muted",
+      }
+    }
+
+    // Ventana que cruza medianoche: entre cierre matutino y apertura vespertina.
+    if (ahora > finNovedades && ahora < inicio) {
+      const minutosParaAbrir = inicio - ahora
+      return {
+        ventanaTexto,
+        mensajeCierre: `Abre en: ${formatearMinutosRestantes(minutosParaAbrir)}`,
+        ventanaAbierta: false,
+        variante: "muted",
+      }
+    }
+
+    const minutosParaAbrir = minutosHastaHora(ahora, inicio)
     return {
       ventanaTexto,
-      mensajeCierre: `Abre en: ${formatearMinutosRestantes(inicio - ahora)}`,
+      mensajeCierre: `Abre en: ${formatearMinutosRestantes(minutosParaAbrir)}`,
       ventanaAbierta: false,
       variante: "muted",
     }

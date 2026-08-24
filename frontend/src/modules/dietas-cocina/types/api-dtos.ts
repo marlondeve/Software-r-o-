@@ -67,7 +67,7 @@ export interface BuscarDietasRequestDto {
   comida?: string
   servicio?: string
   estado?: string
-  paciente?: string
+  busqueda?: string
 }
 
 export interface EventoTrazabilidadDto {

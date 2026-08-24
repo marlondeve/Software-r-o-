@@ -28,6 +28,10 @@ import { DashboardCard } from "@/modules/dietas-cocina/inicio/components/Dashboa
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { DonutChart } from "@/modules/dietas-cocina/inicio/components/DonutChart"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
+import {
+  formatearHora12,
+  normalizarHoraEnTexto,
+} from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { KpiCard } from "@/modules/dietas-cocina/inicio/components/KpiCard"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { construirDashboardNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardNutricionista"
@@ -106,11 +110,18 @@ export function NutricionistaDashboard() {
       {
         id: "hora",
         header: () => <span className="block w-16 text-right">Hora</span>,
-        cell: ({ row }) => (
-          <span className="block w-16 text-right tabular-nums text-muted-foreground">
-            {row.original.hora}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const raw = row.original.hora?.trim()
+          const hora =
+            !raw || raw === "—"
+              ? "—"
+              : formatearHora12(normalizarHoraEnTexto(raw))
+          return (
+            <span className="block w-20 text-right tabular-nums text-muted-foreground">
+              {hora}
+            </span>
+          )
+        },
       },
       {
         id: "estado",

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { TableSkeleton } from "@/components/shared/skeletons"
@@ -21,6 +22,7 @@ import type { DetalleConciliacion } from "@/modules/dietas-cocina/types/reconcil
 
 export function ConciliacionPage() {
   const apiActiva = usarApiDietasCocina()
+  const [searchParams] = useSearchParams()
   const mockData = useConciliacionFiltrada()
   const apiData = useConciliacionApi()
   const {
@@ -41,6 +43,11 @@ export function ConciliacionPage() {
     cargando,
     error,
   } = apiActiva ? apiData : mockData
+
+  useEffect(() => {
+    const q = searchParams.get("q")?.trim()
+    if (q) setBusqueda(q)
+  }, [searchParams, setBusqueda])
 
   const paginacionMock = usePaginacionTabla(filasFiltradas, {
     resetKey: `${busqueda}-${numeroFactura}-${periodo}-${proveedor}`,

@@ -1,11 +1,11 @@
-import { Menu, Search } from "lucide-react"
+import { Menu } from "lucide-react"
 import { useLocation } from "react-router-dom"
 
 import { ModuleSwitcher } from "@/components/layout/ModuleSwitcher"
+import { TopBarBusqueda } from "@/components/layout/TopBarBusqueda"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 import {
   esRutaDeModulo,
@@ -74,11 +74,11 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
           {module === "dietas-cocina" && <SelectorVistaRolAdmin />}
 
           <div className="relative hidden min-w-0 flex-1 sm:block lg:max-w-sm xl:max-w-md">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
+            <TopBarBusqueda
+              modulo={moduloActual}
+              rol={rol}
               placeholder={placeholderBusqueda}
-              className="h-8 w-full rounded-full border-0 bg-muted py-0 pl-9 text-sm shadow-none focus-visible:ring-1"
+              className="relative w-full"
             />
           </div>
         </div>
@@ -113,11 +113,11 @@ export function TopBar({ module, onMenuClick }: TopBarProps) {
       </div>
 
       <div className="relative mt-2 sm:hidden">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
+        <TopBarBusqueda
+          modulo={moduloActual}
+          rol={rol}
           placeholder={placeholderBusqueda}
-          className="h-8 w-full rounded-full border-0 bg-muted py-0 pl-9 text-sm shadow-none focus-visible:ring-1"
+          className="relative w-full"
         />
       </div>
     </header>

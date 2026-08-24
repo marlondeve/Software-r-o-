@@ -2,6 +2,7 @@ import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useMemo, useState } from "react"
 import { Info, RefreshCw } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -24,13 +25,15 @@ import { DietasTabla } from "@/modules/dietas-cocina/dietas/components/DietasTab
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { formatearFechaReferenciaDietas } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
-import { buscarDietas, obtenerDietasPaciente } from "@/modules/dietas-cocina/api/services/dietas.service"
-import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
+import { obtenerDietasPaciente } from "@/modules/dietas-cocina/api/services/dietas.service"
 import {
   calcularKpisDietas,
   ESTADOS_PENDIENTES,
   filaCoincideBusqueda,
+  filaCoincideUbicacion,
+  listarUbicacionesDesdeFilas,
 } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
+import { ordenarFilasDietasOperativas } from "@/modules/dietas-cocina/dietas/lib/ordenarFilasDietas"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { crearResolverEstadoVisibleFila } from "@/modules/dietas-cocina/lib/estadoVisibleFilaDieta"
@@ -44,7 +47,10 @@ import {
   demoToast,
   descargarArchivoDemo,
 } from "@/modules/dietas-cocina/lib/demoFeedback"
-import { listarServiciosDesdeFilas, resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
+import {
+  listarServiciosDesdeFilas,
+  servicioCoincideFila,
+} from "@/modules/dietas-cocina/lib/servicioClinico"
 type TipoSheetDieta = "solicitud" | "detalle" | "novedad"
 
 interface SheetDietaState {
@@ -87,11 +93,13 @@ export function DietasPage() {
     [ordenes, etiquetas],
   )
   const apiActiva = usarApiDietasCocina()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
     apiActiva ? obtenerComidaActivaOperativa() : data.comidaActiva,
   )
   const [busqueda, setBusqueda] = useState("")
   const [servicio, setServicio] = useState("todos")
+  const [ubicacion, setUbicacion] = useState("todas")
   const [estado, setEstado] = useState("todos")
   const [soloPendientes, setSoloPendientes] = useState(false)
   const [seleccionados, setSeleccionados] = useState<Set<string>>(new Set())
@@ -99,81 +107,20 @@ export function DietasPage() {
   const [cancelarAbierto, setCancelarAbierto] = useState(false)
   const [filaCancelarId, setFilaCancelarId] = useState<string | null>(null)
   const [consistenciaAbierto, setConsistenciaAbierto] = useState(false)
-  const [filasBusquedaApi, setFilasBusquedaApi] = useState<FilaDieta[] | null>(null)
-  const [buscandoApi, setBuscandoApi] = useState(false)
-  const [errorBusquedaApi, setErrorBusquedaApi] = useState<string | null>(null)
-
-  const filtrosApiActivos =
-    apiActiva &&
-    (servicio !== "todos" ||
-      estado !== "todos" ||
-      busqueda.trim().length >= 2)
 
   useEffect(() => {
-    if (!filtrosApiActivos) {
-      setFilasBusquedaApi(null)
-      setErrorBusquedaApi(null)
-      setBuscandoApi(false)
-      return
-    }
+    const q = searchParams.get("q")?.trim()
+    if (q) setBusqueda(q)
+  }, [searchParams])
 
-    const controlador = new AbortController()
-    const timer = window.setTimeout(() => {
-      setBuscandoApi(true)
-      setErrorBusquedaApi(null)
-      void buscarDietas({
-        fecha: fechaOperativaHoy(),
-        comida: comidaActiva,
-        servicio: servicio !== "todos" ? servicio : undefined,
-        estado: estado !== "todos" ? estado : undefined,
-        paciente: busqueda.trim() || undefined,
-      })
-        .then((resultado) => {
-          if (!controlador.signal.aborted) setFilasBusquedaApi(resultado)
-        })
-        .catch((error) => {
-          if (!controlador.signal.aborted) {
-            setFilasBusquedaApi([])
-            setErrorBusquedaApi(
-              error instanceof Error
-                ? error.message
-                : "No se pudo buscar dietas en el servidor.",
-            )
-          }
-        })
-        .finally(() => {
-          if (!controlador.signal.aborted) setBuscandoApi(false)
-        })
-    }, 350)
-
-    return () => {
-      controlador.abort()
-      window.clearTimeout(timer)
-    }
-  }, [
-    filtrosApiActivos,
-    comidaActiva,
-    servicio,
-    estado,
-    busqueda,
-    apiActiva,
-  ])
-
-  const filasBase = filtrosApiActivos ? (filasBusquedaApi ?? []) : filas
-
+  // Filtrado en cliente sobre el censo local (búsqueda, servicio, ubicación, estado).
   const filasFiltradas = useMemo(() => {
-    return filasBase.filter((fila) => {
+    const filtradas = filas.filter((fila) => {
       if (fila.comida !== comidaActiva) return false
-      if (!filtrosApiActivos && !filaCoincideBusqueda(fila, busqueda)) return false
-      if (!filtrosApiActivos && servicio !== "todos") {
-        const servicioFila = resolverServicioClinico(fila.servicio, fila.pabellon)
-        if (servicioFila !== servicio) return false
-      }
-      if (
-        !filtrosApiActivos &&
-        estado !== "todos" &&
-        resolverEstadoVisible(fila) !== estado
-      ) {
+      if (!filaCoincideBusqueda(fila, busqueda)) return false
+      if (!servicioCoincideFila(fila, servicio)) return false
+      if (!filaCoincideUbicacion(fila, ubicacion)) return false
+      if (estado !== "todos" && resolverEstadoVisible(fila) !== estado) {
         return false
       }
       if (
@@ -184,19 +131,28 @@ export function DietasPage() {
       }
       return true
     })
+
+    return ordenarFilasDietasOperativas(
+      filtradas,
+      resolverEstadoVisible,
+      ordenes,
+      etiquetas,
+    )
   }, [
-    filasBase,
+    filas,
     comidaActiva,
     busqueda,
     servicio,
+    ubicacion,
     estado,
     soloPendientes,
-    filtrosApiActivos,
     resolverEstadoVisible,
+    ordenes,
+    etiquetas,
   ])
 
   const paginacionDietas = usePaginacionTabla(filasFiltradas, {
-    resetKey: `${comidaActiva}-${busqueda}-${servicio}-${estado}-${soloPendientes}-${filtrosApiActivos}`,
+    resetKey: `${comidaActiva}-${busqueda}-${servicio}-${ubicacion}-${estado}-${soloPendientes}`,
   })
 
   const kpis = useMemo(
@@ -210,6 +166,23 @@ export function DietasPage() {
     }
     return listarServiciosDesdeFilas(filas)
   }, [filas, data.servicios])
+
+  const ubicacionesDisponibles = useMemo(
+    () =>
+      listarUbicacionesDesdeFilas(
+        filas.filter((fila) => fila.comida === comidaActiva),
+      ),
+    [filas, comidaActiva],
+  )
+
+  useEffect(() => {
+    if (
+      ubicacion !== "todas" &&
+      !ubicacionesDisponibles.some((item) => item.value === ubicacion)
+    ) {
+      setUbicacion("todas")
+    }
+  }, [ubicacion, ubicacionesDisponibles])
 
   const idsVisibles = useMemo(
     () => new Set(filasFiltradas.map((fila) => fila.id)),
@@ -239,8 +212,14 @@ export function DietasPage() {
   function limpiarFiltros() {
     setBusqueda("")
     setServicio("todos")
+    setUbicacion("todas")
     setEstado("todos")
     setSoloPendientes(false)
+    if (searchParams.has("q")) {
+      const next = new URLSearchParams(searchParams)
+      next.delete("q")
+      setSearchParams(next, { replace: true })
+    }
   }
 
   function cambiarComida(id: TiempoComida) {
@@ -530,25 +509,18 @@ export function DietasPage() {
       <DietasFiltros
         busqueda={busqueda}
         servicio={servicio}
+        ubicacion={ubicacion}
         estado={estado}
         soloPendientes={soloPendientes}
         servicios={serviciosDisponibles}
+        ubicaciones={ubicacionesDisponibles}
         onBusquedaChange={setBusqueda}
         onServicioChange={setServicio}
+        onUbicacionChange={setUbicacion}
         onEstadoChange={setEstado}
         onSoloPendientesChange={setSoloPendientes}
         onLimpiar={limpiarFiltros}
       />
-
-      {apiActiva && errorBusquedaApi && (
-        <Alert variant="destructive">
-          <AlertDescription>{errorBusquedaApi}</AlertDescription>
-        </Alert>
-      )}
-
-      {apiActiva && buscandoApi && (
-        <p className="text-sm text-muted-foreground">Buscando dietas en el servidor…</p>
-      )}
 
       <DietasTabla
         filas={paginacionDietas.filasPagina}

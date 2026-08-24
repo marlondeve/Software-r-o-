@@ -131,10 +131,27 @@ internal static class DietasReglasNegocio
     /// </summary>
     internal static string ResolverServicioClinico(string? servicioHIS, string pabellon)
     {
+        // UCI ADULTO / UCI PEDIÁTRICA, etc.: el pabellón manda sobre un servicio genérico del HIS.
+        var especialidad = EspecialidadDesdePabellon(pabellon);
+        if (especialidad != null)
+            return especialidad;
+
         if (EsServicioDescriptivo(servicioHIS))
             return servicioHIS!.Trim();
 
         return InferirServicioDesdePabellon(pabellon);
+    }
+
+    private static string? EspecialidadDesdePabellon(string pabellon)
+    {
+        if (string.IsNullOrWhiteSpace(pabellon))
+            return null;
+
+        var normalizado = pabellon.ToUpperInvariant();
+        if (normalizado.Contains("UCI")) return "UCI";
+        if (normalizado.Contains("URGENCI")) return "Urgencias";
+        if (normalizado.Contains("NEONATAL")) return "Neonatal";
+        return null;
     }
 
     internal static bool EsServicioDescriptivo(string? servicioHIS)

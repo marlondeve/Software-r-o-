@@ -69,10 +69,14 @@ export function ordenCoincideFiltros(
 
   const q = filtros.busqueda.trim().toLowerCase()
   if (q) {
+    const etiqueta = getEtiquetaByOrdenId?.(orden.id)
     const hay =
       orden.paciente.toLowerCase().includes(q) ||
       orden.pacienteId.toLowerCase().includes(q) ||
-      orden.habitacion.toLowerCase().includes(q)
+      orden.habitacion.toLowerCase().includes(q) ||
+      orden.id.toLowerCase().includes(q) ||
+      (orden.ordenCocinaApiId?.toLowerCase().includes(q) ?? false) ||
+      (etiqueta?.codigo.toLowerCase().includes(q) ?? false)
     if (!hay) return false
   }
 
