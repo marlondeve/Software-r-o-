@@ -3,9 +3,11 @@ using Bital.Shared.Contracts.Services;
 using Bital.Infrastructure.DietasCocina;
 using Bital.Infrastructure.Data;
 using Bital.Infrastructure.Data.Entities;
+using Bital.Application.Options;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Data;
 
 namespace Bital.Infrastructure.Services;
@@ -19,13 +21,16 @@ public class AtencionesQueryService : IAtencionesQueryService
 {
     private readonly VitalDbContext _context;
     private readonly ILogger<AtencionesQueryService> _logger;
+    private readonly int _devSeedCount;
 
     public AtencionesQueryService(
         VitalDbContext context,
-        ILogger<AtencionesQueryService> logger)
+        ILogger<AtencionesQueryService> logger,
+        IOptions<DietasCocinaOptions>? dietasCocinaOptions = null)
     {
         _context = context;
         _logger = logger;
+        _devSeedCount = dietasCocinaOptions?.Value.DevSeedHospitalizadosCount ?? 0;
     }
 
     public async Task<IEnumerable<AtencionResponse>> GetAtencionesActivasAsync(
@@ -364,7 +369,27 @@ ORDER BY map.MPNomP, i.MPNumC;";
 
         var resultados = await EjecutarQueryHospitalariasAsync(sql, cancellationToken);
 
-        _logger.LogInformation("Se encontraron {Count} atenciones hospitalarias activas", resultados.Count);
+        if (_devSeedCount > 0)
+        {
+            var existentes = new HashSet<string>(
+                resultados.Select(r => $"{r.TipoDocumento}-{r.Cedula}"),
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var fake in DevHospitalizadosSeed.Crear(_devSeedCount))
+            {
+                var clave = $"{fake.TipoDocumento}-{fake.Cedula}";
+                if (existentes.Add(clave))
+                    resultados.Add(fake);
+            }
+
+            _logger.LogWarning(
+                "DevSeedHospitalizados: censo Vital + {Seed} sintéticos = {Total}",
+                _devSeedCount,
+                resultados.Count);
+        }
+        else
+        {
+            _logger.LogInformation("Se encontraron {Count} atenciones hospitalarias activas", resultados.Count);
+        }
 
         return resultados;
     }

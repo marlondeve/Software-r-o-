@@ -93,6 +93,10 @@ export function mesclarReporteConCiclo(
       distribucionTurno: preferirLista(api.distribucionTurno, ciclo.distribucionTurno),
       mostrarDistribucionTurno:
         api.mostrarDistribucionTurno || ciclo.mostrarDistribucionTurno,
+      costoPorDia: preferirLista(api.costoPorDia, ciclo.costoPorDia),
+      costoPorServicio: preferirLista(api.costoPorServicio, ciclo.costoPorServicio),
+      costoPorComida: preferirLista(api.costoPorComida, ciclo.costoPorComida),
+      mostrarCostos: api.mostrarCostos || ciclo.mostrarCostos,
     }
   }
 
@@ -112,5 +116,9 @@ export function mesclarReporteConCiclo(
     distribucionTurno: preferirLista(api.distribucionTurno, ciclo.distribucionTurno),
     mostrarDistribucionTurno:
       api.mostrarDistribucionTurno || ciclo.mostrarDistribucionTurno,
+    costoPorDia: preferirLista(api.costoPorDia, ciclo.costoPorDia),
+    costoPorServicio: preferirLista(api.costoPorServicio, ciclo.costoPorServicio),
+    costoPorComida: preferirLista(api.costoPorComida, ciclo.costoPorComida),
+    mostrarCostos: api.mostrarCostos || ciclo.mostrarCostos,
   }
 }

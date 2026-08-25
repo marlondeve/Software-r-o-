@@ -96,6 +96,8 @@ try
 
     // JWT
     builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+    builder.Services.Configure<DietasCocinaOptions>(
+        builder.Configuration.GetSection(DietasCocinaOptions.SectionName));
     var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
                      ?? new JwtOptions();
     if (string.IsNullOrWhiteSpace(jwtOptions.Key) || jwtOptions.Key.Length < 32)
@@ -144,6 +146,17 @@ try
     var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
                       ?? builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
                       ?? new[] { "http://localhost:5173", "http://localhost:3000" };
+
+    builder.Services.PostConfigure<DietasCocinaOptions>(opts =>
+    {
+        if (!string.IsNullOrWhiteSpace(opts.FrontendPublicUrl)) return;
+        opts.FrontendPublicUrl = corsOrigins.FirstOrDefault() ?? "";
+    });
+
+    builder.Services.AddRequestTimeouts(options =>
+    {
+        options.AddPolicy("EtiquetasPdf", TimeSpan.FromMinutes(3));
+    });
 
     builder.Services.AddCors(options =>
     {
@@ -285,6 +298,7 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseRequestTimeouts();
 
     app.MapControllers();
 
@@ -293,7 +307,7 @@ try
     var productVersion = Assembly.GetExecutingAssembly()
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
-        ?? "1.2.4";
+        ?? "1.2.5";
 
     app.MapGet("/", () => new
     {

@@ -1,7 +1,7 @@
 import type { EventoTrazabilidad, FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { History, PencilLine } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -61,41 +61,105 @@ export function DietasDetalleSheet({
   const [detalle, setDetalle] = useState<FilaDieta | null>(null)
   const [dietasPaciente, setDietasPaciente] = useState<FilaDieta[]>([])
   const [cargandoDetalle, setCargandoDetalle] = useState(false)
+  const detalleCargadoIdRef = useRef<string | null>(null)
 
+  const filaId = fila?.id
+  const pacienteId = fila?.pacienteId
+
+  // Carga historial/detalle solo al abrir o cambiar de fila (no en cada sync de censo).
   useEffect(() => {
-    if (!open || !fila) {
+    if (!open || !filaId) {
+      detalleCargadoIdRef.current = null
       setTrazabilidad([])
       setDetalle(null)
       setDietasPaciente([])
+      setCargandoDetalle(false)
       return
     }
 
-    setCargandoDetalle(Boolean(cargarDetalle))
+    let cancelado = false
+    const yaCargado = detalleCargadoIdRef.current === filaId
+    setDetalle((prev) => (prev?.id === filaId ? prev : (fila ?? null)))
+    setCargandoDetalle(Boolean(cargarDetalle) && !yaCargado)
+
     if (cargarDetalle) {
-      void cargarDetalle(fila.id)
-        .then((actualizada) => setDetalle(actualizada))
-        .catch(() => setDetalle(fila))
-        .finally(() => setCargandoDetalle(false))
-    } else {
+      void cargarDetalle(filaId)
+        .then((actualizada) => {
+          if (!cancelado) {
+            detalleCargadoIdRef.current = filaId
+            setDetalle(actualizada)
+          }
+        })
+        .catch(() => {
+          if (!cancelado && fila) setDetalle(fila)
+        })
+        .finally(() => {
+          if (!cancelado) setCargandoDetalle(false)
+        })
+    } else if (fila) {
+      detalleCargadoIdRef.current = filaId
       setDetalle(fila)
+      setCargandoDetalle(false)
     }
 
     if (cargarHistorial) {
-      void cargarHistorial(fila.id)
-        .then(setTrazabilidad)
-        .catch(() => setTrazabilidad(obtenerTrazabilidad(fila.id)))
+      void cargarHistorial(filaId)
+        .then((eventos) => {
+          if (!cancelado) setTrazabilidad(eventos)
+        })
+        .catch(() => {
+          if (!cancelado) setTrazabilidad(obtenerTrazabilidad(filaId))
+        })
     } else {
-      setTrazabilidad(obtenerTrazabilidad(fila.id))
+      setTrazabilidad(obtenerTrazabilidad(filaId))
     }
 
-    if (cargarDietasPaciente) {
-      void cargarDietasPaciente(fila.pacienteId)
-        .then(setDietasPaciente)
-        .catch(() => setDietasPaciente([]))
+    if (cargarDietasPaciente && pacienteId) {
+      void cargarDietasPaciente(pacienteId)
+        .then((lista) => {
+          if (!cancelado) setDietasPaciente(lista)
+        })
+        .catch(() => {
+          if (!cancelado) setDietasPaciente([])
+        })
     } else {
       setDietasPaciente([])
     }
-  }, [open, fila, cargarHistorial, cargarDetalle, cargarDietasPaciente])
+
+    return () => {
+      cancelado = true
+    }
+    // Intencional: no depender de `fila` completo — el censo lo renueva cada ~15s.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- filaId/pacienteId bastan
+  }, [open, filaId, pacienteId, cargarHistorial, cargarDetalle, cargarDietasPaciente])
+
+  // Refresca datos visibles del censo sin recargar historial ni mostrar skeleton.
+  useEffect(() => {
+    if (!open || !fila) return
+    setDetalle((prev) => {
+      if (!prev || prev.id !== fila.id) return prev
+      if (
+        prev.estado === fila.estado &&
+        prev.tipoDieta === fila.tipoDieta &&
+        prev.consistencia === fila.consistencia &&
+        (fila.descripcionDieta == null ||
+          prev.descripcionDieta === fila.descripcionDieta) &&
+        (fila.solicitadoPor == null || prev.solicitadoPor === fila.solicitadoPor) &&
+        (fila.solicitadoEn == null || prev.solicitadoEn === fila.solicitadoEn)
+      ) {
+        return prev
+      }
+      return {
+        ...prev,
+        estado: fila.estado,
+        tipoDieta: fila.tipoDieta,
+        consistencia: fila.consistencia,
+        descripcionDieta: fila.descripcionDieta ?? prev.descripcionDieta,
+        solicitadoPor: fila.solicitadoPor ?? prev.solicitadoPor,
+        solicitadoEn: fila.solicitadoEn ?? prev.solicitadoEn,
+      }
+    })
+  }, [open, fila])
 
   if (!fila) return null
   const filaMostrada = detalle ?? fila

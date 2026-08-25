@@ -114,6 +114,46 @@ public class DashboardService : IDashboardService
         };
     }
 
+    private static GraficoDto CrearGraficoBarraMoneda(
+        string titulo,
+        IEnumerable<(string Categoria, decimal Monto)> datos)
+    {
+        var items = datos.ToList();
+        return new GraficoDto
+        {
+            Tipo = "barra",
+            Titulo = titulo,
+            Categorias = items.Select(d => d.Categoria).ToList(),
+            Series = new List<GraficoSerieDto>
+            {
+                new()
+                {
+                    Etiqueta = "Costo",
+                    Valores = items.Select(d => Math.Round(d.Monto, 2)).ToList(),
+                },
+            },
+        };
+    }
+
+    private static decimal ResolverTarifaDieta(
+        IReadOnlyList<Domain.Entities.DietasCocina.TarifaHistorico> tarifas,
+        Guid? tipoDietaId,
+        TiempoComida comida,
+        DateTime fecha)
+    {
+        if (tipoDietaId is null || tipoDietaId == Guid.Empty)
+            return 0m;
+
+        return tarifas
+            .Where(t =>
+                t.DietaCatalogoId == tipoDietaId
+                && t.TiempoComida == comida
+                && TarifasCatalogoHelper.EsTarifaVigente(t, fecha.Date))
+            .OrderByDescending(t => t.VigenciaDesde)
+            .Select(t => t.Monto)
+            .FirstOrDefault();
+    }
+
     private static GraficoDto CrearGraficoPie(
         string titulo,
         IEnumerable<(string Categoria, int Cantidad)> datos)
@@ -625,13 +665,43 @@ public class DashboardService : IDashboardService
 
         var etiquetas = await etiquetasQuery.ToListAsync();
 
+        var catalogIds = dietas
+            .Where(d => d.TipoDietaId.HasValue)
+            .Select(d => d.TipoDietaId!.Value)
+            .Distinct()
+            .ToList();
+
+        var tarifas = catalogIds.Count == 0
+            ? new List<Domain.Entities.DietasCocina.TarifaHistorico>()
+            : await _context.TarifasHistorico
+                .Where(t => t.Activa && catalogIds.Contains(t.DietaCatalogoId))
+                .ToListAsync();
+
+        var dietasConCosto = dietas
+            .Where(d => d.Estado != EstadoDieta.Pendiente)
+            .Select(d =>
+            {
+                var monto = ResolverTarifaDieta(tarifas, d.TipoDietaId, d.Comida, d.FechaOperativa);
+                return (Dieta: d, Monto: monto);
+            })
+            .ToList();
+
+        var costoTotal = dietasConCosto
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .Sum(x => x.Monto);
+        var costoCancTardia = dietasConCosto
+            .Where(x => x.Dieta.CancelacionTardia)
+            .Sum(x => x.Monto);
+
         // KPIs
         var kpis = new List<KpiDto>
         {
             new() { Clave = "total_dietas_periodo", Etiqueta = "Total dietas período", Valor = totalDietas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "dietas_activas_periodo", Etiqueta = "Dietas activas período", Valor = dietasActivas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "ordenes_periodo", Etiqueta = "Órdenes período", Valor = totalOrdenes, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "promedio_diario", Etiqueta = "Promedio diario dietas", Valor = Math.Round((decimal)totalDietas / diasPeriodo, 1), Formato = "numero", Tendencia = null, Comparacion = null }
+            new() { Clave = "promedio_diario", Etiqueta = "Promedio diario dietas", Valor = Math.Round((decimal)totalDietas / diasPeriodo, 1), Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "costo_total", Etiqueta = "Costo total", Valor = Math.Round(costoTotal, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
+            new() { Clave = "costo_canc_tardia", Etiqueta = "Costo canc. tardía", Valor = Math.Round(costoCancTardia, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
         };
 
         // Hitos logísticos (promedios en minutos)
@@ -674,6 +744,28 @@ public class DashboardService : IDashboardService
             .Select(g => (g.Key, g.Count()))
             .ToList();
 
+        var costoPorDia = dietasConCosto
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .GroupBy(x => x.Dieta.FechaOperativa.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => (g.Key.ToString("yyyy-MM-dd"), g.Sum(x => x.Monto)))
+            .ToList();
+
+        var costoPorServicio = dietasConCosto
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .GroupBy(x => DietasReglasNegocio.ResolverServicioClinico(x.Dieta.Servicio, x.Dieta.Pabellon))
+            .OrderByDescending(g => g.Sum(x => x.Monto))
+            .Take(8)
+            .Select(g => (g.Key, g.Sum(x => x.Monto)))
+            .ToList();
+
+        var costoPorComida = dietasConCosto
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .GroupBy(x => EtiquetaComidaReporte(x.Dieta.Comida))
+            .OrderByDescending(g => g.Sum(x => x.Monto))
+            .Select(g => (g.Key, g.Sum(x => x.Monto)))
+            .ToList();
+
         var graficos = new List<GraficoDto>
         {
             new()
@@ -692,6 +784,9 @@ public class DashboardService : IDashboardService
             CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
             CrearGraficoBarra("Distribución por servicios", distribucionServicio),
             CrearGraficoBarra("Volumen por comida", distribucionTurno),
+            CrearGraficoBarraMoneda("Costo por día", costoPorDia),
+            CrearGraficoBarraMoneda("Costo por servicio", costoPorServicio),
+            CrearGraficoBarraMoneda("Costo por comida", costoPorComida),
         };
 
         return new ReporteNutricionistaDto
@@ -740,6 +835,44 @@ public class DashboardService : IDashboardService
 
         var dietas = await dietasQuery.ToListAsync();
 
+        if (!string.IsNullOrWhiteSpace(filtros.Servicio) &&
+            !string.Equals(filtros.Servicio, "todos", StringComparison.OrdinalIgnoreCase))
+        {
+            dietas = dietas
+                .Where(d => DietasReglasNegocio.ResolverServicioClinico(d.Servicio, d.Pabellon) == filtros.Servicio)
+                .ToList();
+        }
+
+        var catalogIds = dietas
+            .Where(d => d.TipoDietaId.HasValue)
+            .Select(d => d.TipoDietaId!.Value)
+            .Distinct()
+            .ToList();
+
+        var tarifas = catalogIds.Count == 0
+            ? new List<Domain.Entities.DietasCocina.TarifaHistorico>()
+            : await _context.TarifasHistorico
+                .Where(t => t.Activa && catalogIds.Contains(t.DietaCatalogoId))
+                .ToListAsync();
+
+        // Costos: raciones con solicitud (no pendientes) × tarifa vigente; retrasos = cancelación tardía.
+        var dietasFacturables = dietas
+            .Where(d => d.Estado != EstadoDieta.Pendiente)
+            .Select(d =>
+            {
+                var monto = ResolverTarifaDieta(tarifas, d.TipoDietaId, d.Comida, d.FechaOperativa);
+                return (Dieta: d, Monto: monto);
+            })
+            .ToList();
+
+        var costoProduccion = dietasFacturables
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .Sum(x => x.Monto);
+
+        var costoRetrasos = dietasFacturables
+            .Where(x => x.Dieta.CancelacionTardia)
+            .Sum(x => x.Monto);
+
         // KPIs
         var kpis = new List<KpiDto>
         {
@@ -747,7 +880,9 @@ public class DashboardService : IDashboardService
             new() { Clave = "ordenes_completadas_periodo", Etiqueta = "Órdenes completadas período", Valor = ordenesCompletadas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "etiquetas_periodo", Etiqueta = "Etiquetas período", Valor = totalEtiquetas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "etiquetas_entregadas_periodo", Etiqueta = "Etiquetas entregadas período", Valor = etiquetasEntregadas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "porcentaje_cumplimiento", Etiqueta = "% Cumplimiento entregas", Valor = totalEtiquetas > 0 ? Math.Round((decimal)etiquetasEntregadas / totalEtiquetas * 100, 1) : 0, Formato = "porcentaje", Tendencia = null, Comparacion = null }
+            new() { Clave = "porcentaje_cumplimiento", Etiqueta = "% Cumplimiento entregas", Valor = totalEtiquetas > 0 ? Math.Round((decimal)etiquetasEntregadas / totalEtiquetas * 100, 1) : 0, Formato = "porcentaje", Tendencia = null, Comparacion = null },
+            new() { Clave = "costo_produccion", Etiqueta = "Costo producción", Valor = Math.Round(costoProduccion, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
+            new() { Clave = "costo_retrasos", Etiqueta = "Costo por retrasos", Valor = Math.Round(costoRetrasos, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
         };
 
         // Hallazgos
@@ -774,6 +909,17 @@ public class DashboardService : IDashboardService
                 Descripcion = "Etiquetas pendientes de entrega",
                 Severidad = etiquetasPendientes > 10 ? "alta" : "media",
                 Cantidad = etiquetasPendientes
+            });
+        }
+
+        if (costoRetrasos > 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "costo_retrasos",
+                Descripcion = "Costo asociado a cancelaciones tardías",
+                Severidad = costoRetrasos > costoProduccion * 0.1m ? "alta" : "media",
+                Cantidad = dietasFacturables.Count(x => x.Dieta.CancelacionTardia)
             });
         }
 
@@ -811,6 +957,28 @@ public class DashboardService : IDashboardService
             })
             .ToList();
 
+        var costoPorDia = dietasFacturables
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .GroupBy(x => x.Dieta.FechaOperativa.Date)
+            .OrderBy(g => g.Key)
+            .Select(g => (g.Key.ToString("yyyy-MM-dd"), g.Sum(x => x.Monto)))
+            .ToList();
+
+        var costoPorServicio = dietasFacturables
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .GroupBy(x => DietasReglasNegocio.ResolverServicioClinico(x.Dieta.Servicio, x.Dieta.Pabellon))
+            .OrderByDescending(g => g.Sum(x => x.Monto))
+            .Take(8)
+            .Select(g => (g.Key, g.Sum(x => x.Monto)))
+            .ToList();
+
+        var costoPorComida = dietasFacturables
+            .Where(x => x.Dieta.Estado != EstadoDieta.Cancelada)
+            .GroupBy(x => EtiquetaComidaReporte(x.Dieta.Comida))
+            .OrderByDescending(g => g.Sum(x => x.Monto))
+            .Select(g => (g.Key, g.Sum(x => x.Monto)))
+            .ToList();
+
         var graficos = new List<GraficoDto>
         {
             CrearGraficoPie("Estado de órdenes", estadosOrdenes),
@@ -828,6 +996,9 @@ public class DashboardService : IDashboardService
                     new() { Etiqueta = "% Completadas", Valores = cumplimientoDiario.Select(c => c.Porcentaje).ToList() }
                 }
             },
+            CrearGraficoBarraMoneda("Costo por día", costoPorDia),
+            CrearGraficoBarraMoneda("Costo por servicio", costoPorServicio),
+            CrearGraficoBarraMoneda("Costo por comida", costoPorComida),
         };
 
         var hitos = ConstruirHitosLogisticos(etiquetas, hasta);

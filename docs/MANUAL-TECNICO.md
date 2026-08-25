@@ -1,7 +1,7 @@
 # Manual técnico — RioSoft
 
 **Cliente:** Clínica del Río (Montería, Colombia)  
-**Versión del documento:** 1.2 — RioSoft **1.2.4** — 2026-08-24  
+**Versión del documento:** 1.2 — RioSoft **1.2.5** — 2026-08-25  
 **Alcance:** Componentes **operativos en producción** — módulo **Dietas y Cocina**, autenticación, API, base de datos, despliegue IIS.
 
 > **Fuera de alcance:** Módulo Encuestas SIAO (backend preparado, UI deshabilitada), Administración de plataforma (scaffold).
@@ -204,7 +204,7 @@ Archivo: `frontend/.env.local` (copiar desde `.env.example`)
 | `VITE_DEV_API_PROXY_TARGET` | `http://localhost:8080` | Target del proxy en desarrollo |
 | `VITE_DIETAS_COCINA_API` | `true` | **Obligatorio** para modo operativo HTTP |
 | `VITE_ENCUESTAS_ENABLED` | `false` | Módulo encuestas oculto |
-| `VITE_APP_VERSION` | `1.2.4` | Versión mostrada en UI |
+| `VITE_APP_VERSION` | `1.2.5` | Versión mostrada en UI |
 
 ### 4.4 Configuración backend (desarrollo)
 
@@ -305,7 +305,7 @@ Persistencia: `bital.PermisosRol` (`RolModuloId`, `Ruta`, `Permitido`).
 |---|---|
 | **Administrador** | Acceso total |
 | **Nutricionista** | Censo, catálogo, tarifas, conciliación, reportes clínicos, parámetros, auditoría |
-| **Proveedor** | Cocina, impresión etiquetas, reportes producción |
+| **Proveedor** | Cocina, impresión etiquetas, reportes producción (con costos), conciliación (consulta) |
 | **Enfermera** | Censo (lectura), recepción proveedor |
 | **Auxiliar Cocina** | Bandejas piso (entrega, devolución, recogida) |
 
@@ -478,7 +478,7 @@ Capacidades por rol en UI: `impresion_proveedor`, `recepcion_proveedor`, `entreg
 3. PATCH /dietas-cocina/etiquetas/{id}/pre-entrega  (recepción proveedor)
 4. PATCH /dietas-cocina/etiquetas/{id}/entrega       (enfermería / auxiliar)
 5. PATCH /dietas-cocina/etiquetas/{id}/devolucion      (con motivo)
-6. GET  /dietas-cocina/etiquetas/pdf?ids=…           (PDF impresión)
+6. POST /dietas-cocina/etiquetas/pdf                  (PDF térmico 168×88 mm)
 7. GET  /dietas-cocina/etiquetas/buscar?codigo=…     (consulta QR)
 ```
 
@@ -764,9 +764,9 @@ Rutas UI inferidas: inicio, dietas, dietas-tarifas, cocina (listar), conciliacio
 
 #### Proveedor
 
-`10, 11, 12, 13, 20, 21, 40, 41`
+`10, 11, 12, 13, 20, 21, 30, 40, 41`
 
-Rutas UI: cocina, impresion-etiquetas, reportes-produccion, inicio.
+Rutas UI: cocina, impresion-etiquetas, reportes-produccion, conciliacion, inicio.
 
 #### Enfermera
 
@@ -806,4 +806,4 @@ Correo: soporte@clinicadelrio.com
 
 ---
 
-*Fin del manual técnico operativo RioSoft v1.2.4*
+*Fin del manual técnico operativo RioSoft v1.2.5*

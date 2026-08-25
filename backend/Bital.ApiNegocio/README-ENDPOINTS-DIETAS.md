@@ -307,10 +307,18 @@ POST /api/v1/dietas-cocina/etiquetas/{etiquetaId}/foto-devolucion
 
 ### Generar PDF de etiquetas
 
-Usar para descargar o imprimir el documento consolidado de etiquetas.
+PDF térmico 168 × 88 mm (una etiqueta por página). Preferir POST para lotes; GET se mantiene para pocos ids.
 
 ```http
-GET /api/v1/dietas-cocina/etiquetas/pdf
+POST /api/v1/dietas-cocina/etiquetas/pdf
+Content-Type: application/json
+
+{ "etiquetaIds": ["00000000-0000-0000-0000-000000000001"] }
+```
+
+```http
+GET /api/v1/dietas-cocina/etiquetas/pdf?ids={guid},{guid}
+POST /api/v1/dietas-cocina/etiquetas/pdf-prueba
 ```
 
 ---
@@ -552,6 +560,7 @@ PUT /api/v1/dietas-cocina/roles/{rol}/permisos
 - `/dietas-cocina/etiquetas/{etiquetaId}/devolucion`
 - `/dietas-cocina/etiquetas/{etiquetaId}/foto-devolucion`
 - `/dietas-cocina/etiquetas/pdf`
+- `/dietas-cocina/etiquetas/pdf-prueba`
 - `/dietas-cocina/dashboard/nutricionista`
 - `/dietas-cocina/dashboard/proveedor`
 - `/dietas-cocina/dashboard/enfermera`
@@ -579,7 +588,7 @@ PUT /api/v1/dietas-cocina/roles/{rol}/permisos
 | Despacho EnRuta | `PATCH /ordenes-cocina/{id}/estado` (`Despachada`) | Despacho / dashboard proveedor |
 | CRUD catálogo/tarifas | `POST/PATCH /catalogo...` | Dietas y tarifas |
 | Modo carga anticipada | `GET/PUT /parametros/tiempos-comida` (`modoCarga`) | Parámetros tiempos |
-| PDF etiquetas | `GET /etiquetas/pdf?ids=` | Impresión etiquetas |
+| PDF etiquetas | `POST /etiquetas/pdf` | Impresión etiquetas |
 | Export CSV | `?formato=csv` en conciliación, auditoría, reportes | Exportaciones |
 | Factura conciliación | `POST /conciliacion/{id}/factura` | Conciliación |
 | Foto devolución real | `POST /etiquetas/{id}/foto-devolucion` | Devolución enfermería |

@@ -360,6 +360,10 @@ export function construirReportesNutricionistaDesdeCiclo(
           : base.motivosRecogida,
     distribucionServicio: soloReal ? [] : base.distribucionServicio,
     mostrarDistribucionTurno: filtros.horario === "todos",
+    costoPorDia: [],
+    costoPorServicio: [],
+    costoPorComida: [],
+    mostrarCostos: false,
   }
 }
 
@@ -439,5 +443,9 @@ export function construirReportesProveedorDesdeCiclo(
             : hallazgo,
         ),
     mostrarDistribucionTurno: filtros.horario === "todos",
+    costoPorDia: [],
+    costoPorServicio: [],
+    costoPorComida: [],
+    mostrarCostos: false,
   }
 }

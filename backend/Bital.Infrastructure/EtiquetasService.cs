@@ -1,11 +1,13 @@
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Bital.Application.Options;
 using Bital.Domain.Entities.DietasCocina;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Bital.Infrastructure.DietasCocina;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Bital.Infrastructure.Services;
 
@@ -18,17 +20,20 @@ public class EtiquetasService : IEtiquetasService
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<EtiquetasService> _logger;
+    private readonly string _frontendPublicUrl;
 
     public EtiquetasService(
         BitalNegocioDbContext context,
         IAuditoriaService auditoria,
         IAuditoriaContextoRequest contextoAuditoria,
-        ILogger<EtiquetasService> logger)
+        ILogger<EtiquetasService> logger,
+        IOptions<DietasCocinaOptions> dietasCocinaOptions)
     {
         _context = context;
         _auditoria = auditoria;
         _contextoAuditoria = contextoAuditoria;
         _logger = logger;
+        _frontendPublicUrl = dietasCocinaOptions.Value.FrontendPublicUrl ?? "";
     }
 
     public async Task<List<EtiquetaEnfermeraDto>> ObtenerEtiquetasAsync(
@@ -465,17 +470,22 @@ public class EtiquetasService : IEtiquetasService
             throw new KeyNotFoundException("No se encontraron etiquetas para generar PDF");
         }
 
-        var lineas = new List<string> { "Etiquetas de dieta - Bital" };
-        foreach (var etiqueta in etiquetas)
-        {
-            lineas.Add($"Codigo: {etiqueta.Codigo}");
-            lineas.Add($"Paciente: {etiqueta.FilaDieta?.Paciente ?? "—"}");
-            lineas.Add($"Dieta: {etiqueta.FilaDieta?.DescripcionDieta ?? "—"}");
-            lineas.Add($"Comida: {etiqueta.Comida}");
-            lineas.Add("---");
-        }
+        var porId = etiquetas.ToDictionary(e => e.Id);
+        var modelos = ids
+            .Where(porId.ContainsKey)
+            .Select(id => MapearPdf(porId[id]))
+            .ToList();
 
-        return PdfEtiquetasHelper.Generar(lineas);
+        return PdfEtiquetasHelper.Generar(modelos);
+    }
+
+    public Task<byte[]> GenerarPdfEtiquetaPruebaAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var pdf = PdfEtiquetasHelper.Generar(
+            [PdfEtiquetasHelper.CrearEtiquetaPrueba(_frontendPublicUrl)]);
+        return Task.FromResult(pdf);
     }
 
     private static bool ResolverAisladoFila(FilaDieta? fila)
@@ -484,6 +494,40 @@ public class EtiquetasService : IEtiquetasService
         if (fila.Aislado) return true;
         return !string.IsNullOrWhiteSpace(fila.Aislamiento)
             && !fila.Aislamiento.Equals("Ninguno", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private EtiquetaPdfModelo MapearPdf(EtiquetaEnfermera etiqueta)
+    {
+        var fila = etiqueta.FilaDieta;
+        var aislado = ResolverAisladoFila(fila);
+        var ingreso = fila?.IdIngreso is > 0 ? fila.IdIngreso.Value.ToString() : null;
+        var tipoDoc = string.IsNullOrWhiteSpace(fila?.TipoDocumento) ? "CC" : fila.TipoDocumento.Trim();
+        var docValor = string.IsNullOrWhiteSpace(fila?.Cedula) ? "—" : fila.Cedula.Trim();
+        var pabellon = fila?.Pabellon ?? "";
+        var habitacion = fila?.Habitacion ?? "";
+        var fecha = etiqueta.FechaOperativa;
+        if (etiqueta.GeneradaEn != default)
+        {
+            fecha = etiqueta.FechaOperativa.Date + etiqueta.GeneradaEn.TimeOfDay;
+        }
+
+        return new EtiquetaPdfModelo
+        {
+            Codigo = etiqueta.Codigo,
+            QrPayload = PdfEtiquetasHelper.ConstruirQrPayload(etiqueta.Codigo, _frontendPublicUrl),
+            Comida = PdfEtiquetasHelper.EtiquetaComida(etiqueta.Comida),
+            FechaHora = PdfEtiquetasHelper.FormatearFechaHora(fecha),
+            Paciente = string.IsNullOrWhiteSpace(fila?.Paciente) ? "—" : fila.Paciente,
+            Ingreso = ingreso,
+            Edad = fila?.Edad ?? 0,
+            DocumentoTitulo = tipoDoc,
+            DocumentoValor = docValor,
+            Ubicacion = $"{pabellon} - Hab {habitacion}",
+            Aislamiento = aislado,
+            TipoDieta = fila?.DescripcionDieta ?? "",
+            Consistencia = fila?.Consistencia ?? "",
+            Observaciones = ResolverObservacionesEtiqueta(etiqueta, fila),
+        };
     }
 
     private static EtiquetaEnfermeraDto MapearADto(EtiquetaEnfermera etiqueta)

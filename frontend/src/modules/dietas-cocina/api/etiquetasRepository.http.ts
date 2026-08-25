@@ -2,6 +2,7 @@ import {
   buscarEtiquetaPorCodigoSafe,
   confirmarEntregaEtiqueta,
   confirmarPreEntregaEtiqueta,
+  descargarPdfEtiquetaPrueba,
   descargarPdfEtiquetas,
   generarEtiquetas,
   listarEtiquetas,
@@ -27,4 +28,5 @@ export const etiquetasRepositoryHttp: EtiquetasRepository = {
   registrarDevolucion: registrarDevolucionEtiqueta,
   subirFotoDevolucion,
   descargarPdf: descargarPdfEtiquetas,
+  descargarPdfPrueba: descargarPdfEtiquetaPrueba,
 }

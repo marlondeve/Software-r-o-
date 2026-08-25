@@ -5,7 +5,7 @@ import { Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { EtiquetaLabelFace } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaLabelFace"
-import { ETIQUETA_QR_RESolucion, dimensionesEtiquetaPantalla } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
+import { ETIQUETA_QR_RESOLUCION_PANTALLA, dimensionesEtiquetaPantalla } from "@/modules/dietas-cocina/etiquetas/lib/etiquetaLayout"
 import { payloadQrEtiqueta } from "@/modules/dietas-cocina/etiquetas/lib/qrPayloadEtiqueta"
 
 interface EtiquetaCardProps {
@@ -26,7 +26,7 @@ export function EtiquetaCard({
     const payload = payloadQrEtiqueta(etiqueta.codigo)
     QRCode.toDataURL(payload, {
       margin: 1,
-      width: ETIQUETA_QR_RESolucion,
+      width: ETIQUETA_QR_RESOLUCION_PANTALLA,
       errorCorrectionLevel: "M",
       color: { dark: "#000000", light: "#ffffff" },
     }).then((url) => {

@@ -413,4 +413,37 @@ public class DietasCocinaController : ControllerBase
         var resultado = await _dietasService.BuscarDietasAsync(filtros, cancellationToken);
         return Ok(resultado);
     }
+
+    /// <summary>
+    /// [Development] Siembra N dietas seed listas para generar etiquetas (órdenes Completada).
+    /// </summary>
+    [HttpPost("_test/seed-listas-para-etiquetas")]
+    [AllowAnonymous]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> SeedListasParaEtiquetas(
+        [FromQuery] int cantidad = 20,
+        [FromQuery] string comida = "Desayuno",
+        [FromQuery] DateTime? fecha = null,
+        [FromServices] IWebHostEnvironment environment = null!,
+        CancellationToken cancellationToken = default)
+    {
+        if (!environment.IsDevelopment())
+            return NotFound();
+
+        try
+        {
+            var resultado = await _dietasService.SeedListasParaEtiquetasDevAsync(
+                fecha ?? DateTime.Today,
+                comida,
+                cantidad,
+                User.Identity?.Name ?? "dev-seed",
+                cancellationToken);
+            return Ok(resultado);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error en seed-listas-para-etiquetas");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
 }

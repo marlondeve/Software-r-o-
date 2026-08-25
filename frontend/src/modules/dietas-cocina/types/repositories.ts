@@ -72,5 +72,6 @@ export interface EtiquetasRepository {
   confirmarEntrega(etiquetaId: string): Promise<EtiquetaEnfermera>
   registrarDevolucion(etiquetaId: string, payload?: Record<string, unknown>): Promise<EtiquetaEnfermera>
   subirFotoDevolucion(etiquetaId: string, archivo: File): Promise<void>
-  descargarPdf(params?: Record<string, string>): Promise<Blob>
+  descargarPdf(etiquetaIds: string[]): Promise<Blob>
+  descargarPdfPrueba(): Promise<Blob>
 }

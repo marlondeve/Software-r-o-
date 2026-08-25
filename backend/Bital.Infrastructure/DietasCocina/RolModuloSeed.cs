@@ -62,7 +62,18 @@ public static class RolModuloSeed
         RutaDietas.VerDashboard,
         RutaDietas.ExportarReportes,
         RutaDietas.ListarEtiquetas,
+        RutaDietas.ListarConciliacion,
     ];
+
+    /// <summary>Permisos por defecto de roles de sistema (para seed / ensure al arranque).</summary>
+    public static IReadOnlyDictionary<Guid, List<RutaDietas>> PermisosPorRolSistema =>
+        new Dictionary<Guid, List<RutaDietas>>
+        {
+            [Nutricionista] = PermisosNutricionista,
+            [Proveedor] = PermisosProveedor,
+            [Enfermera] = PermisosEnfermera,
+            [AuxiliarCocina] = PermisosAuxiliarCocina,
+        };
 
     public static List<RutaDietas> PermisosEnfermera =>
     [

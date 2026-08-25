@@ -37,9 +37,69 @@ public class DietasCocinaCierreTests
     [Fact]
     public void PdfEtiquetasHelper_GeneraBytesPdfValidos()
     {
-        var pdf = PdfEtiquetasHelper.Generar(["Etiqueta prueba", "Paciente: Test"]);
+        var pdf = PdfEtiquetasHelper.Generar([PdfEtiquetasHelper.CrearEtiquetaPrueba()]);
+        Assert.True(pdf.Length > 500);
+        Assert.Equal((byte)'%', pdf[0]);
+        Assert.Equal((byte)'P', pdf[1]);
+        Assert.Equal((byte)'D', pdf[2]);
+        Assert.Equal((byte)'F', pdf[3]);
         var texto = System.Text.Encoding.ASCII.GetString(pdf);
-        Assert.StartsWith("%PDF-1.4", texto);
         Assert.Contains("%%EOF", texto);
+        Assert.Equal(1, ContarPaginasPdf(texto));
+    }
+
+    [Fact]
+    public void PdfEtiquetasHelper_VariasEtiquetas_UnaPaginaCadaUna()
+    {
+        var etiquetas = Enumerable.Range(0, 3)
+            .Select(_ => PdfEtiquetasHelper.CrearEtiquetaPrueba())
+            .ToList();
+        var pdf = PdfEtiquetasHelper.Generar(etiquetas);
+        var texto = System.Text.Encoding.ASCII.GetString(pdf);
+        Assert.Equal(3, ContarPaginasPdf(texto));
+    }
+
+    [Fact]
+    public void PdfEtiquetasHelper_DietaMuyLarga_SigueSiendoUnaPagina()
+    {
+        var baseEtiqueta = PdfEtiquetasHelper.CrearEtiquetaPrueba();
+        var etiqueta = new EtiquetaPdfModelo
+        {
+            Codigo = baseEtiqueta.Codigo,
+            QrPayload = baseEtiqueta.QrPayload,
+            Comida = baseEtiqueta.Comida,
+            FechaHora = baseEtiqueta.FechaHora,
+            Paciente = "PACIENTE CON NOMBRE EXTREMADAMENTE LARGO PARA PROBAR TRUNCAMIENTO EN ETIQUETA TERMICA",
+            Ingreso = baseEtiqueta.Ingreso,
+            Edad = baseEtiqueta.Edad,
+            DocumentoTitulo = baseEtiqueta.DocumentoTitulo,
+            DocumentoValor = baseEtiqueta.DocumentoValor,
+            Ubicacion = "HOSPITALIZACION PISO 3 - HABITACION 3HP19 ALA NORTE TORRE B",
+            Aislamiento = baseEtiqueta.Aislamiento,
+            TipoDieta = "NIÑOS DE 10 MESES EN ADELANTE CON SUPLEMENTO NUTRICIONAL ESPECIAL Y RESTRICCIONES MULTIPLES",
+            Consistencia = "LICUADA ESPESA CON MODIFICACIONES DE TEXTURA SEGUN VALORACION",
+            Observaciones =
+                "Sin tomate, intolerancia leve a lácteos. Alergias: mariscos, maní, gluten y huevo. " +
+                "Preferencias: sin cebolla cruda. Notas de enfermería adicionales para prueba de overflow.",
+        };
+
+        var pdf = PdfEtiquetasHelper.Generar([etiqueta]);
+        var texto = System.Text.Encoding.ASCII.GetString(pdf);
+        Assert.Equal(1, ContarPaginasPdf(texto));
+    }
+
+    /// <summary>Cuenta objetos Page (no el nodo Pages) en el PDF textual.</summary>
+    private static int ContarPaginasPdf(string pdfAscii)
+    {
+        var n = 0;
+        var idx = 0;
+        while ((idx = pdfAscii.IndexOf("/Type /Page", idx, StringComparison.Ordinal)) >= 0)
+        {
+            var siguiente = idx + "/Type /Page".Length;
+            if (siguiente >= pdfAscii.Length || pdfAscii[siguiente] != 's')
+                n++;
+            idx = siguiente;
+        }
+        return n;
     }
 }

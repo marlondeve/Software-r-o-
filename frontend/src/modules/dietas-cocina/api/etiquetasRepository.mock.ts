@@ -62,4 +62,7 @@ export const etiquetasRepositoryMock: EtiquetasRepository = {
   async descargarPdf() {
     return new Blob(["PDF demo"], { type: "application/pdf" })
   },
+  async descargarPdfPrueba() {
+    return new Blob(["PDF demo"], { type: "application/pdf" })
+  },
 }

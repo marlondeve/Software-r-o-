@@ -73,4 +73,14 @@ public interface IDietasService
     /// Busca dietas con filtros avanzados
     /// </summary>
     Task<CensoDietasDto> BuscarDietasAsync(FiltrosDietasDto filtros, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// [Development] Crea N dietas seed en estado lista (órdenes Completada) listas para generar etiquetas.
+    /// </summary>
+    Task<object> SeedListasParaEtiquetasDevAsync(
+        DateTime fecha,
+        string comida,
+        int cantidad,
+        string usuario,
+        CancellationToken cancellationToken = default);
 }

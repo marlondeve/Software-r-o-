@@ -1005,6 +1005,122 @@ public class DietasService : IDietasService
             || resuelto.ToUpperInvariant().Contains(filtroNorm);
     }
 
+    public async Task<object> SeedListasParaEtiquetasDevAsync(
+        DateTime fecha,
+        string comida,
+        int cantidad,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        if (cantidad < 1 || cantidad > 50)
+            throw new ArgumentException("cantidad debe estar entre 1 y 50");
+
+        if (!Enum.TryParse<TiempoComida>(comida, true, out var tiempoComida))
+            throw new ArgumentException($"Tiempo de comida inválido: {comida}");
+
+        // Asegura filas Pendiente para hospitalizados reales + seed (vía censo).
+        await ObtenerCensoAsync(fecha.Date, tiempoComida.ToString(), cancellationToken);
+
+        var catalogo = await _context.DietasCatalogo
+            .Where(d => d.Activa)
+            .OrderBy(d => d.Nombre)
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? throw new InvalidOperationException("No hay dietas en el catálogo. Siembra FCR primero.");
+
+        var filasSeed = await _context.FilasDietas
+            .Where(f =>
+                f.FechaOperativa.Date == fecha.Date
+                && f.Comida == tiempoComida
+                && f.PacienteId.StartsWith(DevHospitalizadosSeed.PrefijoPacienteId))
+            .OrderBy(f => f.PacienteId)
+            .Take(cantidad)
+            .ToListAsync(cancellationToken);
+
+        if (filasSeed.Count < cantidad)
+        {
+            throw new InvalidOperationException(
+                $"Solo hay {filasSeed.Count} pacientes seed en censo. " +
+                "Configura DietasCocina:DevSeedHospitalizadosCount >= cantidad y actualiza el censo.");
+        }
+
+        var maxNumero = await _context.OrdenesCocina
+            .MaxAsync(o => (int?)o.NumeroOrden, cancellationToken) ?? 0;
+
+        var checklistJson = ChecklistOperativoHelper.Serializar(DevHospitalizadosSeed.ChecklistCompleto());
+        var ordenIds = new List<Guid>();
+        var ahora = DateTime.UtcNow;
+
+        foreach (var fila in filasSeed)
+        {
+            fila.TipoDietaId = catalogo.Id;
+            fila.DescripcionDieta = catalogo.Nombre;
+            fila.Consistencia = string.IsNullOrWhiteSpace(fila.Consistencia) ? "Blanda" : fila.Consistencia;
+            fila.Observaciones ??= "Seed desarrollo — lista para etiqueta";
+            fila.Estado = EstadoDieta.ListaEnvio;
+            fila.SolicitadoPor ??= usuario;
+            fila.SolicitadoEn ??= ahora;
+            fila.ModificadoPor = usuario;
+            fila.ModificadoEn = ahora;
+            fila.Edad = fila.Edad <= 0 ? 40 + (fila.PacienteId.GetHashCode() & 30) : fila.Edad;
+
+            // Quitar etiquetas previas del seed para poder regenerar desde la UI.
+            var etiquetasPrevias = await _context.EtiquetasEnfermeria
+                .Where(e => e.FilaDietaId == fila.Id)
+                .ToListAsync(cancellationToken);
+            if (etiquetasPrevias.Count > 0)
+                _context.EtiquetasEnfermeria.RemoveRange(etiquetasPrevias);
+
+            OrdenCocina orden;
+            if (fila.OrdenCocinaId is Guid ordenId)
+            {
+                orden = await _context.OrdenesCocina
+                    .Include(o => o.Dietas)
+                    .FirstAsync(o => o.Id == ordenId, cancellationToken);
+                orden.Estado = "Completada";
+                orden.ChecklistJson = checklistJson;
+                orden.ModificadoPor = usuario;
+                orden.ModificadoEn = ahora;
+            }
+            else
+            {
+                maxNumero++;
+                orden = new OrdenCocina
+                {
+                    Id = Guid.NewGuid(),
+                    NumeroOrden = maxNumero,
+                    Comida = tiempoComida,
+                    FechaOperativa = fecha.Date,
+                    TotalDietas = 1,
+                    GeneradoPor = usuario,
+                    GeneradoEn = ahora,
+                    Estado = "Completada",
+                    CreadoPor = usuario,
+                    ChecklistJson = checklistJson,
+                    Observaciones = "Seed desarrollo",
+                };
+                _context.OrdenesCocina.Add(orden);
+                fila.OrdenCocinaId = orden.Id;
+            }
+
+            ordenIds.Add(orden.Id);
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogWarning(
+            "SeedListasParaEtiquetasDev: {Count} dietas en Completada para {Fecha} {Comida}",
+            filasSeed.Count, fecha.Date, tiempoComida);
+
+        return new
+        {
+            fecha = fecha.Date.ToString("yyyy-MM-dd"),
+            comida = tiempoComida.ToString(),
+            dietasListas = filasSeed.Count,
+            ordenIds,
+            mensaje = "Órdenes Completada con checklist OK. Ve a Cocina → Generar etiquetas → Impresión.",
+        };
+    }
+
     private static FilaDietaDto MapearADto(FilaDieta fila)
     {
         return new FilaDietaDto

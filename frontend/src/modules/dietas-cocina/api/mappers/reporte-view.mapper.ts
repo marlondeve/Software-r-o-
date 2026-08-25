@@ -1,5 +1,6 @@
 import type { ReporteDto } from "@/modules/dietas-cocina/types/api-dtos"
 import { normalizarClave } from "@/modules/dietas-cocina/api/utils"
+import { formatearMonedaCOP } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
 import {
   chartColorHex,
   colorCategoricoPorIndice,
@@ -39,7 +40,11 @@ export function reporteViewVacio() {
     motivosRecogida: [] as BarItem[],
     distribucionServicio: [] as BarItem[],
     distribucionTurno: [] as BarItem[],
+    costoPorDia: [] as BarItem[],
+    costoPorServicio: [] as BarItem[],
+    costoPorComida: [] as BarItem[],
     mostrarDistribucionTurno: false,
+    mostrarCostos: false,
   }
 }
 
@@ -71,13 +76,14 @@ function formatearValorKpi(item: Record<string, unknown>): string {
   const valor = Number(leerCampo(item, "value", "valor", "Valor") ?? 0)
   const formato = String(leerCampo(item, "formato", "Formato") ?? "numero").toLowerCase()
   if (formato === "porcentaje") return `${valor}%`
-  if (formato === "moneda") {
-    return `$${valor.toLocaleString("es-CO", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 2,
-    })}`
-  }
+  if (formato === "moneda") return `${formatearMonedaCOP(valor)} COP`
   return Number.isInteger(valor) ? String(valor) : valor.toLocaleString("es-CO")
+}
+
+function etiquetaFechaCorta(valor: string): string {
+  const match = valor.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!match) return valor
+  return `${match[3]}/${match[2]}`
 }
 
 function mapHallazgosApi(hallazgos: unknown) {
@@ -271,6 +277,17 @@ export function mapReporteDto(dto: ReporteDto) {
           "por turno",
         )
 
+  const costoPorDia = mapGraficosBarraPorTitulo(
+    graficosRaw,
+    "costo por día",
+    "costo por dia",
+  ).map((item) => ({ ...item, label: etiquetaFechaCorta(item.label) }))
+  const costoPorServicio = mapGraficosBarraPorTitulo(
+    graficosRaw,
+    "costo por servicio",
+  )
+  const costoPorComida = mapGraficosBarraPorTitulo(graficosRaw, "costo por comida")
+
   const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
 
   const kpisRaw = leerCampo(dtoRecord, "kpis", "Kpis")
@@ -319,6 +336,13 @@ export function mapReporteDto(dto: ReporteDto) {
     motivosRecogida,
     distribucionServicio,
     distribucionTurno,
+    costoPorDia,
+    costoPorServicio,
+    costoPorComida,
     mostrarDistribucionTurno: distribucionTurno.length > 0,
+    mostrarCostos:
+      costoPorDia.length > 0 ||
+      costoPorServicio.length > 0 ||
+      costoPorComida.length > 0,
   }
 }

@@ -297,7 +297,7 @@ PRINT '==> Permisos por rol';
     UNION ALL
     /* Proveedor */
     SELECT @RolProveedor, r.Ruta
-    FROM (VALUES (10),(11),(12),(13),(20),(21),(40),(41)) AS r(Ruta)
+    FROM (VALUES (10),(11),(12),(13),(20),(21),(30),(40),(41)) AS r(Ruta)
     UNION ALL
     /* Enfermera */
     SELECT @RolEnfermera, r.Ruta

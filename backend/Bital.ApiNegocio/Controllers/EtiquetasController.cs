@@ -5,6 +5,7 @@ using Bital.Application.Interfaces;
 using Bital.Domain.Enums;
 using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Timeouts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Bital.ApiNegocio.Controllers;
@@ -352,9 +353,10 @@ public class EtiquetasController : ControllerBase
     }
 
     /// <summary>
-    /// Genera PDF de etiquetas
+    /// PDF térmico de etiquetas (pocos ids; preferir POST para lotes).
     /// </summary>
     [HttpGet("pdf")]
+    [RequestTimeout("EtiquetasPdf")]
     [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GenerarPdfEtiquetas(
@@ -368,13 +370,69 @@ public class EtiquetasController : ControllerBase
 
         try
         {
-            await _permisos.VerificarRutaAsync(
-                User.GetRolModuloId(), RutaDietas.ImprimirEtiquetas, cancellationToken);
-
             var etiquetaIds = ids
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(id => Guid.Parse(id))
                 .ToList();
+
+            return await GenerarPdfEtiquetasInterno(etiquetaIds, cancellationToken);
+        }
+        catch (FormatException)
+        {
+            return BadRequest(new { error = "IDs de etiqueta inválidos" });
+        }
+    }
+
+    /// <summary>
+    /// PDF térmico 168 × 88 mm. Cuerpo con lista de ids para evitar el límite de URL.
+    /// </summary>
+    [HttpPost("pdf")]
+    [RequestTimeout("EtiquetasPdf")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GenerarPdfEtiquetasPost(
+        [FromBody] MarcarImpresasDto datos,
+        CancellationToken cancellationToken)
+    {
+        if (datos?.EtiquetaIds is not { Count: > 0 })
+        {
+            return BadRequest(new { error = "Se requiere al menos un id de etiqueta" });
+        }
+
+        return await GenerarPdfEtiquetasInterno(datos.EtiquetaIds, cancellationToken);
+    }
+
+    /// <summary>
+    /// PDF de calibración (misma plantilla térmica, sin etiqueta persistida).
+    /// </summary>
+    [HttpPost("pdf-prueba")]
+    [RequestTimeout("EtiquetasPdf")]
+    [ProducesResponseType(typeof(FileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GenerarPdfEtiquetaPrueba(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _permisos.VerificarRutaAsync(
+                User.GetRolModuloId(), RutaDietas.ImprimirEtiquetas, cancellationToken);
+
+            var pdf = await _etiquetasService.GenerarPdfEtiquetaPruebaAsync(cancellationToken);
+            return File(pdf, "application/pdf", "etiqueta-prueba-impresion.pdf");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return ForbidWithMessage(ex.Message);
+        }
+    }
+
+    private async Task<IActionResult> GenerarPdfEtiquetasInterno(
+        List<Guid> etiquetaIds,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _permisos.VerificarRutaAsync(
+                User.GetRolModuloId(), RutaDietas.ImprimirEtiquetas, cancellationToken);
 
             var pdf = await _etiquetasService.GenerarPdfEtiquetasAsync(etiquetaIds, cancellationToken);
             return File(pdf, "application/pdf", $"etiquetas-{DateTime.UtcNow:yyyyMMddHHmmss}.pdf");
@@ -382,10 +440,6 @@ public class EtiquetasController : ControllerBase
         catch (UnauthorizedAccessException ex)
         {
             return ForbidWithMessage(ex.Message);
-        }
-        catch (FormatException)
-        {
-            return BadRequest(new { error = "IDs de etiqueta inválidos" });
         }
         catch (KeyNotFoundException ex)
         {

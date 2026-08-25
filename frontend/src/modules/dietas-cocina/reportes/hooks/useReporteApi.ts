@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 import { esErrorRed } from "@/lib/esErrorRed"
 import { estaOnlineAhora } from "@/hooks/useConectividadRed"
@@ -8,6 +8,7 @@ import {
   cargarReporteDesdeCache,
   guardarReporteEnCache,
 } from "@/modules/dietas-cocina/lib/reportesCacheStorage"
+import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
 
 type ReporteView = ReturnType<typeof mapReporteDto>
 
@@ -36,7 +37,14 @@ export function useReporteApi({
   const [reporteApi, setReporteApi] = useState<ReporteView | null>(null)
   const [cargando, setCargando] = useState(false)
   const [desdeCache, setDesdeCache] = useState(false)
+  const [textoActualizacion, setTextoActualizacion] = useState(
+    () => formatearUltimaActualizacionReporte(new Date()),
+  )
   const filtrosKey = JSON.stringify(filtros)
+  const cargarRef = useRef(cargar)
+  const mapearRef = useRef(mapear)
+  cargarRef.current = cargar
+  mapearRef.current = mapear
 
   useEffect(() => {
     if (!apiActiva) return
@@ -47,6 +55,7 @@ export function useReporteApi({
       const cache = cargarReporteDesdeCache(tipo, filtrosCache)
       setReporteApi(cache ?? reporteViewVacio())
       setDesdeCache(Boolean(cache))
+      setCargando(false)
       return
     }
 
@@ -54,12 +63,14 @@ export function useReporteApi({
     setCargando(true)
     setDesdeCache(false)
 
-    void cargar()
+    void cargarRef
+      .current()
       .then((resp) => {
         if (cancelado) return
-        const mapped = mapear(resp)
+        const mapped = mapearRef.current(resp)
         setReporteApi(mapped)
         guardarReporteEnCache(tipo, filtrosCache, mapped)
+        setTextoActualizacion(formatearUltimaActualizacionReporte(new Date()))
       })
       .catch((error) => {
         if (cancelado) return
@@ -70,6 +81,7 @@ export function useReporteApi({
         } else {
           setReporteApi(reporteViewVacio())
         }
+        setTextoActualizacion(formatearUltimaActualizacionReporte(new Date()))
       })
       .finally(() => {
         if (!cancelado) setCargando(false)
@@ -78,7 +90,13 @@ export function useReporteApi({
     return () => {
       cancelado = true
     }
-  }, [apiActiva, tipo, filtrosKey, cargar, mapear])
+    // Intencional: cargar/mapear vía ref para no re-disparar el fetch en cada render.
+  }, [apiActiva, tipo, filtrosKey])
 
-  return { reporteApi, cargando, desdeCache }
+  return {
+    reporteApi,
+    cargando,
+    desdeCache,
+    textoActualizacion: cargando ? "Actualizando…" : textoActualizacion,
+  }
 }

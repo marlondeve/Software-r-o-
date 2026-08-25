@@ -362,7 +362,7 @@ WHERE u.Identificacion IS NOT NULL
     UNION ALL
     SELECT @RolNutricionista, r.Ruta FROM (VALUES (1),(2),(3),(5),(6),(7),(8),(10),(30),(40),(41),(50),(60)) AS r(Ruta)
     UNION ALL
-    SELECT @RolProveedor, r.Ruta FROM (VALUES (10),(11),(12),(13),(20),(21),(40),(41)) AS r(Ruta)
+    SELECT @RolProveedor, r.Ruta FROM (VALUES (10),(11),(12),(13),(20),(21),(30),(40),(41)) AS r(Ruta)
     UNION ALL
     SELECT @RolEnfermera, r.Ruta FROM (VALUES (1),(20),(22),(40)) AS r(Ruta)
     UNION ALL

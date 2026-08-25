@@ -2,12 +2,14 @@ import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useEffect, useMemo, useState } from "react"
 import { useLocation } from "react-router-dom"
 
-import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CardGridSkeleton } from "@/components/shared/skeletons"
+import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
+import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { EtiquetaCard } from "@/modules/dietas-cocina/etiquetas/components/EtiquetaCard"
 import { EtiquetasFiltrosPanel } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasFiltrosPanel"
 import { EtiquetasKpiGrid } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasKpiGrid"
+import { EtiquetasProgresoDialog } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasProgresoDialog"
 import { EtiquetasToolbar } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasToolbar"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
@@ -27,8 +29,10 @@ import {
   filtrosDesdeKpiEtiqueta,
   type FiltrosEstadoEtiqueta,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEstilos"
-import { generarPdfEtiquetaIndividual, generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
-import { crearEtiquetaPruebaImpresion } from "@/modules/dietas-cocina/etiquetas/lib/crearEtiquetaPruebaImpresion"
+import {
+  imprimirEtiquetaPruebaPdf,
+  imprimirEtiquetasPdf,
+} from "@/modules/dietas-cocina/etiquetas/lib/imprimirEtiquetasPdf"
 import { devLog } from "@/lib/devLog"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { filtrarEtiquetasDelPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
@@ -161,6 +165,10 @@ export function EtiquetasProveedorView() {
     mostrarRecibidasEnfermeria,
   ])
 
+  const paginacionEtiquetas = usePaginacionTabla(etiquetasFiltradas, {
+    resetKey: `${comidaActiva}-${kpiActivo ?? ""}-${pabellon}-${habitacion}-${tipoDieta}-${JSON.stringify(filtrosEstado)}`,
+  })
+
   const idsVisibles = useMemo(
     () => new Set(etiquetasFiltradas.map((etiqueta) => etiqueta.id)),
     [etiquetasFiltradas],
@@ -195,9 +203,6 @@ export function EtiquetasProveedorView() {
     setComidaActiva(id)
     setSeleccionados(new Set())
     setKpiActivo(undefined)
-    if (apiActiva) {
-      rehidratarDesdeStorage()
-    }
   }
 
   function toggleEtiqueta(id: string, checked: boolean) {
@@ -222,6 +227,7 @@ export function EtiquetasProveedorView() {
   }
 
   async function reimprimirSeleccionadas() {
+    if (imprimiendo || reimprimiendo || imprimiendoPrueba) return
     const etiquetas = etiquetasFiltradas.filter(
       (etiqueta) =>
         seleccionados.has(etiqueta.id) && puedeReimprimirEtiqueta(etiqueta),
@@ -234,10 +240,11 @@ export function EtiquetasProveedorView() {
     setReimprimiendo(true)
     try {
       const fecha = new Date().toISOString().slice(0, 10)
-      await generarPdfEtiquetas(
+      await imprimirEtiquetasPdf({
         etiquetas,
-        `etiquetas-reimpresion-${comidaActiva}-${fecha}.pdf`,
-      )
+        nombreArchivo: `etiquetas-reimpresion-${comidaActiva}-${fecha}.pdf`,
+        usarApi: apiActiva,
+      })
       reimprimirEtiquetas(etiquetas.map((e) => e.id))
     } catch (error) {
       devLog.error("Error al reimprimir etiquetas:", error)
@@ -248,6 +255,7 @@ export function EtiquetasProveedorView() {
   }
 
   async function imprimirSeleccionadas() {
+    if (imprimiendo || reimprimiendo || imprimiendoPrueba) return
     const etiquetas = etiquetasFiltradas.filter(
       (etiqueta) =>
         seleccionados.has(etiqueta.id) && puedeImprimirEtiqueta(etiqueta),
@@ -262,10 +270,11 @@ export function EtiquetasProveedorView() {
     setImprimiendo(true)
     try {
       const fecha = new Date().toISOString().slice(0, 10)
-      await generarPdfEtiquetas(
+      await imprimirEtiquetasPdf({
         etiquetas,
-        `etiquetas-${comidaActiva}-${fecha}.pdf`,
-      )
+        nombreArchivo: `etiquetas-${comidaActiva}-${fecha}.pdf`,
+        usarApi: apiActiva,
+      })
       marcarEtiquetasImpresas(etiquetas.map((e) => e.id))
     } catch (error) {
       devLog.error("Error al generar PDF de etiquetas:", error)
@@ -277,11 +286,12 @@ export function EtiquetasProveedorView() {
     }
   }
 
-  /** Mismo pipeline que Imprimir: EtiquetaLabelFace → html2canvas → jsPDF. */
+  /** Misma plantilla térmica del servidor (o html2canvas en modo mock). */
   async function imprimirEtiquetaPrueba() {
+    if (imprimiendo || reimprimiendo || imprimiendoPrueba) return
     setImprimiendoPrueba(true)
     try {
-      await generarPdfEtiquetaIndividual(crearEtiquetaPruebaImpresion())
+      await imprimirEtiquetaPruebaPdf(apiActiva)
       demoToast("PDF de prueba generado (mismo layout que la impresión real).", "success")
     } catch (error) {
       devLog.error("Error al generar etiqueta de prueba:", error)
@@ -309,15 +319,6 @@ export function EtiquetasProveedorView() {
         kpiActivo={kpiActivo}
         onKpiClick={aplicarFiltroKpi}
       />
-
-      {apiActiva && (
-        <Alert>
-          <AlertDescription>
-            La impresión de etiquetas genera PDF en el navegador. El endpoint server-side
-            de PDF aún no está disponible en el API.
-          </AlertDescription>
-        </Alert>
-      )}
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <EtiquetasFiltrosPanel
@@ -367,8 +368,9 @@ export function EtiquetasProveedorView() {
               </p>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {etiquetasFiltradas.map((etiqueta) => (
+              {paginacionEtiquetas.filasPagina.map((etiqueta) => (
                 <EtiquetaCard
                   key={etiqueta.id}
                   etiqueta={etiqueta}
@@ -379,9 +381,31 @@ export function EtiquetasProveedorView() {
                 />
               ))}
             </div>
+            <TablaPaginacion
+              paginaDesde={paginacionEtiquetas.paginaDesde}
+              paginaHasta={paginacionEtiquetas.paginaHasta}
+              total={paginacionEtiquetas.total}
+              paginaActual={paginacionEtiquetas.paginaActual}
+              totalPaginas={paginacionEtiquetas.totalPaginas}
+              onCambiarPagina={paginacionEtiquetas.setPaginaActual}
+            />
+            </>
           )}
         </div>
       </div>
+      <EtiquetasProgresoDialog
+        open={imprimiendo || reimprimiendo || imprimiendoPrueba}
+        titulo={
+          imprimiendoPrueba
+            ? "Preparando PDF (1 etiqueta)…"
+            : `Preparando PDF (${imprimiendo || reimprimiendo ? seleccionadosVisibles : 0} etiquetas)…`
+        }
+        descripcion={
+          apiActiva
+            ? "El servidor está generando el archivo de impresión."
+            : "Generando el PDF en este dispositivo."
+        }
+      />
     </div>
   )
 }

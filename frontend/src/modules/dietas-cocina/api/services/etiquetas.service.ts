@@ -138,11 +138,37 @@ export async function subirFotoDevolucion(
   )
 }
 
-export async function descargarPdfEtiquetas(params?: Record<string, string>): Promise<Blob> {
-  const { data } = await apiClient.get<Blob>(buildDietasCocinaPath("/etiquetas/pdf"), {
-    params,
-    responseType: "blob",
-  })
+export async function descargarPdfEtiquetas(etiquetaIds: string[]): Promise<Blob> {
+  const { data } = await apiClient.post<Blob>(
+    buildDietasCocinaPath("/etiquetas/pdf"),
+    { etiquetaIds },
+    {
+      responseType: "blob",
+      timeout: 180_000,
+      headers: { Accept: "application/pdf" },
+    },
+  )
+  return asegurarBlobPdf(data)
+}
+
+export async function descargarPdfEtiquetaPrueba(): Promise<Blob> {
+  const { data } = await apiClient.post<Blob>(
+    buildDietasCocinaPath("/etiquetas/pdf-prueba"),
+    {},
+    {
+      responseType: "blob",
+      timeout: 60_000,
+      headers: { Accept: "application/pdf" },
+    },
+  )
+  return asegurarBlobPdf(data)
+}
+
+async function asegurarBlobPdf(data: Blob): Promise<Blob> {
+  if (data.type.includes("application/json")) {
+    const payload = JSON.parse(await data.text()) as { error?: string; message?: string }
+    throw new BitalApiError(payload.error ?? payload.message ?? "No se pudo generar el PDF")
+  }
   return data
 }
 

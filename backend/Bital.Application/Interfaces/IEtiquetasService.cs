@@ -83,4 +83,10 @@ public interface IEtiquetasService
     Task<byte[]> GenerarPdfEtiquetasAsync(
         IEnumerable<Guid> etiquetaIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// PDF de calibración con el mismo layout térmico (sin persistir etiqueta).
+    /// </summary>
+    Task<byte[]> GenerarPdfEtiquetaPruebaAsync(
+        CancellationToken cancellationToken = default);
 }

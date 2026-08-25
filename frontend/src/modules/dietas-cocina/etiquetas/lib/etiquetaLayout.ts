@@ -29,6 +29,9 @@ export const PDF_CAPTURA_DPI = 2400
 /** Resolución del QR fuente (debe cubrir la columna QR a PDF_CAPTURA_DPI). */
 export const ETIQUETA_QR_RESolucion = 8192
 
+/** QR de preview en pantalla (el de impresión sigue en ETIQUETA_QR_RESolucion). */
+export const ETIQUETA_QR_RESOLUCION_PANTALLA = 256
+
 /**
  * html2canvas aporta supersampling; el DOM se escala para que
  * DOM × html2canvas ≈ PDF_CAPTURA_DPI / 96.

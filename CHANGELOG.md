@@ -2,6 +2,37 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.5] — 2026-08-25
+
+### Añadido
+
+- PDF de etiquetas térmicas (168 × 88 mm) generado en servidor con QuestPDF + QR y logo; endpoints `POST /etiquetas/pdf` y `POST /etiquetas/pdf-prueba`.
+- Modal de progreso al generar/descargar PDF en Cocina e Impresión (modo API).
+- Seed de desarrollo para censo hospitalizado y órdenes listas para etiquetas (`DevSeedHospitalizadosCount`, endpoint `_test/seed-listas-para-etiquetas`).
+- Reportes de **producción** (Proveedor) y **clínicos** (Nutricionista): KPIs y gráficos de **costo de comida** por día, servicio y tiempo de comida (tarifas vigentes × raciones; cancelación tardía en costo por retrasos / canc. tardía).
+- Script `07-ProveedorConciliacionPermiso.sql` para BD ya instaladas (añade `ListarConciliacion` al Proveedor).
+- Ensure de permisos faltantes de roles de sistema al arrancar la API (`RolModuloDefaultsSeed`).
+
+### Cambiado
+
+- Versión de producto **1.2.5** (package.json, `Directory.Build.props`, `VITE_APP_VERSION`, docs).
+- Impresión/reimpresión en modo API usa el PDF del servidor; el mock sigue con html2canvas en cliente.
+- Timeout de generación PDF ampliado (Kestrel / IIS) para lotes grandes.
+- Censo hospitalario (`AtencionesQueryService`): consulta con CTE al ingreso activo más reciente por paciente, join de `TMPFAC` por `TmCtvIng`/`IngCsc` (ajustes de JuanTroaqueroDev).
+- Rol **Proveedor**: acceso de consulta a **Conciliación** (`ListarConciliacion`); seeds SQL `02` / `06` actualizados.
+- Reportes (producción y clínicos): layout por secciones (operación → calidad/volumen → costos), gráficas horizontales legibles, valores en **COP**, costos al final; filtro de fechas inicia en **hoy**.
+
+### Corregido
+
+- Trazabilidad en detalle de dieta: horas UTC del API se muestran en hora local (Colombia).
+- Sheet de detalle: deja de recargar (skeleton) en cada sync del censo (~15 s).
+- PDF: una página por etiqueta aunque dieta, consistencia u observaciones sean muy largas (`StopPaging` + `ClampLines`).
+- Filtro de atenciones activas del censo: incluye `INGATNACT IN (2, 3)` (antes solo `2`).
+- Reportes con API: vuelven a mostrarse costos (antes solo existían en mock).
+- Texto «Última actualización: Actualizando…» en reportes: ya no se queda pegado (fetch estabilizado en `useReporteApi`).
+- Tooltips y ejes de gráficas de costo: formato monetario legible (`$X.XXX,00 COP`) en lugar de números crudos.
+- Gráficas vacías (rechazos/recogidas): mensaje claro en lugar de ejes sin datos; etiquetas de comida/servicio sin solaparse.
+
 ## [1.2.4] — 2026-08-24
 
 ### Añadido
@@ -109,6 +140,7 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.5]: https://github.com/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/compare/v1.2.1...v1.2.3
 [1.2.1]: https://github.com/compare/v1.2.0...v1.2.1

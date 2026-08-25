@@ -25,7 +25,8 @@ import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasC
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
 import { COMIDAS_TABS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
-import { generarPdfEtiquetas } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
+import { EtiquetasProgresoDialog } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasProgresoDialog"
+import { imprimirEtiquetasPdf } from "@/modules/dietas-cocina/etiquetas/lib/imprimirEtiquetasPdf"
 import { RUTAS_LOGISTICA } from "@/modules/dietas-cocina/lib/rutasLogistica"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { BannerModuloSinConexion } from "@/modules/dietas-cocina/components/BannerModuloSinConexion"
@@ -87,6 +88,10 @@ export function CocinaProveedorView() {
   const [ordenDetalle, setOrdenDetalle] = useState<OrdenCocina | null>(null)
   const [detalleAbierto, setDetalleAbierto] = useState(false)
   const [ultimaActualizacion, setUltimaActualizacion] = useState(() => new Date())
+  const [progreso, setProgreso] = useState<{
+    titulo: string
+    descripcion: string
+  } | null>(null)
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim()
@@ -218,6 +223,7 @@ export function CocinaProveedorView() {
   }
 
   function generarEtiquetasSeleccionadas() {
+    if (progreso) return
     const ids = idsSeleccionados().filter((id) => {
       const orden = ordenes.find((o) => o.id === id)
       return orden && puedeGenerarEtiqueta(orden, getEtiquetaByOrdenId(id))
@@ -230,6 +236,10 @@ export function CocinaProveedorView() {
       return
     }
 
+    setProgreso({
+      titulo: "Generando etiquetas…",
+      descripcion: `Creando registros para ${ids.length} bandeja${ids.length === 1 ? "" : "s"}.`,
+    })
     void generarEtiquetas(ids)
       .then((etiquetaIds) => {
         if (etiquetaIds.length === 0) {
@@ -248,19 +258,26 @@ export function CocinaProveedorView() {
           "error",
         )
       })
+      .finally(() => setProgreso(null))
   }
 
   async function imprimirEtiqueta(orden: OrdenCocina) {
+    if (progreso) return
     const etiqueta = getEtiquetaByOrdenId(orden.id)
     const etiquetaId = orden.etiquetaId ?? etiqueta?.id
 
     if (etiqueta) {
+      setProgreso({
+        titulo: "Preparando PDF (1 etiqueta)…",
+        descripcion: "El servidor está generando el archivo de impresión.",
+      })
       try {
         const fecha = new Date().toISOString().slice(0, 10)
-        await generarPdfEtiquetas(
-          [etiqueta],
-          `etiquetas-${orden.comida}-${fecha}.pdf`,
-        )
+        await imprimirEtiquetasPdf({
+          etiquetas: [etiqueta],
+          nombreArchivo: `etiquetas-${orden.comida}-${fecha}.pdf`,
+          usarApi: apiActiva,
+        })
         marcarEtiquetasImpresas([etiqueta.id])
         demoToast("Etiqueta impresa. Ya puedes registrar el despacho.", "success")
       } catch (error) {
@@ -270,6 +287,8 @@ export function CocinaProveedorView() {
             : "No se pudo generar el PDF de la etiqueta.",
           "error",
         )
+      } finally {
+        setProgreso(null)
       }
       return
     }
@@ -281,6 +300,10 @@ export function CocinaProveedorView() {
       return
     }
 
+    setProgreso({
+      titulo: "Generando etiquetas…",
+      descripcion: "Creando el registro de la etiqueta para esta bandeja.",
+    })
     void generarEtiquetas([orden.id])
       .then((ids) => {
         if (ids.length === 0) {
@@ -299,6 +322,7 @@ export function CocinaProveedorView() {
           "error",
         )
       })
+      .finally(() => setProgreso(null))
   }
 
   return (
@@ -335,7 +359,7 @@ export function CocinaProveedorView() {
             <FileText data-icon="inline-start" />
             Generar reporte
           </Button>
-          <Button type="button" size="sm" onClick={generarEtiquetasSeleccionadas}>
+          <Button type="button" size="sm" onClick={generarEtiquetasSeleccionadas} disabled={progreso != null}>
             <Tag data-icon="inline-start" />
             Generar etiquetas
           </Button>
@@ -435,6 +459,11 @@ export function CocinaProveedorView() {
         onChecklistChange={actualizarChecklist}
         onSincronizarChecklist={sincronizarChecklistOrden}
         getEtiquetaByOrdenId={getEtiquetaByOrdenId}
+      />
+      <EtiquetasProgresoDialog
+        open={progreso != null}
+        titulo={progreso?.titulo ?? "Procesando…"}
+        descripcion={progreso?.descripcion}
       />
         </>
       )}

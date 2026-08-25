@@ -27,6 +27,12 @@ import { obtenerReporteProveedor } from "@/modules/dietas-cocina/api/services/re
 import { REPORTES_FILTROS_UI } from "@/modules/dietas-cocina/config/reportes-ui"
 import { useReporteApi } from "@/modules/dietas-cocina/reportes/hooks/useReporteApi"
 
+function SeccionTitulo({ children }: { children: string }) {
+  return (
+    <h2 className="text-sm font-semibold tracking-tight text-foreground">{children}</h2>
+  )
+}
+
 export function ReportesProveedorView() {
   const base = mockReportesProveedor
   const { ordenes, etiquetas } = useCicloBandejas()
@@ -51,7 +57,12 @@ export function ReportesProveedorView() {
     [filtros],
   )
 
-  const { reporteApi, cargando, desdeCache } = useReporteApi({
+  const mapearReporte = useCallback(
+    (resp: unknown) => mapReporteDto(resp as Parameters<typeof mapReporteDto>[0]),
+    [],
+  )
+
+  const { reporteApi, cargando, desdeCache, textoActualizacion } = useReporteApi({
     tipo: "produccion",
     apiActiva,
     filtros: {
@@ -61,7 +72,7 @@ export function ReportesProveedorView() {
       horario: filtros.horario !== "todos" ? filtros.horario : undefined,
     },
     cargar: cargarReporte,
-    mapear: (resp) => mapReporteDto(resp as Parameters<typeof mapReporteDto>[0]),
+    mapear: mapearReporte,
   })
 
   const dataCiclo = useMemo(
@@ -75,21 +86,14 @@ export function ReportesProveedorView() {
     return reporteApi ?? dataCiclo
   }, [apiActiva, reporteApi, dataCiclo, estaOnline])
 
-  const subtituloActualizacion = useMemo(
-    () =>
-      apiActiva
-        ? cargando
-          ? "Actualizando…"
-          : formatearUltimaActualizacionReporte(new Date())
-        : formatearUltimaActualizacionReporte(new Date()),
-    [apiActiva, cargando],
-  )
+  const volumenComida =
+    "distribucionTurno" in data ? data.distribucionTurno : data.distribucionServicio
 
   return (
     <div className="space-y-5">
       <DashboardPageHeader
         title="Reportes de producción"
-        subtitle="Analítica operativa de planta y despacho."
+        subtitle="Analítica operativa y costo de comida por día, servicio y tiempo de comida."
       />
       <BannerModuloSinConexion datosEnCache={desdeCache || !estaOnline} />
 
@@ -97,7 +101,11 @@ export function ReportesProveedorView() {
         {...(apiActiva ? REPORTES_FILTROS_UI : base.filtros)}
         filtros={filtros}
         serviciosDisponibles={serviciosDisponibles}
-        ultimaActualizacion={subtituloActualizacion}
+        ultimaActualizacion={
+          apiActiva
+            ? textoActualizacion
+            : formatearUltimaActualizacionReporte(new Date())
+        }
         onFiltrosChange={setFiltros}
       />
 
@@ -105,92 +113,141 @@ export function ReportesProveedorView() {
         loading={apiActiva && estaOnline && cargando && !reporteApi}
         skeleton={<ReportesPageSkeleton />}
       >
-      <ReportesKpiGrid kpis={data.kpis} />
+        <ReportesKpiGrid kpis={data.kpis} />
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <div className="space-y-4 xl:col-span-2">
-          <LogisticaTimeline
-            hitos={data.hitos}
-            titulo="Tiempos por hito de producción"
-          />
+        <div className="grid gap-4 xl:grid-cols-3">
+          <div className="space-y-5 xl:col-span-2">
+            <section className="space-y-3">
+              <SeccionTitulo>Operación</SeccionTitulo>
+              <LogisticaTimeline
+                hitos={data.hitos}
+                titulo="Tiempos por hito de producción"
+              />
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card className="gap-0 py-0 shadow-none">
+                  <CardHeader className="border-b py-3">
+                    <CardTitle className="text-sm font-semibold">
+                      Estado de órdenes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-4">
+                    <DonutChart
+                      segments={data.estadoDietas.segmentos}
+                      total={data.estadoDietas.totalNumerico}
+                      totalDisplay={data.estadoDietas.total}
+                      totalLabel="TOTAL"
+                    />
+                  </CardContent>
+                </Card>
 
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="gap-0 py-0 shadow-none">
-              <CardHeader className="border-b py-3">
-                <CardTitle className="text-sm font-semibold">
-                  Estado de órdenes
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-4">
-                <DonutChart
-                  segments={data.estadoDietas.segmentos}
-                  total={data.estadoDietas.totalNumerico}
-                  totalDisplay={data.estadoDietas.total}
-                  totalLabel="TOTAL"
-                />
-              </CardContent>
-            </Card>
+                <Card className="gap-0 py-0 shadow-none">
+                  <CardHeader className="border-b py-3">
+                    <CardTitle className="text-sm font-semibold">
+                      Tipos de dieta producidos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-4">
+                    <HorizontalBarChart items={data.tiposDieta} />
+                  </CardContent>
+                </Card>
+              </div>
+            </section>
 
-            <Card className="gap-0 py-0 shadow-none">
-              <CardHeader className="border-b py-3">
-                <CardTitle className="text-sm font-semibold">
-                  Tipos de dieta producidos
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-4">
-                <HorizontalBarChart items={data.tiposDieta} />
-              </CardContent>
-            </Card>
+            <section className="space-y-3">
+              <SeccionTitulo>Calidad y volumen</SeccionTitulo>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Card className="gap-0 py-0 shadow-none">
+                  <CardHeader className="border-b py-3">
+                    <CardTitle className="text-sm font-semibold">
+                      Rechazos antes de entrega (Top 3)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-4">
+                    <HorizontalBarChart
+                      items={data.motivosDevolucion}
+                      vacioMensaje="Sin rechazos en el período"
+                    />
+                  </CardContent>
+                </Card>
+
+                <Card className="gap-0 py-0 shadow-none">
+                  <CardHeader className="border-b py-3">
+                    <CardTitle className="text-sm font-semibold">
+                      Recogidas de bandeja (Top 3)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-4">
+                    <HorizontalBarChart
+                      items={data.motivosRecogida}
+                      vacioMensaje="Sin recogidas en el período"
+                    />
+                  </CardContent>
+                </Card>
+
+                {data.mostrarDistribucionTurno ? (
+                  <Card className="gap-0 py-0 shadow-none lg:col-span-2">
+                    <CardHeader className="border-b py-3">
+                      <CardTitle className="text-sm font-semibold">
+                        Volumen por comida
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-4">
+                      <HorizontalBarChart items={volumenComida} />
+                    </CardContent>
+                  </Card>
+                ) : null}
+              </div>
+            </section>
           </div>
 
-          <div
-            className={`grid gap-4 ${data.mostrarDistribucionTurno ? "lg:grid-cols-3" : "lg:grid-cols-2"}`}
-          >
-            <Card className="gap-0 py-0 shadow-none">
-              <CardHeader className="border-b py-3">
-                <CardTitle className="text-sm font-semibold">
-                  Rechazos antes de entrega (Top 3)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-4">
-                <VerticalBarChart items={data.motivosDevolucion} />
-              </CardContent>
-            </Card>
+          <HallazgosPanel hallazgos={data.hallazgos} titulo="Alertas operativas" />
+        </div>
 
-            <Card className="gap-0 py-0 shadow-none">
-              <CardHeader className="border-b py-3">
-                <CardTitle className="text-sm font-semibold">
-                  Recogidas de bandeja (Top 3)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="py-4">
-                <VerticalBarChart items={data.motivosRecogida} />
-              </CardContent>
-            </Card>
-
-            {data.mostrarDistribucionTurno && (
+        {"mostrarCostos" in data && data.mostrarCostos ? (
+          <section className="space-y-3">
+            <SeccionTitulo>Costos (COP)</SeccionTitulo>
+            <div className="grid gap-4 lg:grid-cols-3">
               <Card className="gap-0 py-0 shadow-none">
                 <CardHeader className="border-b py-3">
-                  <CardTitle className="text-sm font-semibold">
-                    Volumen por comida
-                  </CardTitle>
+                  <CardTitle className="text-sm font-semibold">Costo por día</CardTitle>
                 </CardHeader>
                 <CardContent className="py-4">
                   <VerticalBarChart
-                    items={
-                      "distribucionTurno" in data
-                        ? data.distribucionTurno
-                        : data.distribucionServicio
-                    }
+                    items={data.costoPorDia}
+                    formatoValor="moneda"
+                    preferirHorizontalSiMuchas={false}
                   />
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </div>
-
-        <HallazgosPanel hallazgos={data.hallazgos} titulo="Alertas operativas" />
-      </div>
+              <Card className="gap-0 py-0 shadow-none">
+                <CardHeader className="border-b py-3">
+                  <CardTitle className="text-sm font-semibold">
+                    Costo por servicio
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="py-4">
+                  <HorizontalBarChart
+                    items={data.costoPorServicio}
+                    formatoValor="moneda"
+                  />
+                </CardContent>
+              </Card>
+              <Card className="gap-0 py-0 shadow-none">
+                <CardHeader className="border-b py-3">
+                  <CardTitle className="text-sm font-semibold">
+                    Costo por comida
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="py-4">
+                  <HorizontalBarChart
+                    items={data.costoPorComida}
+                    formatoValor="moneda"
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+        ) : null}
       </PageLoadingGate>
     </div>
   )
