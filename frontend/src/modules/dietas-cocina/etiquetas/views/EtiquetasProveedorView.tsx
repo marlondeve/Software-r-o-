@@ -12,7 +12,12 @@ import { EtiquetasKpiGrid } from "@/modules/dietas-cocina/etiquetas/components/E
 import { EtiquetasProgresoDialog } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasProgresoDialog"
 import { EtiquetasToolbar } from "@/modules/dietas-cocina/etiquetas/components/EtiquetasToolbar"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import {
+  clasificarEtiquetaRespectoCenso,
+  etiquetaEnFlujoCenso,
+} from "@/modules/dietas-cocina/lib/clasificarEtiquetaCenso"
 import {
   COMIDAS_OPERATIVAS,
   obtenerComidaActivaOperativa,
@@ -58,6 +63,7 @@ export function EtiquetasProveedorView() {
   const location = useLocation()
   const { etiquetas: etiquetasLogistica, marcarEtiquetasImpresas, reimprimirEtiquetas, rehidratarDesdeStorage, hidrato } =
     useCicloBandejas()
+  const { filas } = useDietasOperativas()
   const [comidaActiva, setComidaActiva] = useState<TiempoComida>(() =>
     apiActiva ? obtenerComidaActivaOperativa() : data.comidaActiva,
   )
@@ -86,6 +92,7 @@ export function EtiquetasProveedorView() {
   }, [location.state])
 
   const mostrarRecibidasEnfermeria = kpiActivo === "recibidas-enfermeria"
+  const mostrarFueraFlujo = kpiActivo === "fuera-flujo"
 
   const etiquetasOperativas = useMemo(
     () =>
@@ -95,15 +102,38 @@ export function EtiquetasProveedorView() {
     [etiquetasLogistica, comidaActiva],
   )
 
+  const clasificacionPorId = useMemo(() => {
+    const mapa = new Map<
+      string,
+      ReturnType<typeof clasificarEtiquetaRespectoCenso>
+    >()
+    for (const etiqueta of etiquetasOperativas) {
+      mapa.set(etiqueta.id, clasificarEtiquetaRespectoCenso(etiqueta, filas))
+    }
+    return mapa
+  }, [etiquetasOperativas, filas])
+
   const etiquetasEnCocina = useMemo(
     () =>
       etiquetasOperativas.filter((etiqueta) => {
-        if (mostrarRecibidasEnfermeria) {
-          return etiquetaRecibidaEnfermeria(etiqueta.estadoLogistica)
+        if (mostrarFueraFlujo) {
+          return !etiquetaEnFlujoCenso(etiqueta, filas)
         }
+        if (mostrarRecibidasEnfermeria) {
+          return (
+            etiquetaEnFlujoCenso(etiqueta, filas) &&
+            etiquetaRecibidaEnfermeria(etiqueta.estadoLogistica)
+          )
+        }
+        // Listado completo del turno (incluye fuera de censo); no se ocultan.
         return !etiquetaFueraDeFlujoProveedor(etiqueta.estadoLogistica)
       }),
-    [etiquetasOperativas, mostrarRecibidasEnfermeria],
+    [
+      etiquetasOperativas,
+      mostrarRecibidasEnfermeria,
+      mostrarFueraFlujo,
+      filas,
+    ],
   )
 
   const pabellonesDisponibles = useMemo(
@@ -141,13 +171,16 @@ export function EtiquetasProveedorView() {
   }, [tiposDietaDisponibles, tipoDieta])
 
   const kpisConLogistica = useMemo(
-    () => calcularKpisEtiquetasProveedor(etiquetasOperativas, comidaActiva),
-    [etiquetasOperativas, comidaActiva],
+    () =>
+      calcularKpisEtiquetasProveedor(etiquetasOperativas, comidaActiva, {
+        esEnFlujoCenso: (etiqueta) => etiquetaEnFlujoCenso(etiqueta, filas),
+      }),
+    [etiquetasOperativas, comidaActiva, filas],
   )
 
   const etiquetasFiltradas = useMemo(() => {
     return etiquetasEnCocina.filter((etiqueta) => {
-      if (mostrarRecibidasEnfermeria) {
+      if (mostrarFueraFlujo || mostrarRecibidasEnfermeria) {
         return etiquetaCoincideFiltros(etiqueta, pabellon, habitacion, tipoDieta)
       }
       if (!etiquetaCoincideEstados(etiqueta, filtrosEstado)) return false
@@ -163,10 +196,11 @@ export function EtiquetasProveedorView() {
     habitacion,
     tipoDieta,
     mostrarRecibidasEnfermeria,
+    mostrarFueraFlujo,
   ])
 
   const paginacionEtiquetas = usePaginacionTabla(etiquetasFiltradas, {
-    resetKey: `${comidaActiva}-${kpiActivo ?? ""}-${pabellon}-${habitacion}-${tipoDieta}-${JSON.stringify(filtrosEstado)}`,
+    resetKey: `${comidaActiva}-${kpiActivo ?? ""}-${pabellon}-${habitacion}-${tipoDieta}-${JSON.stringify(filtrosEstado)}-${mostrarFueraFlujo}`,
   })
 
   const idsVisibles = useMemo(
@@ -362,24 +396,43 @@ export function EtiquetasProveedorView() {
                 No hay etiquetas para este turno
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
-                {mostrarRecibidasEnfermeria
-                  ? "No hay etiquetas recibidas por enfermería para este tiempo de comida."
-                  : "Ajusta los filtros o cambia el tiempo de comida. Para ver las ya entregadas, pulsa el KPI Recibidas Enfermería."}
+                {mostrarFueraFlujo
+                  ? "No hay etiquetas fuera de flujo (canceladas o egresos) en este turno."
+                  : mostrarRecibidasEnfermeria
+                    ? "No hay etiquetas recibidas por enfermería para este tiempo de comida."
+                    : "Ajusta los filtros o cambia el tiempo de comida. Para ver las ya entregadas, pulsa el KPI Recibidas Enfermería."}
               </p>
             </div>
           ) : (
             <>
+            {filas.length > 0 &&
+              etiquetasOperativas.some((e) => !etiquetaEnFlujoCenso(e, filas)) &&
+              !mostrarFueraFlujo && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-950">
+                  Los KPIs cuentan solo dietas activas del censo (como Cocina).
+                  Las etiquetas de egresos o canceladas siguen visibles con
+                  distintivo y en el KPI «Fuera de flujo».
+                </p>
+              )}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              {paginacionEtiquetas.filasPagina.map((etiqueta) => (
-                <EtiquetaCard
-                  key={etiqueta.id}
-                  etiqueta={etiqueta}
-                  seleccionada={seleccionados.has(etiqueta.id)}
-                  onSeleccionChange={(checked) =>
-                    toggleEtiqueta(etiqueta.id, checked)
-                  }
-                />
-              ))}
+              {paginacionEtiquetas.filasPagina.map((etiqueta) => {
+                const clasificacion = clasificacionPorId.get(etiqueta.id)
+                return (
+                  <EtiquetaCard
+                    key={etiqueta.id}
+                    etiqueta={etiqueta}
+                    seleccionada={seleccionados.has(etiqueta.id)}
+                    motivoFueraFlujo={
+                      clasificacion && !clasificacion.enFlujo
+                        ? clasificacion.motivo
+                        : undefined
+                    }
+                    onSeleccionChange={(checked) =>
+                      toggleEtiqueta(etiqueta.id, checked)
+                    }
+                  />
+                )
+              })}
             </div>
             <TablaPaginacion
               paginaDesde={paginacionEtiquetas.paginaDesde}

@@ -6,6 +6,10 @@ import type {
   ReportesKpi,
   ReportesSegmento,
 } from "@/modules/dietas-cocina/types/reports"
+import {
+  formatearDuracionHhMm,
+  normalizarTiempoHitoAHhMm,
+} from "@/modules/dietas-cocina/reportes/lib/formatearDuracionHhMm"
 
 interface ReportesBase {
   kpis: ReportesKpi[]
@@ -19,6 +23,16 @@ interface ReportesBase {
 
 function parseNumero(valor: string): number {
   return Number.parseFloat(valor.replace(/[^0-9.-]/g, "")) || 0
+}
+
+/** Interpreta "01:35" o "95 min" como minutos totales. */
+function parseMinutosDesdeTiempo(valor: string): number {
+  const normalizado = normalizarTiempoHitoAHhMm(valor)
+  const hhmm = normalizado.match(/^(\d+):([0-5]\d)$/)
+  if (hhmm) {
+    return Number.parseInt(hhmm[1], 10) * 60 + Number.parseInt(hhmm[2], 10)
+  }
+  return parseNumero(valor)
 }
 
 function formatearEntero(n: number): string {
@@ -130,9 +144,9 @@ export function aplicarFiltrosReportes<T extends ReportesBase>(
   const totalNumerico = segmentos.reduce((sum, s) => sum + s.value, 0)
 
   const hitos = data.hitos.map((hito) => {
-    const minutos = parseNumero(hito.tiempo)
+    const minutos = parseMinutosDesdeTiempo(hito.tiempo)
     const ajustado = Math.max(1, Math.round(minutos * (2 - factor * 0.5)))
-    return { ...hito, tiempo: `${ajustado} min` }
+    return { ...hito, tiempo: formatearDuracionHhMm(ajustado) }
   })
 
   return {

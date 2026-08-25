@@ -1,4 +1,6 @@
 import type { EtiquetaDieta } from "@/modules/dietas-cocina/types/labels"
+import type { MotivoFueraFlujoEtiqueta } from "@/modules/dietas-cocina/lib/clasificarEtiquetaCenso"
+import { etiquetaFueraFlujoCensoLabel } from "@/modules/dietas-cocina/lib/clasificarEtiquetaCenso"
 import { useEffect, useState } from "react"
 import QRCode from "qrcode"
 import { Check } from "lucide-react"
@@ -12,12 +14,15 @@ interface EtiquetaCardProps {
   etiqueta: EtiquetaDieta
   seleccionada: boolean
   onSeleccionChange: (checked: boolean) => void
+  /** Presente cuando la etiqueta ya no cuenta en el flujo operativo (sigue visible). */
+  motivoFueraFlujo?: MotivoFueraFlujoEtiqueta
 }
 
 export function EtiquetaCard({
   etiqueta,
   seleccionada,
   onSeleccionChange,
+  motivoFueraFlujo,
 }: EtiquetaCardProps) {
   const [qrSrc, setQrSrc] = useState<string>("")
 
@@ -42,6 +47,7 @@ export function EtiquetaCard({
   }
 
   const { ancho: anchoPantalla } = dimensionesEtiquetaPantalla()
+  const fueraFlujo = Boolean(motivoFueraFlujo)
 
   return (
     <button
@@ -53,6 +59,7 @@ export function EtiquetaCard({
         "group relative mx-auto block w-full text-left",
         "transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         seleccionada ? "scale-[1.01]" : "hover:scale-[1.005]",
+        fueraFlujo && "opacity-90",
       )}
       style={{ maxWidth: anchoPantalla }}
     >
@@ -63,12 +70,24 @@ export function EtiquetaCard({
         </span>
       )}
 
+      {fueraFlujo && (
+        <span
+          className={cn(
+            "absolute right-2 z-10 rounded-md border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-900 shadow-sm",
+            seleccionada ? "top-6" : "top-2",
+          )}
+        >
+          {etiquetaFueraFlujoCensoLabel(motivoFueraFlujo)}
+        </span>
+      )}
+
       <div
         className={cn(
           "rounded-lg transition-all",
           seleccionada
             ? "pt-5 shadow-md ring-2 ring-primary/25"
             : "group-hover:shadow-md",
+          fueraFlujo && "ring-1 ring-amber-200/80",
         )}
       >
         <EtiquetaLabelFace etiqueta={etiqueta} qrSrc={qrSrc} />

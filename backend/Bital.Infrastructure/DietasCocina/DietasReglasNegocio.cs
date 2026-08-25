@@ -47,6 +47,38 @@ internal static class DietasReglasNegocio
         && !string.IsNullOrWhiteSpace(rolUsuario)
         && RolesCancelarTardia.Contains(NormalizarRol(rolUsuario));
 
+    /// <summary>
+    /// Estados que aún no son terminales: al egresar del HIS se cancelan para no preparar ni etiquetar.
+    /// </summary>
+    private static readonly HashSet<EstadoDieta> EstadosCancelarPorEgreso =
+    [
+        EstadoDieta.Pendiente,
+        EstadoDieta.Guardado,
+        EstadoDieta.Solicitada,
+        EstadoDieta.Confirmada,
+        EstadoDieta.EnPreparacion,
+        EstadoDieta.ListaEnvio,
+        EstadoDieta.EnRuta,
+    ];
+
+    internal static bool DebeCancelarPorEgreso(EstadoDieta estado) =>
+        EstadosCancelarPorEgreso.Contains(estado);
+
+    /// <summary>
+    /// Solo dietas activas en censo (no canceladas / no terminales de consumo) pueden generar etiqueta.
+    /// </summary>
+    private static readonly HashSet<EstadoDieta> EstadosAptosParaEtiqueta =
+    [
+        EstadoDieta.Confirmada,
+        EstadoDieta.EnPreparacion,
+        EstadoDieta.ListaEnvio,
+        EstadoDieta.EnRuta,
+        EstadoDieta.Entregada,
+    ];
+
+    internal static bool PermiteGenerarEtiqueta(EstadoDieta estado) =>
+        EstadosAptosParaEtiqueta.Contains(estado);
+
     internal static bool EsMerienda(TiempoComida comida) =>
         comida is TiempoComida.MediaNueve or TiempoComida.Onces or TiempoComida.MediaNoche;
 

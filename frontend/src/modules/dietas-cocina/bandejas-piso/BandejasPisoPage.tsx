@@ -35,10 +35,13 @@ function BandejasPisoPageContent() {
     mensaje,
     kpis,
     pendientesEntrega,
+    pendientesEntregaFueraFlujo,
+    clasificacionPorId,
   } = useEtiquetasOperativas()
 
   const kpisPiso = kpis.filter((kpi) => {
     if (kpi.id === "pendientes-entrega") return true
+    if (kpi.id === "fuera-flujo") return true
     if (kpi.id === "recogidas") {
       return puedeCapacidadEtiquetas(rol, "recogida_bandeja")
     }
@@ -106,8 +109,20 @@ function BandejasPisoPageContent() {
             asignados (entrega, rechazo o recogida).
           </p>
         )}
-        {pendientesEntrega.length > 0 && (
-          <ListadoBandejasRecibidasEnPiso bandejas={pendientesEntrega} />
+        {(pendientesEntrega.length > 0 ||
+          pendientesEntregaFueraFlujo.length > 0) && (
+          <ListadoBandejasRecibidasEnPiso
+            bandejas={pendientesEntrega}
+            bandejasFueraFlujo={pendientesEntregaFueraFlujo}
+            motivoFueraFlujoPorId={
+              new Map(
+                [...clasificacionPorId.entries()].map(([id, c]) => [
+                  id,
+                  c.motivo,
+                ]),
+              )
+            }
+          />
         )}
       </section>
     </div>

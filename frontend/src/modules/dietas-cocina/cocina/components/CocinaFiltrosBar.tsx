@@ -1,4 +1,3 @@
-import type { EstadoCocina } from "@/modules/dietas-cocina/types/enums"
 import { Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -12,26 +11,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  labelEstadoCocina,
-} from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
+import { labelEstadoCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
 import type { FiltrosCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaFiltros"
 import type { FiltroSeguimientoCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
+
 interface CocinaFiltrosBarProps {
   filtros: FiltrosCocina
   pabellones: string[]
   habitaciones: string[]
   tiposDieta: string[]
   consistencias: string[]
-  estadosCocina: string[]
   onChange: (filtros: FiltrosCocina) => void
   onLimpiar: () => void
 }
 
-const ESTADOS_FILTRO: EstadoCocina[] = [
-  "en_preparacion",
-  "lista",
-  "despachada",
+/** Una sola opción «En gestión» (cubre por_iniciar + en_preparacion). */
+const ESTADOS_FILTRO: { value: string; label: string }[] = [
+  { value: "Todos", label: "Todos" },
+  { value: "en_preparacion", label: labelEstadoCocina("en_preparacion") },
+  { value: "lista", label: labelEstadoCocina("lista") },
+  { value: "despachada", label: labelEstadoCocina("despachada") },
 ]
 
 const SEGUIMIENTO_FILTRO: { value: FiltroSeguimientoCocina; label: string }[] = [
@@ -49,7 +48,6 @@ export function CocinaFiltrosBar({
   habitaciones,
   tiposDieta,
   consistencias,
-  estadosCocina,
   onChange,
   onLimpiar,
 }: CocinaFiltrosBarProps) {
@@ -139,27 +137,27 @@ export function CocinaFiltrosBar({
         <div className="min-w-32.5 flex-1 space-y-1.5">
           <Label className="text-xs text-muted-foreground">Estado cocina</Label>
           <Select
-            value={filtros.estadoCocina}
+            value={
+              filtros.estadoCocina === "por_iniciar"
+                ? "en_preparacion"
+                : filtros.estadoCocina
+            }
             onValueChange={(v) => actualizar({ estadoCocina: v })}
           >
             <SelectTrigger className="h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {estadosCocina.map((e) => (
-                <SelectItem key={e} value={e}>
-                  {e === "Todos"
-                    ? "Todos"
-                    : labelEstadoCocina(e as EstadoCocina)}
+              {ESTADOS_FILTRO.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
                 </SelectItem>
               ))}
-              {ESTADOS_FILTRO.filter(
-                (e) => !estadosCocina.includes(e),
-              ).map((e) => (
-                <SelectItem key={e} value={e}>
-                  {labelEstadoCocina(e)}
+              {filtros.estadoCocina === "cancelada" ? (
+                <SelectItem value="cancelada">
+                  {labelEstadoCocina("cancelada")}
                 </SelectItem>
-              ))}
+              ) : null}
             </SelectContent>
           </Select>
         </div>

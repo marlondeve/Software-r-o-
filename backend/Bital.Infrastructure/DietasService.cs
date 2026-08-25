@@ -64,6 +64,12 @@ public class DietasService : IDietasService
 
         if (!censoPacientes.Any())
         {
+            // Censo vacío suele ser indisponibilidad del HIS, no un alta masiva:
+            // no se cancelan dietas para no perder el turno completo.
+            _logger.LogWarning(
+                "Censo HIS vacío para {Fecha} {Comida}: se omite la cancelación por egreso",
+                fecha, comida);
+
             return new CensoDietasDto
             {
                 FechaOperativa = fecha,
@@ -129,15 +135,104 @@ public class DietasService : IDietasService
             resultado.Filas.Add(MapearADto(filaExistente));
         }
 
-        // 4. Guardar nuevas filas
+        // 4. Pacientes egresados: cancelar dietas activas y órdenes de cocina no completadas
+        var pacienteIdsEnCenso = censoPacientes
+            .Select(p => $"{p.TipoDocumento}-{p.Cedula}")
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        await CancelarDietasPorEgresoAsync(
+            fecha.Date,
+            tiempoComida,
+            pacienteIdsEnCenso,
+            filasExistentes,
+            cancellationToken);
+
+        // 5. Guardar nuevas filas y cancelaciones por egreso
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 5. Calcular estadísticas
+        // 6. Calcular estadísticas
         resultado.DietasSolicitadas = resultado.Filas.Count(f => f.Estado != "Pendiente");
         resultado.DietasPendientes = resultado.Filas.Count(f => f.Estado == "Pendiente");
         resultado.DietasConfirmadas = resultado.Filas.Count(f => f.Estado == "Confirmada");
 
         return resultado;
+    }
+
+    /// <summary>
+    /// Cancela dietas (y órdenes no completadas) de pacientes que ya no están en el censo HIS.
+    /// </summary>
+    private async Task CancelarDietasPorEgresoAsync(
+        DateTime fechaOperativa,
+        TiempoComida tiempoComida,
+        HashSet<string> pacienteIdsEnCenso,
+        List<FilaDieta> filasExistentes,
+        CancellationToken cancellationToken)
+    {
+        var egresadas = filasExistentes
+            .Where(f =>
+                !pacienteIdsEnCenso.Contains(f.PacienteId)
+                && DietasReglasNegocio.DebeCancelarPorEgreso(f.Estado))
+            .ToList();
+
+        if (egresadas.Count == 0) return;
+
+        var ordenIds = egresadas
+            .Where(f => f.OrdenCocinaId.HasValue)
+            .Select(f => f.OrdenCocinaId!.Value)
+            .Distinct()
+            .ToList();
+
+        var ordenes = ordenIds.Count == 0
+            ? new List<OrdenCocina>()
+            : await _context.OrdenesCocina
+                .Where(o => ordenIds.Contains(o.Id))
+                .ToListAsync(cancellationToken);
+
+        var ordenesPorId = ordenes.ToDictionary(o => o.Id);
+        var ahora = DateTime.UtcNow;
+
+        foreach (var fila in egresadas)
+        {
+            var estadoAnterior = fila.Estado;
+            fila.Estado = EstadoDieta.Cancelada;
+            fila.CancelacionTardia = estadoAnterior is EstadoDieta.Confirmada
+                or EstadoDieta.EnPreparacion
+                or EstadoDieta.ListaEnvio
+                or EstadoDieta.EnRuta;
+            fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
+                ? "Cancelada automáticamente: paciente egresado del censo"
+                : $"{fila.Observaciones}\nCancelada automáticamente: paciente egresado del censo";
+            fila.ModificadoPor = "Sistema";
+            fila.ModificadoEn = ahora;
+
+            _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+            {
+                Id = Guid.NewGuid(),
+                FilaDietaId = fila.Id,
+                TipoEvento = "dieta_cancelada_egreso",
+                Descripcion = "Dieta cancelada automáticamente por egreso del paciente",
+                EstadoAnterior = estadoAnterior,
+                EstadoNuevo = EstadoDieta.Cancelada,
+                Usuario = "Sistema",
+                FechaEvento = ahora,
+                DatosAdicionales = $"PacienteId: {fila.PacienteId}"
+            });
+
+            if (fila.OrdenCocinaId.HasValue
+                && ordenesPorId.TryGetValue(fila.OrdenCocinaId.Value, out var orden)
+                && !string.Equals(orden.Estado, "Completada", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(orden.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+            {
+                orden.Estado = "Cancelada";
+                orden.Observaciones = string.IsNullOrWhiteSpace(orden.Observaciones)
+                    ? "Cancelada automáticamente: paciente egresado del censo"
+                    : $"{orden.Observaciones}\n[{ahora:yyyy-MM-dd HH:mm}] Cancelada automáticamente: paciente egresado del censo";
+            }
+        }
+
+        _logger.LogInformation(
+            "Canceladas {Count} dietas por egreso en censo {Fecha} {Comida}",
+            egresadas.Count, fechaOperativa, tiempoComida);
     }
 
     public async Task<List<FilaDietaDto>> ObtenerDietasPacienteAsync(string pacienteId, DateTime fecha, CancellationToken cancellationToken = default)

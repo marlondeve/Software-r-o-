@@ -7,6 +7,7 @@ import {
   colorMotivoRechazoPorIndice,
   colorMotivoRecogidaPorIndice,
 } from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
+import { normalizarTiempoHitoAHhMm } from "@/modules/dietas-cocina/reportes/lib/formatearDuracionHhMm"
 
 type Segmento = { label: string; value: number; color: string }
 type BarItem = { label: string; value: number; color: string }
@@ -312,9 +313,11 @@ export function mapReporteDto(dto: ReporteDto) {
             etapa: String(
               leerCampo(item, "etapa", "Etapa", "evento", "Evento", "label", "Label") ?? "",
             ),
-            tiempo: String(
-              leerCampo(item, "tiempo", "Tiempo", "detalle", "Detalle", "value", "Value") ??
-                "—",
+            tiempo: normalizarTiempoHitoAHhMm(
+              String(
+                leerCampo(item, "tiempo", "Tiempo", "detalle", "Detalle", "value", "Value") ??
+                  "—",
+              ),
             ),
             tendencia: String(leerCampo(item, "tendencia", "Tendencia") ?? "—"),
             tendenciaVariant:

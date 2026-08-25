@@ -84,8 +84,15 @@ export function crearEtiquetasEnfermeraIniciales(): EtiquetaEnfermera[] {
 export function calcularKpisEnfermera(
   etiquetas: EtiquetaEnfermera[],
   comidaActiva: TiempoComida,
+  opciones?: {
+    esEnFlujoCenso?: (etiqueta: EtiquetaEnfermera) => boolean
+  },
 ): KpiEnfermeraEtiqueta[] {
-  const filtradas = etiquetas.filter((e) => e.comida === comidaActiva)
+  const enFlujo = (e: EtiquetaEnfermera) =>
+    opciones?.esEnFlujoCenso ? opciones.esEnFlujoCenso(e) : true
+  const filtradas = etiquetas.filter(
+    (e) => e.comida === comidaActiva && enFlujo(e),
+  )
   const pendientesRecepcion = filtradas.filter(
     (e) => e.estadoLogistica === "impresa",
   ).length
@@ -94,6 +101,9 @@ export function calcularKpisEnfermera(
   ).length
   const recogidas = filtradas.filter(
     (e) => e.estadoLogistica === "devuelta" && esRecogidaPostEntrega(e),
+  ).length
+  const fueraFlujo = etiquetas.filter(
+    (e) => e.comida === comidaActiva && !enFlujo(e),
   ).length
 
   return [
@@ -113,6 +123,12 @@ export function calcularKpisEnfermera(
       id: "recogidas",
       label: "RECOGIDAS HOY",
       value: recogidas,
+      variant: "destructive",
+    },
+    {
+      id: "fuera-flujo",
+      label: "FUERA DE FLUJO",
+      value: fueraFlujo,
       variant: "destructive",
     },
   ]

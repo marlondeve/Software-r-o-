@@ -79,7 +79,7 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         string usuario,
         CancellationToken cancellationToken = default)
     {
-        // Validar que las dietas existan y estén confirmadas
+        // Validar que las dietas existan
         var dietas = await _context.FilasDietas
             .Where(d => datos.DietasIds.Contains(d.Id))
             .ToListAsync(cancellationToken);
@@ -87,7 +87,29 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         if (dietas.Count != datos.DietasIds.Count)
             throw new InvalidOperationException("Algunas dietas no fueron encontradas");
 
-        var dietasNoConfirmadas = dietas.Where(d => d.Estado != EstadoDieta.Confirmada).ToList();
+        // Reutilizar orden ya asociada (evita fallos al regenerar/vincular en lote)
+        var ordenesExistentes = dietas
+            .Where(d => d.OrdenCocinaId.HasValue)
+            .Select(d => d.OrdenCocinaId!.Value)
+            .Distinct()
+            .ToList();
+
+        if (ordenesExistentes.Count == 1 && dietas.All(d => d.OrdenCocinaId == ordenesExistentes[0]))
+        {
+            var ordenExistente = await _context.OrdenesCocina
+                .Include(o => o.Dietas)
+                .FirstOrDefaultAsync(o => o.Id == ordenesExistentes[0], cancellationToken)
+                ?? throw new KeyNotFoundException($"Orden {ordenesExistentes[0]} no encontrada");
+
+            if (!string.Equals(ordenExistente.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+            {
+                return MapearADtoConDietas(ordenExistente);
+            }
+        }
+
+        var dietasNoConfirmadas = dietas
+            .Where(d => d.Estado != EstadoDieta.Confirmada && !d.OrdenCocinaId.HasValue)
+            .ToList();
         if (dietasNoConfirmadas.Any())
             throw new InvalidOperationException($"{dietasNoConfirmadas.Count} dietas no están confirmadas");
 
@@ -122,7 +144,11 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         foreach (var dieta in dietas)
         {
             var estadoAnterior = dieta.Estado;
-            dieta.Estado = EstadoDieta.EnPreparacion;
+            // No retroceder dietas que ya avanzaron (ListaEnvio, EnRuta, ...).
+            if (dieta.Estado == EstadoDieta.Confirmada)
+            {
+                dieta.Estado = EstadoDieta.EnPreparacion;
+            }
             dieta.OrdenCocinaId = orden.Id;
 
             // Registrar evento de trazabilidad
@@ -133,7 +159,7 @@ public class OrdenesCocinaService : IOrdenesCocinaService
                 TipoEvento = "orden_cocina_creada",
                 Descripcion = $"Dieta incluida en orden de cocina #{numeroOrden}",
                 EstadoAnterior = estadoAnterior,
-                EstadoNuevo = EstadoDieta.EnPreparacion,
+                EstadoNuevo = dieta.Estado,
                 Usuario = usuario,
                 FechaEvento = DateTime.UtcNow,
                 DatosAdicionales = orden.Id.ToString(),

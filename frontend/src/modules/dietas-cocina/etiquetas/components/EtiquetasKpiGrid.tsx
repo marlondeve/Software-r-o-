@@ -18,23 +18,21 @@ export function EtiquetasKpiGrid({
   onKpiClick,
 }: EtiquetasKpiGridProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {kpis.map((kpi) => (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {kpis.map((kpi) => {
+        const clickable = Boolean(onKpiClick)
+        return (
         <Card
           key={kpi.id}
-          role={onKpiClick && kpi.id !== "recibidas-enfermeria" ? "button" : undefined}
-          tabIndex={onKpiClick && kpi.id !== "recibidas-enfermeria" ? 0 : undefined}
-          onClick={
-            onKpiClick && kpi.id !== "recibidas-enfermeria"
-              ? () => onKpiClick(kpi.id)
-              : undefined
-          }
+          role={clickable ? "button" : undefined}
+          tabIndex={clickable ? 0 : undefined}
+          onClick={clickable ? () => onKpiClick?.(kpi.id) : undefined}
           onKeyDown={
-            onKpiClick && kpi.id !== "recibidas-enfermeria"
+            clickable
               ? (event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault()
-                    onKpiClick(kpi.id)
+                    onKpiClick?.(kpi.id)
                   }
                 }
               : undefined
@@ -42,9 +40,7 @@ export function EtiquetasKpiGrid({
           className={cn(
             "py-0 shadow-none",
             claseKpiEtiqueta(kpi),
-            onKpiClick &&
-              kpi.id !== "recibidas-enfermeria" &&
-              "cursor-pointer transition-shadow hover:shadow-sm",
+            clickable && "cursor-pointer transition-shadow hover:shadow-sm",
             kpiActivo === kpi.id && "ring-2 ring-primary ring-offset-2",
           )}
         >
@@ -62,7 +58,8 @@ export function EtiquetasKpiGrid({
             </p>
           </CardContent>
         </Card>
-      ))}
+        )
+      })}
     </div>
   )
 }

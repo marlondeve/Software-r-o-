@@ -115,22 +115,37 @@ export function filtrosDesdeKpiEtiqueta(
         impresas: false,
         reimpresas: false,
       }
+    case "fuera-flujo":
+      return FILTROS_ESTADO_ETIQUETA_INICIAL
     default:
       return FILTROS_ESTADO_ETIQUETA_INICIAL
   }
 }
 
+/**
+ * KPIs operativos de impresión.
+ * `esEnFlujoCenso` alinea conteos con Cocina (censo vigente); las etiquetas
+ * fuera de flujo siguen visibles en el listado pero no inflan estos KPIs.
+ */
 export function calcularKpisEtiquetasProveedor(
   etiquetas: EtiquetaEnfermera[],
   comida: EtiquetaDieta["comida"],
+  opciones?: {
+    esEnFlujoCenso?: (etiqueta: EtiquetaEnfermera) => boolean
+  },
 ): KpiEtiqueta[] {
-  const enCocina = etiquetas.filter(
+  const enFlujo = (e: EtiquetaEnfermera) =>
+    opciones?.esEnFlujoCenso ? opciones.esEnFlujoCenso(e) : true
+
+  const delTurno = etiquetas.filter((e) => e.comida === comida)
+  const enCocina = delTurno.filter(
     (e) =>
-      e.comida === comida && !etiquetaFueraDeFlujoProveedor(e.estadoLogistica),
+      enFlujo(e) && !etiquetaFueraDeFlujoProveedor(e.estadoLogistica),
   )
-  const recibidas = etiquetas.filter(
-    (e) => e.comida === comida && etiquetaRecibidaEnfermeria(e.estadoLogistica),
+  const recibidas = delTurno.filter(
+    (e) => enFlujo(e) && etiquetaRecibidaEnfermeria(e.estadoLogistica),
   ).length
+  const fueraFlujo = delTurno.filter((e) => !enFlujo(e)).length
 
   return [
     {
@@ -162,6 +177,12 @@ export function calcularKpisEtiquetasProveedor(
       label: "RECIBIDAS ENFERMERÍA",
       value: recibidas,
       variant: "info",
+    },
+    {
+      id: "fuera-flujo",
+      label: "FUERA DE FLUJO",
+      value: fueraFlujo,
+      variant: "destructive",
     },
   ]
 }

@@ -53,25 +53,25 @@ export const mockReportesProveedor = {
   hitos: [
     {
       etapa: "Prep. → Etiquetado",
-      tiempo: "22 min",
+      tiempo: "00:22",
       tendencia: "↓4%",
       tendenciaVariant: "positive" as const,
     },
     {
       etapa: "Etiquetado → Despacho",
-      tiempo: "15 min",
+      tiempo: "00:15",
       tendencia: "↑3% Alert",
       tendenciaVariant: "negative" as const,
     },
     {
       etapa: "Despacho → Recepción",
-      tiempo: "28 min",
+      tiempo: "00:28",
       tendencia: "↑6% Alert",
       tendenciaVariant: "negative" as const,
     },
     {
       etapa: "Recepción → Recogida",
-      tiempo: "19 min",
+      tiempo: "00:19",
       tendencia: "↓2%",
       tendenciaVariant: "positive" as const,
     },

@@ -19,6 +19,7 @@ import {
   ordenCoincideFiltros,
   type FiltrosCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaFiltros"
+import { ordenarOrdenesCocinaEstable } from "@/modules/dietas-cocina/cocina/lib/ordenarOrdenesCocina"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
@@ -105,10 +106,12 @@ export function CocinaProveedorView() {
   }, [ordenes])
 
   const ordenesFiltradas = useMemo(() => {
-    return ordenes.filter(
-      (orden) =>
-        orden.comida === comidaActiva &&
-        ordenCoincideFiltros(orden, filtros, getEtiquetaByOrdenId),
+    return ordenarOrdenesCocinaEstable(
+      ordenes.filter(
+        (orden) =>
+          orden.comida === comidaActiva &&
+          ordenCoincideFiltros(orden, filtros, getEtiquetaByOrdenId),
+      ),
     )
   }, [ordenes, comidaActiva, filtros, getEtiquetaByOrdenId])
 
@@ -128,7 +131,6 @@ export function CocinaProveedorView() {
         habitaciones: data.habitaciones,
         tiposDieta: data.tiposDieta,
         consistencias: data.consistencias,
-        estadosCocina: data.estadosCocina,
       }
     }
     return {
@@ -136,7 +138,6 @@ export function CocinaProveedorView() {
       habitaciones: opcionesConTodos(ordenes.map((o) => o.habitacion), "Todas"),
       tiposDieta: opcionesConTodos(ordenes.map((o) => o.tipoDieta), "Todos"),
       consistencias: opcionesConTodos(ordenes.map((o) => o.consistencia), "Todas"),
-      estadosCocina: data.estadosCocina,
     }
   }, [apiActiva, data, ordenes])
 
@@ -224,16 +225,24 @@ export function CocinaProveedorView() {
 
   function generarEtiquetasSeleccionadas() {
     if (progreso) return
-    const ids = idsSeleccionados().filter((id) => {
+    const seleccion = idsSeleccionados()
+    const ids = seleccion.filter((id) => {
       const orden = ordenes.find((o) => o.id === id)
       return orden && puedeGenerarEtiqueta(orden, getEtiquetaByOrdenId(id))
     })
+    const omitidas = seleccion.length - ids.length
 
     if (ids.length === 0) {
       demoToast(
         "Selecciona bandejas en estado lista, con checklist obligatorio completo y sin etiqueta generada.",
       )
       return
+    }
+
+    if (omitidas > 0) {
+      demoToast(
+        `${omitidas} bandeja${omitidas === 1 ? "" : "s"} de la selección no están listas para generar (estado, checklist o ya tienen etiqueta).`,
+      )
     }
 
     setProgreso({
@@ -246,17 +255,37 @@ export function CocinaProveedorView() {
           demoToast("No se generaron etiquetas para las bandejas seleccionadas.", "error")
           return
         }
+        if (etiquetaIds.length < ids.length) {
+          demoToast(
+            `Se generaron ${etiquetaIds.length} de ${ids.length}. Revisa las pendientes e intenta de nuevo.`,
+            "error",
+          )
+        }
         navigate(RUTAS_LOGISTICA.impresion, {
           state: { preseleccion: etiquetaIds },
         })
       })
       .catch((error) => {
+        const parciales =
+          error &&
+          typeof error === "object" &&
+          "etiquetaIdsParciales" in error &&
+          Array.isArray((error as { etiquetaIdsParciales?: string[] }).etiquetaIdsParciales)
+            ? (error as { etiquetaIdsParciales: string[] }).etiquetaIdsParciales
+            : null
+
         demoToast(
           error instanceof Error
             ? error.message
             : "No se pudieron generar las etiquetas.",
           "error",
         )
+
+        if (parciales && parciales.length > 0) {
+          navigate(RUTAS_LOGISTICA.impresion, {
+            state: { preseleccion: parciales },
+          })
+        }
       })
       .finally(() => setProgreso(null))
   }
@@ -399,7 +428,6 @@ export function CocinaProveedorView() {
         habitaciones={opcionesFiltros.habitaciones}
         tiposDieta={opcionesFiltros.tiposDieta}
         consistencias={opcionesFiltros.consistencias}
-        estadosCocina={opcionesFiltros.estadosCocina}
         onChange={(next) => {
           setFiltros(next)
           setKpiActivo(undefined)

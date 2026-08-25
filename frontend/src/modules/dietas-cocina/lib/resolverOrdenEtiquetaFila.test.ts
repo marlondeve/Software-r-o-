@@ -71,4 +71,32 @@ describe("filtrarOrdenesVinculadasAFilas", () => {
 
     expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(0)
   })
+
+  it("elimina órdenes huérfanas cuando el paciente ya no está en censo", () => {
+    const filas = [
+      filaBase("otra-fila", {
+        pacienteId: "PAC-2",
+        ordenCocinaId: "orden-api-otra",
+      }),
+    ]
+    const ordenes = [
+      ordenBase({ id: "fila-egresada", ordenCocinaApiId: "orden-api-egreso" }),
+    ]
+
+    expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(0)
+  })
+
+  it("conserva la bandeja cancelada como historial del turno", () => {
+    const filas = [filaBase("fila-1", { estado: "cancelada" })]
+    const ordenes = [ordenBase({ estadoCocina: "cancelada" })]
+
+    expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(1)
+  })
+
+  it("elimina la orden activa si la dieta quedó cancelada", () => {
+    const filas = [filaBase("fila-1", { estado: "cancelada" })]
+    const ordenes = [ordenBase({ estadoCocina: "en_preparacion" })]
+
+    expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(0)
+  })
 })

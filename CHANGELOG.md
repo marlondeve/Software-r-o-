@@ -2,6 +2,30 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.6] — 2026-08-25
+
+### Añadido
+
+- Cancelación automática de dietas y órdenes de cocina no completadas cuando el paciente egresa del censo HIS.
+- Orden estable de la tabla cocina (pabellón → habitación → paciente → id).
+- Clasificación de etiquetas respecto al censo (`enFlujo` vs. fuera de censo / cancelada / sin solicitud).
+- Formato de hitos logísticos en reportes como **HH:MM** (backend y frontend).
+
+### Cambiado
+
+- Versión de producto **1.2.6** (package.json, `Directory.Build.props`, `VITE_APP_VERSION`, docs).
+- Generación de etiquetas por lote: parcial tolerante (vinculación, completar, API y UI con cobertura incompleta).
+- Filtro de estado cocina: un solo «En gestión» (`por_iniciar` + `en_preparacion`).
+- `CrearOrdenAsync` reutiliza orden existente no cancelada; no retrocede dietas ya avanzadas.
+- Censo HIS vacío: no cancela el turno ni borra filas locales (se trata como falta de datos).
+
+### Corregido
+
+- Solo se preparan y etiquetan dietas con paciente activo en censo y solicitud vigente.
+- Generación por lotes: menos etiquetas “perdidas” (refs frescos, reintento, fallback de match).
+- Hook condicional en flujo de devolución (`DevolucionFlowPage`).
+- Typecheck de `generarEtiquetas` (predicado de tipo inválido).
+
 ## [1.2.5] — 2026-08-25
 
 ### Añadido
@@ -140,6 +164,7 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.6]: https://github.com/compare/v1.2.5...v1.2.6
 [1.2.5]: https://github.com/compare/v1.2.4...v1.2.5
 [1.2.4]: https://github.com/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/compare/v1.2.1...v1.2.3

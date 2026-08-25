@@ -36,6 +36,8 @@ function RecepcionProveedorPageContent() {
     seleccionados,
     kpis,
     pendientesRecepcion,
+    pendientesRecepcionFueraFlujo,
+    clasificacionPorId,
     toggleSeleccion,
     toggleTodas,
     confirmarPreEntrega,
@@ -71,7 +73,11 @@ function RecepcionProveedorPageContent() {
   }
 
   const columnasKpi =
-    kpis.length === 1 ? "sm:grid-cols-1" : kpis.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-3"
+    kpis.filter(
+      (kpi) => kpi.id === "pendientes-recepcion" || kpi.id === "fuera-flujo",
+    ).length === 1
+      ? "sm:grid-cols-1"
+      : "sm:grid-cols-2"
 
   return (
     <div className="space-y-5 pb-6">
@@ -94,7 +100,10 @@ function RecepcionProveedorPageContent() {
       {kpis.length > 0 && (
         <div className={cn("grid grid-cols-1 gap-3", columnasKpi)}>
           {kpis
-            .filter((kpi) => kpi.id === "pendientes-recepcion")
+            .filter(
+              (kpi) =>
+                kpi.id === "pendientes-recepcion" || kpi.id === "fuera-flujo",
+            )
             .map((kpi) => (
               <KpiCardSimple
                 key={kpi.id}
@@ -124,6 +133,15 @@ function RecepcionProveedorPageContent() {
         </div>
         <RecepcionProveedorPanel
           bandejas={pendientesRecepcion}
+          bandejasFueraFlujo={pendientesRecepcionFueraFlujo}
+          motivoFueraFlujoPorId={
+            new Map(
+              [...clasificacionPorId.entries()].map(([id, c]) => [
+                id,
+                c.motivo,
+              ]),
+            )
+          }
           seleccionados={seleccionados}
           onToggle={toggleSeleccion}
           onToggleTodas={toggleTodas}

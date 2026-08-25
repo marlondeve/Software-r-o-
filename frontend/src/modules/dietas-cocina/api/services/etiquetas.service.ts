@@ -60,30 +60,45 @@ export async function generarEtiquetas(
 
   const payload = extraerCuerpoApi(data)
   const idsGenerados = (payload.etiquetaIds ?? payload.EtiquetaIds ?? []).map(String)
-  const etiquetas = deduplicarEtiquetasPorFila(await listarEtiquetas())
-
-  if (idsGenerados.length > 0) {
-    const idsSet = new Set(idsGenerados)
-    const porId = etiquetas.filter((etiqueta) => idsSet.has(etiqueta.id))
-    if (porId.length > 0) return porId
-  }
-
   const ordenIds = (body.ordenIds ?? []).map(String)
-  if (ordenIds.length > 0) {
-    const ordenSet = new Set(ordenIds)
-    const porOrden = etiquetas.filter(
-      (etiqueta) => etiqueta.ordenCocinaId && ordenSet.has(etiqueta.ordenCocinaId),
-    )
-    if (porOrden.length > 0) return porOrden
+
+  async function resolverDesdeListado(): Promise<EtiquetaEnfermera[]> {
+    const etiquetas = deduplicarEtiquetasPorFila(await listarEtiquetas())
+    if (idsGenerados.length > 0) {
+      const idsSet = new Set(idsGenerados)
+      const porId = etiquetas.filter((etiqueta) => idsSet.has(etiqueta.id))
+      if (porId.length > 0) return porId
+    }
+    if (ordenIds.length > 0) {
+      const ordenSet = new Set(ordenIds)
+      const porOrden = etiquetas.filter(
+        (etiqueta) =>
+          etiqueta.ordenCocinaId && ordenSet.has(etiqueta.ordenCocinaId),
+      )
+      if (porOrden.length > 0) return porOrden
+    }
+    return []
   }
 
-  if (idsGenerados.length > 0) {
+  let encontradas = await resolverDesdeListado()
+
+  // A veces el listado llega antes de que el índice/réplica vea lo recién generado.
+  if (
+    idsGenerados.length > 0 &&
+    encontradas.length < idsGenerados.length
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    encontradas = await resolverDesdeListado()
+  }
+
+  if (idsGenerados.length > 0 && encontradas.length === 0) {
     throw new Error(
-      "Las etiquetas se generaron en el servidor, pero no se pudieron sincronizar en pantalla. Actualiza la página.",
+      "Las etiquetas se generaron en el servidor, pero no se pudieron sincronizar en pantalla. Actualiza e intenta de nuevo.",
     )
   }
 
-  return etiquetas
+  if (encontradas.length > 0) return encontradas
+  return deduplicarEtiquetasPorFila(await listarEtiquetas())
 }
 
 export async function marcarEtiquetasImpresas(etiquetaIds: string[]): Promise<void> {

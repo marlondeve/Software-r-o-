@@ -42,11 +42,18 @@ export function fusionarFilaDietaCenso(
   }
 }
 
+/**
+ * Fusiona el censo HIS de una comida con el estado local.
+ * Pacientes que ya no vienen del API (egreso) se eliminan del flujo operativo.
+ * Un censo vacío se trata como falta de datos (no como alta masiva).
+ */
 export function fusionarFilasPorComida(
   filasActuales: FilaDieta[],
   filasApi: FilaDieta[],
   comida: TiempoComida,
 ): FilaDieta[] {
+  if (filasApi.length === 0) return filasActuales
+
   const otrasComidas = filasActuales.filter((fila) => fila.comida !== comida)
   const localesComida = filasActuales.filter((fila) => fila.comida === comida)
   const mapaLocal = new Map(localesComida.map((fila) => [fila.pacienteId, fila]))
@@ -54,9 +61,8 @@ export function fusionarFilasPorComida(
   const fusionadas = filasApi.map((remota) => {
     const local = mapaLocal.get(remota.pacienteId)
     if (!local) return remota
-    mapaLocal.delete(remota.pacienteId)
     return fusionarFilaDietaCenso(local, remota)
   })
 
-  return [...otrasComidas, ...fusionadas, ...mapaLocal.values()]
+  return [...otrasComidas, ...fusionadas]
 }

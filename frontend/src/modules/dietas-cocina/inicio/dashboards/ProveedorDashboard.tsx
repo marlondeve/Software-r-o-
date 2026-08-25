@@ -39,6 +39,8 @@ import {
 import { puedeDespachar } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { filtrarEtiquetasDelPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
+import { etiquetaEnFlujoCenso } from "@/modules/dietas-cocina/lib/clasificarEtiquetaCenso"
+import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { cn } from "@/lib/utils"
 
 export function ProveedorDashboard() {
@@ -46,6 +48,7 @@ export function ProveedorDashboard() {
   const apiActiva = usarApiDietasCocina()
   const { ordenes, etiquetas, registrarDespacho, getEtiquetaByOrdenId } =
     useCicloBandejas()
+  const { filas } = useDietasOperativas()
   const comidaActiva = useMemo(
     () => (apiActiva ? obtenerComidaActivaOperativa() : mockCocina.comidaActiva),
     [apiActiva],
@@ -141,14 +144,15 @@ export function ProveedorDashboard() {
     const delTurno = filtrarEtiquetasDelPeriodoOperativo(etiquetas, {
       comida: comidaActiva,
     })
-    const impresas = delTurno.filter(
+    const enFlujo = delTurno.filter((e) => etiquetaEnFlujoCenso(e, filas))
+    const impresas = enFlujo.filter(
       (e) => e.estado === "impresa" || e.estado === "reimpresa",
     ).length
-    const recibidas = delTurno.filter(
+    const recibidas = enFlujo.filter(
       (e) => e.estadoLogistica === "pre_entregada",
     ).length
-    return { impresas, recibidas, total: delTurno.length || 1 }
-  }, [etiquetas, comidaActiva])
+    return { impresas, recibidas, total: enFlujo.length || 1 }
+  }, [etiquetas, comidaActiva, filas])
 
   const columnasOrdenes = useMemo<ColumnDef<OrdenCocina>[]>(
     () => [

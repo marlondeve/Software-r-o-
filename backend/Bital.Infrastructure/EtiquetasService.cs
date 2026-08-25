@@ -97,18 +97,41 @@ public class EtiquetasService : IEtiquetasService
         if (!ordenes.Any())
             throw new KeyNotFoundException("No se encontraron las órdenes especificadas");
 
-        // Validar que todas las órdenes estén completadas
-        var ordenesInvalidas = ordenes.Where(o => o.Estado != "Completada").ToList();
-        if (ordenesInvalidas.Any())
+        // Validar / filtrar órdenes aptas (no tumbar todo el lote por una inválida)
+        var ordenesAptas = ordenes
+            .Where(o =>
+                string.Equals(o.Estado, "Completada", StringComparison.OrdinalIgnoreCase)
+                && o.Dietas.Any()
+                && o.Dietas.All(d => DietasReglasNegocio.PermiteGenerarEtiqueta(d.Estado)))
+            .ToList();
+
+        if (!ordenesAptas.Any())
         {
+            var invalidas = ordenes
+                .Where(o => !string.Equals(o.Estado, "Completada", StringComparison.OrdinalIgnoreCase))
+                .Select(o => o.NumeroOrden)
+                .ToList();
+            if (invalidas.Count > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Solo se pueden generar etiquetas de órdenes completadas. Órdenes inválidas: {string.Join(", ", invalidas)}");
+            }
+
             throw new InvalidOperationException(
-                $"Solo se pueden generar etiquetas de órdenes completadas. Órdenes inválidas: {string.Join(", ", ordenesInvalidas.Select(o => o.NumeroOrden))}");
+                "No se pueden generar etiquetas: ninguna dieta del lote está activa para etiquetado.");
+        }
+
+        if (ordenesAptas.Count < ordenes.Count)
+        {
+            _logger.LogWarning(
+                "Generación parcial de etiquetas: {Aptas}/{Total} órdenes aptas",
+                ordenesAptas.Count, ordenes.Count);
         }
 
         var etiquetasIds = new List<Guid>();
         var ahora = DateTime.UtcNow;
 
-        foreach (var orden in ordenes)
+        foreach (var orden in ordenesAptas)
         {
             foreach (var dieta in orden.Dietas)
             {

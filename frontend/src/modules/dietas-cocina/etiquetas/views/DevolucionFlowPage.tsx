@@ -51,19 +51,9 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
 
   pasoRef.current = paso
 
-  if (!tipo) {
-    const destino =
-      obtenerPrimeraRutaLogisticaPermitida(rol) ?? "/dietas-cocina/inicio"
-    return <Navigate to={destino} replace />
-  }
-
-  const tipoDevolucion = tipo
-  const config = configDevolucionPorTipo(tipoDevolucion)
-  const motivos = motivosDevolucionPorTipo(tipoDevolucion)
-
   const procesarCodigo = useCallback(
     async (codigo: string) => {
-      if (pasoRef.current >= 2) {
+      if (!tipo || pasoRef.current >= 2) {
         return
       }
 
@@ -76,7 +66,7 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
         setError(mensajeEtiquetaNoEncontrada(estaOnline))
         return
       }
-      const motivoBloqueo = motivoNoDevolucionPorTipo(encontrada, tipoDevolucion)
+      const motivoBloqueo = motivoNoDevolucionPorTipo(encontrada, tipo)
       if (motivoBloqueo) {
         setError(motivoBloqueo)
         return
@@ -89,8 +79,18 @@ export function DevolucionFlowPage({ tipo: tipoProp }: DevolucionFlowPageProps) 
       setEscaneando(false)
       setPaso(2)
     },
-    [buscarPorCodigoAsync, tipoDevolucion, estaOnline],
+    [buscarPorCodigoAsync, tipo, estaOnline],
   )
+
+  if (!tipo) {
+    const destino =
+      obtenerPrimeraRutaLogisticaPermitida(rol) ?? "/dietas-cocina/inicio"
+    return <Navigate to={destino} replace />
+  }
+
+  const tipoDevolucion = tipo
+  const config = configDevolucionPorTipo(tipoDevolucion)
+  const motivos = motivosDevolucionPorTipo(tipoDevolucion)
 
   function volverAEscanear() {
     setPaso(1)

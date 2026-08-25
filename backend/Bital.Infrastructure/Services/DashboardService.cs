@@ -187,7 +187,7 @@ public class DashboardService : IDashboardService
             {
                 Fecha = hasta,
                 Evento = "Impresión de etiqueta",
-                Detalle = $"{minImpresion.Value} min",
+                Detalle = FormatearDuracionHhMm(minImpresion.Value),
             });
         }
 
@@ -198,7 +198,7 @@ public class DashboardService : IDashboardService
             {
                 Fecha = hasta,
                 Evento = "Tránsito a enfermería",
-                Detalle = $"{minTransito.Value} min",
+                Detalle = FormatearDuracionHhMm(minTransito.Value),
             });
         }
 
@@ -209,11 +209,19 @@ public class DashboardService : IDashboardService
             {
                 Fecha = hasta,
                 Evento = "Entrega al paciente",
-                Detalle = $"{minEntrega.Value} min",
+                Detalle = FormatearDuracionHhMm(minEntrega.Value),
             });
         }
 
         return hitos;
+    }
+
+    private static string FormatearDuracionHhMm(int minutos)
+    {
+        var total = Math.Max(0, minutos);
+        var horas = total / 60;
+        var mins = total % 60;
+        return $"{horas:D2}:{mins:D2}";
     }
 
     private static List<(string Categoria, int Cantidad)> AgruparMotivosTop3(

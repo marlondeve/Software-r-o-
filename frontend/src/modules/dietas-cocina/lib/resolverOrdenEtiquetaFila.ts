@@ -125,6 +125,12 @@ export function filtrarEtiquetasDelPeriodoOperativo(
   })
 }
 
+/**
+ * Solo deja en cocina órdenes con fila en censo y solicitud vigente.
+ * Sin fila (egreso) o sin solicitud → fuera del flujo (no preparar ni etiquetar).
+ * Las canceladas se conservan como historial del turno (KPI/filtro), no accionables.
+ * Si aún no hay filas cargadas, no filtra (evita vaciar cocina al hidratar).
+ */
 export function filtrarOrdenesVinculadasAFilas(
   ordenes: OrdenCocina[],
   filas: FilaDieta[],
@@ -133,8 +139,7 @@ export function filtrarOrdenesVinculadasAFilas(
 
   return ordenes.filter((orden) => {
     const fila = filas.find((item) => ordenPerteneceAFila(item, orden))
-    // Conservar órdenes recién cargadas del API hasta que el censo local alcance.
-    if (!fila) return true
+    if (!fila) return false
     if (fila.comida !== orden.comida) return false
     if (fila.estado === "cancelada") return orden.estadoCocina === "cancelada"
     if (fila.estado === "no-solicitada" || fila.estado === "guardado") {

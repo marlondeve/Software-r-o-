@@ -54,25 +54,25 @@ export const mockReportesNutricionista = {
   hitos: [
     {
       etapa: "Conf. → Despacho",
-      tiempo: "18 min",
+      tiempo: "00:18",
       tendencia: "↓2%",
       tendenciaVariant: "positive" as const,
     },
     {
       etapa: "Despacho → Llegada",
-      tiempo: "12 min",
+      tiempo: "00:12",
       tendencia: "↑5% Alert",
       tendenciaVariant: "negative" as const,
     },
     {
       etapa: "Llegada → Entrega",
-      tiempo: "8 min",
+      tiempo: "00:08",
       tendencia: "↓10%",
       tendenciaVariant: "positive" as const,
     },
     {
       etapa: "Entrega → Recogida",
-      tiempo: "24 min",
+      tiempo: "00:24",
       tendencia: "-0%",
       tendenciaVariant: "neutral" as const,
     },
