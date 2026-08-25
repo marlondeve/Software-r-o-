@@ -180,7 +180,7 @@ public class AtencionesQueryService : IAtencionesQueryService
         _logger.LogInformation("Consultando atenciones hospitalarias activas para módulo de Dietas");
 
         var sql = @"
-               WITH IngresoMayor AS (
+WITH IngresoMayor AS (
     SELECT
         i.*,
         ROW_NUMBER() OVER (
@@ -188,7 +188,7 @@ public class AtencionesQueryService : IAtencionesQueryService
             ORDER BY i.IngCsc DESC
         ) AS rn
     FROM INGRESOS i
-    WHERE i.IngFecEgr = '1753-01-01 00:00:00.000'
+    WHERE i.IngFecEgr = '1753-01-01 00:00:00.000' OR IngInSlC = 'N'
       AND i.IngEstSld = 0
       AND i.INGATNACT IN (2,3)
 )
