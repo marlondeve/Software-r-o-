@@ -3,6 +3,7 @@ import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
+import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import {
   filtrarEtiquetasDelPeriodoOperativo,
   resolverContextoFilaDieta,
@@ -14,6 +15,8 @@ export interface ActividadEnfermeriaFila {
   accion: string
   hora: string
   estado: EstadoDieta
+  observaciones?: string | null
+  cancelacionPorSalidaClinica?: boolean
 }
 
 function parseSolicitadoEnMs(valor?: string): number {
@@ -32,7 +35,13 @@ function horaActividadDesdeTexto(valor?: string): string {
   return match?.[1] ?? "—"
 }
 
-export function accionDesdeEstadoEnfermeria(estado: EstadoDieta): string {
+export function accionDesdeEstadoEnfermeria(
+  estado: EstadoDieta,
+  opciones?: {
+    observaciones?: string | null
+    cancelacionPorSalidaClinica?: boolean
+  },
+): string {
   switch (estado) {
     case "no-solicitada":
       return "Sin solicitud"
@@ -41,7 +50,12 @@ export function accionDesdeEstadoEnfermeria(estado: EstadoDieta): string {
     case "confirmada":
       return "Confirmación de dieta"
     case "cancelada":
-      return "Cancelación"
+      return esCancelacionSalidaClinica(
+        opciones?.observaciones,
+        opciones?.cancelacionPorSalidaClinica,
+      )
+        ? "Salida clínica"
+        : "Cancelación"
     case "recibida":
       return "Entrega confirmada"
     case "devuelta":
@@ -57,8 +71,19 @@ export function etiquetaAccionDesdeTipoEvento(
   tipo: string,
   descripcion?: string,
 ): string {
+  const clave = tipo.trim().toLowerCase()
+  if (clave === "dieta_cancelada_egreso") {
+    return "Salida clínica"
+  }
+  if (clave === "dieta_reactivada_reingreso") {
+    return "Reingreso al censo"
+  }
+
   const texto = descripcion?.trim()
-  if (texto) return texto
+  if (texto) {
+    if (esCancelacionSalidaClinica(texto)) return "Salida clínica"
+    return texto
+  }
 
   const mapa: Record<string, string> = {
     pre_entrega_confirmada: "Etiqueta recibida en pabellón",
@@ -68,8 +93,9 @@ export function etiquetaAccionDesdeTipoEvento(
     dieta_confirmada: "Dieta confirmada",
     novedad: "Novedad clínica",
     cancelacion: "Cancelación de dieta",
+    dieta_cancelada: "Cancelación de dieta",
   }
-  return mapa[tipo.toLowerCase()] ?? tipo.replace(/_/g, " ")
+  return mapa[clave] ?? tipo.replace(/_/g, " ")
 }
 
 export function actividadApiPareceEnfermeria(
@@ -107,11 +133,20 @@ export function construirActividadRecienteEnfermeria(
         etiquetasPeriodo,
       )
       const estado = estadoDietaDesdeCiclo(fila, orden, etiqueta)
+      const cancelacionPorSalidaClinica = esCancelacionSalidaClinica(
+        fila.observaciones,
+        fila.cancelacionPorSalidaClinica,
+      )
       return {
         paciente: `${fila.habitacion} / ${fila.paciente}`,
-        accion: accionDesdeEstadoEnfermeria(estado),
+        accion: accionDesdeEstadoEnfermeria(estado, {
+          observaciones: fila.observaciones,
+          cancelacionPorSalidaClinica,
+        }),
         hora: horaActividadDesdeTexto(fila.solicitadoEn),
         estado,
+        observaciones: fila.observaciones,
+        cancelacionPorSalidaClinica,
         _ms: parseSolicitadoEnMs(fila.solicitadoEn),
       }
     })

@@ -23,6 +23,7 @@ import {
   obtenerTrazabilidad,
 } from "@/modules/dietas-cocina/dietas/datos/mockDetalleDieta"
 import { formatearIdentificacionPaciente } from "@/modules/dietas-cocina/lib/mapearAtencionHospitalariaAFilaDieta"
+import { listarOtrasDietasPacienteHoy } from "@/modules/dietas-cocina/dietas/lib/otrasDietasPacienteHoy"
 import { labelComida } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
 import { cn } from "@/lib/utils"
 
@@ -169,8 +170,9 @@ export function DietasDetalleSheet({
   const descripcion =
     filaMostrada.descripcionDieta ?? obtenerDescripcionDieta(filaMostrada.tipoDieta)
   const puedeConfirmar = filaMostrada.estado === "guardado"
-  const otrasDietasPaciente = dietasPaciente.filter(
-    (item) => item.id !== filaMostrada.id,
+  const otrasDietasPaciente = listarOtrasDietasPacienteHoy(
+    dietasPaciente,
+    filaMostrada.id,
   )
 
   return (
@@ -208,6 +210,10 @@ export function DietasDetalleSheet({
                 <div className="flex items-center gap-1.5">
                   <EstadoBadge
                     estado={estadoVisible}
+                    observaciones={filaMostrada.observaciones}
+                    cancelacionPorSalidaClinica={
+                      filaMostrada.cancelacionPorSalidaClinica
+                    }
                     className="shrink-0 font-semibold uppercase tracking-wide"
                   />
                   {filaMostrada.estado === "guardado" && onEditar && (
@@ -248,7 +254,14 @@ export function DietasDetalleSheet({
                       className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
                     >
                       <span className="font-medium">{labelComida(item.comida)}</span>
-                      <EstadoBadge estado={estadoItem} className="text-[10px]" />
+                      <EstadoBadge
+                        estado={estadoItem}
+                        observaciones={item.observaciones}
+                        cancelacionPorSalidaClinica={
+                          item.cancelacionPorSalidaClinica
+                        }
+                        className="text-[10px]"
+                      />
                     </li>
                     )
                   })}

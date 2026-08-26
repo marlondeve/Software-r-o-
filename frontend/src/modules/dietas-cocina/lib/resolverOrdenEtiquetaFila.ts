@@ -3,18 +3,27 @@ import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
+import { parsearFechaApi } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 
 function normalizarFechaOperativa(valor: string): string | undefined {
-  const iso = valor.match(/^(\d{4}-\d{2}-\d{2})/)
+  const trimmed = valor.trim()
+
+  // Instante ISO (generadaEn UTC) → día local Colombia
+  if (/T\d{2}:\d{2}/.test(trimmed) || /[zZ]$/.test(trimmed) || /[+-]\d{2}:\d{2}$/.test(trimmed)) {
+    const fecha = parsearFechaApi(trimmed)
+    if (!Number.isNaN(fecha.getTime())) return fechaOperativaHoy(fecha)
+  }
+
+  const iso = trimmed.match(/^(\d{4}-\d{2}-\d{2})/)
   if (iso) return iso[1]
 
-  const latam = valor.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  const latam = trimmed.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
   if (latam) {
     const [, day, month, year] = latam
     return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
   }
 
-  const parsed = Date.parse(valor)
+  const parsed = Date.parse(trimmed)
   if (!Number.isNaN(parsed)) {
     return fechaOperativaHoy(new Date(parsed))
   }
@@ -126,10 +135,10 @@ export function filtrarEtiquetasDelPeriodoOperativo(
 }
 
 /**
- * Solo deja en cocina órdenes con fila en censo y solicitud vigente.
- * Sin fila (egreso) o sin solicitud → fuera del flujo (no preparar ni etiquetar).
- * Las canceladas se conservan como historial del turno (KPI/filtro), no accionables.
- * Si aún no hay filas cargadas, no filtra (evita vaciar cocina al hidratar).
+ * La dieta es la única fuente de verdad: solo sale de cocina la bandeja sin
+ * solicitud vigente. La cancelada se conserva como historial del turno y vuelve
+ * a ser accionable si la dieta se reactiva (reingreso HIS).
+ * Faltar en el censo no es egreso, así que nunca descarta por ausencia.
  */
 export function filtrarOrdenesVinculadasAFilas(
   ordenes: OrdenCocina[],
@@ -139,13 +148,8 @@ export function filtrarOrdenesVinculadasAFilas(
 
   return ordenes.filter((orden) => {
     const fila = filas.find((item) => ordenPerteneceAFila(item, orden))
-    if (!fila) return false
-    if (fila.comida !== orden.comida) return false
-    if (fila.estado === "cancelada") return orden.estadoCocina === "cancelada"
-    if (fila.estado === "no-solicitada" || fila.estado === "guardado") {
-      return false
-    }
-    return true
+    if (!fila) return true
+    return fila.estado !== "no-solicitada" && fila.estado !== "guardado"
   })
 }
 

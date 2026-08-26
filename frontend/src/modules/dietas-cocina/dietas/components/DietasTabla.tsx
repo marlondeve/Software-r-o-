@@ -108,6 +108,8 @@ export function DietasTabla({
             estado={
               resolverEstadoVisible?.(row.original) ?? row.original.estado
             }
+            observaciones={row.original.observaciones}
+            cancelacionPorSalidaClinica={row.original.cancelacionPorSalidaClinica}
           />
         ),
       },

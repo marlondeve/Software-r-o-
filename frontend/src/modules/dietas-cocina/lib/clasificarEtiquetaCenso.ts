@@ -1,11 +1,12 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { etiquetaPerteneceAFila } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
+import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 
 /** Motivo por el que una etiqueta impresa ya no cuenta en el flujo operativo. */
 export type MotivoFueraFlujoEtiqueta =
+  | "salida_clinica"
   | "cancelada"
-  | "fuera_de_censo"
   | "sin_solicitud"
 
 export type ClasificacionEtiquetaCenso = {
@@ -18,7 +19,8 @@ export type ClasificacionEtiquetaCenso = {
 /**
  * Clasifica una etiqueta respecto al censo vigente.
  * No elimina ni oculta: solo distingue operativas vs historial del turno.
- * Si aún no hay filas cargadas, no degrada (evita falsos "fuera de censo").
+ * Solo el estado explícito de la dieta saca del flujo; no encontrar fila
+ * (censo parcial, otra comida, HIS caído) mantiene la etiqueta operativa.
  */
 export function clasificarEtiquetaRespectoCenso(
   etiqueta: EtiquetaEnfermera,
@@ -38,11 +40,19 @@ export function clasificarEtiquetaRespectoCenso(
     filas.find((item) => etiquetaPerteneceAFila(item, etiqueta))
 
   if (!fila) {
-    return { enFlujo: false, motivo: "fuera_de_censo" }
+    return { enFlujo: true }
   }
 
   if (fila.estado === "cancelada") {
-    return { enFlujo: false, motivo: "cancelada", fila }
+    const salida = esCancelacionSalidaClinica(
+      fila.observaciones,
+      fila.cancelacionPorSalidaClinica,
+    )
+    return {
+      enFlujo: false,
+      motivo: salida ? "salida_clinica" : "cancelada",
+      fila,
+    }
   }
 
   if (fila.estado === "no-solicitada" || fila.estado === "guardado") {
@@ -63,12 +73,12 @@ export function etiquetaFueraFlujoCensoLabel(
   motivo: MotivoFueraFlujoEtiqueta | undefined,
 ): string {
   switch (motivo) {
+    case "salida_clinica":
+      return "Salida clínica"
     case "cancelada":
       return "Dieta cancelada"
     case "sin_solicitud":
       return "Sin solicitud"
-    case "fuera_de_censo":
-      return "Fuera de censo"
     default:
       return "Fuera de flujo"
   }

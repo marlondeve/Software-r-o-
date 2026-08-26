@@ -95,7 +95,7 @@ export function useEtiquetasOperativas() {
     [filtradasComida, filas],
   )
 
-  /** Historial del turno: impresas fuera de censo/canceladas (visibles, no accionables). */
+  /** Historial del turno: impresas canceladas o sin solicitud (visibles, no accionables). */
   const pendientesRecepcionFueraFlujo = useMemo(
     () =>
       filtradasComida.filter(
@@ -141,9 +141,12 @@ export function useEtiquetasOperativas() {
     })
   }
 
-  function toggleTodas(checked: boolean) {
+  /** Si se pasan `ids`, solo selecciona esas (p. ej. filtro de ubicación). */
+  function toggleTodas(checked: boolean, ids?: string[]) {
     if (checked) {
-      setSeleccionados(new Set(pendientesRecepcion.map((e) => e.id)))
+      setSeleccionados(
+        new Set(ids ?? pendientesRecepcion.map((e) => e.id)),
+      )
     } else {
       setSeleccionados(new Set())
     }

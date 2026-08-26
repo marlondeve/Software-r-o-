@@ -94,6 +94,7 @@ export function mapFilaDietaToOrdenCocina(
     aislado: fila.aislado ?? fila.aislamiento !== "Ninguno",
     alergias: fila.alergico ? parseAlergias(fila.alergias) : [],
     observaciones: fila.observaciones,
+    cancelacionPorSalidaClinica: fila.cancelacionPorSalidaClinica,
     estadoCocina,
     estadoLogistica: etiqueta?.estadoLogistica,
     etiquetaImpresa:
@@ -113,10 +114,34 @@ const RANK_ESTADO_COCINA: Record<EstadoCocina, number> = {
   cancelada: -1,
 }
 
-function preferirEstadoCocina(a: EstadoCocina, b: EstadoCocina): EstadoCocina {
-  if (a === "cancelada") return a
-  if (b === "cancelada") return b
+function preferirPorAvance(a: EstadoCocina, b: EstadoCocina): EstadoCocina {
   return (RANK_ESTADO_COCINA[a] ?? 0) >= (RANK_ESTADO_COCINA[b] ?? 0) ? a : b
+}
+
+/**
+ * `local` conserva el avance operativo, pero la cancelación siempre la manda
+ * la dieta (`remoto`): así una cancelación por egreso entra y un reingreso la
+ * revierte, en vez de quedar pegada en «cancelada».
+ */
+function preferirEstadoCocina(
+  local: EstadoCocina,
+  remoto: EstadoCocina,
+): EstadoCocina {
+  if (local === "cancelada" || remoto === "cancelada") return remoto
+  return preferirPorAvance(local, remoto)
+}
+
+/**
+ * La orden del API agrupa varias dietas, así que no puede reactivar ni cancelar
+ * por sí sola una bandeja: solo aporta avance.
+ */
+function preferirEstadoOrdenApi(
+  local: EstadoCocina,
+  api: EstadoCocina,
+): EstadoCocina {
+  if (local === "cancelada") return local
+  if (api === "cancelada") return local
+  return preferirPorAvance(local, api)
 }
 
 /** Conserva avance local (checklist, estados) al sincronizar desde censo o filas. */
@@ -145,7 +170,11 @@ export function fusionarOrdenesCocina(
     }
   })
 
-  return merged
+  // Faltar en el censo no saca la bandeja del turno: solo la cancelación explícita.
+  const idsEntrantes = new Set(incoming.map((orden) => orden.id))
+  const soloLocales = prev.filter((orden) => !idsEntrantes.has(orden.id))
+
+  return [...merged, ...soloLocales]
 }
 
 function mapEstadoOrdenApi(estado: string): EstadoCocina | undefined {
@@ -213,7 +242,7 @@ export function enriquecerOrdenesConApi(
         ? checklistMasCompleto(orden.checklist, mapChecklistFromApi(ordenApi.checklist))
         : orden.checklist,
       ...(estadoApi
-        ? { estadoCocina: preferirEstadoCocina(orden.estadoCocina, estadoApi) }
+        ? { estadoCocina: preferirEstadoOrdenApi(orden.estadoCocina, estadoApi) }
         : {}),
     }
   })

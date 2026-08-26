@@ -30,16 +30,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y 
 - Dashboards de enfermera y nutricionista, donut de estados, KPI y reportes usan la misma etiqueta («Salida clínica» / «Salidas / canceladas»).
 - Detección de salida clínica centralizada en un solo helper (antes duplicada en dietas, cocina y mappers, con riesgo de desincronizarse).
 - Cancelar una orden de cocina ya no reactiva dietas canceladas por salida clínica.
-- Paciente repetido en «Gestión de dietas» (misma cédula y comida, p. ej. «Sin solicitud» + «Despachada»): se deja una sola fila, la de estado visible más avanzado. Se empareja por cédula, no por el formato del `PacienteId`, y el backend tampoco devuelve la fila legada duplicada.
+- Paciente repetido en «Gestión de dietas» (misma cédula y comida, p. ej. «Sin solicitud» + «Despachada»): se deja una sola fila, la de estado visible más avanzado. Se empareja por cédula, no por el formato del `PacienteId`.
 - KPIs de dietas y dashboard de nutrición cuentan sobre la lista sin duplicados: el total ya coincide con los registros de la tabla.
 - Censo de atenciones: una fila legada con otro formato de `PacienteId` conserva su estado operativo en lugar de crear una fila nueva.
 - KPI «Salidas / canceladas» usa el estado visible, igual que el resto de los indicadores.
 - Recepción del proveedor: lista con orden fijo (ya no salta al sincronizar) y filtro por ubicación (pabellón/área) para confirmar solo el área correspondiente.
-- **Censo incompleto (decía «22 pacientes» y mostraba 3):** `INGRESOS.IngCsc` es un consecutivo **por paciente** (vale 1 en casi todos), no un id global. Se dejó de usar como identidad suelta, así que ya no se colapsan pacientes distintos en una sola fila ni se emparejan dietas con el paciente equivocado.
-- Salida clínica: se consulta siempre por documento (`MPTDoc` + `MPcedu`) y el ingreso se registra como «documento#IngCsc». Antes un `IngCsc IN (…)` sin documento alcanzaba ingresos de otras personas y podía cancelar dietas de pacientes activos.
-- **KPIs del inicio nutricionista (3545 vs donut de 25):** el API contaba filas crudas de BD (duplicados legados). El dashboard usa el censo único del turno: «Pacientes activos» = vigentes (21), «Salidas / canceladas» = 4, y el donut suma 25. Ya no se mezclan totales históricos encima del periodo operativo.
-- **Reportes clínicos/producción inflados (p. ej. 12.408 dietas / 12.230 sin solicitud):** misma causa: filas duplicadas en BD. El reporte cuenta una dieta por paciente, comida y día; costos y «estado de dietas» usan esa lista.
-- Limpieza one-shot de duplicados en `dietas.FilasDietas`: script `backend/scripts/08-LimpiarFilasDietasDuplicadas.sql` (diagnóstico con `@Aplicar = 0`, borrado con `1`). Conserva orden/etiqueta y el estado más avanzado; reasigna eventos y conciliación.
+- **KPIs del inicio nutricionista:** dejan de mostrar totales crudos del API (p. ej. 3545) y usan el censo único del turno, alineados con el donut (activos + salidas clínicas).
 - Hora en etiquetas (pantalla y PDF): UTC de `GeneradaEn` se muestra en hora Colombia; ya no aparece `…T12:00 a. m.` por usar `fechaOperativa`.
 
 ## [1.2.6] — 2026-08-25

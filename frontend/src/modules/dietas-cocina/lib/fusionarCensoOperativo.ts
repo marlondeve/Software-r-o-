@@ -1,5 +1,10 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import {
+  deduplicarFilasPorPacienteComida,
+  mismaIdentidadPacienteDieta,
+} from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
+
 /** Reemplaza el censo de una comida con datos del HIS, conservando estado operativo local. */
 export function fusionarCensoOperativo(
   anteriores: FilaDieta[],
@@ -12,8 +17,19 @@ export function fusionarCensoOperativo(
     anterioresComida.map((fila) => [fila.pacienteId, fila]),
   )
 
+  // Las filas legadas guardan el documento en otro formato: se busca por
+  // identidad para no perder el estado operativo ni duplicar al paciente.
+  function buscarPrevio(candidato: Omit<FilaDieta, "id">) {
+    return (
+      porPacienteId.get(candidato.pacienteId) ??
+      anterioresComida.find((fila) =>
+        mismaIdentidadPacienteDieta(fila, candidato),
+      )
+    )
+  }
+
   const fusionadas = delApi.map((candidato) => {
-    const previo = porPacienteId.get(candidato.pacienteId)
+    const previo = buscarPrevio(candidato)
     if (previo) {
       return {
         ...previo,
@@ -30,8 +46,10 @@ export function fusionarCensoOperativo(
     }
   })
 
+  const filasComida = deduplicarFilasPorPacienteComida(fusionadas)
+
   return {
-    filas: [...otrasComidas, ...fusionadas],
-    totalEnCenso: fusionadas.length,
+    filas: [...otrasComidas, ...filasComida],
+    totalEnCenso: filasComida.length,
   }
 }

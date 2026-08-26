@@ -394,6 +394,137 @@ ORDER BY map.MPNomP, i.MPNumC;";
         return resultados;
     }
 
+    public async Task<SalidaClinicaHisLookup> ObtenerPacientesConSalidaClinicaAsync(
+        IEnumerable<IdentidadIngresoHis> pacientes,
+        CancellationToken cancellationToken = default)
+    {
+        var lookup = new SalidaClinicaHisLookup();
+        var lista = pacientes
+            .Where(p => p.IdIngreso is > 0 ||
+                        !string.IsNullOrWhiteSpace(p.TipoDocumento) ||
+                        !string.IsNullOrWhiteSpace(p.Cedula))
+            .ToList();
+
+        if (lista.Count == 0)
+            return lookup;
+
+        try
+        {
+            // Siempre por documento: `IngCsc` es un consecutivo por paciente, así que
+            // filtrar solo por ese número alcanzaría ingresos de otras personas.
+            var pendientes = lista
+                .Where(p =>
+                    !string.IsNullOrWhiteSpace(p.TipoDocumento)
+                    && !string.IsNullOrWhiteSpace(p.Cedula))
+                .GroupBy(p => $"{p.TipoDocumento.Trim()}-{p.Cedula.Trim()}", StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First())
+                .ToList();
+
+            const int tamanoLote = 80;
+            for (var offset = 0; offset < pendientes.Count; offset += tamanoLote)
+            {
+                var lote = pendientes.Skip(offset).Take(tamanoLote).ToList();
+                var values = string.Join(", ", lote.Select((_, i) => $"(@p{i * 2}, @p{i * 2 + 1})"));
+                var parametros = lote
+                    .SelectMany(p => new object[] { p.TipoDocumento.Trim(), p.Cedula.Trim() })
+                    .ToArray();
+
+                var sql = $@"
+WITH Candidatos AS (
+    SELECT RTRIM(LTRIM(TipoDocumento)) AS TipoDocumento,
+           RTRIM(LTRIM(Cedula)) AS Cedula
+    FROM (VALUES {values}) AS t(TipoDocumento, Cedula)
+),
+Ultimo AS (
+    SELECT
+        RTRIM(LTRIM(i.MPTDoc)) AS TipoDocumento,
+        RTRIM(LTRIM(i.MPcedu)) AS Cedula,
+        i.IngCsc AS IdIngreso,
+        i.IngInSlC,
+        ROW_NUMBER() OVER (
+            PARTITION BY RTRIM(LTRIM(i.MPCedu)), RTRIM(LTRIM(i.MPTDoc))
+            ORDER BY i.IngCsc DESC
+        ) AS rn
+    FROM INGRESOS i
+    INNER JOIN Candidatos c
+        ON RTRIM(LTRIM(i.MPTDoc)) = c.TipoDocumento
+       AND RTRIM(LTRIM(i.MPcedu)) = c.Cedula
+)
+SELECT IdIngreso, TipoDocumento, Cedula
+FROM Ultimo
+WHERE rn = 1
+  AND UPPER(RTRIM(LTRIM(ISNULL(IngInSlC, N'N')))) = N'S'";
+
+                await CompletarLookupSalidaClinicaAsync(lookup, sql, parametros, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "No se pudo consultar IngInSlC en INGRESOS; no se cancelará por salida clínica en este ciclo");
+            return new SalidaClinicaHisLookup();
+        }
+
+        _logger.LogInformation(
+            "Salida clínica HIS (IngInSlC=S): {Ingresos} ingresos / {Pacientes} pacientes",
+            lookup.IngresosPorPaciente.Count,
+            lookup.PacienteIds.Count);
+
+        return lookup;
+    }
+
+    private async Task CompletarLookupSalidaClinicaAsync(
+        SalidaClinicaHisLookup lookup,
+        string sql,
+        object[] parametros,
+        CancellationToken cancellationToken)
+    {
+        var connection = _context.Database.GetDbConnection();
+        var cerroConexion = false;
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+            cerroConexion = true;
+        }
+
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            command.CommandType = CommandType.Text;
+
+            for (var i = 0; i < parametros.Length; i++)
+            {
+                var param = command.CreateParameter();
+                param.ParameterName = $"@p{i}";
+                param.Value = parametros[i] ?? DBNull.Value;
+                command.Parameters.Add(param);
+            }
+
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            var ordId = reader.GetOrdinal("IdIngreso");
+            var ordTipo = reader.GetOrdinal("TipoDocumento");
+            var ordCedula = reader.GetOrdinal("Cedula");
+
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var tipo = reader.IsDBNull(ordTipo) ? string.Empty : reader.GetString(ordTipo).Trim();
+                var cedula = reader.IsDBNull(ordCedula) ? string.Empty : reader.GetString(ordCedula).Trim();
+
+                if (!reader.IsDBNull(ordId))
+                    lookup.AgregarIngreso(tipo, cedula, Convert.ToInt32(reader.GetValue(ordId)));
+
+                lookup.AgregarPaciente(tipo, cedula);
+            }
+        }
+        finally
+        {
+            if (cerroConexion)
+                await connection.CloseAsync();
+        }
+    }
+
     /// <summary>
     /// Ejecuta queries de atenciones usando ADO.NET puro para evitar problemas de conversión de tipos con EF Core
     /// </summary>
@@ -556,21 +687,21 @@ ORDER BY map.MPNomP, i.MPNumC;";
             {
                 var atencion = new AtencionHospitalariaResponse
                 {
-                    IdIngreso = reader.GetInt16(reader.GetOrdinal("IdIngreso")),
-                    TipoDocumento = reader.IsDBNull(reader.GetOrdinal("TipoDocumento")) 
-                        ? string.Empty 
+                    IdIngreso = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("IdIngreso"))),
+                    TipoDocumento = reader.IsDBNull(reader.GetOrdinal("TipoDocumento"))
+                        ? string.Empty
                         : reader.GetString(reader.GetOrdinal("TipoDocumento")).Trim(),
-                    Cedula = reader.IsDBNull(reader.GetOrdinal("Cedula")) 
-                        ? string.Empty 
+                    Cedula = reader.IsDBNull(reader.GetOrdinal("Cedula"))
+                        ? string.Empty
                         : reader.GetString(reader.GetOrdinal("Cedula")).Trim(),
-                    NombreCompleto = reader.IsDBNull(reader.GetOrdinal("NombreCompleto")) 
-                        ? string.Empty 
+                    NombreCompleto = reader.IsDBNull(reader.GetOrdinal("NombreCompleto"))
+                        ? string.Empty
                         : reader.GetString(reader.GetOrdinal("NombreCompleto")).Trim(),
-                    Pabellon = reader.IsDBNull(reader.GetOrdinal("Pabellon")) 
-                        ? string.Empty 
+                    Pabellon = reader.IsDBNull(reader.GetOrdinal("Pabellon"))
+                        ? string.Empty
                         : reader.GetString(reader.GetOrdinal("Pabellon")).Trim(),
-                    Cama = reader.IsDBNull(reader.GetOrdinal("Cama")) 
-                        ? string.Empty 
+                    Cama = reader.IsDBNull(reader.GetOrdinal("Cama"))
+                        ? string.Empty
                         : reader.GetString(reader.GetOrdinal("Cama")).Trim()
                 };
 

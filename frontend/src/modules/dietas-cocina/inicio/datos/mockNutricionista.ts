@@ -6,7 +6,7 @@ export const mockNutricionista = {
     { label: "Dietas pendientes", value: 12, variant: "default" as const },
     { label: "Confirmadas", value: 115, variant: "default" as const },
     { label: "Novedades", value: 8, variant: "default" as const },
-    { label: "Cancelaciones", value: 3, variant: "alert" as const },
+    { label: "Salidas / canceladas", value: 3, variant: "alert" as const },
     { label: "Fuera de horario", value: 4, variant: "alert" as const },
   ],
   distribucion: {
@@ -17,7 +17,7 @@ export const mockNutricionista = {
       { label: "Devuelta", value: 3, color: "#94a3b8" },
       { label: "Guardado", value: 8, color: "#bbf244" },
       { label: "Recibida", value: 2, color: "#00818f" },
-      { label: "Cancelada", value: 2, color: "#d8e0e8" },
+      { label: "Salida clínica", value: 2, color: "#94a3b8" },
     ],
   },
   atencion: [

@@ -299,7 +299,7 @@ export const mockDietas = {
     { id: "confirmadas", label: "Confirmadas", value: 85, variant: "success" },
     { id: "recibidas", label: "Recibidas", value: 15, variant: "info" },
     { id: "devueltas", label: "Devueltas", value: 2, variant: "muted" },
-    { id: "canceladas", label: "Canceladas", value: 0, variant: "muted" },
+    { id: "canceladas", label: "Salidas / canceladas", value: 0, variant: "muted" },
   ] satisfies KpiDieta[],
   filas: [...filasAlmuerzo, ...filasDesayuno],
 }

@@ -393,7 +393,7 @@ ORDER BY map.MPNomP, i.MPNumC;";
             {
                 var atencion = new AtencionHospitalariaResponse
                 {
-                    IdIngreso = reader.GetInt16(reader.GetOrdinal("IdIngreso")),
+                    IdIngreso = Convert.ToInt32(reader.GetValue(reader.GetOrdinal("IdIngreso"))),
                     TipoDocumento = reader.IsDBNull(reader.GetOrdinal("TipoDocumento")) 
                         ? string.Empty 
                         : reader.GetString(reader.GetOrdinal("TipoDocumento")).Trim(),

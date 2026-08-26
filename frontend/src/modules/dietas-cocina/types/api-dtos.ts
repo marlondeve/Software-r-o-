@@ -39,6 +39,8 @@ export interface FilaDietaDto {
   solicitadoPor?: string
   solicitadoEn?: string
   cancelacionTardia?: boolean
+  /** Cancelación automática por salida clínica HIS (UI: «Salida clínica»). */
+  cancelacionPorSalidaClinica?: boolean
   estado?: string
   comida?: string
   ordenCocinaId?: string

@@ -40,6 +40,12 @@ public class FilaDietaDto
     public DateTime? SolicitadoEn { get; set; }
     public bool CancelacionTardia { get; set; }
 
+    /// <summary>
+    /// True cuando la cancelación fue por salida clínica HIS (no manual).
+    /// La UI muestra «Salida clínica» en lugar de «Cancelada».
+    /// </summary>
+    public bool CancelacionPorSalidaClinica { get; set; }
+
     public Guid? OrdenCocinaId { get; set; }
 
     public DateTime FechaOperativa { get; set; }

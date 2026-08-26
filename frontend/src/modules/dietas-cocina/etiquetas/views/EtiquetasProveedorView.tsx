@@ -397,7 +397,7 @@ export function EtiquetasProveedorView() {
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 {mostrarFueraFlujo
-                  ? "No hay etiquetas fuera de flujo (canceladas o egresos) en este turno."
+                  ? "No hay etiquetas fuera de flujo (salida clínica o sin solicitud) en este turno."
                   : mostrarRecibidasEnfermeria
                     ? "No hay etiquetas recibidas por enfermería para este tiempo de comida."
                     : "Ajusta los filtros o cambia el tiempo de comida. Para ver las ya entregadas, pulsa el KPI Recibidas Enfermería."}
@@ -410,8 +410,8 @@ export function EtiquetasProveedorView() {
               !mostrarFueraFlujo && (
                 <p className="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-sm text-amber-950">
                   Los KPIs cuentan solo dietas activas del censo (como Cocina).
-                  Las etiquetas de egresos o canceladas siguen visibles con
-                  distintivo y en el KPI «Fuera de flujo».
+                  Las etiquetas de salida clínica o sin solicitud siguen
+                  visibles con distintivo y en el KPI «Fuera de flujo».
                 </p>
               )}
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

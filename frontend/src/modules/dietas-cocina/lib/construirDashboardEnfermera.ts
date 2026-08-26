@@ -4,6 +4,7 @@ import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import { mockEnfermera } from "@/modules/dietas-cocina/inicio/datos/mockEnfermera"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
+import { deduplicarFilasPorPacienteComida } from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
 import {
   filtrarEtiquetasDelPeriodoOperativo,
   resolverContextoFilaDieta,
@@ -20,7 +21,7 @@ function filasEnfermeria(
   if (filtradas.length === 0 && filas.length > 0) {
     filtradas = filas
   }
-  return filtradas
+  return deduplicarFilasPorPacienteComida(filtradas)
 }
 
 export function construirDashboardEnfermeraDesdeCiclo(
@@ -67,6 +68,8 @@ export function construirDashboardEnfermeraDesdeCiclo(
         paciente: fila.paciente,
         tipo: fila.tipoDieta ?? "Sin asignar",
         estado,
+        observaciones: fila.observaciones,
+        cancelacionPorSalidaClinica: fila.cancelacionPorSalidaClinica,
       }
     })
 

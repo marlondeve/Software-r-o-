@@ -48,21 +48,73 @@ internal static class DietasReglasNegocio
         && RolesCancelarTardia.Contains(NormalizarRol(rolUsuario));
 
     /// <summary>
-    /// Estados que aún no son terminales: al egresar del HIS se cancelan para no preparar ni etiquetar.
+    /// Estados cancelables por salida clínica (INGRESOS.IngInSlC = 'S'), nunca por
+    /// ausencia en el snapshot de censo. Se limita a lo que sigue en cocina: desde
+    /// EnRuta la bandeja ya salió y debe cerrarse por devolución, no por cancelación.
     /// </summary>
     private static readonly HashSet<EstadoDieta> EstadosCancelarPorEgreso =
     [
         EstadoDieta.Pendiente,
-        EstadoDieta.Guardado,
-        EstadoDieta.Solicitada,
-        EstadoDieta.Confirmada,
-        EstadoDieta.EnPreparacion,
-        EstadoDieta.ListaEnvio,
-        EstadoDieta.EnRuta,
+        .. EstadosCancelarNormal,
+        .. EstadosCancelarTardia,
     ];
 
     internal static bool DebeCancelarPorEgreso(EstadoDieta estado) =>
         EstadosCancelarPorEgreso.Contains(estado);
+
+    /// <summary>
+    /// La salida clínica sobre una dieta ya comprometida con el proveedor factura
+    /// igual que una cancelación tardía manual.
+    /// </summary>
+    internal static bool EsCancelacionTardiaPorEgreso(EstadoDieta estado) =>
+        EstadosCancelarTardia.Contains(estado);
+
+    /// <summary>
+    /// Texto visible en observaciones / UI. Conserva la marca HIS para detección.
+    /// </summary>
+    internal const string MotivoCancelacionSalidaClinica =
+        "Paciente con salida clínica";
+
+    internal const string MotivoReactivacionReingreso =
+        "Reactivada por reingreso: paciente de nuevo en censo";
+
+    internal const string TipoEventoCancelacionPorEgreso = "dieta_cancelada_egreso";
+
+    internal const string TipoEventoReactivacionPorReingreso = "dieta_reactivada_reingreso";
+
+    /// <summary>
+    /// Detecta cancelación automática por salida clínica / egreso (texto actual o legado).
+    /// Incluye el mensaje del sistema anterior: «paciente egresado del censo».
+    /// </summary>
+    internal static bool EsObservacionSalidaClinica(string? observaciones)
+    {
+        if (string.IsNullOrWhiteSpace(observaciones)) return false;
+
+        // Textos actuales y legados del cancelado automático por HIS / censo.
+        return observaciones.Contains("salida clínica", StringComparison.OrdinalIgnoreCase)
+            || observaciones.Contains("IngInSlC = S", StringComparison.OrdinalIgnoreCase)
+            || observaciones.Contains("IngInSlC=S", StringComparison.OrdinalIgnoreCase)
+            || observaciones.Contains("egreso del paciente", StringComparison.OrdinalIgnoreCase)
+            || observaciones.Contains("egresado del censo", StringComparison.OrdinalIgnoreCase)
+            || observaciones.Contains("paciente egresado", StringComparison.OrdinalIgnoreCase)
+            || (observaciones.Contains("cancelada automáticamente", StringComparison.OrdinalIgnoreCase)
+                && observaciones.Contains("egreso", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Estado operativo al volver al censo tras salida clínica.
+    /// Si ya estaba en cocina, vuelve a Confirmada (etiqueta/cocina retoman el turno);
+    /// si no, Pendiente / borrador para volver a solicitar.
+    /// </summary>
+    internal static EstadoDieta EstadoTrasReingresoTrasSalidaClinica(EstadoDieta estadoAlCancelar) =>
+        estadoAlCancelar switch
+        {
+            EstadoDieta.Confirmada
+                or EstadoDieta.EnPreparacion
+                or EstadoDieta.ListaEnvio => EstadoDieta.Confirmada,
+            EstadoDieta.Guardado or EstadoDieta.Solicitada => estadoAlCancelar,
+            _ => EstadoDieta.Pendiente,
+        };
 
     /// <summary>
     /// Solo dietas activas en censo (no canceladas / no terminales de consumo) pueden generar etiqueta.

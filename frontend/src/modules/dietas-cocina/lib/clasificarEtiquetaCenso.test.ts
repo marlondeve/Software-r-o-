@@ -58,7 +58,7 @@ function etiquetaBase(
 }
 
 describe("clasificarEtiquetaRespectoCenso", () => {
-  it("sin filas cargadas no degrada a fuera de censo", () => {
+  it("sin filas cargadas no degrada el flujo", () => {
     expect(clasificarEtiquetaRespectoCenso(etiquetaBase(), []).enFlujo).toBe(
       true,
     )
@@ -72,6 +72,19 @@ describe("clasificarEtiquetaRespectoCenso", () => {
     })
   })
 
+  it("marca salida clínica cuando la dieta se canceló por egreso HIS", () => {
+    const filas = [
+      filaBase("fila-1", {
+        estado: "cancelada",
+        observaciones: "Paciente con salida clínica",
+        cancelacionPorSalidaClinica: true,
+      }),
+    ]
+    const result = clasificarEtiquetaRespectoCenso(etiquetaBase(), filas)
+    expect(result.enFlujo).toBe(false)
+    expect(result.motivo).toBe("salida_clinica")
+  })
+
   it("marca cancelada cuando la dieta está cancelada", () => {
     const filas = [filaBase("fila-1", { estado: "cancelada" })]
     const result = clasificarEtiquetaRespectoCenso(etiquetaBase(), filas)
@@ -79,14 +92,29 @@ describe("clasificarEtiquetaRespectoCenso", () => {
     expect(result.motivo).toBe("cancelada")
   })
 
-  it("marca fuera de censo cuando el paciente ya no está en filas", () => {
-    const result = clasificarEtiquetaRespectoCenso(etiquetaBase(), [
-      filaBase("otra-fila"),
-    ])
-    expect(result).toEqual({ enFlujo: false, motivo: "fuera_de_censo" })
+  it("vuelve al flujo cuando la dieta se reactiva tras reingreso", () => {
+    const filas = [filaBase("fila-1", { estado: "confirmada" })]
+    expect(clasificarEtiquetaRespectoCenso(etiquetaBase(), filas).enFlujo).toBe(
+      true,
+    )
   })
 
-  it("filtra KPIs a solo etiquetas en flujo (caso 15→12)", () => {
+  it("no saca del flujo cuando el paciente falta en el snapshot de censo", () => {
+    const result = clasificarEtiquetaRespectoCenso(etiquetaBase(), [
+      filaBase("otra-fila", { pacienteId: "PAC-9" }),
+    ])
+    expect(result.enFlujo).toBe(true)
+    expect(result.motivo).toBeUndefined()
+  })
+
+  it("marca sin solicitud cuando la dieta no fue solicitada", () => {
+    const filas = [filaBase("fila-1", { estado: "no-solicitada" })]
+    const result = clasificarEtiquetaRespectoCenso(etiquetaBase(), filas)
+    expect(result.enFlujo).toBe(false)
+    expect(result.motivo).toBe("sin_solicitud")
+  })
+
+  it("solo excluye de KPIs las dietas canceladas o sin solicitud", () => {
     const filas = [
       filaBase("f1"),
       filaBase("f2", { pacienteId: "P2" }),
@@ -96,10 +124,8 @@ describe("clasificarEtiquetaRespectoCenso", () => {
       etiquetaBase({ id: "a", filaDietaId: "f1" }),
       etiquetaBase({ id: "b", filaDietaId: "f2", codigo: "ETQ-2" }),
       etiquetaBase({ id: "c", filaDietaId: "f3", codigo: "ETQ-3" }),
-      etiquetaBase({ id: "d", filaDietaId: "egresado", codigo: "ETQ-4" }),
-      etiquetaBase({ id: "e", filaDietaId: "egresado-2", codigo: "ETQ-5" }),
     ]
     expect(filtrarEtiquetasEnFlujoCenso(etiquetas, filas)).toHaveLength(2)
-    expect(etiquetas).toHaveLength(5)
+    expect(etiquetas).toHaveLength(3)
   })
 })

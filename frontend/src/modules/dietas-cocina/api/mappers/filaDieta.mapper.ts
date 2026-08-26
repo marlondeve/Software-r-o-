@@ -2,6 +2,7 @@ import { mapearComidaInterna, normalizarClave } from "@/modules/dietas-cocina/ap
 import { repararTextoUtf8 } from "@/modules/dietas-cocina/api/utils/texto"
 import { normalizarConsistenciaParaComida } from "@/modules/dietas-cocina/lib/comidaOperativa"
 import { resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
+import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import {
   formatearFechaTrazabilidad,
   formatearSolicitadoEn,
@@ -91,6 +92,14 @@ export function mapFilaDietaDtoToDomain(
       dto.solicitadoEn != null ? String(dto.solicitadoEn) : undefined,
     ),
     cancelacionTardia: dto.cancelacionTardia,
+    cancelacionPorSalidaClinica:
+      String(dto.estado ?? "")
+        .toLowerCase()
+        .includes("cancel") &&
+      esCancelacionSalidaClinica(
+        dto.observaciones != null ? String(dto.observaciones) : undefined,
+        dto.cancelacionPorSalidaClinica,
+      ),
     estado: normalizarEstadoDietaDesdeApi(dto.estado),
     comida: mapearComidaInterna(comidaRaw),
     ordenCocinaId: dto.ordenCocinaId ? String(dto.ordenCocinaId) : undefined,
@@ -141,9 +150,10 @@ export function mapEventoTrazabilidadDto(
   )
 
   const titulo = tituloDesdeTipoEvento(tipoEvento)
+  const descripcionLegible = descripcionEventoLegible(tipoEvento, descripcion)
   const detalle =
-    descripcion && descripcion !== titulo
-      ? descripcion
+    descripcionLegible && descripcionLegible !== titulo
+      ? descripcionLegible
       : usuario
         ? `Registrado por ${usuario}`
         : ""
@@ -165,7 +175,20 @@ const TITULOS_TIPO_EVENTO: Record<string, string> = {
   solicitud_guardada: "Solicitud guardada",
   solicitud_confirmada: "Solicitud confirmada",
   dieta_cancelada: "Dieta cancelada",
+  dieta_cancelada_egreso: "Salida clínica",
+  dieta_reactivada_reingreso: "Reingreso al censo",
   novedad_registrada: "Novedad registrada",
+}
+
+function descripcionEventoLegible(tipoEvento: string, descripcion: string): string {
+  const clave = tipoEvento.trim().toLowerCase()
+  if (clave === "dieta_cancelada_egreso") {
+    return "Paciente con salida clínica; la dieta queda fuera del turno."
+  }
+  if (clave === "dieta_reactivada_reingreso") {
+    return "Paciente de nuevo en censo; la dieta vuelve al flujo operativo."
+  }
+  return descripcion
 }
 
 function tituloDesdeTipoEvento(tipoEvento: string): string {

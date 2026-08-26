@@ -38,10 +38,14 @@ export function mesclarDashboardNutricionista(
 ): DashboardNutricionistaCiclo {
   return {
     periodoOperativo: ciclo.periodoOperativo,
-    kpis: kpisTienenValores(api.kpis) ? api.kpis : ciclo.kpis,
+    // KPIs y donut salen del censo operativo (una fila por paciente). El API
+    // cuenta filas crudas de BD y puede inflar «Total dietas» con duplicados.
+    kpis: ciclo.kpis,
     distribucion:
-      api.distribucion.segmentos.length > 0 ? api.distribucion : ciclo.distribucion,
-    atencion: preferirLista(api.atencion, ciclo.atencion),
+      ciclo.distribucion.segmentos.length > 0
+        ? ciclo.distribucion
+        : api.distribucion,
+    atencion: preferirLista(ciclo.atencion, api.atencion),
     actividadReciente: resolverActividadRecienteEnfermeria(
       api.actividadReciente,
       ciclo.actividadReciente,
@@ -59,7 +63,7 @@ export function mesclarDashboardEnfermera(
 ): DashboardEnfermeraCiclo {
   return {
     ...ciclo,
-    kpis: kpisTienenValores(api.kpis) ? api.kpis : ciclo.kpis,
+    kpis: ciclo.kpis.length > 0 ? ciclo.kpis : api.kpis,
     dietasRecientes:
       ciclo.dietasRecientes.length > 0
         ? ciclo.dietasRecientes

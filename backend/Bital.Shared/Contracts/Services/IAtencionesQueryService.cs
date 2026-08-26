@@ -22,6 +22,14 @@ public interface IAtencionesQueryService
     Task<IEnumerable<AtencionHospitalariaResponse>> GetAtencionesHospitalariasAsync(
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Pacientes cuyo ingreso HIS tiene IngInSlC = 'S' (salida clínica).
+    /// Única señal válida para cancelar dietas por egreso.
+    /// </summary>
+    Task<SalidaClinicaHisLookup> ObtenerPacientesConSalidaClinicaAsync(
+        IEnumerable<IdentidadIngresoHis> pacientes,
+        CancellationToken cancellationToken = default);
+
     Task<IEnumerable<EncuestaCapturaPresencialResponse>> GetCapturaPresencialAsync(
         string? servicio = null,
         string? pabellon = null,

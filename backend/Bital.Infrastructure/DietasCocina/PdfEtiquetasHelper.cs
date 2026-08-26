@@ -21,12 +21,44 @@ internal static class PdfEtiquetasHelper
     private const float QrMm = 38f;
 
     private static readonly CultureInfo CulturaEs = CultureInfo.GetCultureInfo("es-CO");
+    private static readonly TimeZoneInfo ZonaColombia = ResolverZonaColombia();
     private static readonly byte[] LogoBytes = CargarRecurso("Logo-Clinica-del-Rio.png");
     private static readonly string RutaConsulta = "/dietas-cocina/bandejas-piso/consulta/";
 
     static PdfEtiquetasHelper()
     {
         QuestPDF.Settings.License = LicenseType.Community;
+    }
+
+    private static TimeZoneInfo ResolverZonaColombia()
+    {
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(
+                OperatingSystem.IsWindows() ? "SA Pacific Standard Time" : "America/Bogota");
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.CreateCustomTimeZone(
+                "America/Bogota",
+                TimeSpan.FromHours(-5),
+                "Colombia",
+                "COT");
+        }
+    }
+
+    /// <summary>
+    /// GeneradaEn se persiste en UTC (a menudo Kind=Unspecified al leer de SQL).
+    /// </summary>
+    public static DateTime AHoraColombia(DateTime utc)
+    {
+        var comoUtc = utc.Kind switch
+        {
+            DateTimeKind.Utc => utc,
+            DateTimeKind.Local => utc.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(utc, DateTimeKind.Utc),
+        };
+        return TimeZoneInfo.ConvertTimeFromUtc(comoUtc, ZonaColombia);
     }
 
     public static byte[] Generar(IReadOnlyList<EtiquetaPdfModelo> etiquetas)

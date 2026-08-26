@@ -1,9 +1,14 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
+import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import { mockNutricionista } from "@/modules/dietas-cocina/inicio/datos/mockNutricionista"
 import { construirActividadRecienteEnfermeria } from "@/modules/dietas-cocina/lib/construirActividadEnfermeria"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
+import {
+  labelEstadoDietaVisible,
+} from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
+import { deduplicarFilasPorPacienteComida } from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
 import {
   filtrarEtiquetasDelPeriodoOperativo,
   resolverContextoFilaDieta,
@@ -14,32 +19,30 @@ import {
   resolverProximoCierre,
 } from "@/modules/dietas-cocina/lib/resolverPeriodoOperativoNutricionista"
 import { labelComida as labelComidaOperativa } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
+
 const COLORES_ESTADO: Record<string, string> = {
-  "no-solicitada": "#b00020",
-  guardado: "#bbf244",
-  confirmada: "#006671",
-  "por-iniciar": "#64748b",
-  "en-preparacion": "#0ea5e9",
-  "lista-despacho": "#00818f",
-  despachada: "#0369a1",
-  recibida: "#00818f",
-  devuelta: "#94a3b8",
-  recogida: "#64748b",
-  cancelada: "#d8e0e8",
+  "Sin solicitud": "#b00020",
+  Guardado: "#bbf244",
+  Confirmada: "#006671",
+  "En gestión": "#0ea5e9",
+  Preparando: "#0ea5e9",
+  "Lista p/ Despacho": "#00818f",
+  Despachada: "#0369a1",
+  Recibida: "#00818f",
+  Devuelta: "#94a3b8",
+  Recogida: "#64748b",
+  Cancelada: "#d8e0e8",
+  "Salida clínica": "#94a3b8",
 }
 
-const LABEL_ESTADO: Record<string, string> = {
-  "no-solicitada": "Sin solicitud",
-  guardado: "Guardado",
-  confirmada: "Confirmada",
-  "por-iniciar": "Por iniciar",
-  "en-preparacion": "En gestión",
-  "lista-despacho": "Lista despacho",
-  despachada: "Despachada",
-  recibida: "Recibida",
-  devuelta: "Devuelta",
-  recogida: "Recogida",
-  cancelada: "Cancelada",
+function etiquetaSegmentoEstado(
+  estado: EstadoDieta,
+  fila: FilaDieta,
+): string {
+  return labelEstadoDietaVisible(estado, {
+    observaciones: fila.observaciones,
+    cancelacionPorSalidaClinica: fila.cancelacionPorSalidaClinica,
+  })
 }
 
 export function construirDashboardNutricionistaDesdeCiclo(
@@ -60,22 +63,35 @@ export function construirDashboardNutricionistaDesdeCiclo(
     filasComida = filas
   }
 
-  let filasPendientesCierre = filas.filter((f) => f.comida === comidaPendientes)
-  if (filasPendientesCierre.length === 0 && !cierreInfo.diaSiguiente && filas.length > 0) {
-    filasPendientesCierre = filasComida
-  }
-
-  const filasConEstado = filasComida.map((fila) => {
+  const resolverEstado = (fila: FilaDieta) => {
     const { orden, etiqueta } = resolverContextoFilaDieta(
       fila,
       ordenes,
       etiquetasPeriodo,
     )
-    const estado = estadoDietaDesdeCiclo(fila, orden, etiqueta)
-    return { fila, estado }
-  })
+    return estadoDietaDesdeCiclo(fila, orden, etiqueta)
+  }
 
-  const pacientesActivos = new Set(filasComida.map((f) => f.pacienteId)).size
+  filasComida = deduplicarFilasPorPacienteComida(filasComida, resolverEstado)
+
+  let filasPendientesCierre = filas.filter((f) => f.comida === comidaPendientes)
+  if (filasPendientesCierre.length === 0 && !cierreInfo.diaSiguiente && filas.length > 0) {
+    filasPendientesCierre = filasComida
+  } else {
+    filasPendientesCierre = deduplicarFilasPorPacienteComida(
+      filasPendientesCierre,
+      resolverEstado,
+    )
+  }
+
+  const filasConEstado = filasComida.map((fila) => ({
+    fila,
+    estado: resolverEstado(fila),
+  }))
+
+  const pacientesActivos = filasConEstado.filter(
+    (f) => f.estado !== "cancelada",
+  ).length
   const etiquetasPendientes = filtrarEtiquetasDelPeriodoOperativo(etiquetas, {
     comida: comidaPendientes,
   })
@@ -104,20 +120,25 @@ export function construirDashboardNutricionistaDesdeCiclo(
   const fueraHorario = filasComida.filter((f) => f.cancelacionTardia).length
 
   const conteoEstados = new Map<string, number>()
-  for (const { estado } of filasConEstado) {
-    conteoEstados.set(estado, (conteoEstados.get(estado) ?? 0) + 1)
+  for (const { fila, estado } of filasConEstado) {
+    const label = etiquetaSegmentoEstado(estado, fila)
+    conteoEstados.set(label, (conteoEstados.get(label) ?? 0) + 1)
   }
 
   const segmentos = [...conteoEstados.entries()]
     .filter(([, value]) => value > 0)
-    .map(([estado, value]) => ({
-      label: LABEL_ESTADO[estado] ?? estado,
+    .map(([label, value]) => ({
+      label,
       value,
-      color: COLORES_ESTADO[estado] ?? "#94a3b8",
+      color: COLORES_ESTADO[label] ?? "#94a3b8",
     }))
 
-  const sinSolicitud = filasComida.filter((f) => f.estado === "no-solicitada").length
-  const cambiosPendientes = filasComida.filter((f) => f.estado === "guardado").length
+  const sinSolicitud = filasConEstado.filter(
+    (f) => f.estado === "no-solicitada",
+  ).length
+  const cambiosPendientes = filasConEstado.filter(
+    (f) => f.estado === "guardado",
+  ).length
 
   const actividadReciente = construirActividadRecienteEnfermeria(
     filasComida,
@@ -152,7 +173,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
         variant: "default" as const,
       },
       {
-        label: "Cancelaciones",
+        label: "Salidas / canceladas",
         value: String(cancelaciones),
         variant: "alert" as const,
       },

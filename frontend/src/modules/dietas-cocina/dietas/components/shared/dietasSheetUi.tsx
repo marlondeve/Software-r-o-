@@ -28,6 +28,8 @@ export function ContextoPacienteCard({ fila }: ContextoPacienteCardProps) {
         <SeccionTitulo>Contexto del paciente</SeccionTitulo>
         <EstadoBadge
           estado={fila.estado}
+          observaciones={fila.observaciones}
+          cancelacionPorSalidaClinica={fila.cancelacionPorSalidaClinica}
           className="shrink-0 font-semibold uppercase tracking-wide"
         />
       </div>

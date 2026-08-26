@@ -70,8 +70,8 @@ export function ListadoBandejasRecibidasEnPiso({
               Fuera de flujo ({bandejasFueraFlujo.length})
             </h3>
             <p className="text-sm font-normal text-muted-foreground">
-              Historial del turno (egreso o cancelación). No cuentan en KPIs
-              operativos.
+              Historial del turno (salida clínica o sin solicitud). No cuentan
+              en KPIs operativos.
             </p>
           </CardHeader>
           <CardContent className="p-0">

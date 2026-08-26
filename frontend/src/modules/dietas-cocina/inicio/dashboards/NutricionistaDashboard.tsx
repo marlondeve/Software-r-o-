@@ -54,6 +54,8 @@ type ActividadReciente = {
   accion: string
   hora: string
   estado: EstadoDieta
+  observaciones?: string | null
+  cancelacionPorSalidaClinica?: boolean
 }
 
 export function NutricionistaDashboard() {
@@ -128,7 +130,13 @@ export function NutricionistaDashboard() {
         header: () => <span className="block w-28 text-right">Estado</span>,
         cell: ({ row }) => (
           <div className="flex w-28 justify-end">
-            <EstadoBadge estado={row.original.estado as EstadoDieta} />
+            <EstadoBadge
+              estado={row.original.estado as EstadoDieta}
+              observaciones={row.original.observaciones}
+              cancelacionPorSalidaClinica={
+                row.original.cancelacionPorSalidaClinica
+              }
+            />
           </div>
         ),
       },

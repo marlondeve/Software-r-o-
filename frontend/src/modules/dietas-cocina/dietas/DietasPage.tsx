@@ -1,6 +1,6 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Info, RefreshCw } from "lucide-react"
 import { useSearchParams } from "react-router-dom"
 
@@ -33,7 +33,12 @@ import {
   filaCoincideUbicacion,
   listarUbicacionesDesdeFilas,
 } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
-import { ordenarFilasDietasOperativas } from "@/modules/dietas-cocina/dietas/lib/ordenarFilasDietas"
+import {
+  ordenarFilasDietasConListaFija,
+  sincronizarOrdenListaDietas,
+  type OrdenListaDietas,
+} from "@/modules/dietas-cocina/dietas/lib/ordenarFilasDietas"
+import { deduplicarFilasPorPacienteComida } from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { crearResolverEstadoVisibleFila } from "@/modules/dietas-cocina/lib/estadoVisibleFilaDieta"
@@ -114,8 +119,22 @@ export function DietasPage() {
   }, [searchParams])
 
   // Filtrado en cliente sobre el censo local (búsqueda, servicio, ubicación, estado).
+  const ordenListaRef = useRef<OrdenListaDietas>(new Map())
+  const comidaOrdenRef = useRef(comidaActiva)
+
+  // Una sola fila por paciente+comida: tabla y KPIs cuentan lo mismo.
+  const filasUnicas = useMemo(
+    () => deduplicarFilasPorPacienteComida(filas, resolverEstadoVisible),
+    [filas, resolverEstadoVisible],
+  )
+
   const filasFiltradas = useMemo(() => {
-    const filtradas = filas.filter((fila) => {
+    if (comidaOrdenRef.current !== comidaActiva) {
+      ordenListaRef.current = new Map()
+      comidaOrdenRef.current = comidaActiva
+    }
+
+    const filtradas = filasUnicas.filter((fila) => {
       if (fila.comida !== comidaActiva) return false
       if (!filaCoincideBusqueda(fila, busqueda)) return false
       if (!servicioCoincideFila(fila, servicio)) return false
@@ -132,14 +151,15 @@ export function DietasPage() {
       return true
     })
 
-    return ordenarFilasDietasOperativas(
+    // Congela la posición al primer ingreso: sync de censo / cambio de estado
+    // ya no reordena la tabla mientras el usuario trabaja.
+    ordenListaRef.current = sincronizarOrdenListaDietas(
       filtradas,
-      resolverEstadoVisible,
-      ordenes,
-      etiquetas,
+      ordenListaRef.current,
     )
+    return ordenarFilasDietasConListaFija(filtradas, ordenListaRef.current)
   }, [
-    filas,
+    filasUnicas,
     comidaActiva,
     busqueda,
     servicio,
@@ -147,8 +167,6 @@ export function DietasPage() {
     estado,
     soloPendientes,
     resolverEstadoVisible,
-    ordenes,
-    etiquetas,
   ])
 
   const paginacionDietas = usePaginacionTabla(filasFiltradas, {
@@ -156,8 +174,8 @@ export function DietasPage() {
   })
 
   const kpis = useMemo(
-    () => calcularKpisDietas(filas, comidaActiva, resolverEstadoVisible),
-    [filas, comidaActiva, resolverEstadoVisible],
+    () => calcularKpisDietas(filasUnicas, comidaActiva, resolverEstadoVisible),
+    [filasUnicas, comidaActiva, resolverEstadoVisible],
   )
 
   const serviciosDisponibles = useMemo(() => {

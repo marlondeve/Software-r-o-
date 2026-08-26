@@ -155,7 +155,7 @@ export function CocinaFiltrosBar({
               ))}
               {filtros.estadoCocina === "cancelada" ? (
                 <SelectItem value="cancelada">
-                  {labelEstadoCocina("cancelada")}
+                  Salida clínica / cancelada
                 </SelectItem>
               ) : null}
             </SelectContent>

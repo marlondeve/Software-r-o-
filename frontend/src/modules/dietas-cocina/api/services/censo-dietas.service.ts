@@ -58,6 +58,19 @@ function extraerFilasCenso(censo: CensoDietasDto | Record<string, unknown>): unk
   return normalizarClave(censo as Record<string, unknown>, "filas", "Filas")
 }
 
+/** Pacientes realmente en censo HIS; las filas pueden incluir canceladas del turno. */
+function extraerTotalPacientes(
+  censo: CensoDietasDto | Record<string, unknown>,
+  totalFilas: number,
+): number {
+  const valor = normalizarClave(
+    censo as Record<string, unknown>,
+    "totalPacientes",
+    "TotalPacientes",
+  )
+  return typeof valor === "number" && valor > 0 ? valor : totalFilas
+}
+
 /** Sincroniza una comida vía GET /dietas-cocina/censo (crea filas con GUID en el backend). */
 export async function sincronizarFilasDesdeCensoApi(
   comida: TiempoComida,
@@ -67,11 +80,18 @@ export async function sincronizarFilasDesdeCensoApi(
   const censo = await obtenerCensoDietas(comida)
   const filasApi = mapFilaDietaList(extraerFilasCenso(censo))
   const filasEnriquecidas = await enriquecerEdades(filasApi)
+  const filas = fusionarFilasPorComida(filasActuales, filasEnriquecidas, comida)
 
-  return {
-    filas: fusionarFilasPorComida(filasActuales, filasEnriquecidas, comida),
-    totalEnCenso: filasEnriquecidas.length,
-  }
+  // Preferir filas del API (ya deduplicadas). TotalPacientes del HIS puede
+  // venir inflado si el join a TMPFAC repite el mismo ingreso.
+  const totalHis = extraerTotalPacientes(censo, filasEnriquecidas.length)
+  const totalFilasComida = filas.filter((fila) => fila.comida === comida).length
+  const totalEnCenso =
+    filasEnriquecidas.length > 0
+      ? filasEnriquecidas.length
+      : Math.max(totalHis, totalFilasComida)
+
+  return { filas, totalEnCenso }
 }
 
 /** Carga todas las comidas operativas desde el censo del API. */

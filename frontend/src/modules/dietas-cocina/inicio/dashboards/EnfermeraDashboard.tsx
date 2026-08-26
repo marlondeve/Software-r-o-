@@ -31,6 +31,8 @@ type DietaReciente = {
   paciente: string
   tipo: string
   estado: EstadoDieta
+  observaciones?: string | null
+  cancelacionPorSalidaClinica?: boolean
 }
 
 export function EnfermeraDashboard() {
@@ -75,7 +77,13 @@ export function EnfermeraDashboard() {
         accessorKey: "estado",
         header: "Estado",
         cell: ({ row }) => (
-          <EstadoBadge estado={row.original.estado as EstadoDieta} />
+          <EstadoBadge
+            estado={row.original.estado as EstadoDieta}
+            observaciones={row.original.observaciones}
+            cancelacionPorSalidaClinica={
+              row.original.cancelacionPorSalidaClinica
+            }
+          />
         ),
       },
     ],

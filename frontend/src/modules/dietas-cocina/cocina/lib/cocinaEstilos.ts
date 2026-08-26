@@ -5,6 +5,7 @@ import {
   claseBadgeLogistica,
   etiquetaLogisticaLabel,
 } from "@/modules/dietas-cocina/etiquetas/lib/etiquetasEnfermeraEstilos"
+import { labelEstadoCocinaVisible } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import {
   claseBadgeEstadoCocina as claseBadgeEstadoCocinaCentral,
   labelEstadoCocina as labelEstadoCocinaCentral,
@@ -55,7 +56,10 @@ export function labelEstadoVisibleCocina(
   if (logistica === "entregada") return "Entregada"
   if (logistica === "devuelta" && etiqueta) return labelCierreBandeja(etiqueta)
   if (logistica === "devuelta") return "Recogida"
-  return labelEstadoCocina(orden.estadoCocina)
+  return labelEstadoCocinaVisible(orden.estadoCocina, {
+    observaciones: orden.observaciones,
+    cancelacionPorSalidaClinica: orden.cancelacionPorSalidaClinica,
+  })
 }
 
 export function claseBadgeEstadoVisibleCocina(

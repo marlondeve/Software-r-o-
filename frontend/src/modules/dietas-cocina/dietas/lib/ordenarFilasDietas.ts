@@ -1,74 +1,82 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
-import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
-import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
-import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
-import { resolverContextoFilaDieta } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
-
-function parseMsDesdeTexto(valor?: string): number {
-  if (!valor?.trim()) return 0
-  const parsed = Date.parse(valor.trim())
-  return Number.isNaN(parsed) ? 0 : parsed
-}
-
-/** Marca temporal del último movimiento operativo conocido de la fila. */
-export function obtenerMsUltimoCambioFila(
-  fila: FilaDieta,
-  etiqueta?: EtiquetaEnfermera,
-): number {
-  return Math.max(
-    parseMsDesdeTexto(fila.solicitadoEn),
-    parseMsDesdeTexto(etiqueta?.horaDevolucion),
-    parseMsDesdeTexto(etiqueta?.horaEntrega),
-    parseMsDesdeTexto(etiqueta?.horaPreEntrega),
-    parseMsDesdeTexto(etiqueta?.fechaHora),
-  )
-}
 
 function compararTextoEstable(a: string, b: string): number {
   return a.localeCompare(b, "es", { sensitivity: "base", numeric: true })
 }
 
 /**
- * Orden operativo estable para la tabla de dietas:
- * 1. «Sin solicitud» siempre arriba.
- * 2. Resto por último cambio de estado (más reciente primero).
- * 3. Desempate fijo por habitación y paciente (evita saltos al sincronizar censo).
+ * Criterio de ubicación (solo siembra inicial y filas nuevas).
+ * pabellón → habitación → paciente → id.
  */
-export function compararFilasDietasOperativas(
-  a: FilaDieta,
-  b: FilaDieta,
-  resolverEstadoVisible: (fila: FilaDieta) => EstadoDieta,
-  ordenes: OrdenCocina[],
-  etiquetas: EtiquetaEnfermera[],
-): number {
-  const estadoA = resolverEstadoVisible(a)
-  const estadoB = resolverEstadoVisible(b)
-  const prioridadA = estadoA === "no-solicitada" ? 0 : 1
-  const prioridadB = estadoB === "no-solicitada" ? 0 : 1
+export function compararFilasDietasPorUbicacion(a: FilaDieta, b: FilaDieta): number {
+  const pabellon = compararTextoEstable(a.pabellon ?? "", b.pabellon ?? "")
+  if (pabellon !== 0) return pabellon
 
-  if (prioridadA !== prioridadB) return prioridadA - prioridadB
-
-  if (prioridadA === 1) {
-    const ctxA = resolverContextoFilaDieta(a, ordenes, etiquetas)
-    const ctxB = resolverContextoFilaDieta(b, ordenes, etiquetas)
-    const msA = obtenerMsUltimoCambioFila(a, ctxA.etiqueta)
-    const msB = obtenerMsUltimoCambioFila(b, ctxB.etiqueta)
-    if (msA !== msB) return msB - msA
-  }
-
-  const habitacion = compararTextoEstable(a.habitacion, b.habitacion)
+  const habitacion = compararTextoEstable(a.habitacion ?? "", b.habitacion ?? "")
   if (habitacion !== 0) return habitacion
 
-  return compararTextoEstable(a.paciente, b.paciente)
+  const paciente = compararTextoEstable(a.paciente ?? "", b.paciente ?? "")
+  if (paciente !== 0) return paciente
+
+  return compararTextoEstable(a.id, b.id)
 }
 
+/** Índice fijo por id de fila: no se mueve aunque cambie cama o estado. */
+export type OrdenListaDietas = Map<string, number>
+
+/**
+ * Conserva posiciones ya conocidas. Las filas nuevas van al final,
+ * ordenadas entre sí por ubicación (una sola vez).
+ */
+export function sincronizarOrdenListaDietas(
+  filas: FilaDieta[],
+  ordenLista: OrdenListaDietas,
+): OrdenListaDietas {
+  const next = new Map(ordenLista)
+
+  if (next.size === 0) {
+    const iniciales = [...filas].sort(compararFilasDietasPorUbicacion)
+    iniciales.forEach((fila, indice) => next.set(fila.id, indice))
+    return next
+  }
+
+  const nuevas = filas
+    .filter((fila) => !next.has(fila.id))
+    .sort(compararFilasDietasPorUbicacion)
+
+  if (nuevas.length === 0) return next
+
+  let cursor = Math.max(-1, ...next.values()) + 1
+  for (const fila of nuevas) {
+    next.set(fila.id, cursor++)
+  }
+  return next
+}
+
+/** Orden de pantalla: índice fijo; desempate por ubicación/id. */
+export function ordenarFilasDietasConListaFija(
+  filas: FilaDieta[],
+  ordenLista: OrdenListaDietas,
+): FilaDieta[] {
+  return [...filas].sort((a, b) => {
+    const indiceA = ordenLista.get(a.id)
+    const indiceB = ordenLista.get(b.id)
+
+    if (indiceA != null && indiceB != null && indiceA !== indiceB) {
+      return indiceA - indiceB
+    }
+    if (indiceA != null && indiceB == null) return -1
+    if (indiceA == null && indiceB != null) return 1
+
+    return compararFilasDietasPorUbicacion(a, b)
+  })
+}
+
+/** Siembra + ordena (tests / primera carga sin mapa externo). */
 export function ordenarFilasDietasOperativas(
   filas: FilaDieta[],
-  resolverEstadoVisible: (fila: FilaDieta) => EstadoDieta,
-  ordenes: OrdenCocina[],
-  etiquetas: EtiquetaEnfermera[],
+  ordenLista?: OrdenListaDietas,
 ): FilaDieta[] {
-  return [...filas].sort((a, b) =>
-    compararFilasDietasOperativas(a, b, resolverEstadoVisible, ordenes, etiquetas),
-  )
+  const lista = sincronizarOrdenListaDietas(filas, ordenLista ?? new Map())
+  return ordenarFilasDietasConListaFija(filas, lista)
 }

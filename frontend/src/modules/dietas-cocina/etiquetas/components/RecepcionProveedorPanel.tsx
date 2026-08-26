@@ -1,8 +1,10 @@
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import type { MotivoFueraFlujoEtiqueta } from "@/modules/dietas-cocina/lib/clasificarEtiquetaCenso"
 import { etiquetaFueraFlujoCensoLabel } from "@/modules/dietas-cocina/lib/clasificarEtiquetaCenso"
+import { normalizarPabellon } from "@/modules/dietas-cocina/dietas/lib/dietasEstilos"
 import { QrCode } from "lucide-react"
 import { Link } from "react-router-dom"
+import type { ReactNode } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,7 +20,7 @@ import { cn } from "@/lib/utils"
 
 interface RecepcionProveedorPanelProps {
   bandejas: EtiquetaEnfermera[]
-  /** Visibles pero no accionables (egreso/cancelación). */
+  /** Visibles pero no accionables (dieta cancelada o sin solicitud). */
   bandejasFueraFlujo?: EtiquetaEnfermera[]
   motivoFueraFlujoPorId?: Map<string, MotivoFueraFlujoEtiqueta | undefined>
   seleccionados: Set<string>
@@ -26,6 +28,17 @@ interface RecepcionProveedorPanelProps {
   onToggleTodas: (checked: boolean) => void
   onConfirmar: () => void
   confirmando?: boolean
+  /** Filtro de ubicación (u otros controles) encima de la lista. */
+  filtros?: ReactNode
+}
+
+function formatearUbicacionEtiqueta(bandeja: EtiquetaEnfermera): string {
+  const pabellon = normalizarPabellon(bandeja.pabellon ?? "").trim()
+  const habitacion = (bandeja.habitacion ?? "").trim()
+  if (pabellon && habitacion) return `${pabellon} · Hab. ${habitacion}`
+  if (pabellon) return pabellon
+  if (habitacion) return `Hab. ${habitacion}`
+  return "Sin ubicación"
 }
 
 export function RecepcionProveedorPanel({
@@ -37,9 +50,12 @@ export function RecepcionProveedorPanel({
   onToggleTodas,
   onConfirmar,
   confirmando = false,
+  filtros,
 }: RecepcionProveedorPanelProps) {
   const idsVisibles = bandejas.map((b) => b.id)
-  const seleccionadosVisibles = idsVisibles.filter((id) => seleccionados.has(id)).length
+  const seleccionadosVisibles = idsVisibles.filter((id) =>
+    seleccionados.has(id),
+  ).length
   const todoSeleccionado =
     bandejas.length > 0 && seleccionadosVisibles === bandejas.length
 
@@ -48,7 +64,9 @@ export function RecepcionProveedorPanel({
       <CardHeader className="border-b pb-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h3 className="font-semibold text-foreground">Recepción del proveedor</h3>
+            <h3 className="font-semibold text-foreground">
+              Recepción del proveedor
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">
               Confirma que recibiste estas bandejas del proveedor de cocina. El
               proveedor verá el estado actualizado.
@@ -63,9 +81,12 @@ export function RecepcionProveedorPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-4 pt-4">
+        {filtros}
+
         {bandejas.length === 0 && bandejasFueraFlujo.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
-            No hay bandejas pendientes de recepción para este turno.
+            No hay bandejas pendientes de recepción para este turno
+            {filtros ? " con los filtros seleccionados" : ""}.
           </p>
         ) : (
           <>
@@ -85,7 +106,9 @@ export function RecepcionProveedorPanel({
                     onClick={onConfirmar}
                   >
                     Confirmar recepción del proveedor
-                    {seleccionadosVisibles > 0 ? ` (${seleccionadosVisibles})` : ""}
+                    {seleccionadosVisibles > 0
+                      ? ` (${seleccionadosVisibles})`
+                      : ""}
                   </Button>
                 </div>
 
@@ -97,7 +120,9 @@ export function RecepcionProveedorPanel({
                     >
                       <Checkbox
                         checked={seleccionados.has(bandeja.id)}
-                        onCheckedChange={(v) => onToggle(bandeja.id, v === true)}
+                        onCheckedChange={(v) =>
+                          onToggle(bandeja.id, v === true)
+                        }
                         aria-label={`Seleccionar ${bandeja.codigo}`}
                       />
                       <div className="min-w-0 flex-1">
@@ -108,8 +133,8 @@ export function RecepcionProveedorPanel({
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          Hab. {bandeja.habitacion} · {bandeja.tipoDieta} ·{" "}
-                          {bandeja.codigo}
+                          {formatearUbicacionEtiqueta(bandeja)} ·{" "}
+                          {bandeja.tipoDieta} · {bandeja.codigo}
                         </p>
                       </div>
                       <Badge
@@ -119,7 +144,10 @@ export function RecepcionProveedorPanel({
                           claseBadgeLogistica(bandeja.estadoLogistica),
                         )}
                       >
-                        {etiquetaLogisticaLabel(bandeja.estadoLogistica, bandeja)}
+                        {etiquetaLogisticaLabel(
+                          bandeja.estadoLogistica,
+                          bandeja,
+                        )}
                       </Badge>
                     </li>
                   ))}
@@ -133,8 +161,8 @@ export function RecepcionProveedorPanel({
                   Fuera de flujo ({bandejasFueraFlujo.length})
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Siguen visibles (egreso o dieta cancelada). No se reciben en
-                  piso; no cuentan en el KPI operativo.
+                  Siguen visibles (salida clínica o sin solicitud). No se
+                  reciben en piso; no cuentan en el KPI operativo.
                 </p>
                 <ul className="divide-y rounded-lg border border-amber-200 bg-amber-50/40">
                   {bandejasFueraFlujo.map((bandeja) => {
@@ -146,7 +174,9 @@ export function RecepcionProveedorPanel({
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">{bandeja.paciente}</span>
+                            <span className="font-medium">
+                              {bandeja.paciente}
+                            </span>
                             <Badge
                               variant="outline"
                               className="border-amber-300 bg-amber-50 text-[10px] text-amber-900"
@@ -155,8 +185,8 @@ export function RecepcionProveedorPanel({
                             </Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Hab. {bandeja.habitacion} · {bandeja.tipoDieta} ·{" "}
-                            {bandeja.codigo}
+                            {formatearUbicacionEtiqueta(bandeja)} ·{" "}
+                            {bandeja.tipoDieta} · {bandeja.codigo}
                           </p>
                         </div>
                       </li>

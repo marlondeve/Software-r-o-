@@ -31,6 +31,8 @@ export interface OrdenCocina {
   aislado: boolean
   alergias: string[]
   observaciones: string
+  /** true cuando la cancelación vino de salida clínica HIS y no de una acción manual */
+  cancelacionPorSalidaClinica?: boolean
   estadoCocina: EstadoCocina
   estadoLogistica?: EstadoLogisticaEtiqueta
   etiquetaImpresa: boolean

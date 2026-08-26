@@ -17,6 +17,7 @@ import {
   puedeImprimirEtiquetaOrden,
   puedeMarcarLista,
 } from "@/modules/dietas-cocina/lib/cicloBandejasValidaciones"
+import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 
 export type AccionPrincipalCocinaId =
   | "continuar-preparacion"
@@ -39,11 +40,17 @@ export function resolverAccionPrincipalCocina(
   etiqueta?: EtiquetaEnfermera,
 ): AccionPrincipalCocina {
   if (orden.estadoCocina === "cancelada") {
+    const salida = esCancelacionSalidaClinica(
+      orden.observaciones,
+      orden.cancelacionPorSalidaClinica,
+    )
     return {
       id: "ninguna",
-      label: "Orden cancelada",
+      label: salida ? "Salida clínica" : "Orden cancelada",
       habilitada: false,
-      motivo: "Esta bandeja fue cancelada.",
+      motivo: salida
+        ? "El paciente tiene salida clínica; la bandeja no se prepara."
+        : "Esta bandeja fue cancelada.",
     }
   }
 

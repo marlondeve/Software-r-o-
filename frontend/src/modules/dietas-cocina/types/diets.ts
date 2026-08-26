@@ -37,6 +37,8 @@ export interface FilaDieta {
   solicitadoEn?: string
   /** true cuando la cancelación ocurre fuera del horario de novedades */
   cancelacionTardia?: boolean
+  /** true cuando la cancelación fue por salida clínica HIS */
+  cancelacionPorSalidaClinica?: boolean
   estado: EstadoDieta
   comida: TiempoComida
   ordenCocinaId?: string

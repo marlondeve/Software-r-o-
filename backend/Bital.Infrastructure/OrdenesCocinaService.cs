@@ -107,6 +107,12 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             }
         }
 
+        // Una dieta cancelada (p. ej. salida clínica IngInSlC='S') no vuelve a cocina
+        // aunque conserve el vínculo con su orden anterior.
+        var dietasCanceladas = dietas.Count(d => d.Estado == EstadoDieta.Cancelada);
+        if (dietasCanceladas > 0)
+            throw new InvalidOperationException($"{dietasCanceladas} dietas están canceladas");
+
         var dietasNoConfirmadas = dietas
             .Where(d => d.Estado != EstadoDieta.Confirmada && !d.OrdenCocinaId.HasValue)
             .ToList();
@@ -332,8 +338,9 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             ? $"Cancelada: {motivo}"
             : $"{orden.Observaciones}\n[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] Cancelada: {motivo}";
 
-        // Revertir estado de las dietas a Confirmada y desasociar de la orden
-        foreach (var dieta in orden.Dietas)
+        // Revertir estado de las dietas a Confirmada y desasociar de la orden.
+        // Las canceladas (salida clínica) no se reactivan al cancelar la orden.
+        foreach (var dieta in orden.Dietas.Where(d => d.Estado != EstadoDieta.Cancelada))
         {
             var estadoAnterior = dieta.Estado;
             dieta.Estado = EstadoDieta.Confirmada;
@@ -462,6 +469,9 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             SolicitadoPor = d.SolicitadoPor,
             SolicitadoEn = d.SolicitadoEn,
             CancelacionTardia = d.CancelacionTardia,
+            CancelacionPorSalidaClinica =
+                d.Estado == EstadoDieta.Cancelada
+                && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones),
             OrdenCocinaId = d.OrdenCocinaId,
             FechaOperativa = d.FechaOperativa
         }).ToList();

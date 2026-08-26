@@ -48,6 +48,8 @@ public record ActividadDto
     public string? Paciente { get; init; }
     public string? Habitacion { get; init; }
     public string? Estado { get; init; }
+    public string? Observaciones { get; init; }
+    public bool CancelacionPorSalidaClinica { get; init; }
     public string? Entidad { get; init; }
     public string? EntidadId { get; init; }
 }

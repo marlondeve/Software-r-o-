@@ -10,6 +10,7 @@ import { formatearPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverP
 import {
   etiquetaAccionDesdeTipoEvento,
 } from "@/modules/dietas-cocina/lib/construirActividadEnfermeria"
+import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import { normalizarEstadoDietaDesdeApi } from "@/modules/dietas-cocina/api/mappers/filaDieta.mapper"
 
 const SEGMENT_COLORS = ["#006671", "#00818f", "#bbf244", "#7c6ba8", "#94a3b8", "#d8e0e8"]
@@ -60,11 +61,18 @@ export function mapAlertasDashboardApi(alertas: unknown) {
 function mapDistribucionApi(dto: Record<string, unknown>) {
   const distribuciones = leerCampo(dto, "distribuciones", "distribucion", "Distribuciones")
   if (Array.isArray(distribuciones)) {
+    const bloqueEstados =
+      distribuciones.find((item) => {
+        const tipo = String(leerCampo(item as Record<string, unknown>, "tipo", "Tipo") ?? "")
+        return tipo.toLowerCase() === "estados"
+      })
     const bloqueDietas =
+      bloqueEstados ??
       distribuciones.find((item) => {
         const tipo = String(leerCampo(item as Record<string, unknown>, "tipo", "Tipo") ?? "")
         return tipo.toLowerCase() === "dietas"
-      }) ?? distribuciones[0]
+      }) ??
+      distribuciones[0]
     const items = leerCampo(
       bloqueDietas as Record<string, unknown>,
       "items",
@@ -136,12 +144,33 @@ function mapActividadApi(dto: Record<string, unknown>) {
     const estado = normalizarEstadoDietaDesdeApi(
       estadoRaw ?? inferirEstadoDesdeTipoEvento(tipo),
     )
+    const observacionesRaw = leerCampo(
+      row,
+      "observaciones",
+      "Observaciones",
+      "descripcion",
+      "Descripcion",
+    )
+    const observaciones =
+      observacionesRaw != null ? String(observacionesRaw) : undefined
+    const cancelacionFlag = leerCampo(
+      row,
+      "cancelacionPorSalidaClinica",
+      "CancelacionPorSalidaClinica",
+    )
+    const cancelacionPorSalidaClinica =
+      cancelacionFlag === true ||
+      String(cancelacionFlag).toLowerCase() === "true" ||
+      tipo.trim().toLowerCase() === "dieta_cancelada_egreso" ||
+      (estado === "cancelada" && esCancelacionSalidaClinica(observaciones))
 
     return {
       paciente: paciente || "—",
       accion,
       hora,
       estado,
+      observaciones,
+      cancelacionPorSalidaClinica,
     }
   })
 }
@@ -157,7 +186,11 @@ function inferirEstadoDesdeTipoEvento(tipo: string): EstadoDieta {
     case "dieta_confirmada":
       return "confirmada"
     case "cancelacion":
+    case "dieta_cancelada":
+    case "dieta_cancelada_egreso":
       return "cancelada"
+    case "dieta_reactivada_reingreso":
+      return "confirmada"
     default:
       return "guardado"
   }
@@ -190,6 +223,8 @@ export function dashboardNutricionistaVacio() {
       accion: string
       hora: string
       estado: EstadoDieta
+      observaciones?: string | null
+      cancelacionPorSalidaClinica?: boolean
     }>,
     proximoCierre: {
       servicio: "—",
@@ -246,6 +281,8 @@ export function dashboardEnfermeraVacio() {
       paciente: string
       tipo: string
       estado: EstadoDieta
+      observaciones?: string | null
+      cancelacionPorSalidaClinica?: boolean
     }>,
     alertas: [] as Array<{ habitacion: string; titulo: string; descripcion: string }>,
     contactoNutricion: {
@@ -275,6 +312,8 @@ export function mapDashboardEnfermeraDto(dto: DashboardDto) {
       paciente: nombre || paciente,
       tipo: String(item.accion ?? "—"),
       estado: (item.estado ?? "guardado") as EstadoDieta,
+      observaciones: item.observaciones,
+      cancelacionPorSalidaClinica: item.cancelacionPorSalidaClinica,
     }
   })
 

@@ -6,6 +6,7 @@ using Bital.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Bital.Infrastructure.DietasCocina;
+using Bital.Shared.Contracts.Responses;
 using Bital.Shared.Contracts.Services;
 
 namespace Bital.Infrastructure.Services;
@@ -21,6 +22,9 @@ public class DietasService : IDietasService
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<DietasService> _logger;
+
+    /// <summary>Autor de los cambios automáticos (censo, egreso, reingreso).</summary>
+    private const string UsuarioSistema = "Sistema";
 
     public DietasService(
         BitalNegocioDbContext context,
@@ -49,20 +53,21 @@ public class DietasService : IDietasService
         }
 
         // 1. Obtener censo de pacientes hospitalizados dentro del host único
-        var censoPacientes = (await _atencionesQueryService.GetAtencionesHospitalariasAsync(cancellationToken))
-            .Select(p => new PacienteHospitalizadoDto
-            {
-                IdIngreso = p.IdIngreso,
-                Cedula = p.Cedula,
-                TipoDocumento = p.TipoDocumento,
-                NombreCompleto = p.NombreCompleto,
-                Servicio = DietasReglasNegocio.ResolverServicioClinico(null, p.Pabellon),
-                Pabellon = p.Pabellon,
-                Cama = p.Cama
-            })
-            .ToList();
+        // TMPFAC u otras uniones pueden repetir el mismo ingreso: una fila por persona.
+        var censoPacientes = DeduplicarCensoPacientes(
+            (await _atencionesQueryService.GetAtencionesHospitalariasAsync(cancellationToken))
+                .Select(p => new PacienteHospitalizadoDto
+                {
+                    IdIngreso = p.IdIngreso,
+                    Cedula = p.Cedula,
+                    TipoDocumento = p.TipoDocumento,
+                    NombreCompleto = p.NombreCompleto,
+                    Servicio = DietasReglasNegocio.ResolverServicioClinico(null, p.Pabellon),
+                    Pabellon = p.Pabellon,
+                    Cama = p.Cama
+                }));
 
-        if (!censoPacientes.Any())
+        if (censoPacientes.Count == 0)
         {
             // Censo vacío suele ser indisponibilidad del HIS, no un alta masiva:
             // no se cancelan dietas para no perder el turno completo.
@@ -91,11 +96,23 @@ public class DietasService : IDietasService
         };
 
         // 3. Fusionar datos: crear fila si no existe
+        var contextoReingreso = await CargarContextoReingresoAsync(filasExistentes, cancellationToken);
+        var filasRespuesta = new List<FilaDieta>();
+        var filasSuperadas = new HashSet<Guid>();
+        // Una fila pertenece a un solo paciente del censo: evita repetirla en la respuesta
+        // cuando el empareje flexible por documento alcanza a más de un ingreso.
+        var filasAsignadas = new HashSet<Guid>();
+
         foreach (var paciente in censoPacientes)
         {
-            // Usar la cédula como identificador único del paciente
-            var pacienteId = $"{paciente.TipoDocumento}-{paciente.Cedula}";
-            var filaExistente = filasExistentes.FirstOrDefault(f => f.PacienteId == pacienteId);
+            var pacienteId = ClavePacienteHis(paciente.TipoDocumento, paciente.Cedula);
+            var candidatas = filasExistentes
+                .Where(f => !filasSuperadas.Contains(f.Id)
+                            && !filasAsignadas.Contains(f.Id)
+                            && MismaIdentidadPaciente(f, pacienteId))
+                .ToList();
+
+            var filaExistente = ElegirFilaParaPacienteCenso(candidatas);
             var servicio = DietasReglasNegocio.ResolverServicioClinico(paciente.Servicio, paciente.Pabellon);
 
             if (filaExistente == null)
@@ -117,7 +134,7 @@ public class DietasService : IDietasService
                     Estado = EstadoDieta.Pendiente,
                     Aislamiento = string.Empty,
                     Alergias = string.Empty,
-                    CreadoPor = "Sistema"
+                    CreadoPor = UsuarioSistema
                 };
 
                 _context.FilasDietas.Add(filaExistente);
@@ -125,19 +142,35 @@ public class DietasService : IDietasService
             }
             else
             {
+                filaExistente.PacienteId = pacienteId;
                 filaExistente.IdIngreso = paciente.IdIngreso;
+                filaExistente.Cedula = paciente.Cedula;
+                filaExistente.TipoDocumento = paciente.TipoDocumento;
                 filaExistente.Paciente = paciente.NombreCompleto;
                 filaExistente.Pabellon = paciente.Pabellon;
                 filaExistente.Habitacion = paciente.Cama;
                 filaExistente.Servicio = servicio;
+
+                // Cancelada por el sistema (actual o legado) y el paciente sigue / volvió en censo.
+                if (EsCandidataReingreso(filaExistente))
+                {
+                    ReactivarDietaPorReingreso(filaExistente, contextoReingreso);
+                }
+
+                // Duplicados del mismo paciente/comida: solo una fila operativa en el censo.
+                foreach (var otra in candidatas.Where(f => f.Id != filaExistente.Id))
+                {
+                    filasSuperadas.Add(otra.Id);
+                }
             }
 
-            resultado.Filas.Add(MapearADto(filaExistente));
+            filasAsignadas.Add(filaExistente.Id);
+            filasRespuesta.Add(filaExistente);
         }
 
-        // 4. Pacientes egresados: cancelar dietas activas y órdenes de cocina no completadas
+        // 4. Cancelar solo si INGRESOS.IngInSlC = 'S' (no por ausencia en el snapshot de censo)
         var pacienteIdsEnCenso = censoPacientes
-            .Select(p => $"{p.TipoDocumento}-{p.Cedula}")
+            .Select(p => ClavePacienteHis(p.TipoDocumento, p.Cedula))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         await CancelarDietasPorEgresoAsync(
@@ -147,11 +180,29 @@ public class DietasService : IDietasService
             filasExistentes,
             cancellationToken);
 
-        // 5. Guardar nuevas filas y cancelaciones por egreso
+        // 5. Conservar en el turno las filas que siguen vigentes aunque no vinieran en este snapshot
+        var idsEnResultado = filasRespuesta.Select(f => f.Id).ToHashSet();
+        foreach (var fila in filasExistentes)
+        {
+            if (filasSuperadas.Contains(fila.Id)) continue;
+            if (idsEnResultado.Add(fila.Id))
+                filasRespuesta.Add(fila);
+        }
+
+        // Una fila por paciente y comida: las legadas que no emparejaron con el
+        // censo no deben volver a la respuesta como duplicado del mismo paciente.
+        foreach (var fila in DeduplicarFilasPorPaciente(filasRespuesta))
+        {
+            resultado.Filas.Add(MapearADto(fila));
+        }
+
+        // 6. Guardar nuevas filas y cancelaciones por salida clínica
         await _context.SaveChangesAsync(cancellationToken);
 
-        // 6. Calcular estadísticas
-        resultado.DietasSolicitadas = resultado.Filas.Count(f => f.Estado != "Pendiente");
+        // 7. Estadísticas del turno: las canceladas viajan como historial y no cuentan
+        var cancelada = EstadoDieta.Cancelada.ToString();
+        resultado.DietasSolicitadas = resultado.Filas
+            .Count(f => f.Estado != "Pendiente" && f.Estado != cancelada);
         resultado.DietasPendientes = resultado.Filas.Count(f => f.Estado == "Pendiente");
         resultado.DietasConfirmadas = resultado.Filas.Count(f => f.Estado == "Confirmada");
 
@@ -159,7 +210,9 @@ public class DietasService : IDietasService
     }
 
     /// <summary>
-    /// Cancela dietas (y órdenes no completadas) de pacientes que ya no están en el censo HIS.
+    /// Cancela dietas solo si INGRESOS.IngInSlC = 'S' y el estado aún permite
+    /// cancelar (desde EnRuta la bandeja se cierra por devolución).
+    /// Faltar en el snapshot de censo (pabellón, TMPFAC, etc.) no es egreso.
     /// </summary>
     private async Task CancelarDietasPorEgresoAsync(
         DateTime fechaOperativa,
@@ -168,13 +221,49 @@ public class DietasService : IDietasService
         List<FilaDieta> filasExistentes,
         CancellationToken cancellationToken)
     {
-        var egresadas = filasExistentes
+        var candidatos = filasExistentes
             .Where(f =>
-                !pacienteIdsEnCenso.Contains(f.PacienteId)
+                !EstaEnCensoHis(f, pacienteIdsEnCenso)
                 && DietasReglasNegocio.DebeCancelarPorEgreso(f.Estado))
             .ToList();
 
-        if (egresadas.Count == 0) return;
+        if (candidatos.Count == 0) return;
+
+        SalidaClinicaHisLookup salida;
+        try
+        {
+            salida = await _atencionesQueryService.ObtenerPacientesConSalidaClinicaAsync(
+                candidatos.Select(f => new IdentidadIngresoHis
+                {
+                    TipoDocumento = f.TipoDocumento ?? string.Empty,
+                    Cedula = f.Cedula ?? string.Empty,
+                    IdIngreso = f.IdIngreso,
+                }),
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "No se consultó IngInSlC para {Fecha} {Comida}: se omite la cancelación automática",
+                fechaOperativa,
+                tiempoComida);
+            return;
+        }
+
+        var egresadas = candidatos
+            .Where(f => salida.Coincide(f.IdIngreso, f.TipoDocumento, f.Cedula, f.PacienteId))
+            .ToList();
+
+        if (egresadas.Count == 0)
+        {
+            _logger.LogInformation(
+                "Ninguna dieta se cancela por salida clínica (IngInSlC=S) en {Fecha} {Comida}; {Candidatos} ausentes del snapshot se conservan",
+                fechaOperativa,
+                tiempoComida,
+                candidatos.Count);
+            return;
+        }
 
         var ordenIds = egresadas
             .Where(f => f.OrdenCocinaId.HasValue)
@@ -185,65 +274,400 @@ public class DietasService : IDietasService
         var ordenes = ordenIds.Count == 0
             ? new List<OrdenCocina>()
             : await _context.OrdenesCocina
+                .Include(o => o.Dietas)
                 .Where(o => ordenIds.Contains(o.Id))
                 .ToListAsync(cancellationToken);
 
-        var ordenesPorId = ordenes.ToDictionary(o => o.Id);
         var ahora = DateTime.UtcNow;
+        const string motivoSalida = DietasReglasNegocio.MotivoCancelacionSalidaClinica;
 
         foreach (var fila in egresadas)
         {
             var estadoAnterior = fila.Estado;
             fila.Estado = EstadoDieta.Cancelada;
-            fila.CancelacionTardia = estadoAnterior is EstadoDieta.Confirmada
-                or EstadoDieta.EnPreparacion
-                or EstadoDieta.ListaEnvio
-                or EstadoDieta.EnRuta;
+            fila.CancelacionTardia =
+                DietasReglasNegocio.EsCancelacionTardiaPorEgreso(estadoAnterior);
             fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
-                ? "Cancelada automáticamente: paciente egresado del censo"
-                : $"{fila.Observaciones}\nCancelada automáticamente: paciente egresado del censo";
-            fila.ModificadoPor = "Sistema";
+                ? motivoSalida
+                : $"{fila.Observaciones}\n{motivoSalida}";
+            fila.ModificadoPor = UsuarioSistema;
             fila.ModificadoEn = ahora;
 
             _context.EventosTrazabilidad.Add(new EventoTrazabilidad
             {
                 Id = Guid.NewGuid(),
                 FilaDietaId = fila.Id,
-                TipoEvento = "dieta_cancelada_egreso",
-                Descripcion = "Dieta cancelada automáticamente por egreso del paciente",
+                TipoEvento = DietasReglasNegocio.TipoEventoCancelacionPorEgreso,
+                Descripcion = "Paciente con salida clínica",
                 EstadoAnterior = estadoAnterior,
                 EstadoNuevo = EstadoDieta.Cancelada,
-                Usuario = "Sistema",
+                Usuario = UsuarioSistema,
                 FechaEvento = ahora,
-                DatosAdicionales = $"PacienteId: {fila.PacienteId}"
+                DatosAdicionales = $"PacienteId: {fila.PacienteId}; IdIngreso: {fila.IdIngreso}"
             });
+        }
 
-            if (fila.OrdenCocinaId.HasValue
-                && ordenesPorId.TryGetValue(fila.OrdenCocinaId.Value, out var orden)
-                && !string.Equals(orden.Estado, "Completada", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(orden.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+        // Una orden puede agrupar varios pacientes: solo se cancela si ninguna
+        // de sus dietas sigue vigente. Las completadas se conservan para conciliar.
+        foreach (var orden in ordenes)
+        {
+            if (string.Equals(orden.Estado, "Completada", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(orden.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase))
             {
-                orden.Estado = "Cancelada";
-                orden.Observaciones = string.IsNullOrWhiteSpace(orden.Observaciones)
-                    ? "Cancelada automáticamente: paciente egresado del censo"
-                    : $"{orden.Observaciones}\n[{ahora:yyyy-MM-dd HH:mm}] Cancelada automáticamente: paciente egresado del censo";
+                continue;
             }
+
+            if (orden.Dietas.Any(d => d.Estado != EstadoDieta.Cancelada)) continue;
+
+            orden.Estado = "Cancelada";
+            orden.Observaciones = string.IsNullOrWhiteSpace(orden.Observaciones)
+                ? motivoSalida
+                : $"{orden.Observaciones}\n[{ahora:yyyy-MM-dd HH:mm}] {motivoSalida}";
         }
 
         _logger.LogInformation(
-            "Canceladas {Count} dietas por egreso en censo {Fecha} {Comida}",
+            "Canceladas {Count} dietas por IngInSlC=S en censo {Fecha} {Comida}",
             egresadas.Count, fechaOperativa, tiempoComida);
+    }
+
+    /// <summary>
+    /// Datos para revisar cancelaciones automáticas al sincronizar el censo.
+    /// </summary>
+    private sealed record ContextoReingreso(
+        Dictionary<Guid, EstadoDieta> EstadoAlCancelar,
+        HashSet<Guid> OrdenesReutilizables);
+
+    /// <summary>
+    /// Cancelada por el sistema (salida clínica u otra automática, actual o legada).
+    /// Una cancelación manual deja el usuario real en ModificadoPor y nunca se revierte:
+    /// el texto solo decide en filas legadas que quedaron sin autor, porque las
+    /// observaciones conservan el histórico de la salida clínica anterior.
+    /// </summary>
+    private static bool EsCandidataReingreso(FilaDieta fila)
+    {
+        if (fila.Estado != EstadoDieta.Cancelada) return false;
+
+        if (string.Equals(fila.ModificadoPor, UsuarioSistema, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return string.IsNullOrWhiteSpace(fila.ModificadoPor)
+               && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones);
+    }
+
+    /// <summary>
+    /// Prefiere la fila operativa vigente (no cancelada, más avanzada / reciente).
+    /// </summary>
+    /// <summary>
+    /// Una entrada por paciente: evita que un join multiplicador del HIS (por ejemplo
+    /// varias camas en TMPFAC) infle TotalPacientes y genere filas duplicadas.
+    /// </summary>
+    private static List<PacienteHospitalizadoDto> DeduplicarCensoPacientes(
+        IEnumerable<PacienteHospitalizadoDto> pacientes)
+    {
+        var resultado = new List<PacienteHospitalizadoDto>();
+        var vistos = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var paciente in pacientes)
+        {
+            var clave = ClavePacienteHis(paciente.TipoDocumento, paciente.Cedula);
+            if (string.IsNullOrWhiteSpace(clave) || clave == "-")
+            {
+                // Sin documento no hay identidad: se separa por nombre y ubicación,
+                // nunca por IdIngreso (consecutivo por paciente, se repite).
+                clave = $"NOM-{paciente.NombreCompleto?.Trim()}|{paciente.Pabellon}|{paciente.Cama}";
+                if (clave == "NOM-||") continue;
+            }
+
+            if (!vistos.Add(clave)) continue;
+            resultado.Add(paciente);
+        }
+
+        return resultado;
+    }
+
+    private static FilaDieta? ElegirFilaParaPacienteCenso(List<FilaDieta> candidatas)
+    {
+        if (candidatas.Count == 0) return null;
+
+        return candidatas
+            .OrderByDescending(f => f.Estado != EstadoDieta.Cancelada)
+            .ThenByDescending(f => RankEstadoOperativo(f.Estado))
+            .ThenByDescending(f => f.ModificadoEn ?? f.CreadoEn)
+            .First();
+    }
+
+    /// <summary>
+    /// Misma persona entre dos filas ya guardadas (cédula o clave legada), sin depender
+    /// del formato con que se guardó PacienteId. No se compara <c>IdIngreso</c> suelto:
+    /// en el HIS es un consecutivo por paciente y se repite entre personas distintas.
+    /// </summary>
+    private static bool MismaIdentidadEntreFilas(FilaDieta a, FilaDieta b)
+    {
+        var cedulaA = NormalizarDocumento(a.Cedula);
+        if (string.IsNullOrEmpty(cedulaA))
+            cedulaA = ExtraerCedulaDeClave(a.PacienteId);
+
+        var cedulaB = NormalizarDocumento(b.Cedula);
+        if (string.IsNullOrEmpty(cedulaB))
+            cedulaB = ExtraerCedulaDeClave(b.PacienteId);
+
+        if (cedulaA.Length >= LongitudMinimaDocumento && cedulaA == cedulaB)
+            return true;
+
+        return !string.IsNullOrWhiteSpace(a.PacienteId)
+            && a.PacienteId.Equals(b.PacienteId, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<FilaDieta> DeduplicarFilasPorPaciente(List<FilaDieta> filas)
+    {
+        var resultado = new List<FilaDieta>();
+
+        foreach (var fila in filas)
+        {
+            var indice = resultado.FindIndex(item =>
+                item.Comida == fila.Comida && MismaIdentidadEntreFilas(item, fila));
+
+            if (indice < 0)
+            {
+                resultado.Add(fila);
+                continue;
+            }
+
+            resultado[indice] = ElegirFilaParaPacienteCenso(
+                new List<FilaDieta> { resultado[indice], fila })!;
+        }
+
+        return resultado;
+    }
+
+    private static int RankEstadoOperativo(EstadoDieta estado) =>
+        estado switch
+        {
+            EstadoDieta.Pendiente => 0,
+            EstadoDieta.Guardado or EstadoDieta.Solicitada => 1,
+            EstadoDieta.Confirmada => 2,
+            EstadoDieta.EnPreparacion => 3,
+            EstadoDieta.ListaEnvio => 4,
+            EstadoDieta.EnRuta => 5,
+            EstadoDieta.Entregada or EstadoDieta.Consumida => 6,
+            EstadoDieta.Devuelta or EstadoDieta.NoConsumida => 5,
+            EstadoDieta.Cancelada => -1,
+            _ => 0,
+        };
+
+    private async Task<ContextoReingreso> CargarContextoReingresoAsync(
+        List<FilaDieta> filasExistentes,
+        CancellationToken cancellationToken)
+    {
+        var reactivables = filasExistentes.Where(EsCandidataReingreso).ToList();
+
+        if (reactivables.Count == 0)
+            return new ContextoReingreso([], []);
+
+        var filaIds = reactivables.Select(f => f.Id).ToList();
+
+        var eventosCancelacion = await _context.EventosTrazabilidad
+            .AsNoTracking()
+            .Where(e => filaIds.Contains(e.FilaDietaId)
+                        && e.EstadoAnterior != null
+                        && (e.TipoEvento == DietasReglasNegocio.TipoEventoCancelacionPorEgreso
+                            || e.TipoEvento == "dieta_cancelada"
+                            || e.TipoEvento.Contains("egreso")))
+            .Select(e => new { e.FilaDietaId, e.TipoEvento, e.EstadoAnterior, e.FechaEvento })
+            .ToListAsync(cancellationToken);
+
+        var estadoAlCancelar = eventosCancelacion
+            .GroupBy(e => e.FilaDietaId)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(e =>
+                        e.TipoEvento == DietasReglasNegocio.TipoEventoCancelacionPorEgreso)
+                    .ThenByDescending(e => e.FechaEvento)
+                    .First().EstadoAnterior!.Value);
+
+        var ordenIds = reactivables
+            .Where(f => f.OrdenCocinaId.HasValue)
+            .Select(f => f.OrdenCocinaId!.Value)
+            .Distinct()
+            .ToList();
+
+        // Solo se conserva el vínculo si la orden sigue viva (no cancelada ni completada).
+        var ordenesReutilizables = ordenIds.Count == 0
+            ? []
+            : (await _context.OrdenesCocina
+                .AsNoTracking()
+                .Where(o => ordenIds.Contains(o.Id))
+                .Select(o => new { o.Id, o.Estado })
+                .ToListAsync(cancellationToken))
+            .Where(o => !string.Equals(o.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase)
+                        && !string.Equals(o.Estado, "Completada", StringComparison.OrdinalIgnoreCase))
+            .Select(o => o.Id)
+            .ToHashSet();
+
+        return new ContextoReingreso(estadoAlCancelar, ordenesReutilizables);
+    }
+
+    /// <summary>
+    /// Paciente en censo con dieta cancelada por el sistema: se corrige el estado
+    /// (reingreso real o cancelación automática previa que ya no aplica).
+    /// </summary>
+    private void ReactivarDietaPorReingreso(FilaDieta fila, ContextoReingreso contexto)
+    {
+        var estadoAlCancelar = contexto.EstadoAlCancelar.TryGetValue(fila.Id, out var previo)
+            ? previo
+            : EstadoDieta.Pendiente;
+
+        var estadoAnterior = fila.Estado;
+        var nuevoEstado = DietasReglasNegocio.EstadoTrasReingresoTrasSalidaClinica(estadoAlCancelar);
+        var ahora = DateTime.UtcNow;
+        const string motivo = DietasReglasNegocio.MotivoReactivacionReingreso;
+
+        fila.Estado = nuevoEstado;
+        // Se libera el cobro por cancelación tardía: la dieta vuelve al flujo normal.
+        fila.CancelacionTardia = false;
+        if (fila.OrdenCocinaId.HasValue
+            && !contexto.OrdenesReutilizables.Contains(fila.OrdenCocinaId.Value))
+        {
+            // La orden quedó cancelada/completada: el turno se retoma con una orden nueva.
+            fila.OrdenCocinaId = null;
+        }
+        fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
+            ? motivo
+            : $"{fila.Observaciones}\n{motivo}";
+        fila.ModificadoPor = UsuarioSistema;
+        fila.ModificadoEn = ahora;
+
+        _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+        {
+            Id = Guid.NewGuid(),
+            FilaDietaId = fila.Id,
+            TipoEvento = DietasReglasNegocio.TipoEventoReactivacionPorReingreso,
+            Descripcion = "Dieta reactivada: paciente vigente en censo tras cancelación automática",
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = nuevoEstado,
+            Usuario = UsuarioSistema,
+            FechaEvento = ahora,
+            DatosAdicionales =
+                $"PacienteId: {fila.PacienteId}; IdIngreso: {fila.IdIngreso}; EstadoAlCancelar: {estadoAlCancelar}"
+        });
+
+        _logger.LogInformation(
+            "Dieta {FilaId} reactivada por revisión de censo: {Anterior} → {Nuevo} (antes de cancelar: {AlCancelar})",
+            fila.Id, estadoAnterior, nuevoEstado, estadoAlCancelar);
+    }
+
+    /// <summary>Evita emparejar por sufijo con documentos muy cortos o parciales.</summary>
+    private const int LongitudMinimaDocumento = 5;
+
+    private static string ClavePacienteHis(string? tipoDocumento, string? cedula) =>
+        $"{(tipoDocumento ?? string.Empty).Trim()}-{(cedula ?? string.Empty).Trim()}";
+
+    private static string NormalizarDocumento(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return string.Empty;
+        return new string(valor.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+    }
+
+    private static string ExtraerCedulaDeClave(string? pacienteId)
+    {
+        if (string.IsNullOrWhiteSpace(pacienteId)) return string.Empty;
+        var partes = pacienteId.Split('-', 2);
+        return NormalizarDocumento(partes.Length == 2 ? partes[1] : partes[0]);
+    }
+
+    /// <summary>
+    /// Empareja una fila guardada con un paciente del censo por documento. No se usa
+    /// <c>IdIngreso</c>: el HIS lo numera por paciente, así que se repite entre personas.
+    /// </summary>
+    private static bool MismaIdentidadPaciente(FilaDieta fila, string pacienteId)
+    {
+        if (!string.IsNullOrWhiteSpace(fila.PacienteId)
+            && fila.PacienteId.Equals(pacienteId, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var claveFila = ClavePacienteHis(fila.TipoDocumento, fila.Cedula);
+        if (!string.IsNullOrWhiteSpace(claveFila)
+            && !claveFila.Equals("-", StringComparison.Ordinal)
+            && claveFila.Equals(pacienteId, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Filas legadas: a veces solo guardaron la cédula en PacienteId o Cedula.
+        var cedulaHis = ExtraerCedulaDeClave(pacienteId);
+        if (cedulaHis.Length < LongitudMinimaDocumento) return false;
+
+        var cedulaFila = NormalizarDocumento(fila.Cedula);
+        if (!string.IsNullOrEmpty(cedulaFila) && cedulaFila == cedulaHis)
+            return true;
+
+        var idFilaNorm = NormalizarDocumento(fila.PacienteId);
+        if (idFilaNorm.Length < LongitudMinimaDocumento) return false;
+
+        // El sufijo solo vale si la parte previa es el tipo de documento (no dígitos),
+        // para no confundir dos cédulas cuando una termina igual que la otra.
+        if (idFilaNorm == cedulaHis) return true;
+
+        if (!idFilaNorm.EndsWith(cedulaHis, StringComparison.Ordinal)) return false;
+
+        var prefijo = idFilaNorm[..^cedulaHis.Length];
+        return prefijo.All(char.IsLetter);
+    }
+
+    private static bool EstaEnCensoHis(FilaDieta fila, HashSet<string> pacienteIdsEnCenso)
+    {
+        if (pacienteIdsEnCenso.Contains(fila.PacienteId))
+            return true;
+
+        var clave = ClavePacienteHis(fila.TipoDocumento, fila.Cedula);
+        if (pacienteIdsEnCenso.Contains(clave))
+            return true;
+
+        var cedulaFila = NormalizarDocumento(fila.Cedula);
+        if (string.IsNullOrEmpty(cedulaFila) && !string.IsNullOrWhiteSpace(fila.PacienteId))
+            cedulaFila = ExtraerCedulaDeClave(fila.PacienteId);
+
+        if (string.IsNullOrEmpty(cedulaFila)) return false;
+
+        foreach (var id in pacienteIdsEnCenso)
+        {
+            if (ExtraerCedulaDeClave(id) == cedulaFila)
+                return true;
+        }
+
+        return false;
     }
 
     public async Task<List<FilaDietaDto>> ObtenerDietasPacienteAsync(string pacienteId, DateTime fecha, CancellationToken cancellationToken = default)
     {
+        var clave = pacienteId?.Trim() ?? string.Empty;
+        var cedula = ExtraerCedulaDeClave(clave);
+
         var filas = await _context.FilasDietas
             .Include(f => f.TipoDieta)
-            .Where(f => f.PacienteId == pacienteId && f.FechaOperativa.Date == fecha.Date)
-            .OrderBy(f => f.Comida)
+            .Where(f => f.FechaOperativa.Date == fecha.Date)
             .ToListAsync(cancellationToken);
 
-        return filas.Select(MapearADto).ToList();
+        // Incluye filas legadas con otro formato de PacienteId (solo cédula vs TipoDoc-Cédula).
+        var delPaciente = filas
+            .Where(f =>
+                f.PacienteId.Equals(clave, StringComparison.OrdinalIgnoreCase)
+                || (!string.IsNullOrEmpty(cedula)
+                    && (NormalizarDocumento(f.Cedula) == cedula
+                        || ExtraerCedulaDeClave(f.PacienteId) == cedula)))
+            .ToList();
+
+        // Una fila por comida: evita duplicados en «Otras dietas del paciente hoy».
+        var porComida = delPaciente
+            .GroupBy(f => f.Comida)
+            .Select(g => g
+                .OrderByDescending(f => f.Estado != EstadoDieta.Cancelada)
+                .ThenByDescending(f => RankEstadoOperativo(f.Estado))
+                .ThenByDescending(f => f.ModificadoEn ?? f.CreadoEn)
+                .First())
+            .OrderBy(f => f.Comida)
+            .ToList();
+
+        return porComida.Select(MapearADto).ToList();
     }
 
     public async Task<FilaDietaDto> SolicitarDietaAsync(Guid filaDietaId, SolicitudDietaDto solicitud, string usuario, CancellationToken cancellationToken = default)
@@ -1244,6 +1668,9 @@ public class DietasService : IDietasService
             SolicitadoPor = fila.SolicitadoPor,
             SolicitadoEn = fila.SolicitadoEn,
             CancelacionTardia = fila.CancelacionTardia,
+            CancelacionPorSalidaClinica =
+                fila.Estado == EstadoDieta.Cancelada
+                && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones),
             OrdenCocinaId = fila.OrdenCocinaId,
             FechaOperativa = fila.FechaOperativa
         };

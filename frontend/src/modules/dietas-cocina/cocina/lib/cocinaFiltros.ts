@@ -130,7 +130,7 @@ export function calcularKpisCocina(
     },
     {
       id: "canceladas",
-      label: "CANCELADAS",
+      label: "SALIDAS / CANCELADAS",
       value: filtradas.filter((o) => o.estadoCocina === "cancelada").length,
       variant: "muted" as const,
     },

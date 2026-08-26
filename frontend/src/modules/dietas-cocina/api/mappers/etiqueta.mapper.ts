@@ -150,8 +150,9 @@ export function mapEtiquetaDtoToDomain(dto: EtiquetaDto): EtiquetaEnfermera {
     consistencia: String(dto.consistencia ?? ""),
     observaciones: resolverObservacionesEtiqueta(dto),
     comida: mapearComidaInterna(String(dto.comida ?? "almuerzo")),
+    // Preferir generadaEn (UTC del API); fechaOperativa es solo el día operativo.
     fechaHora: String(
-      dto.fechaOperativa ?? dto.fechaHora ?? dto.generadaEn ?? "",
+      dto.generadaEn ?? dto.fechaHora ?? dto.fechaOperativa ?? "",
     ),
     estado: resolverEstadoEtiqueta(dto),
     qrPayload: String(dto.qrPayload ?? dto.codigo ?? ""),

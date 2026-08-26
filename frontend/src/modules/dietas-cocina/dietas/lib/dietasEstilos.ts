@@ -10,7 +10,7 @@ export const ESTADO_FILTRO_LABEL: Record<string, string> = {
   recibida: "Recibida",
   devuelta: "Devuelta",
   recogida: "Recogida",
-  cancelada: "Cancelada",
+  cancelada: "Salida clínica / cancelada",
 }
 
 export const ESTADOS_PENDIENTES: EstadoDieta[] = ["no-solicitada", "guardado"]
@@ -167,8 +167,8 @@ export function calcularKpisDietas(
     },
     {
       id: "canceladas",
-      label: "Canceladas",
-      value: filtradas.filter((fila) => fila.estado === "cancelada").length,
+      label: "Salidas / canceladas",
+      value: filtradas.filter((fila) => estadoVisible(fila) === "cancelada").length,
       variant: "muted",
     },
   ]

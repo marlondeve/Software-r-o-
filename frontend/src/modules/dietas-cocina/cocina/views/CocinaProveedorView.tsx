@@ -1,6 +1,6 @@
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState, useEffect, useRef } from "react"
 import { FileText, RefreshCw, Tag } from "lucide-react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 
@@ -19,7 +19,11 @@ import {
   ordenCoincideFiltros,
   type FiltrosCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaFiltros"
-import { ordenarOrdenesCocinaEstable } from "@/modules/dietas-cocina/cocina/lib/ordenarOrdenesCocina"
+import {
+  ordenarOrdenesCocinaConListaFija,
+  sincronizarOrdenListaCocina,
+  type OrdenListaCocina,
+} from "@/modules/dietas-cocina/cocina/lib/ordenarOrdenesCocina"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
@@ -105,14 +109,28 @@ export function CocinaProveedorView() {
     setUltimaActualizacion(new Date())
   }, [ordenes])
 
+  const ordenListaRef = useRef<OrdenListaCocina>(new Map())
+  const comidaOrdenRef = useRef(comidaActiva)
+
   const ordenesFiltradas = useMemo(() => {
-    return ordenarOrdenesCocinaEstable(
-      ordenes.filter(
-        (orden) =>
-          orden.comida === comidaActiva &&
-          ordenCoincideFiltros(orden, filtros, getEtiquetaByOrdenId),
-      ),
+    if (comidaOrdenRef.current !== comidaActiva) {
+      ordenListaRef.current = new Map()
+      comidaOrdenRef.current = comidaActiva
+    }
+
+    const filtradas = ordenes.filter(
+      (orden) =>
+        orden.comida === comidaActiva &&
+        ordenCoincideFiltros(orden, filtros, getEtiquetaByOrdenId),
     )
+
+    // Congela la posición al primer ingreso: un sync del censo que mueva
+    // cama/pabellón ya no reordena la tabla mientras el usuario trabaja.
+    ordenListaRef.current = sincronizarOrdenListaCocina(
+      filtradas,
+      ordenListaRef.current,
+    )
+    return ordenarOrdenesCocinaConListaFija(filtradas, ordenListaRef.current)
   }, [ordenes, comidaActiva, filtros, getEtiquetaByOrdenId])
 
   const paginacionCocina = usePaginacionTabla(ordenesFiltradas, {

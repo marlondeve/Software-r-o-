@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest"
 
-import { ordenarOrdenesCocinaEstable } from "@/modules/dietas-cocina/cocina/lib/ordenarOrdenesCocina"
+import {
+  ordenarOrdenesCocinaEstable,
+  sincronizarOrdenListaCocina,
+  ordenarOrdenesCocinaConListaFija,
+} from "@/modules/dietas-cocina/cocina/lib/ordenarOrdenesCocina"
 import type { OrdenCocina } from "@/modules/dietas-cocina/types/kitchen"
 
 function orden(
-  parcial: Partial<OrdenCocina> & Pick<OrdenCocina, "id" | "paciente" | "habitacion" | "pabellon">,
+  parcial: Partial<OrdenCocina> &
+    Pick<OrdenCocina, "id" | "paciente" | "habitacion" | "pabellon">,
 ): OrdenCocina {
   return {
     edad: 40,
@@ -73,5 +78,70 @@ describe("ordenarOrdenesCocinaEstable", () => {
       "a",
       "b",
     ])
+  })
+
+  it("no reordena si el censo cambia la habitación tras fijar la lista", () => {
+    const iniciales = [
+      orden({
+        id: "ana",
+        pabellon: "HOSPITALIZACION PISO 1",
+        habitacion: "107-2",
+        paciente: "ANA MARIA",
+      }),
+      orden({
+        id: "maria",
+        pabellon: "HOSPITALIZACION PISO 1",
+        habitacion: "104-1",
+        paciente: "MARIA CATALINA",
+      }),
+    ]
+
+    const lista = sincronizarOrdenListaCocina(iniciales, new Map())
+    const trasSync = [
+      orden({
+        id: "ana",
+        pabellon: "HOSPITALIZACION PISO 1",
+        habitacion: "108-1",
+        paciente: "ANA MARIA",
+      }),
+      orden({
+        id: "maria",
+        pabellon: "HOSPITALIZACION PISO 1",
+        habitacion: "104-1",
+        paciente: "MARIA CATALINA",
+      }),
+    ]
+
+    const listaTrasSync = sincronizarOrdenListaCocina(trasSync, lista)
+    const resultado = ordenarOrdenesCocinaConListaFija(trasSync, listaTrasSync)
+
+    // Por habitación nueva Ana iría después; con lista fija conserva su sitio.
+    expect(resultado.map((o) => o.id)).toEqual(["maria", "ana"])
+  })
+
+  it("añade bandejas nuevas al final sin mover las ya listadas", () => {
+    const iniciales = [
+      orden({
+        id: "a",
+        pabellon: "P1",
+        habitacion: "200",
+        paciente: "A",
+      }),
+    ]
+    const lista = sincronizarOrdenListaCocina(iniciales, new Map())
+
+    const conNueva = [
+      orden({
+        id: "nueva",
+        pabellon: "P1",
+        habitacion: "100",
+        paciente: "NUEVA",
+      }),
+      ...iniciales,
+    ]
+    const lista2 = sincronizarOrdenListaCocina(conNueva, lista)
+    const resultado = ordenarOrdenesCocinaConListaFija(conNueva, lista2)
+
+    expect(resultado.map((o) => o.id)).toEqual(["a", "nueva"])
   })
 })

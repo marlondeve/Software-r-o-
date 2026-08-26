@@ -72,7 +72,7 @@ describe("filtrarOrdenesVinculadasAFilas", () => {
     expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(0)
   })
 
-  it("elimina órdenes huérfanas cuando el paciente ya no está en censo", () => {
+  it("conserva la orden cuando la fila falta en el snapshot de censo", () => {
     const filas = [
       filaBase("otra-fila", {
         pacienteId: "PAC-2",
@@ -80,10 +80,10 @@ describe("filtrarOrdenesVinculadasAFilas", () => {
       }),
     ]
     const ordenes = [
-      ordenBase({ id: "fila-egresada", ordenCocinaApiId: "orden-api-egreso" }),
+      ordenBase({ id: "fila-ausente", ordenCocinaApiId: "orden-api-ausente" }),
     ]
 
-    expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(0)
+    expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(1)
   })
 
   it("conserva la bandeja cancelada como historial del turno", () => {
@@ -93,8 +93,15 @@ describe("filtrarOrdenesVinculadasAFilas", () => {
     expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(1)
   })
 
-  it("elimina la orden activa si la dieta quedó cancelada", () => {
-    const filas = [filaBase("fila-1", { estado: "cancelada" })]
+  it("tras reingreso la bandeja vuelve a cocina aunque el estado local siga cancelado", () => {
+    const filas = [filaBase("fila-1", { estado: "confirmada" })]
+    const ordenes = [ordenBase({ estadoCocina: "cancelada" })]
+
+    expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(1)
+  })
+
+  it("elimina la orden cuando la dieta nunca se solicitó", () => {
+    const filas = [filaBase("fila-1", { estado: "no-solicitada" })]
     const ordenes = [ordenBase({ estadoCocina: "en_preparacion" })]
 
     expect(filtrarOrdenesVinculadasAFilas(ordenes, filas)).toHaveLength(0)

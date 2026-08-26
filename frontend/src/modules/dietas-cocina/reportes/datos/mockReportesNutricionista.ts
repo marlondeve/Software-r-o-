@@ -33,7 +33,7 @@ export const mockReportesNutricionista = {
       detalleVariant: "neutral" as const,
     },
     {
-      label: "Canceladas",
+      label: "Salidas / canceladas",
       value: "130",
       detalle: "3.0% del total",
       detalleVariant: "negative" as const,

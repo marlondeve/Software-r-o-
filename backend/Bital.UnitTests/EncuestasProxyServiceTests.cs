@@ -193,6 +193,7 @@ public class EncuestasProxyServiceTests
         public Task<AtencionResponse?> GetAtencionPorIdAsync(int consecutivo, CancellationToken cancellationToken = default) => Task.FromResult<AtencionResponse?>(null);
         public Task<IEnumerable<AtencionResponse>> GetAtencionesPorPacienteAsync(string numeroDocumento, string tipoDocumento, CancellationToken cancellationToken = default) => Task.FromResult<IEnumerable<AtencionResponse>>(Array.Empty<AtencionResponse>());
         public Task<IEnumerable<AtencionHospitalariaResponse>> GetAtencionesHospitalariasAsync(CancellationToken cancellationToken = default) => Task.FromResult<IEnumerable<AtencionHospitalariaResponse>>(Array.Empty<AtencionHospitalariaResponse>());
+        public Task<SalidaClinicaHisLookup> ObtenerPacientesConSalidaClinicaAsync(IEnumerable<IdentidadIngresoHis> pacientes, CancellationToken cancellationToken = default) => Task.FromResult(new SalidaClinicaHisLookup());
         public Task<IEnumerable<EncuestaCapturaPresencialResponse>> GetCapturaPresencialAsync(string? servicio = null, string? pabellon = null, string? estado = null, string? busqueda = null, CancellationToken cancellationToken = default) => Task.FromResult<IEnumerable<EncuestaCapturaPresencialResponse>>(Array.Empty<EncuestaCapturaPresencialResponse>());
     }
 

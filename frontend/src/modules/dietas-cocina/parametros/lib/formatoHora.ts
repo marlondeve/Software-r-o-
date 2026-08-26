@@ -123,10 +123,44 @@ export function normalizarHoraEnTexto(texto: string): string {
   return `${horas.toString().padStart(2, "0")}:${minutos}`
 }
 
-/** Convierte la porción horaria dentro de un texto fecha-hora a 12 h. */
+/** Fecha/hora local para etiqueta: `dd/MM/yyyy hh:mm a. m.` */
+export function formatearFechaHoraLocalEtiqueta(fecha: Date): string {
+  if (Number.isNaN(fecha.getTime())) return "—"
+  const dia = fecha.getDate().toString().padStart(2, "0")
+  const mes = (fecha.getMonth() + 1).toString().padStart(2, "0")
+  const anio = fecha.getFullYear()
+  return `${dia}/${mes}/${anio} ${formatearHoraDesdeFecha(fecha)}`
+}
+
+/** Fecha operativa sin hora (calendario, no instante UTC). */
+function formatearSoloFechaCalendario(isoOFecha: string): string | null {
+  const match = isoOFecha
+    .trim()
+    .match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ]00:00(?::00(?:\.\d+)?)?)?(?:Z|[+-]00:00)?$/i)
+  if (!match) return null
+  return `${match[3]}/${match[2]}/${match[1]}`
+}
+
+/**
+ * Convierte la porción horaria a 12 h.
+ * Si el valor es ISO del API (UTC, a menudo sin Z), lo muestra en hora local.
+ */
 export function formatearFechaHoraEnCadena(texto: string): string {
   if (!texto) return texto
-  return texto.replace(
+  const trimmed = texto.trim()
+
+  const soloFecha = formatearSoloFechaCalendario(trimmed)
+  if (soloFecha) return soloFecha
+
+  // ISO / fecha-hora API → local (evita "2026-08-26T12:00 a. m.")
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed) || /T\d{2}:\d{2}/.test(trimmed)) {
+    const fecha = parsearFechaApi(trimmed)
+    if (!Number.isNaN(fecha.getTime())) {
+      return formatearFechaHoraLocalEtiqueta(fecha)
+    }
+  }
+
+  return trimmed.replace(
     /(\d{1,2}:\d{2}(?::\d{2})?\s*(?:a\.\s*m\.|p\.\s*m\.|AM|PM)?)/gi,
     (coincidencia) => formatearHora12(normalizarHoraEnTexto(coincidencia)),
   )

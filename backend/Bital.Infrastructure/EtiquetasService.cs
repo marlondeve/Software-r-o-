@@ -528,11 +528,10 @@ public class EtiquetasService : IEtiquetasService
         var docValor = string.IsNullOrWhiteSpace(fila?.Cedula) ? "—" : fila.Cedula.Trim();
         var pabellon = fila?.Pabellon ?? "";
         var habitacion = fila?.Habitacion ?? "";
-        var fecha = etiqueta.FechaOperativa;
-        if (etiqueta.GeneradaEn != default)
-        {
-            fecha = etiqueta.FechaOperativa.Date + etiqueta.GeneradaEn.TimeOfDay;
-        }
+        // GeneradaEn es UTC; en etiqueta se muestra hora Colombia (America/Bogota).
+        var fecha = etiqueta.GeneradaEn != default
+            ? PdfEtiquetasHelper.AHoraColombia(etiqueta.GeneradaEn)
+            : etiqueta.FechaOperativa.Date;
 
         return new EtiquetaPdfModelo
         {
