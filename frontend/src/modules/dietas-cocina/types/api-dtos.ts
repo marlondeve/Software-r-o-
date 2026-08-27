@@ -41,6 +41,8 @@ export interface FilaDietaDto {
   cancelacionTardia?: boolean
   /** Cancelación automática por salida clínica HIS (UI: «Salida clínica»). */
   cancelacionPorSalidaClinica?: boolean
+  /** Salida clínica pasada la ventana: la dieta sigue el flujo y el proveedor la envía. */
+  salidaClinicaSostenida?: boolean
   estado?: string
   comida?: string
   ordenCocinaId?: string

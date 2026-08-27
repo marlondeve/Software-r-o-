@@ -69,7 +69,7 @@ export const mockCocina = {
   pabellones: ["Todos", "Pab Sur", "Pab Central", "Pab Norte"],
   habitaciones: ["Todas", "204B", "301-A", "112-C", "402"],
   tiposDieta: ["Todos", "HIPOSÓDICA", "BLANDA", "DIABÉTICA", "PROTEICA", "NORMAL"],
-  consistencias: ["Todas", "Normal", "Blanda", "Blanda mecánica"],
+  consistencias: ["Todas", "Normal", "Blanda", "Blanda mecánica", "Líquido"],
   ordenes: [
     crearOrden("ord-1", {
       etiquetaId: "etq-1",

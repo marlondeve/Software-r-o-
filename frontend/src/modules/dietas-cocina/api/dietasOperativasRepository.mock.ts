@@ -60,6 +60,20 @@ export const dietasOperativasRepositoryMock: DietasOperativasRepository = {
       observaciones: `[${payload.motivo}] ${payload.justificacion}`,
     }
   },
+  async reactivarCancelada(id) {
+    const fila = mockDietas.filas.find((f) => f.id === id)
+    if (!fila) throw new Error("Dieta no encontrada")
+    return {
+      ...fila,
+      estado: "no-solicitada" as const,
+      cancelacionTardia: false,
+      cancelacionPorSalidaClinica: false,
+      ordenCocinaId: undefined,
+      observaciones: fila.observaciones
+        ? `${fila.observaciones}\nReactivada manualmente: vuelve a sin solicitud`
+        : "Reactivada manualmente: vuelve a sin solicitud",
+    }
+  },
   async registrarNovedad(id, payload) {
     const fila = mockDietas.filas.find((f) => f.id === id)
     if (!fila) throw new Error("Dieta no encontrada")

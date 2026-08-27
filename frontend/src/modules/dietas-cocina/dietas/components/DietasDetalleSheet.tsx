@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/sheet"
 import { SheetDetailSkeleton } from "@/components/shared/skeletons"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
+import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
 import {
+  preferirNombreSolicitante,
   tituloTipoDieta,
 } from "@/modules/dietas-cocina/dietas/lib/dietasDetalleUi"
 import {
@@ -145,7 +147,8 @@ export function DietasDetalleSheet({
         prev.consistencia === fila.consistencia &&
         (fila.descripcionDieta == null ||
           prev.descripcionDieta === fila.descripcionDieta) &&
-        (fila.solicitadoPor == null || prev.solicitadoPor === fila.solicitadoPor) &&
+        (preferirNombreSolicitante(fila.solicitadoPor, prev.solicitadoPor) ===
+          prev.solicitadoPor) &&
         (fila.solicitadoEn == null || prev.solicitadoEn === fila.solicitadoEn)
       ) {
         return prev
@@ -156,7 +159,10 @@ export function DietasDetalleSheet({
         tipoDieta: fila.tipoDieta,
         consistencia: fila.consistencia,
         descripcionDieta: fila.descripcionDieta ?? prev.descripcionDieta,
-        solicitadoPor: fila.solicitadoPor ?? prev.solicitadoPor,
+        solicitadoPor: preferirNombreSolicitante(
+          fila.solicitadoPor,
+          prev.solicitadoPor,
+        ),
         solicitadoEn: fila.solicitadoEn ?? prev.solicitadoEn,
       }
     })
@@ -207,7 +213,7 @@ export function DietasDetalleSheet({
             <section className="rounded-xl border border-border bg-muted/40 p-4">
               <div className="flex items-start justify-between gap-3">
                 <SeccionTitulo>Estado actual</SeccionTitulo>
-                <div className="flex items-center gap-1.5">
+                <div className="flex flex-wrap items-center justify-end gap-1.5">
                   <EstadoBadge
                     estado={estadoVisible}
                     observaciones={filaMostrada.observaciones}
@@ -216,12 +222,23 @@ export function DietasDetalleSheet({
                     }
                     className="shrink-0 font-semibold uppercase tracking-wide"
                   />
-                  {filaMostrada.estado === "guardado" && onEditar && (
+                  <SalidaClinicaSostenidaBadge
+                    activo={filaMostrada.salidaClinicaSostenida}
+                    className="shrink-0 text-[10px]"
+                  />
+                  {(filaMostrada.estado === "guardado" ||
+                    filaMostrada.estado === "no-solicitada" ||
+                    filaMostrada.estado === "cancelada") &&
+                    onEditar && (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      aria-label="Editar solicitud"
+                      aria-label={
+                        filaMostrada.estado === "cancelada"
+                          ? "Solicitar dieta"
+                          : "Editar solicitud"
+                      }
                       onClick={() => onEditar(filaMostrada)}
                     >
                       <PencilLine className="size-4" />
@@ -232,9 +249,9 @@ export function DietasDetalleSheet({
               <div className="mt-3 space-y-1">
                 <p className="font-semibold text-foreground">{tituloDieta}</p>
                 <p className="text-sm text-muted-foreground">{descripcion}</p>
-                {filaMostrada.solicitadoPor && (
+                {(filaMostrada.solicitadoPor || filaMostrada.solicitadoEn) && (
                   <p className="text-xs text-muted-foreground">
-                    Solicitado por {filaMostrada.solicitadoPor}
+                    Solicitado por {filaMostrada.solicitadoPor?.trim() || "—"}
                     {filaMostrada.solicitadoEn ? ` · ${filaMostrada.solicitadoEn}` : ""}
                   </p>
                 )}

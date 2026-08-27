@@ -12,7 +12,7 @@ interface DietasKpiGridProps {
 
 export function DietasKpiGrid({ kpis }: DietasKpiGridProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-9">
       {kpis.map((kpi) => (
         <Card
           key={kpi.id}

@@ -39,6 +39,13 @@ import {
   demoToast,
   descargarArchivoDemo,
 } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { descargarBlob } from "@/modules/dietas-cocina/lib/descargarBlob"
+import {
+  descargarReporteCocinaExcel,
+  nombreArchivoReporteCocina,
+} from "@/modules/dietas-cocina/api/services/cocina-reporte.service"
+import { labelEstadoVisibleCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
+import { TEXTO_ALERTA_SALIDA_CLINICA_SOSTENIDA } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import {
   formatearFechaOperativa,
   formatearHoraActualizacion,
@@ -97,6 +104,7 @@ export function CocinaProveedorView() {
     titulo: string
     descripcion: string
   } | null>(null)
+  const [descargandoReporte, setDescargandoReporte] = useState(false)
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim()
@@ -372,6 +380,78 @@ export function CocinaProveedorView() {
       .finally(() => setProgreso(null))
   }
 
+  function escaparCsv(valor: string): string {
+    if (/[",\n\r]/.test(valor)) {
+      return `"${valor.replace(/"/g, '""')}"`
+    }
+    return valor
+  }
+
+  function generarReporteDemoCsv() {
+    const encabezados = [
+      "Estado",
+      "Pabellón",
+      "Habitación",
+      "Paciente",
+      "Tipo dieta",
+      "Consistencia",
+      "Alertas",
+      "Observaciones",
+      "Etiqueta impresa",
+    ]
+    const filas = ordenesFiltradas.map((orden) => {
+      const etiqueta = getEtiquetaByOrdenId(orden.id)
+      const alertas = [
+        orden.aislado ? "Aislado" : "",
+        orden.alergias.length > 0 ? `Alergia: ${orden.alergias.join(", ")}` : "",
+        orden.salidaClinicaSostenida ? TEXTO_ALERTA_SALIDA_CLINICA_SOSTENIDA : "",
+      ]
+        .filter(Boolean)
+        .join("; ")
+      return [
+        labelEstadoVisibleCocina(orden, etiqueta),
+        orden.pabellon,
+        orden.habitacion,
+        orden.paciente,
+        orden.tipoDieta,
+        orden.consistencia,
+        alertas,
+        orden.observaciones ?? "",
+        orden.etiquetaImpresa ? "Sí" : "No",
+      ].map(escaparCsv)
+    })
+    const contenido = [encabezados.join(","), ...filas.map((f) => f.join(","))].join("\n")
+    descargarArchivoDemo(
+      contenido,
+      `reporte-cocina-${comidaActiva}.csv`,
+      "text/csv;charset=utf-8",
+    )
+    demoToast("Reporte CSV generado (modo demo).")
+  }
+
+  function generarReporte() {
+    if (apiActiva) {
+      setDescargandoReporte(true)
+      void descargarReporteCocinaExcel({ comida: comidaActiva, filtros })
+        .then((blob) => {
+          descargarBlob(blob, nombreArchivoReporteCocina(comidaActiva))
+          demoToast("Reporte Excel generado.")
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error
+              ? error.message
+              : "No se pudo generar el reporte.",
+            "error",
+          )
+        })
+        .finally(() => setDescargandoReporte(false))
+      return
+    }
+
+    generarReporteDemoCsv()
+  }
+
   return (
     <div className="space-y-5 pb-6">
       <DashboardPageHeader
@@ -396,15 +476,11 @@ export function CocinaProveedorView() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() =>
-              descargarArchivoDemo(
-                "Reporte cocina\n",
-                `reporte-cocina-${comidaActiva}.txt`,
-              )
-            }
+            onClick={generarReporte}
+            disabled={descargandoReporte || progreso != null}
           >
             <FileText data-icon="inline-start" />
-            Generar reporte
+            {descargandoReporte ? "Generando…" : "Generar reporte"}
           </Button>
           <Button type="button" size="sm" onClick={generarEtiquetasSeleccionadas} disabled={progreso != null}>
             <Tag data-icon="inline-start" />

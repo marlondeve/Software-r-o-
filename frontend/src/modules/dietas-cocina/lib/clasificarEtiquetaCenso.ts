@@ -47,6 +47,8 @@ export function clasificarEtiquetaRespectoCenso(
     const salida = esCancelacionSalidaClinica(
       fila.observaciones,
       fila.cancelacionPorSalidaClinica,
+      fila.salidaClinicaSostenida,
+      fila.estado,
     )
     return {
       enFlujo: false,
@@ -74,7 +76,7 @@ export function etiquetaFueraFlujoCensoLabel(
 ): string {
   switch (motivo) {
     case "salida_clinica":
-      return "Salida clínica"
+      return "Dieta cancelada por salida clínica"
     case "cancelada":
       return "Dieta cancelada"
     case "sin_solicitud":

@@ -23,6 +23,7 @@ import type { UsuarioModulo } from "@/modules/dietas-cocina/types/users"
 export interface FiltrosUsuarios {
   rolModuloId?: string
   estado?: boolean
+  busqueda?: string
   page?: number
   pageSize?: number
 }
@@ -41,6 +42,7 @@ export async function listarUsuarios(
       pageSize: filtros.pageSize,
       estado: filtros.estado,
       rolModuloId: filtros.rolModuloId,
+      busqueda: filtros.busqueda?.trim() || undefined,
     },
   })
 

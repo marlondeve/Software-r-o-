@@ -263,7 +263,7 @@ export const configDietasOperativas = {
     "Merienda tarde",
     "Merienda noche",
   ],
-  consistencias: ["Normal", "Blanda", "Blanda mecánica"],
+  consistencias: ["Normal", "Blanda", "Blanda mecánica", "Líquido"],
   cierreVentanaMinutos: 45,
   servicios: [
     "Medicina Interna",
@@ -299,7 +299,8 @@ export const mockDietas = {
     { id: "confirmadas", label: "Confirmadas", value: 85, variant: "success" },
     { id: "recibidas", label: "Recibidas", value: 15, variant: "info" },
     { id: "devueltas", label: "Devueltas", value: 2, variant: "muted" },
-    { id: "canceladas", label: "Salidas / canceladas", value: 0, variant: "muted" },
+    { id: "salidas-clinicas", label: "Salidas clínicas", value: 0, variant: "muted" },
+    { id: "canceladas", label: "Canceladas", value: 0, variant: "muted" },
   ] satisfies KpiDieta[],
   filas: [...filasAlmuerzo, ...filasDesayuno],
 }

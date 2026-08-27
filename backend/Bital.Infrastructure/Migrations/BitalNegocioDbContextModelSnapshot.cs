@@ -549,6 +549,9 @@ namespace Bital.Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<bool>("SalidaClinicaSostenida")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Servicio")
                         .IsRequired()
                         .HasMaxLength(100)

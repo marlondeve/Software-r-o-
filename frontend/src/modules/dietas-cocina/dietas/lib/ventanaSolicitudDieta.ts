@@ -15,6 +15,13 @@ export interface EstadoVentanaComida {
   ventanaTexto: string
   mensajeCierre: string
   ventanaAbierta: boolean
+  /**
+   * Límite de novedades estricto: ignora la carga anticipada porque ese modo extiende
+   * la solicitud, no el momento en que cocina empieza a producir.
+   */
+  ventanaNovedadesAbierta: boolean
+  /** Hora del límite de novedades en formato 12 h. */
+  horaLimiteNovedades: string
   variante: "destructive" | "muted" | "default"
 }
 
@@ -52,19 +59,29 @@ export function resolverEstadoVentanaComida(
   const finDist = minutosDesdeHora24(finDistHora)
 
   const ventanaTexto = `${formatearHora12(inicioHora)} - ${formatearHora12(finNovedadesHora)}`
+  const horaLimiteNovedades = formatearHora12(finNovedadesHora)
+  const turnoActivo = config.activos[comida] !== false
+  const dentroVentanaCambios = estaEnRangoHorario(ahora, inicio, finNovedades)
 
-  if (config.activos[comida] === false) {
-    return {
-      ventanaTexto,
-      mensajeCierre: "Turno inactivo",
-      ventanaAbierta: false,
-      variante: "muted",
-    }
+  const armar = (
+    mensajeCierre: string,
+    ventanaAbierta: boolean,
+    variante: EstadoVentanaComida["variante"],
+  ): EstadoVentanaComida => ({
+    ventanaTexto,
+    mensajeCierre,
+    ventanaAbierta,
+    ventanaNovedadesAbierta: turnoActivo && dentroVentanaCambios,
+    horaLimiteNovedades,
+    variante,
+  })
+
+  if (!turnoActivo) {
+    return armar("Turno inactivo", false, "muted")
   }
 
   const cargaAnticipada = config.modoCarga === "todas-desde-manana"
   const dentroPeriodoOperativo = estaEnRangoHorario(ahora, inicio, finDist)
-  const dentroVentanaCambios = estaEnRangoHorario(ahora, inicio, finNovedades)
   const ventanaAbierta = cargaAnticipada
     ? dentroPeriodoOperativo
     : dentroVentanaCambios
@@ -78,79 +95,60 @@ export function resolverEstadoVentanaComida(
       // Evitar mostrar "Cierre en: 23h…" cuando ya pasó el fin de novedades
       // en modo carga anticipada pero aún hay distribución.
       if (!cargaAnticipada || minutosHastaCierreCambios <= 12 * 60) {
-        return {
-          ventanaTexto,
-          mensajeCierre: `Cierre en: ${formatearMinutosRestantes(minutosHastaCierreCambios)}`,
-          ventanaAbierta: true,
-          variante: minutosHastaCierreCambios <= 15 ? "destructive" : "default",
-        }
+        return armar(
+          `Cierre en: ${formatearMinutosRestantes(minutosHastaCierreCambios)}`,
+          true,
+          minutosHastaCierreCambios <= 15 ? "destructive" : "default",
+        )
       }
     }
 
     if (cargaAnticipada && dentroPeriodoOperativo) {
-      return {
-        ventanaTexto,
-        mensajeCierre: `Solicitud abierta hasta ${formatearHora12(finDistHora)}`,
-        ventanaAbierta: true,
-        variante: "default",
-      }
+      return armar(
+        `Solicitud abierta hasta ${formatearHora12(finDistHora)}`,
+        true,
+        "default",
+      )
     }
 
-    return {
-      ventanaTexto,
-      mensajeCierre: "Ventana de cambios cerrada",
-      ventanaAbierta: false,
-      variante: "destructive",
-    }
+    return armar("Ventana de cambios cerrada", false, "destructive")
   }
 
-  if (!estaEnRangoHorario(ahora, inicio, finNovedades)) {
+  if (!dentroVentanaCambios) {
     // Ventana normal (mismo día): distingue "aún no abre" vs "ya cerró hoy".
     if (inicio <= finNovedades) {
       if (ahora > finNovedades) {
-        return {
-          ventanaTexto,
-          mensajeCierre: `Ventana cerrada (cerró a las ${formatearHora12(finNovedadesHora)})`,
-          ventanaAbierta: false,
-          variante: "destructive",
-        }
+        return armar(
+          `Ventana cerrada (cerró a las ${horaLimiteNovedades})`,
+          false,
+          "destructive",
+        )
       }
 
-      const minutosParaAbrir = inicio - ahora
-      return {
-        ventanaTexto,
-        mensajeCierre: `Abre en: ${formatearMinutosRestantes(minutosParaAbrir)}`,
-        ventanaAbierta: false,
-        variante: "muted",
-      }
+      return armar(
+        `Abre en: ${formatearMinutosRestantes(inicio - ahora)}`,
+        false,
+        "muted",
+      )
     }
 
     // Ventana que cruza medianoche: entre cierre matutino y apertura vespertina.
     if (ahora > finNovedades && ahora < inicio) {
-      const minutosParaAbrir = inicio - ahora
-      return {
-        ventanaTexto,
-        mensajeCierre: `Abre en: ${formatearMinutosRestantes(minutosParaAbrir)}`,
-        ventanaAbierta: false,
-        variante: "muted",
-      }
+      return armar(
+        `Abre en: ${formatearMinutosRestantes(inicio - ahora)}`,
+        false,
+        "muted",
+      )
     }
 
-    const minutosParaAbrir = minutosHastaHora(ahora, inicio)
-    return {
-      ventanaTexto,
-      mensajeCierre: `Abre en: ${formatearMinutosRestantes(minutosParaAbrir)}`,
-      ventanaAbierta: false,
-      variante: "muted",
-    }
+    return armar(
+      `Abre en: ${formatearMinutosRestantes(minutosHastaHora(ahora, inicio))}`,
+      false,
+      "muted",
+    )
   }
 
-  return {
-    ventanaTexto,
-    mensajeCierre: "Ventana cerrada",
-    ventanaAbierta: false,
-    variante: "destructive",
-  }
+  return armar("Ventana cerrada", false, "destructive")
 }
 
 /** @deprecated Usar resolverEstadoVentanaComida().ventanaTexto */

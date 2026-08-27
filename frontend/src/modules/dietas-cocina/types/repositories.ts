@@ -58,6 +58,7 @@ export interface DietasOperativasRepository {
   confirmar(id: string): Promise<FilaDieta>
   confirmarMasivo(ids: string[], usuario: string): Promise<void>
   cancelar(id: string, payload: CancelarDietaPayload): Promise<FilaDieta>
+  reactivarCancelada(id: string): Promise<FilaDieta>
   registrarNovedad(id: string, payload: NovedadDietaPayload): Promise<FilaDieta>
   obtenerCatalogo(): Promise<CatalogoDietaItem[]>
 }

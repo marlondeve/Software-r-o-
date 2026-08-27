@@ -21,6 +21,9 @@ export const estadoBadgeTokens = {
   neutral: "border-border bg-muted text-muted-foreground",
   inactive: "border-border bg-muted/80 text-muted-foreground",
   closed: "border-slate-500/25 bg-slate-500/10 text-slate-700 dark:text-slate-300",
+  /** Baja del censo (salida clínica): borde discontinuo para no confundirla con una cancelación. */
+  clinicalExit:
+    "border-dashed border-slate-500/45 bg-slate-500/10 text-slate-700 dark:text-slate-300",
 } as const
 
 export type EstadoBadgeToken = keyof typeof estadoBadgeTokens

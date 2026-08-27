@@ -26,6 +26,7 @@ import {
   demoToast,
   descargarArchivoDemo,
 } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { descargarBlob } from "@/modules/dietas-cocina/lib/descargarBlob"
 
 export function AuditoriaPage() {
   const apiActiva = usarApiDietasCocina()
@@ -199,12 +200,7 @@ export function AuditoriaPage() {
         usuario: busquedaApi || undefined,
       })
         .then((blob) => {
-          const url = URL.createObjectURL(blob)
-          const enlace = document.createElement("a")
-          enlace.href = url
-          enlace.download = "auditoria-dietas-cocina.csv"
-          enlace.click()
-          URL.revokeObjectURL(url)
+          descargarBlob(blob, "auditoria-dietas-cocina.csv")
           demoToast("Auditoría exportada desde el servidor.", "success")
         })
         .catch((error) => {

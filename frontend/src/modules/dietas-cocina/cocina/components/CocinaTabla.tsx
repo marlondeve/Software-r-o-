@@ -19,6 +19,7 @@ import {
   labelEstadoVisibleCocina,
   claseTipoDieta,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
+import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { cn } from "@/lib/utils"
 
 interface CocinaTablaProps {
@@ -181,6 +182,10 @@ export function CocinaTabla({
                 />
               </>
             )}
+            <SalidaClinicaSostenidaBadge
+              activo={row.original.salidaClinicaSostenida}
+              className="text-[10px]"
+            />
           </div>
         ),
       },

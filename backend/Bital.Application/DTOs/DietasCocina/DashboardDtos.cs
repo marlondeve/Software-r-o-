@@ -50,6 +50,10 @@ public record ActividadDto
     public string? Estado { get; init; }
     public string? Observaciones { get; init; }
     public bool CancelacionPorSalidaClinica { get; init; }
+    /// <summary>
+    /// Salida clínica fuera del límite de novedades: la dieta sigue en producción.
+    /// </summary>
+    public bool SalidaClinicaSostenida { get; init; }
     public string? Entidad { get; init; }
     public string? EntidadId { get; init; }
 }

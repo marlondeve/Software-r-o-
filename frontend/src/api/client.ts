@@ -71,9 +71,26 @@ function extraerMensajeError(
   return error.message || "Error desconocido en la API"
 }
 
+/**
+ * Una descarga (`responseType: "blob"`) que falla trae el error como Blob JSON:
+ * se rehidrata para poder mostrar el mensaje real del backend.
+ */
+async function rehidratarErrorBlob(error: AxiosError): Promise<void> {
+  const respuesta = error.response
+  if (!respuesta || !(respuesta.data instanceof Blob)) return
+
+  try {
+    const texto = await respuesta.data.text()
+    respuesta.data = texto ? JSON.parse(texto) : undefined
+  } catch {
+    respuesta.data = undefined
+  }
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ApiErrorBody>) => {
+  async (error: AxiosError<ApiErrorBody>) => {
+    await rehidratarErrorBlob(error)
     const status = error.response?.status
     const requestUrl = error.config?.url ?? ""
 

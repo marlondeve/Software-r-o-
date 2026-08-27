@@ -180,7 +180,9 @@ export function DietasNovedadSheet({
   if (!fila || !formulario || !estadoVentana) return null
   const aplicaConsistencia = requiereConsistencia(formulario.comida)
   const hayCambios = cambios.some((c) => c.anterior !== c.nuevo)
-  const ventanaPermiteCambios = estadoVentana.ventanaAbierta
+  // El API rechaza novedades pasado el límite: la carga anticipada extiende la
+  // solicitud, no los cambios clínicos sobre una dieta que cocina ya produce.
+  const ventanaPermiteCambios = estadoVentana.ventanaNovedadesAbierta
   const validacionClinica = validarCondicionesClinicasFormulario(formulario)
   const formularioValido =
     ventanaPermiteCambios &&
@@ -270,10 +272,18 @@ export function DietasNovedadSheet({
                     <span className="font-medium">{fila.consistencia ?? "—"}</span>
                   </p>
                 )}
-                {fila.solicitadoPor && (
+                {(fila.solicitadoPor || fila.solicitadoEn) && (
                   <p>
                     <span className="text-muted-foreground">Solicitante:</span>{" "}
-                    <span className="font-medium">{fila.solicitadoPor}</span>
+                    <span className="font-medium">
+                      {fila.solicitadoPor?.trim() || "—"}
+                    </span>
+                    {fila.solicitadoEn ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {fila.solicitadoEn}
+                      </span>
+                    ) : null}
                   </p>
                 )}
               </div>

@@ -37,6 +37,7 @@ import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/ope
 import { construirDashboardNutricionistaDesdeCiclo } from "@/modules/dietas-cocina/lib/construirDashboardNutricionista"
 import { mesclarDashboardNutricionista } from "@/modules/dietas-cocina/lib/mesclarDashboardOperativo"
 import { descargarArchivoDemo } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { CONFIG_TIEMOS_CAMBIO_EVENTO } from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
 import { useDashboardApi } from "@/modules/dietas-cocina/inicio/hooks/useDashboardApi"
 import { useAuth } from "@/features/autenticacion/hooks/useAuth"
 
@@ -56,6 +57,7 @@ type ActividadReciente = {
   estado: EstadoDieta
   observaciones?: string | null
   cancelacionPorSalidaClinica?: boolean
+  salidaClinicaSostenida?: boolean
 }
 
 export function NutricionistaDashboard() {
@@ -63,13 +65,25 @@ export function NutricionistaDashboard() {
   const { usuario } = useAuth()
   const { ordenes, etiquetas } = useCicloBandejas()
   const { filas } = useDietasOperativas()
-  const comidaActiva = useMemo(() => obtenerComidaActivaOperativa(), [])
-  const dashboardApi = useDashboardApi("nutricionista", comidaActiva)
   const [ahora, setAhora] = useState(() => new Date())
+  const [versionConfigTiempos, setVersionConfigTiempos] = useState(0)
+  const comidaActiva = useMemo(
+    () => obtenerComidaActivaOperativa(ahora),
+    [ahora, versionConfigTiempos],
+  )
+  const dashboardApi = useDashboardApi("nutricionista", comidaActiva)
 
   useEffect(() => {
     const intervalo = window.setInterval(() => setAhora(new Date()), 60_000)
-    return () => window.clearInterval(intervalo)
+    const onConfig = () => {
+      setVersionConfigTiempos((v) => v + 1)
+      setAhora(new Date())
+    }
+    window.addEventListener(CONFIG_TIEMOS_CAMBIO_EVENTO, onConfig)
+    return () => {
+      window.clearInterval(intervalo)
+      window.removeEventListener(CONFIG_TIEMOS_CAMBIO_EVENTO, onConfig)
+    }
   }, [])
 
   const data = useMemo(() => {
@@ -86,7 +100,16 @@ export function NutricionistaDashboard() {
       mapDashboardNutricionistaDto(dashboardApi.data),
       ciclo,
     )
-  }, [filas, ordenes, etiquetas, ahora, dashboardApi.apiActiva, dashboardApi.data, dashboardApi.error])
+  }, [
+    filas,
+    ordenes,
+    etiquetas,
+    ahora,
+    versionConfigTiempos,
+    dashboardApi.apiActiva,
+    dashboardApi.data,
+    dashboardApi.error,
+  ])
 
   const columnasActividad = useMemo<ColumnDef<ActividadReciente>[]>(
     () => [
@@ -136,6 +159,7 @@ export function NutricionistaDashboard() {
               cancelacionPorSalidaClinica={
                 row.original.cancelacionPorSalidaClinica
               }
+              salidaClinicaSostenida={row.original.salidaClinicaSostenida}
             />
           </div>
         ),

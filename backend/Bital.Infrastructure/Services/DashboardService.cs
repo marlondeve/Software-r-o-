@@ -58,8 +58,16 @@ public class DashboardService : IDashboardService
             ? $"el {desde:yyyy-MM-dd}"
             : $"del {desde:yyyy-MM-dd} al {hasta:yyyy-MM-dd}";
 
-    private static string EtiquetaEstadoDietaReporte(FilaDieta dieta) =>
-        dieta.Estado switch
+    private static string EtiquetaEstadoDietaReporte(FilaDieta dieta)
+    {
+        if (DietasReglasNegocio.EsSalidaClinicaSostenida(dieta))
+            return "Salida clínica sostenida";
+
+        if (dieta.Estado == EstadoDieta.Cancelada
+            && DietasReglasNegocio.EsObservacionSalidaClinica(dieta.Observaciones))
+            return "Salida clínica";
+
+        return dieta.Estado switch
         {
             EstadoDieta.Pendiente => "Sin solicitud",
             EstadoDieta.Guardado or EstadoDieta.Solicitada => "Guardadas",
@@ -69,11 +77,10 @@ public class DashboardService : IDashboardService
             EstadoDieta.EnRuta => "En tránsito",
             EstadoDieta.Entregada or EstadoDieta.Consumida => "Entregadas",
             EstadoDieta.NoConsumida or EstadoDieta.Devuelta => "Devueltas",
-            EstadoDieta.Cancelada => DietasReglasNegocio.EsObservacionSalidaClinica(dieta.Observaciones)
-                ? "Salida clínica"
-                : "Cancelada",
+            EstadoDieta.Cancelada => "Cancelada",
             _ => dieta.Estado.ToString(),
         };
+    }
 
     private static string EtiquetaComidaReporte(TiempoComida comida) =>
         comida switch
@@ -318,25 +325,47 @@ public class DashboardService : IDashboardService
             });
         }
 
-        var canceladas = dietas.Count(d => d.Estado == EstadoDieta.Cancelada);
-        if (canceladas > 0)
+        // Un hallazgo por categoría: así la cantidad destacada coincide con su texto.
+        var salidasCanceladas = dietas.Count(d =>
+            d.Estado == EstadoDieta.Cancelada
+            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+        if (salidasCanceladas > 0)
         {
-            var salidas = dietas.Count(d =>
-                d.Estado == EstadoDieta.Cancelada
-                && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
-            var manuales = canceladas - salidas;
-            var detalle = salidas > 0 && manuales > 0
-                ? $"{salidas} salida(s) clínica(s) y {manuales} cancelada(s)"
-                : salidas > 0
-                    ? $"{salidas} salida(s) clínica(s)"
-                    : $"{manuales} dieta(s) cancelada(s)";
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "dietas_salida_clinica",
+                Descripcion =
+                    $"{salidasCanceladas} dieta(s) cancelada(s) por salida clínica "
+                    + $"dentro del límite de novedades en {contexto}",
+                Severidad = salidasCanceladas > 10 ? "alta" : "media",
+                Cantidad = salidasCanceladas,
+            });
+        }
 
+        var canceladasManuales =
+            dietas.Count(d => d.Estado == EstadoDieta.Cancelada) - salidasCanceladas;
+        if (canceladasManuales > 0)
+        {
             hallazgos.Add(new HallazgoDto
             {
                 Tipo = "dietas_canceladas",
-                Descripcion = $"{detalle} en {contexto}",
-                Severidad = canceladas > 10 ? "alta" : "media",
-                Cantidad = canceladas,
+                Descripcion = $"{canceladasManuales} dieta(s) cancelada(s) manualmente en {contexto}",
+                Severidad = canceladasManuales > 10 ? "alta" : "media",
+                Cantidad = canceladasManuales,
+            });
+        }
+
+        var sostenidas = dietas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
+        if (sostenidas > 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "dietas_sostenidas_salida_clinica",
+                Descripcion =
+                    $"{sostenidas} dieta(s) solicitada(s) con salida clínica fuera del límite de novedades "
+                    + $"(se mantienen en producción y el proveedor las envía) en {contexto}",
+                Severidad = "info",
+                Cantidad = sostenidas,
             });
         }
 
@@ -365,6 +394,7 @@ public class DashboardService : IDashboardService
             "cancelacion" => "cancelada",
             "dieta_cancelada" => "cancelada",
             "dieta_cancelada_egreso" => "cancelada",
+            "dieta_sostenida_salida_clinica" => MapearEstadoDieta(estadoNuevo),
             "dieta_reactivada_reingreso" => "confirmada",
             _ => MapearEstadoDieta(estadoNuevo)
         };
@@ -483,6 +513,10 @@ public class DashboardService : IDashboardService
         var dietas = DeduplicarFilasDashboard(await dietasQuery.ToListAsync());
         var totalDietas = dietas.Count;
         var canceladas = dietas.Count(d => d.Estado == EstadoDieta.Cancelada);
+        var salidasClinicas = dietas.Count(d =>
+            d.Estado == EstadoDieta.Cancelada
+            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+        var sostenidasSalida = dietas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
         var dietasActivas = totalDietas - canceladas;
         var pendientes = dietas.Count(d =>
             d.Estado is EstadoDieta.Pendiente or EstadoDieta.Guardado or EstadoDieta.Solicitada);
@@ -495,13 +529,17 @@ public class DashboardService : IDashboardService
             d.Estado is EstadoDieta.Guardado or EstadoDieta.Solicitada);
         var fueraHorario = dietas.Count(d => d.CancelacionTardia);
 
+        var canceladasManuales = canceladas - salidasClinicas;
+
         var kpis = new List<KpiDto>
         {
             new() { Clave = "pacientes_activos", Etiqueta = "Pacientes activos", Valor = dietasActivas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "dietas_pendientes", Etiqueta = "Dietas pendientes", Valor = pendientes, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "confirmadas", Etiqueta = "Confirmadas", Valor = confirmadas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "novedades", Etiqueta = "Novedades", Valor = novedades, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "salidas_canceladas", Etiqueta = "Salidas / canceladas", Valor = canceladas, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "salidas_clinicas", Etiqueta = "Salidas clínicas", Valor = salidasClinicas, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "canceladas", Etiqueta = "Canceladas", Valor = canceladasManuales, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "salidas_clinicas_sostenidas", Etiqueta = "Salidas clínicas sostenidas", Valor = sostenidasSalida, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "fuera_horario", Etiqueta = "Fuera de horario", Valor = fueraHorario, Formato = "numero", Tendencia = null, Comparacion = null },
         };
 
@@ -577,6 +615,14 @@ public class DashboardService : IDashboardService
                     || (e.FilaDieta?.Estado == EstadoDieta.Cancelada
                         && DietasReglasNegocio.EsObservacionSalidaClinica(observaciones));
 
+                var salidaClinicaSostenida =
+                    string.Equals(
+                        e.TipoEvento,
+                        DietasReglasNegocio.TipoEventoSalidaClinicaSostenida,
+                        StringComparison.OrdinalIgnoreCase)
+                    || (e.FilaDieta != null
+                        && DietasReglasNegocio.EsSalidaClinicaSostenida(e.FilaDieta));
+
                 return new ActividadDto
                 {
                     Timestamp = e.FechaEvento,
@@ -588,6 +634,7 @@ public class DashboardService : IDashboardService
                     Estado = MapearEstadoActividad(e.TipoEvento, e.EstadoNuevo),
                     Observaciones = observaciones,
                     CancelacionPorSalidaClinica = cancelacionPorSalida,
+                    SalidaClinicaSostenida = salidaClinicaSostenida,
                     Entidad = "FilaDieta",
                     EntidadId = e.FilaDietaId.ToString(),
                 };
@@ -766,6 +813,13 @@ public class DashboardService : IDashboardService
 
         var totalDietas = dietas.Count;
         var dietasActivas = dietas.Count(d => d.Estado != Domain.Enums.EstadoDieta.Cancelada);
+        var salidasClinicasCanceladas = dietas.Count(d =>
+            d.Estado == EstadoDieta.Cancelada
+            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+        var canceladasManualesReporte = dietas.Count(d =>
+            d.Estado == EstadoDieta.Cancelada
+            && !DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+        var salidasClinicasSostenidas = dietas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
 
         var ordenesQuery = _context.OrdenesCocina
             .Where(o => o.FechaOperativa >= desde && o.FechaOperativa < hastaExclusivo);
@@ -822,6 +876,9 @@ public class DashboardService : IDashboardService
             new() { Clave = "promedio_diario", Etiqueta = "Promedio diario dietas", Valor = Math.Round((decimal)totalDietas / diasPeriodo, 1), Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "costo_total", Etiqueta = "Costo total", Valor = Math.Round(costoTotal, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
             new() { Clave = "costo_canc_tardia", Etiqueta = "Costo canc. tardía", Valor = Math.Round(costoCancTardia, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
+            new() { Clave = "salidas_clinicas", Etiqueta = "Salidas clínicas", Valor = salidasClinicasCanceladas, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "canceladas", Etiqueta = "Canceladas", Valor = canceladasManualesReporte, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "salidas_clinicas_sostenidas", Etiqueta = "Salidas clínicas sostenidas", Valor = salidasClinicasSostenidas, Formato = "numero", Tendencia = null, Comparacion = null },
         };
 
         // Hitos logísticos (promedios en minutos)

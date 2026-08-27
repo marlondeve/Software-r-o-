@@ -13,7 +13,18 @@ import {
 import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import { normalizarEstadoDietaDesdeApi } from "@/modules/dietas-cocina/api/mappers/filaDieta.mapper"
 
-const SEGMENT_COLORS = ["#006671", "#00818f", "#bbf244", "#7c6ba8", "#94a3b8", "#d8e0e8"]
+// Con salida clínica y cancelada separadas el donut puede pasar de 6 segmentos.
+const SEGMENT_COLORS = [
+  "#006671",
+  "#00818f",
+  "#bbf244",
+  "#7c6ba8",
+  "#0369a1",
+  "#f59e0b",
+  "#64748b",
+  "#94a3b8",
+  "#d8e0e8",
+]
 
 function leerCampo(item: Record<string, unknown>, ...claves: string[]): unknown {
   return normalizarClave(item, ...claves)
@@ -138,7 +149,19 @@ function mapActividadApi(dto: Record<string, unknown>) {
       leerCampo(row, "descripcion", "Descripcion", "accion", "Accion") ?? "",
     )
     const tipo = String(leerCampo(row, "tipo", "Tipo") ?? "")
-    const accion = etiquetaAccionDesdeTipoEvento(tipo, descripcion)
+    const salidaSostenidaFlag = leerCampo(
+      row,
+      "salidaClinicaSostenida",
+      "SalidaClinicaSostenida",
+    )
+    const salidaClinicaSostenida =
+      salidaSostenidaFlag === true ||
+      String(salidaSostenidaFlag).toLowerCase() === "true" ||
+      tipo.trim().toLowerCase() === "dieta_sostenida_salida_clinica"
+
+    const accion = salidaClinicaSostenida
+      ? "Salida clínica sostenida"
+      : etiquetaAccionDesdeTipoEvento(tipo, descripcion)
 
     const estadoRaw = leerCampo(row, "estado", "Estado")
     const estado = normalizarEstadoDietaDesdeApi(
@@ -171,6 +194,7 @@ function mapActividadApi(dto: Record<string, unknown>) {
       estado,
       observaciones,
       cancelacionPorSalidaClinica,
+      salidaClinicaSostenida,
     }
   })
 }
@@ -189,6 +213,8 @@ function inferirEstadoDesdeTipoEvento(tipo: string): EstadoDieta {
     case "dieta_cancelada":
     case "dieta_cancelada_egreso":
       return "cancelada"
+    case "dieta_sostenida_salida_clinica":
+      return "confirmada"
     case "dieta_reactivada_reingreso":
       return "confirmada"
     default:

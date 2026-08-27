@@ -4,6 +4,7 @@ export {
   mapEventoTrazabilidadDto,
   mapSolicitudToRequest,
   mapCancelarToRequest,
+  mapNovedadToRequest,
 } from "@/modules/dietas-cocina/api/mappers/filaDieta.mapper"
 export type { DatosSolicitudDietaInput } from "@/modules/dietas-cocina/api/mappers/filaDieta.mapper"
 export {

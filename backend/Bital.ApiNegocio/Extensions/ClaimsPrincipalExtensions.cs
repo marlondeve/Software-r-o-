@@ -16,6 +16,20 @@ public static class ClaimsPrincipalExtensions
         throw new UnauthorizedAccessException("Usuario no autenticado.");
     }
 
+    /// <summary>
+    /// Nombre visible para UI/auditoría de solicitud (preferir NombreCompleto; si no, identificación).
+    /// </summary>
+    public static string GetUsuarioNombreDisplay(this ClaimsPrincipal user)
+    {
+        var nombre = user.FindFirstValue(ClaimTypes.Name);
+        if (!string.IsNullOrWhiteSpace(nombre))
+        {
+            return nombre.Trim();
+        }
+
+        return user.GetUsuarioIdentificacion();
+    }
+
     public static Guid GetRolModuloId(this ClaimsPrincipal user)
     {
         var rolModuloIdClaim = user.FindFirstValue("rol_modulo_id");

@@ -48,22 +48,40 @@ export interface EvaluacionAccionesDietaClinica {
   mostrarRegistrarNovedad: boolean
   puedeConfirmarNovedad: boolean
   puedeCancelarDieta: boolean
+  puedeReactivarCancelada: boolean
   tipoCancelacion: TipoCancelacionDieta | null
   requiereAceptacionCosto: boolean
   cancelacionEnPreparacion: boolean
+  /** Cancelación pasada la hora límite de novedades: cocina ya inició producción. */
+  cancelacionFueraDeVentana: boolean
   ventanaAbierta: boolean
+  /** Límite de novedades vigente (sin extensión por carga anticipada). */
+  ventanaNovedadesAbierta: boolean
   motivoBloqueoNovedad?: string
   motivoBloqueoCancelacion?: string
 }
 
 export function tituloSolicitudDieta(fila: FilaDieta): string {
+  if (fila.estado === "cancelada") return "Solicitar dieta (reactivación)"
   if (fila.estado === "no-solicitada") return "Nueva Solicitud de Dieta"
   if (fila.estado === "guardado") return "Editar Solicitud de Dieta"
   return "Detalle de Solicitud de Dieta"
 }
 
 export function esSolicitudEditable(fila: FilaDieta): boolean {
-  return fila.estado === "no-solicitada" || fila.estado === "guardado"
+  return (
+    fila.estado === "no-solicitada" ||
+    fila.estado === "guardado" ||
+    fila.estado === "cancelada"
+  )
+}
+
+/** Dieta cancelada que el usuario puede devolver al flujo operativo. */
+export function puedeReactivarCancelada(
+  estadoVisible?: EstadoDieta,
+  estadoFila?: EstadoDieta,
+): boolean {
+  return estadoVisible === "cancelada" || estadoFila === "cancelada"
 }
 
 export interface CondicionesClinicasFormulario {
@@ -114,29 +132,31 @@ export function evaluarAccionesDietaClinica(
   const { estadoVisible, comida, rol = null, fecha = new Date() } = ctx
   const ventana = resolverEstadoVentanaComida(comida, fecha)
   const ventanaAbierta = ventana.ventanaAbierta
+  const ventanaNovedadesAbierta = ventana.ventanaNovedadesAbierta
+  const mensajeLimiteNovedades = `Pasó el límite de novedades (${ventana.horaLimiteNovedades}): cocina ya inició la producción.`
 
   const estadoPermiteNovedad = ESTADOS_NOVEDAD.has(estadoVisible)
   const mostrarRegistrarNovedad = estadoPermiteNovedad
-  const puedeConfirmarNovedad = estadoPermiteNovedad && ventanaAbierta
+  const puedeConfirmarNovedad = estadoPermiteNovedad && ventanaNovedadesAbierta
+
+  const esAdministrador = !!rol && esRolAdministrador(rol)
+  const estadoSolicitado =
+    ESTADOS_CANCELAR_NORMAL.has(estadoVisible) ||
+    ESTADOS_CANCELAR_TARDIA.has(estadoVisible)
 
   let tipoCancelacion: TipoCancelacionDieta | null = null
   let motivoBloqueoCancelacion: string | undefined
 
-  if (ESTADOS_CANCELAR_NORMAL.has(estadoVisible)) {
+  if (ventanaNovedadesAbierta && ESTADOS_CANCELAR_NORMAL.has(estadoVisible)) {
     tipoCancelacion = "normal"
-  } else if (
-    ESTADOS_CANCELAR_TARDIA.has(estadoVisible) &&
-    rol &&
-    esRolAdministrador(rol)
-  ) {
+  } else if (estadoSolicitado && esAdministrador) {
+    // Fuera del límite la dieta ya está en producción aunque el proveedor no haya
+    // movido el estado: cancelar siempre factura y queda solo en manos del Administrador.
     tipoCancelacion = "tardia"
-  } else if (
-    ESTADOS_CANCELAR_TARDIA.has(estadoVisible) &&
-    rol &&
-    !esRolAdministrador(rol)
-  ) {
-    motivoBloqueoCancelacion =
-      "Solo un Administrador puede cancelar una dieta ya confirmada o en cocina."
+  } else if (estadoSolicitado) {
+    motivoBloqueoCancelacion = ventanaNovedadesAbierta
+      ? "Solo un Administrador puede cancelar una dieta ya confirmada o en cocina."
+      : `${mensajeLimiteNovedades} Solo un Administrador puede cancelar la dieta.`
   }
 
   const cancelacionEnPreparacion =
@@ -147,13 +167,22 @@ export function evaluarAccionesDietaClinica(
     mostrarRegistrarNovedad,
     puedeConfirmarNovedad,
     puedeCancelarDieta: tipoCancelacion !== null,
+    puedeReactivarCancelada: puedeReactivarCancelada(
+      estadoVisible,
+      ctx.fila.estado,
+    ),
     tipoCancelacion,
     requiereAceptacionCosto: tipoCancelacion === "tardia",
     cancelacionEnPreparacion,
+    cancelacionFueraDeVentana:
+      tipoCancelacion === "tardia" && !ventanaNovedadesAbierta,
     ventanaAbierta,
+    ventanaNovedadesAbierta,
     motivoBloqueoNovedad:
-      estadoPermiteNovedad && !ventanaAbierta
-        ? ventana.mensajeCierre
+      estadoPermiteNovedad && !ventanaNovedadesAbierta
+        ? ventanaAbierta
+          ? mensajeLimiteNovedades
+          : ventana.mensajeCierre
         : undefined,
     motivoBloqueoCancelacion,
   }
@@ -166,20 +195,6 @@ export function puedeRegistrarNovedad(
 ): boolean {
   const estado = estadoVisible ?? fila.estado
   return ESTADOS_NOVEDAD.has(estado)
-}
-
-/** @deprecated Usar evaluarAccionesDietaClinica().puedeCancelarDieta */
-export function puedeCancelarDieta(
-  fila: FilaDieta,
-  estadoVisible?: EstadoDieta,
-  rol?: string | null,
-): boolean {
-  const estado = estadoVisible ?? fila.estado
-  if (ESTADOS_CANCELAR_NORMAL.has(estado)) return true
-  if (ESTADOS_CANCELAR_TARDIA.has(estado) && rol && esRolAdministrador(rol)) {
-    return true
-  }
-  return false
 }
 
 /** Cancelación tardía o en preparación — requiere checkbox de costo. */

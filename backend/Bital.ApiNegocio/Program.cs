@@ -183,6 +183,7 @@ try
     builder.Services.AddScoped<Bital.Application.Interfaces.IEtiquetasService, Bital.Infrastructure.Services.EtiquetasService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IConciliacionService, Bital.Infrastructure.Services.ConciliacionService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IDashboardService, Bital.Infrastructure.Services.DashboardService>();
+    builder.Services.AddScoped<Bital.Application.Interfaces.ICocinaReporteService, Bital.Infrastructure.Services.CocinaReporteService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IParametrosService, Bital.Infrastructure.Services.ParametrosService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IAuditoriaService, Bital.Infrastructure.Services.AuditoriaService>();
     builder.Services.AddScoped<Bital.Application.Interfaces.IUsuariosPermisosService, Bital.Infrastructure.Services.UsuariosPermisosService>();

@@ -41,10 +41,16 @@ public class FilaDietaDto
     public bool CancelacionTardia { get; set; }
 
     /// <summary>
-    /// True cuando la cancelación fue por salida clínica HIS (no manual).
-    /// La UI muestra «Salida clínica» en lugar de «Cancelada».
+    /// True cuando la cancelación fue por salida clínica HIS (dentro del límite de novedades).
+    /// La UI muestra el estado «Cancelada»; este flag alimenta KPIs y trazabilidad.
     /// </summary>
     public bool CancelacionPorSalidaClinica { get; set; }
+
+    /// <summary>
+    /// True cuando el paciente egresó pasado el límite de novedades y la dieta se
+    /// mantiene en el flujo: el proveedor la envía igual y se factura.
+    /// </summary>
+    public bool SalidaClinicaSostenida { get; set; }
 
     public Guid? OrdenCocinaId { get; set; }
 

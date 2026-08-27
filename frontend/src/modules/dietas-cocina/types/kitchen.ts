@@ -33,6 +33,11 @@ export interface OrdenCocina {
   observaciones: string
   /** true cuando la cancelación vino de salida clínica HIS y no de una acción manual */
   cancelacionPorSalidaClinica?: boolean
+  /**
+   * true cuando el paciente egresó pasado el límite de novedades: la bandeja sigue
+   * el flujo normal y debe enviarse a la clínica.
+   */
+  salidaClinicaSostenida?: boolean
   estadoCocina: EstadoCocina
   estadoLogistica?: EstadoLogisticaEtiqueta
   etiquetaImpresa: boolean

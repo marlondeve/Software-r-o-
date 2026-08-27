@@ -39,6 +39,11 @@ export interface FilaDieta {
   cancelacionTardia?: boolean
   /** true cuando la cancelación fue por salida clínica HIS */
   cancelacionPorSalidaClinica?: boolean
+  /**
+   * true cuando el paciente egresó pasado el límite de novedades: la dieta no se
+   * cancela porque ya fue producida y el proveedor debe enviarla igual.
+   */
+  salidaClinicaSostenida?: boolean
   estado: EstadoDieta
   comida: TiempoComida
   ordenCocinaId?: string

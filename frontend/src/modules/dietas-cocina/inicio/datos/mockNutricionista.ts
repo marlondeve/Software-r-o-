@@ -6,7 +6,8 @@ export const mockNutricionista = {
     { label: "Dietas pendientes", value: 12, variant: "default" as const },
     { label: "Confirmadas", value: 115, variant: "default" as const },
     { label: "Novedades", value: 8, variant: "default" as const },
-    { label: "Salidas / canceladas", value: 3, variant: "alert" as const },
+    { label: "Salidas clínicas", value: 3, variant: "alert" as const },
+    { label: "Canceladas", value: 0, variant: "alert" as const },
     { label: "Fuera de horario", value: 4, variant: "alert" as const },
   ],
   distribucion: {

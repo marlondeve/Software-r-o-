@@ -3,7 +3,10 @@ import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EtiquetaEnfermera } from "@/modules/dietas-cocina/types/labels"
 import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
-import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
+import {
+  esCancelacionSalidaClinica,
+  esObservacionSalidaClinicaSostenida,
+} from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import {
   filtrarEtiquetasDelPeriodoOperativo,
   resolverContextoFilaDieta,
@@ -17,6 +20,7 @@ export interface ActividadEnfermeriaFila {
   estado: EstadoDieta
   observaciones?: string | null
   cancelacionPorSalidaClinica?: boolean
+  salidaClinicaSostenida?: boolean
 }
 
 function parseSolicitadoEnMs(valor?: string): number {
@@ -40,8 +44,16 @@ export function accionDesdeEstadoEnfermeria(
   opciones?: {
     observaciones?: string | null
     cancelacionPorSalidaClinica?: boolean
+    salidaClinicaSostenida?: boolean
   },
 ): string {
+  if (
+    opciones?.salidaClinicaSostenida ||
+    (opciones?.observaciones &&
+      /salida\s*cl[ií]nica\s+fuera\s+del\s+l[ií]mite/i.test(opciones.observaciones))
+  ) {
+    return "Salida clínica sostenida"
+  }
   switch (estado) {
     case "no-solicitada":
       return "Sin solicitud"
@@ -54,7 +66,7 @@ export function accionDesdeEstadoEnfermeria(
         opciones?.observaciones,
         opciones?.cancelacionPorSalidaClinica,
       )
-        ? "Salida clínica"
+        ? "Cancelación por salida clínica"
         : "Cancelación"
     case "recibida":
       return "Entrega confirmada"
@@ -73,7 +85,10 @@ export function etiquetaAccionDesdeTipoEvento(
 ): string {
   const clave = tipo.trim().toLowerCase()
   if (clave === "dieta_cancelada_egreso") {
-    return "Salida clínica"
+    return "Cancelación por salida clínica"
+  }
+  if (clave === "dieta_sostenida_salida_clinica") {
+    return "Salida clínica sostenida"
   }
   if (clave === "dieta_reactivada_reingreso") {
     return "Reingreso al censo"
@@ -81,7 +96,12 @@ export function etiquetaAccionDesdeTipoEvento(
 
   const texto = descripcion?.trim()
   if (texto) {
-    if (esCancelacionSalidaClinica(texto)) return "Salida clínica"
+    if (esObservacionSalidaClinicaSostenida(texto)) {
+      return "Salida clínica sostenida"
+    }
+    if (esCancelacionSalidaClinica(texto)) {
+      return "Cancelación por salida clínica"
+    }
     return texto
   }
 
@@ -142,11 +162,13 @@ export function construirActividadRecienteEnfermeria(
         accion: accionDesdeEstadoEnfermeria(estado, {
           observaciones: fila.observaciones,
           cancelacionPorSalidaClinica,
+          salidaClinicaSostenida: fila.salidaClinicaSostenida,
         }),
         hora: horaActividadDesdeTexto(fila.solicitadoEn),
         estado,
         observaciones: fila.observaciones,
         cancelacionPorSalidaClinica,
+        salidaClinicaSostenida: fila.salidaClinicaSostenida,
         _ms: parseSolicitadoEnMs(fila.solicitadoEn),
       }
     })

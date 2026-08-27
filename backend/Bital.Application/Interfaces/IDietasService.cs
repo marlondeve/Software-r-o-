@@ -38,6 +38,11 @@ public interface IDietasService
     Task<bool> CancelarDietaAsync(Guid filaDietaId, CancelarDietaDto cancelacion, string usuario, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Reactiva una dieta cancelada a Pendiente (sin solicitud) para volver a gestionarla.
+    /// </summary>
+    Task<FilaDietaDto> ReactivarDietaCanceladaAsync(Guid filaDietaId, string usuario, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Obtiene el catálogo de dietas activas
     /// </summary>
     Task<List<DietaCatalogoDto>> ObtenerCatalogoDietasAsync(CancellationToken cancellationToken = default);

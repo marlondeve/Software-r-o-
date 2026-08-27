@@ -6,6 +6,9 @@ import { mockNutricionista } from "@/modules/dietas-cocina/inicio/datos/mockNutr
 import { construirActividadRecienteEnfermeria } from "@/modules/dietas-cocina/lib/construirActividadEnfermeria"
 import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoDietaOrden"
 import {
+  esSalidaClinicaSostenida,
+  esSalidaClinicaCancelada,
+  esCanceladaManual,
   labelEstadoDietaVisible,
 } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import { deduplicarFilasPorPacienteComida } from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
@@ -33,6 +36,7 @@ const COLORES_ESTADO: Record<string, string> = {
   Recogida: "#64748b",
   Cancelada: "#d8e0e8",
   "Salida clínica": "#94a3b8",
+  "Salida clínica sostenida": "#f59e0b",
 }
 
 function etiquetaSegmentoEstado(
@@ -42,6 +46,7 @@ function etiquetaSegmentoEstado(
   return labelEstadoDietaVisible(estado, {
     observaciones: fila.observaciones,
     cancelacionPorSalidaClinica: fila.cancelacionPorSalidaClinica,
+    salidaClinicaSostenida: fila.salidaClinicaSostenida,
   })
 }
 
@@ -114,8 +119,14 @@ export function construirDashboardNutricionistaDesdeCiclo(
     ].includes(f.estado),
   ).length
   const novedades = filasConEstado.filter((f) => f.estado === "guardado").length
-  const cancelaciones = filasConEstado.filter(
-    (f) => f.estado === "cancelada",
+  const salidasClinicas = filasConEstado.filter((f) =>
+    esSalidaClinicaCancelada({ ...f.fila, estado: f.estado }),
+  ).length
+  const canceladasManuales = filasConEstado.filter((f) =>
+    esCanceladaManual({ ...f.fila, estado: f.estado }),
+  ).length
+  const salidasSostenidas = filasConEstado.filter((f) =>
+    esSalidaClinicaSostenida(f.fila),
   ).length
   const fueraHorario = filasComida.filter((f) => f.cancelacionTardia).length
 
@@ -173,9 +184,19 @@ export function construirDashboardNutricionistaDesdeCiclo(
         variant: "default" as const,
       },
       {
-        label: "Salidas / canceladas",
-        value: String(cancelaciones),
+        label: "Salidas clínicas",
+        value: String(salidasClinicas),
         variant: "alert" as const,
+      },
+      {
+        label: "Canceladas",
+        value: String(canceladasManuales),
+        variant: "alert" as const,
+      },
+      {
+        label: "Salidas clínicas sostenidas",
+        value: String(salidasSostenidas),
+        variant: salidasSostenidas > 0 ? ("default" as const) : ("muted" as const),
       },
       {
         label: "Fuera de horario",

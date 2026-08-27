@@ -42,6 +42,7 @@ import { deduplicarFilasPorPacienteComida } from "@/modules/dietas-cocina/lib/fu
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
 import { crearResolverEstadoVisibleFila } from "@/modules/dietas-cocina/lib/estadoVisibleFilaDieta"
+import { filaCoincideFiltroEstado } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import { evaluarAccionesDietaClinica } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import {
   normalizarConsistenciaParaComida,
@@ -86,6 +87,7 @@ export function DietasPage() {
     confirmarDietaApi,
     confirmarMasivoApi,
     cancelarDietaApi,
+    reactivarDietaCanceladaApi,
     registrarNovedadApi,
     obtenerHistorialApi,
     obtenerDetalleApi,
@@ -139,7 +141,9 @@ export function DietasPage() {
       if (!filaCoincideBusqueda(fila, busqueda)) return false
       if (!servicioCoincideFila(fila, servicio)) return false
       if (!filaCoincideUbicacion(fila, ubicacion)) return false
-      if (estado !== "todos" && resolverEstadoVisible(fila) !== estado) {
+      if (
+        !filaCoincideFiltroEstado(estado, resolverEstadoVisible(fila), fila)
+      ) {
         return false
       }
       if (
@@ -314,6 +318,47 @@ export function DietasPage() {
     }
     setFilaCancelarId(fila.id)
     setCancelarAbierto(true)
+  }
+
+  function dejarSinSolicitud(fila: FilaDieta) {
+    const evaluacion = evaluarFila(fila)
+    if (!evaluacion.puedeReactivarCancelada) {
+      demoToast("Solo se pueden reactivar dietas canceladas.", "error")
+      return
+    }
+
+    if (apiActiva) {
+      void reactivarDietaCanceladaApi(fila.id)
+        .then(() => {
+          demoToast(
+            `Dieta de ${fila.paciente} reactivada: queda sin solicitud.`,
+            "success",
+          )
+        })
+        .catch((error) => {
+          demoToast(
+            error instanceof Error
+              ? error.message
+              : "No se pudo reactivar la dieta cancelada.",
+            "error",
+          )
+        })
+      return
+    }
+
+    actualizarFila(fila.id, {
+      estado: "no-solicitada",
+      cancelacionTardia: false,
+      cancelacionPorSalidaClinica: false,
+      ordenCocinaId: undefined,
+      observaciones: fila.observaciones
+        ? `${fila.observaciones}\nReactivada manualmente: vuelve a sin solicitud`
+        : "Reactivada manualmente: vuelve a sin solicitud",
+    })
+    demoToast(
+      `Dieta de ${fila.paciente} reactivada: queda sin solicitud.`,
+      "success",
+    )
   }
 
   function inputOrdenDesdeFila(fila: FilaDieta) {
@@ -558,6 +603,7 @@ export function DietasPage() {
         onAbrirDetalle={(fila) => abrirSheet("detalle", fila)}
         onRegistrarNovedad={(fila) => abrirSheet("novedad", fila)}
         onCancelarDieta={abrirCancelar}
+        onDejarSinSolicitud={dejarSinSolicitud}
       />
 
       <DietasCancelarDialog
@@ -568,6 +614,9 @@ export function DietasPage() {
         comidas={data.comidas}
         tipoCancelacion={evaluacionCancelar?.tipoCancelacion ?? null}
         cancelacionEnPreparacion={evaluacionCancelar?.cancelacionEnPreparacion ?? false}
+        cancelacionFueraDeVentana={
+          evaluacionCancelar?.cancelacionFueraDeVentana ?? false
+        }
         onConfirmar={(fila, motivo, justificacion, aceptaFacturacion) => {
           if (apiActiva) {
             void cancelarDietaApi(fila.id, {
@@ -651,7 +700,7 @@ export function DietasPage() {
             observacionAislamiento: datos.observacionAislamiento,
             observaciones: datos.observaciones,
             estado: "guardado",
-            solicitadoPor: "Usuario demo",
+            solicitadoPor: usuario?.nombre?.trim() || "Usuario demo",
             solicitadoEn: formatearSolicitadoEn(),
           })
           demoToast(`Solicitud de ${fila.paciente} guardada correctamente.`)

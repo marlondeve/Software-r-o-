@@ -12,7 +12,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Textarea } from "@/components/ui/textarea"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
-import { formatearFechaHoraEnCadena } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { mockCancelarDieta, MOTIVOS_CANCELACION } from "@/modules/dietas-cocina/dietas/datos/mockCancelarDieta"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { TipoCancelacionDieta } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
@@ -26,6 +25,8 @@ interface DietasCancelarDialogProps {
   comidas: ComidaTab[]
   tipoCancelacion?: TipoCancelacionDieta | null
   cancelacionEnPreparacion?: boolean
+  /** Cancelación pasada la hora límite de novedades. */
+  cancelacionFueraDeVentana?: boolean
   onConfirmar?: (
     fila: FilaDieta,
     motivo: MotivoCancelacionId,
@@ -42,6 +43,7 @@ export function DietasCancelarDialog({
   comidas,
   tipoCancelacion = null,
   cancelacionEnPreparacion = false,
+  cancelacionFueraDeVentana = false,
   onConfirmar,
 }: DietasCancelarDialogProps) {
   const [motivo, setMotivo] = useState<MotivoCancelacionId>("otro")
@@ -78,14 +80,20 @@ export function DietasCancelarDialog({
   const comidaLabel =
     comidas.find((c) => c.id === comidaActiva)?.label ?? "Almuerzo"
   const config = mockCancelarDieta
+  const solicitante = fila.solicitadoPor?.trim() || "—"
+  const fechaSolicitud = fila.solicitadoEn?.trim() || "—"
   const esCancelacionTardia = tipoCancelacion === "tardia"
   const requiereAceptacion = esCancelacionTardia && !aceptaFacturacion
   const avisoCosto = cancelacionEnPreparacion
     ? config.avisoCancelacionEnPreparacion
-    : config.avisoCancelacionTardia
+    : cancelacionFueraDeVentana
+      ? config.avisoCancelacionFueraDeVentana
+      : config.avisoCancelacionTardia
   const textoAceptacion = cancelacionEnPreparacion
     ? config.aceptacionFacturacionEnPreparacion
-    : config.aceptacionFacturacion
+    : cancelacionFueraDeVentana
+      ? config.aceptacionFacturacionFueraDeVentana
+      : config.aceptacionFacturacion
   const puedeConfirmar =
     motivo.length > 0 &&
     justificacion.trim().length > 0 &&
@@ -225,15 +233,15 @@ export function DietasCancelarDialog({
 
               <div className="grid gap-3 border-t border-border/60 pt-4 text-sm sm:grid-cols-2">
                 <p className="text-muted-foreground">
-                  Responsable:{" "}
+                  Solicitado por:{" "}
                   <span className="font-medium text-foreground">
-                    {config.responsable}
+                    {solicitante}
                   </span>
                 </p>
                 <p className="text-muted-foreground sm:text-right">
                   Fecha y hora:{" "}
                   <span className="font-medium text-foreground">
-                    {formatearFechaHoraEnCadena(config.fechaHora)}
+                    {fechaSolicitud}
                   </span>
                 </p>
               </div>

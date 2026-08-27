@@ -7,8 +7,20 @@ export function minutosDesdeHora24(hora24: string): number {
   return horas * 60 + minutos
 }
 
+export function minutosDelDiaEnColombia(fecha: Date = new Date()): number {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Bogota",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(fecha)
+  const hora = Number(partes.find((p) => p.type === "hour")?.value ?? "0")
+  const minuto = Number(partes.find((p) => p.type === "minute")?.value ?? "0")
+  return hora * 60 + minuto
+}
+
 export function minutosDelDia(fecha: Date): number {
-  return fecha.getHours() * 60 + fecha.getMinutes()
+  return minutosDelDiaEnColombia(fecha)
 }
 
 const MINUTOS_DIA = 24 * 60

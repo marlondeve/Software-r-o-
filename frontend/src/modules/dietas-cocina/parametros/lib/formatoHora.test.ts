@@ -7,9 +7,9 @@ import {
 
 describe("formatearFechaHoraEnCadena", () => {
   it("no deja el formato ISO con T al convertir a. m./p. m.", () => {
-    const result = formatearFechaHoraEnCadena("2026-08-26T13:45:00Z")
+    const result = formatearFechaHoraEnCadena("2026-08-26T20:45:00Z")
     expect(result).not.toContain("T")
-    expect(result).toMatch(/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2} [ap]\. m\.$/)
+    expect(result).toBe("26/08/2026 03:45 p. m.")
   })
 
   it("trata fecha operativa a medianoche como calendario (sin shift UTC)", () => {
@@ -25,8 +25,8 @@ describe("formatearFechaHoraEnCadena", () => {
 })
 
 describe("formatearFechaHoraLocalEtiqueta", () => {
-  it("formatea un Date local como dd/MM/yyyy hh:mm a. m.", () => {
-    const fecha = new Date(2026, 7, 26, 8, 45, 0)
+  it("formatea un instante UTC como hora Colombia", () => {
+    const fecha = new Date("2026-08-26T13:45:00Z")
     expect(formatearFechaHoraLocalEtiqueta(fecha)).toBe("26/08/2026 08:45 a. m.")
   })
 })

@@ -33,6 +33,7 @@ public class UsuariosPermisosController : ControllerBase
     public async Task<ActionResult<ListaUsuariosDto>> ObtenerUsuarios(
         [FromQuery] Guid? rolModuloId,
         [FromQuery] bool? estado,
+        [FromQuery] string? busqueda,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = PaginacionHelper.DefaultPageSize)
     {
@@ -42,6 +43,7 @@ public class UsuariosPermisosController : ControllerBase
             {
                 RolModuloId = rolModuloId,
                 Activo = estado,
+                Busqueda = busqueda,
                 Page = page,
                 PageSize = pageSize
             };

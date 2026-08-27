@@ -67,7 +67,8 @@ describe("construirDashboardNutricionistaDesdeCiclo", () => {
     expect(valor("Dietas pendientes")).toBe(9)
     expect(valor("Confirmadas")).toBe(12)
     expect(valor("Novedades")).toBe(0)
-    expect(valor("Salidas / canceladas")).toBe(4)
+    expect(valor("Salidas clínicas")).toBe(4)
+    expect(valor("Canceladas")).toBe(0)
     expect(data.distribucion.total).toBe(25)
     expect(data.distribucion.segmentos).toEqual(
       expect.arrayContaining([

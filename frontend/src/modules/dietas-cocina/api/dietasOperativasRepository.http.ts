@@ -8,6 +8,7 @@ import {
   obtenerCatalogoDietas,
   obtenerDetalleDieta,
   obtenerHistorialDieta,
+  reactivarDietaCancelada,
   registrarNovedadDieta,
 } from "@/modules/dietas-cocina/api/services/dietas.service"
 import { sincronizarFilasDesdeCensoApi } from "@/modules/dietas-cocina/api/services/censo-dietas.service"
@@ -37,8 +38,11 @@ export const dietasOperativasRepositoryHttp: DietasOperativasRepository = {
       ),
     )
   },
+  async reactivarCancelada(id) {
+    return reactivarDietaCancelada(id)
+  },
   async registrarNovedad(id, payload) {
-    return registrarNovedadDieta(id, payload as unknown as Record<string, unknown>)
+    return registrarNovedadDieta(id, payload)
   },
   async obtenerCatalogo() {
     const items = await obtenerCatalogoDietas()

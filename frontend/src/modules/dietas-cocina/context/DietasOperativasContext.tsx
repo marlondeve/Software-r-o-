@@ -126,6 +126,7 @@ export interface DietasOperativasContextValue {
   confirmarDietaApi: (id: string) => Promise<FilaDieta>
   confirmarMasivoApi: (ids: string[], usuario: string) => Promise<void>
   cancelarDietaApi: (id: string, payload: CancelarDietaPayload) => Promise<FilaDieta>
+  reactivarDietaCanceladaApi: (id: string) => Promise<FilaDieta>
   registrarNovedadApi: (id: string, payload: NovedadDietaPayload) => Promise<FilaDieta>
   obtenerDetalleApi: (id: string) => Promise<FilaDieta>
   obtenerHistorialApi: (id: string) => Promise<EventoTrazabilidad[]>
@@ -337,6 +338,18 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
     [apiActiva, dietasRepository, reemplazarFila],
   )
 
+  const reactivarDietaCanceladaApi = useCallback(
+    async (id: string) => {
+      if (apiActiva) requiereConexionApi()
+      const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
+      if (filasSync !== filasRef.current) setFilas(filasSync)
+      const fila = await dietasRepository.reactivarCancelada(filaId)
+      reemplazarFila(fila)
+      return fila
+    },
+    [apiActiva, dietasRepository, reemplazarFila],
+  )
+
   const registrarNovedadApi = useCallback(
     async (id: string, payload: NovedadDietaPayload) => {
       if (apiActiva) requiereConexionApi()
@@ -402,6 +415,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       confirmarDietaApi,
       confirmarMasivoApi,
       cancelarDietaApi,
+      reactivarDietaCanceladaApi,
       registrarNovedadApi,
       obtenerDetalleApi,
       obtenerHistorialApi,
@@ -423,6 +437,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       confirmarDietaApi,
       confirmarMasivoApi,
       cancelarDietaApi,
+      reactivarDietaCanceladaApi,
       registrarNovedadApi,
       obtenerDetalleApi,
       obtenerHistorialApi,

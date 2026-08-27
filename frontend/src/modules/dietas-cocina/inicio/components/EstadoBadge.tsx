@@ -1,6 +1,8 @@
 import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
-import { claseBadgeEstadoDieta } from "@/modules/dietas-cocina/lib/estadosEstilos"
-import { labelEstadoDietaVisible } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
+import {
+  claseBadgeEstadoDietaVisible,
+  labelEstadoDietaVisible,
+} from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
@@ -10,6 +12,7 @@ interface EstadoBadgeProps {
   /** Observaciones de la fila: permite mostrar «Salida clínica». */
   observaciones?: string | null
   cancelacionPorSalidaClinica?: boolean
+  salidaClinicaSostenida?: boolean
   /** Sobrescribe el texto del badge. */
   label?: string
   className?: string
@@ -19,6 +22,7 @@ export function EstadoBadge({
   estado,
   observaciones,
   cancelacionPorSalidaClinica,
+  salidaClinicaSostenida,
   label,
   className,
 }: EstadoBadgeProps) {
@@ -27,13 +31,17 @@ export function EstadoBadge({
     labelEstadoDietaVisible(estado, {
       observaciones,
       cancelacionPorSalidaClinica,
+      salidaClinicaSostenida,
     })
   return (
     <Badge
       variant="outline"
       className={cn(
         "rounded-full font-medium",
-        claseBadgeEstadoDieta(estado),
+        claseBadgeEstadoDietaVisible(estado, {
+          observaciones,
+          cancelacionPorSalidaClinica,
+        }),
         className,
       )}
     >

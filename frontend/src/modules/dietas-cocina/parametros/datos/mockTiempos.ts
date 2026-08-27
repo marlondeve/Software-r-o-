@@ -83,10 +83,11 @@ export const mockParametrosTiempos = {
       id: "merienda-noche" as TiempoComida,
       label: "Merienda de Media Noche",
       activo: true,
-      hitos: hitosComidaPrincipal("20:00", "20:15", "20:30", "20:45", "21:15"),
+      // Alineado con operación clínica típica (no ventana nocturna 20:00–21:15).
+      hitos: hitosComidaPrincipal("12:00", "15:00", "16:45", "17:00", "17:30"),
       ventanaCambios: {
-        inicio: "20:00",
-        fin: "20:15",
+        inicio: "12:00",
+        fin: "15:00",
         label: "Ventana de cambios clínicos",
       },
     },

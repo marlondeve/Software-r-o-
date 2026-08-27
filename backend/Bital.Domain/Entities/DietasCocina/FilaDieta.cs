@@ -148,6 +148,12 @@ public class FilaDieta : EntityBase
     public bool CancelacionTardia { get; set; }
 
     /// <summary>
+    /// Paciente con salida clínica después del límite de novedades: la dieta no se
+    /// cancela porque cocina ya la produjo y el proveedor debe enviarla.
+    /// </summary>
+    public bool SalidaClinicaSostenida { get; set; }
+
+    /// <summary>
     /// ID de la orden de cocina generada al confirmar
     /// </summary>
     public Guid? OrdenCocinaId { get; set; }

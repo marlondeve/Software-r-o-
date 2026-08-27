@@ -74,6 +74,9 @@ export function formatearHora12(hora24: string): string {
   return `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")} ${periodo}`
 }
 
+/** Zona operativa del hospital. Todas las horas visibles van en hora Colombia. */
+export const ZONA_HORARIA_COLOMBIA = "America/Bogota"
+
 /** Interpreta ISO del API como UTC cuando no trae zona horaria. */
 export function parsearFechaApi(iso: string): Date {
   const trimmed = iso.trim()
@@ -84,20 +87,49 @@ export function parsearFechaApi(iso: string): Date {
   return new Date(`${trimmed}Z`)
 }
 
-/** Hora en 12 h desde ISO del API (corrige timestamps UTC sin sufijo). */
+function partesHoraEnColombia(fecha: Date): { hora: number; minuto: number } {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: ZONA_HORARIA_COLOMBIA,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(fecha)
+  return {
+    hora: Number(partes.find((p) => p.type === "hour")?.value ?? "0"),
+    minuto: Number(partes.find((p) => p.type === "minute")?.value ?? "0"),
+  }
+}
+
+function partesFechaEnColombia(fecha: Date): {
+  anio: number
+  mes: number
+  dia: number
+} {
+  const partes = new Intl.DateTimeFormat("en-US", {
+    timeZone: ZONA_HORARIA_COLOMBIA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(fecha)
+  return {
+    anio: Number(partes.find((p) => p.type === "year")?.value ?? "0"),
+    mes: Number(partes.find((p) => p.type === "month")?.value ?? "0"),
+    dia: Number(partes.find((p) => p.type === "day")?.value ?? "0"),
+  }
+}
+
+/** Hora en 12 h desde ISO del API (UTC, a menudo sin Z) en hora Colombia. */
 export function formatearHoraDesdeIsoApi(iso: string): string {
   const fecha = parsearFechaApi(iso)
   if (Number.isNaN(fecha.getTime())) return "—"
   return formatearHoraDesdeFecha(fecha)
 }
 
-/** Hora actual o de un `Date` en formato 12 h (p. ej. "07:55 p. m."). */
+/** Hora de un instante en formato 12 h, siempre America/Bogota. */
 export function formatearHoraDesdeFecha(fecha = new Date()): string {
+  const { hora, minuto } = partesHoraEnColombia(fecha)
   return formatearHora12(
-    `${fecha.getHours().toString().padStart(2, "0")}:${fecha
-      .getMinutes()
-      .toString()
-      .padStart(2, "0")}`,
+    `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")}`,
   )
 }
 
@@ -123,13 +155,11 @@ export function normalizarHoraEnTexto(texto: string): string {
   return `${horas.toString().padStart(2, "0")}:${minutos}`
 }
 
-/** Fecha/hora local para etiqueta: `dd/MM/yyyy hh:mm a. m.` */
+/** Fecha/hora Colombia para etiqueta: `dd/MM/yyyy hh:mm a. m.` */
 export function formatearFechaHoraLocalEtiqueta(fecha: Date): string {
   if (Number.isNaN(fecha.getTime())) return "—"
-  const dia = fecha.getDate().toString().padStart(2, "0")
-  const mes = (fecha.getMonth() + 1).toString().padStart(2, "0")
-  const anio = fecha.getFullYear()
-  return `${dia}/${mes}/${anio} ${formatearHoraDesdeFecha(fecha)}`
+  const { anio, mes, dia } = partesFechaEnColombia(fecha)
+  return `${dia.toString().padStart(2, "0")}/${mes.toString().padStart(2, "0")}/${anio} ${formatearHoraDesdeFecha(fecha)}`
 }
 
 /** Fecha operativa sin hora (calendario, no instante UTC). */
@@ -143,7 +173,7 @@ function formatearSoloFechaCalendario(isoOFecha: string): string | null {
 
 /**
  * Convierte la porción horaria a 12 h.
- * Si el valor es ISO del API (UTC, a menudo sin Z), lo muestra en hora local.
+ * Si el valor es ISO del API (UTC, a menudo sin Z), lo muestra en hora Colombia.
  */
 export function formatearFechaHoraEnCadena(texto: string): string {
   if (!texto) return texto

@@ -140,8 +140,11 @@ export function DietasSolicitudSheet({
   const editable = esSolicitudEditable(fila)
   const aplicaConsistencia = requiereConsistencia(formulario.comida)
   const validacionClinica = validarCondicionesClinicasFormulario(formulario)
+  const ventanaPermiteGuardar = estadoVentana.ventanaAbierta
   const formularioValido =
-    esFormularioSolicitudDietaValido(formulario) && editable
+    esFormularioSolicitudDietaValido(formulario) &&
+    editable &&
+    ventanaPermiteGuardar
 
   function actualizarFormulario(cambios: Partial<FormularioSolicitud>) {
     setFormulario((prev) => {
@@ -344,6 +347,12 @@ export function DietasSolicitudSheet({
         </ScrollAreaFlex>
 
         <SheetFooter className="mt-0 shrink-0 flex-col gap-3 border-t bg-muted/30 px-5 py-4">
+          {!ventanaPermiteGuardar && editable && (
+            <p className="w-full text-sm text-destructive">
+              No se puede guardar: la ventana de solicitud está cerrada
+              ({estadoVentana.ventanaTexto}). {estadoVentana.mensajeCierre}.
+            </p>
+          )}
           {!validacionClinica.valido && validacionClinica.mensaje && (
             <p className="w-full text-sm text-destructive">{validacionClinica.mensaje}</p>
           )}

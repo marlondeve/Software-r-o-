@@ -26,6 +26,7 @@ public static class AuditoriaCatalogo
         public const string Confirmar = "Confirmar";
         public const string ConfirmarMasivo = "ConfirmarMasivo";
         public const string Cancelar = "Cancelar";
+        public const string Reactivar = "Reactivar";
         public const string Novedad = "Novedad";
         public const string Crear = "Crear";
         public const string Actualizar = "Actualizar";

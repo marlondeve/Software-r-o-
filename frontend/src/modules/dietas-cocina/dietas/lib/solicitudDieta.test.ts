@@ -126,6 +126,45 @@ describe("evaluarAccionesDietaClinica", () => {
     expect(r.puedeCancelarDieta).toBe(true)
     expect(r.cancelacionEnPreparacion).toBe(true)
   })
+
+  it("bloquea cancelar guardado fuera del límite de novedades", () => {
+    const r = evaluar("guardado", { fecha: fechaVentanaCerrada() })
+    expect(r.puedeCancelarDieta).toBe(false)
+    expect(r.tipoCancelacion).toBeNull()
+    expect(r.motivoBloqueoCancelacion).toContain("límite de novedades")
+  })
+
+  it("administrador cancela guardado fuera del límite asumiendo el costo", () => {
+    const r = evaluar("guardado", {
+      rol: "Administrador",
+      fecha: fechaVentanaCerrada(),
+    })
+    expect(r.puedeCancelarDieta).toBe(true)
+    expect(r.tipoCancelacion).toBe("tardia")
+    expect(r.requiereAceptacionCosto).toBe(true)
+    expect(r.cancelacionFueraDeVentana).toBe(true)
+  })
+
+  it("no marca fuera de ventana la cancelación tardía dentro del límite", () => {
+    const r = evaluar("confirmada", { rol: "Administrador" })
+    expect(r.cancelacionFueraDeVentana).toBe(false)
+  })
+
+  it("bloquea cancelar confirmada fuera del límite a la nutricionista", () => {
+    const r = evaluar("confirmada", {
+      rol: "Nutricionista",
+      fecha: fechaVentanaCerrada(),
+    })
+    expect(r.puedeCancelarDieta).toBe(false)
+    expect(r.motivoBloqueoCancelacion).toContain("límite de novedades")
+  })
+
+  it("permite reactivar dieta cancelada", () => {
+    const r = evaluar("cancelada", { rol: "Enfermera" })
+    expect(r.puedeReactivarCancelada).toBe(true)
+    expect(r.puedeCancelarDieta).toBe(false)
+    expect(r.mostrarRegistrarNovedad).toBe(false)
+  })
 })
 
 describe("validarCondicionesClinicasFormulario", () => {

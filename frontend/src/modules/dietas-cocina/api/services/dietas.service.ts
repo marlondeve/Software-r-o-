@@ -4,6 +4,7 @@ import {
   mapEventoTrazabilidadDto,
   mapFilaDietaDtoToDomain,
   mapFilaDietaList,
+  mapNovedadToRequest,
   mapSolicitudToRequest,
   type DatosSolicitudDietaInput,
 } from "@/modules/dietas-cocina/api/mappers"
@@ -135,13 +136,25 @@ export async function cancelarDieta(
   return obtenerDetalleDieta(filaDietaId)
 }
 
-export async function registrarNovedadDieta(
+export async function reactivarDietaCancelada(
   filaDietaId: string,
-  payload: Record<string, unknown>,
 ): Promise<FilaDieta> {
   const { data } = await apiClient.post<FilaDietaDto | ApiResponse<FilaDietaDto>>(
+    buildDietasCocinaPath(`/dietas/${filaDietaId}/reactivar`),
+    {},
+  )
+  const catalogo = mapaNombresCatalogo(await obtenerCatalogoInterno())
+  return mapFilaDietaDtoToDomain(extraerCuerpoApi(data), catalogo)
+}
+
+export async function registrarNovedadDieta(
+  filaDietaId: string,
+  datos: DatosSolicitudDietaInput & { motivo?: string },
+): Promise<FilaDieta> {
+  const tipoDietaId = await resolverTipoDietaId(datos.tipoDieta)
+  const { data } = await apiClient.post<FilaDietaDto | ApiResponse<FilaDietaDto>>(
     buildDietasCocinaPath(`/dietas/${filaDietaId}/novedad`),
-    payload,
+    mapNovedadToRequest(datos, tipoDietaId),
   )
   const catalogo = mapaNombresCatalogo(await obtenerCatalogoInterno())
   return mapFilaDietaDtoToDomain(extraerCuerpoApi(data), catalogo)

@@ -33,6 +33,7 @@ type DietaReciente = {
   estado: EstadoDieta
   observaciones?: string | null
   cancelacionPorSalidaClinica?: boolean
+  salidaClinicaSostenida?: boolean
 }
 
 export function EnfermeraDashboard() {
@@ -83,6 +84,7 @@ export function EnfermeraDashboard() {
             cancelacionPorSalidaClinica={
               row.original.cancelacionPorSalidaClinica
             }
+            salidaClinicaSostenida={row.original.salidaClinicaSostenida}
           />
         ),
       },

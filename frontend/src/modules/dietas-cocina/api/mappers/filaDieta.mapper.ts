@@ -99,7 +99,10 @@ export function mapFilaDietaDtoToDomain(
       esCancelacionSalidaClinica(
         dto.observaciones != null ? String(dto.observaciones) : undefined,
         dto.cancelacionPorSalidaClinica,
+        dto.salidaClinicaSostenida,
+        normalizarEstadoDietaDesdeApi(dto.estado),
       ),
+    salidaClinicaSostenida: Boolean(dto.salidaClinicaSostenida),
     estado: normalizarEstadoDietaDesdeApi(dto.estado),
     comida: mapearComidaInterna(comidaRaw),
     ordenCocinaId: dto.ordenCocinaId ? String(dto.ordenCocinaId) : undefined,
@@ -175,7 +178,8 @@ const TITULOS_TIPO_EVENTO: Record<string, string> = {
   solicitud_guardada: "Solicitud guardada",
   solicitud_confirmada: "Solicitud confirmada",
   dieta_cancelada: "Dieta cancelada",
-  dieta_cancelada_egreso: "Salida clínica",
+  dieta_cancelada_egreso: "Cancelación por salida clínica",
+  dieta_sostenida_salida_clinica: "Salida clínica sostenida",
   dieta_reactivada_reingreso: "Reingreso al censo",
   novedad_registrada: "Novedad registrada",
 }
@@ -183,7 +187,10 @@ const TITULOS_TIPO_EVENTO: Record<string, string> = {
 function descripcionEventoLegible(tipoEvento: string, descripcion: string): string {
   const clave = tipoEvento.trim().toLowerCase()
   if (clave === "dieta_cancelada_egreso") {
-    return "Paciente con salida clínica; la dieta queda fuera del turno."
+    return "Paciente con salida clínica dentro del límite de novedades: la dieta se cancela para evitar preparación."
+  }
+  if (clave === "dieta_sostenida_salida_clinica") {
+    return "Paciente con salida clínica fuera del límite: la dieta se mantiene y el proveedor la envía (costo clínica)."
   }
   if (clave === "dieta_reactivada_reingreso") {
     return "Paciente de nuevo en censo; la dieta vuelve al flujo operativo."
@@ -250,5 +257,29 @@ export function mapCancelarToRequest(
     justificacion,
     aceptaFacturacion: aceptaFacturacion ?? false,
     rolUsuario: rolUsuario ?? undefined,
+  }
+}
+
+export function mapNovedadToRequest(
+  datos: DatosSolicitudDietaInput & { motivo?: string },
+  tipoDietaId?: string,
+): Record<string, unknown> {
+  const solicitud = mapSolicitudToRequest(datos, tipoDietaId)
+  const motivo = datos.motivo?.trim() || "Novedad clínica"
+  const detalle = datos.observaciones?.trim()
+
+  return {
+    tipoNovedad: "novedad_registrada",
+    descripcion: motivo,
+    motivo,
+    observaciones: detalle || undefined,
+    tipoDietaId: solicitud.tipoDietaId,
+    consistencia: solicitud.consistencia,
+    descripcionDieta: solicitud.descripcionDieta,
+    aislado: solicitud.aislado,
+    aislamiento: solicitud.aislamiento,
+    observacionAislamiento: solicitud.observacionAislamiento,
+    alergico: solicitud.alergico,
+    alergias: solicitud.alergias,
   }
 }

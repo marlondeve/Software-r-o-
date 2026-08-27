@@ -26,6 +26,9 @@ public class DietasService : IDietasService
     /// <summary>Autor de los cambios automáticos (censo, egreso, reingreso).</summary>
     private const string UsuarioSistema = "Sistema";
 
+    /// <summary>Coincide con nvarchar(100) de FilasDietas.SolicitadoPor.</summary>
+    private const int MaxSolicitadoPor = 100;
+
     public DietasService(
         BitalNegocioDbContext context,
         IAtencionesQueryService atencionesQueryService,
@@ -83,10 +86,23 @@ public class DietasService : IDietasService
         }
 
         // 2. Obtener filas de dietas existentes en Bital para esa fecha y comida
+        var configTiempo = await _context.TiemposComida
+            .FirstOrDefaultAsync(t => t.Comida == tiempoComida, cancellationToken);
+
+        var ventanaAbierta = DietasReglasNegocio.VentanaNovedadesAbiertaParaFecha(
+            configTiempo, fecha.Date, HorarioOperativoHelper.AhoraColombia());
+
         var filasExistentes = await _context.FilasDietas
             .Include(f => f.TipoDieta)
             .Where(f => f.FechaOperativa.Date == fecha.Date && f.Comida == tiempoComida)
             .ToListAsync(cancellationToken);
+
+        await CorregirCancelacionesEgresoIndebidasAsync(
+            filasExistentes,
+            tiempoComida,
+            fecha.Date,
+            configTiempo,
+            cancellationToken);
 
         var resultado = new CensoDietasDto
         {
@@ -154,7 +170,11 @@ public class DietasService : IDietasService
                 // Cancelada por el sistema (actual o legado) y el paciente sigue / volvió en censo.
                 if (EsCandidataReingreso(filaExistente))
                 {
-                    ReactivarDietaPorReingreso(filaExistente, contextoReingreso);
+                    ReactivarDietaPorReingreso(filaExistente, contextoReingreso, ventanaAbierta);
+                }
+                else
+                {
+                    CorregirReingresoFueraDeVentana(filaExistente, ventanaAbierta);
                 }
 
                 // Duplicados del mismo paciente/comida: solo una fila operativa en el censo.
@@ -185,6 +205,7 @@ public class DietasService : IDietasService
         foreach (var fila in filasExistentes)
         {
             if (filasSuperadas.Contains(fila.Id)) continue;
+            CorregirReingresoFueraDeVentana(fila, ventanaAbierta);
             if (idsEnResultado.Add(fila.Id))
                 filasRespuesta.Add(fila);
         }
@@ -195,6 +216,8 @@ public class DietasService : IDietasService
         {
             resultado.Filas.Add(MapearADto(fila));
         }
+
+        await ResolverNombresSolicitantesAsync(resultado.Filas, cancellationToken);
 
         // 6. Guardar nuevas filas y cancelaciones por salida clínica
         await _context.SaveChangesAsync(cancellationToken);
@@ -213,6 +236,9 @@ public class DietasService : IDietasService
     /// Cancela dietas solo si INGRESOS.IngInSlC = 'S' y el estado aún permite
     /// cancelar (desde EnRuta la bandeja se cierra por devolución).
     /// Faltar en el snapshot de censo (pabellón, TMPFAC, etc.) no es egreso.
+    /// Dentro del límite de novedades se cancelan también las dietas solicitadas
+    /// (evita preparación y desperdicio). Pasado el límite las solicitadas se sostienen
+    /// marcadas para que el proveedor las envíe.
     /// </summary>
     private async Task CancelarDietasPorEgresoAsync(
         DateTime fechaOperativa,
@@ -221,10 +247,18 @@ public class DietasService : IDietasService
         List<FilaDieta> filasExistentes,
         CancellationToken cancellationToken)
     {
+        var configTiempo = await _context.TiemposComida
+            .FirstOrDefaultAsync(t => t.Comida == tiempoComida, cancellationToken);
+
+        var ventanaAbierta = DietasReglasNegocio.VentanaNovedadesAbiertaParaFecha(
+            configTiempo, fechaOperativa, HorarioOperativoHelper.AhoraColombia());
+
         var candidatos = filasExistentes
             .Where(f =>
                 !EstaEnCensoHis(f, pacienteIdsEnCenso)
-                && DietasReglasNegocio.DebeCancelarPorEgreso(f.Estado))
+                && !f.SalidaClinicaSostenida
+                && (DietasReglasNegocio.DebeCancelarPorEgreso(f.Estado, ventanaAbierta)
+                    || DietasReglasNegocio.DebeSostenerPorEgreso(f.Estado, ventanaAbierta)))
             .ToList();
 
         if (candidatos.Count == 0) return;
@@ -265,7 +299,24 @@ public class DietasService : IDietasService
             return;
         }
 
-        var ordenIds = egresadas
+        var paraCancelar = egresadas
+            .Where(f => DietasReglasNegocio.DebeCancelarPorEgreso(f.Estado, ventanaAbierta))
+            .ToList();
+
+        var paraSostener = egresadas
+            .Where(f => DietasReglasNegocio.DebeSostenerPorEgreso(f.Estado, ventanaAbierta))
+            .ToList();
+
+        _logger.LogInformation(
+            "Salida clínica {Fecha:d} {Comida}: ventana={VentanaAbierta}, egresadas={Egresadas}, cancelar={Cancelar}, sostener={Sostener}",
+            fechaOperativa,
+            tiempoComida,
+            ventanaAbierta,
+            egresadas.Count,
+            paraCancelar.Count,
+            paraSostener.Count);
+
+        var ordenIds = paraCancelar
             .Where(f => f.OrdenCocinaId.HasValue)
             .Select(f => f.OrdenCocinaId!.Value)
             .Distinct()
@@ -280,11 +331,36 @@ public class DietasService : IDietasService
 
         var ahora = DateTime.UtcNow;
         const string motivoSalida = DietasReglasNegocio.MotivoCancelacionSalidaClinica;
+        const string motivoSostenida = DietasReglasNegocio.MotivoSalidaClinicaSostenida;
 
-        foreach (var fila in egresadas)
+        foreach (var fila in paraSostener)
+        {
+            fila.SalidaClinicaSostenida = true;
+            fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
+                ? motivoSostenida
+                : $"{fila.Observaciones}\n{motivoSostenida}";
+            fila.ModificadoPor = UsuarioSistema;
+            fila.ModificadoEn = ahora;
+
+            _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+            {
+                Id = Guid.NewGuid(),
+                FilaDietaId = fila.Id,
+                TipoEvento = DietasReglasNegocio.TipoEventoSalidaClinicaSostenida,
+                Descripcion = motivoSostenida,
+                EstadoAnterior = fila.Estado,
+                EstadoNuevo = fila.Estado,
+                Usuario = UsuarioSistema,
+                FechaEvento = ahora,
+                DatosAdicionales = $"PacienteId: {fila.PacienteId}; IdIngreso: {fila.IdIngreso}"
+            });
+        }
+
+        foreach (var fila in paraCancelar)
         {
             var estadoAnterior = fila.Estado;
             fila.Estado = EstadoDieta.Cancelada;
+            fila.SalidaClinicaSostenida = false;
             fila.CancelacionTardia =
                 DietasReglasNegocio.EsCancelacionTardiaPorEgreso(estadoAnterior);
             fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
@@ -326,8 +402,9 @@ public class DietasService : IDietasService
         }
 
         _logger.LogInformation(
-            "Canceladas {Count} dietas por IngInSlC=S en censo {Fecha} {Comida}",
-            egresadas.Count, fechaOperativa, tiempoComida);
+            "Salida clínica (IngInSlC=S) en censo {Fecha} {Comida}: {Canceladas} canceladas, "
+            + "{Sostenidas} sostenidas por límite de novedades cerrado",
+            fechaOperativa, tiempoComida, paraCancelar.Count, paraSostener.Count);
     }
 
     /// <summary>
@@ -455,6 +532,100 @@ public class DietasService : IDietasService
             _ => 0,
         };
 
+    /// <summary>
+    /// Corrige dietas canceladas por egreso que debieron sostenerse (fuera del límite
+    /// de novedades): restaura el estado previo y marca salida clínica sostenida.
+    /// </summary>
+    private async Task CorregirCancelacionesEgresoIndebidasAsync(
+        List<FilaDieta> filas,
+        TiempoComida comida,
+        DateTime fechaOperativa,
+        TiempoComidaConfig? configTiempo,
+        CancellationToken cancellationToken)
+    {
+        var canceladasEgreso = filas
+            .Where(f => f.Estado == EstadoDieta.Cancelada
+                        && DietasReglasNegocio.EsObservacionSalidaClinica(f.Observaciones))
+            .ToList();
+
+        if (canceladasEgreso.Count == 0) return;
+
+        var ids = canceladasEgreso.Select(f => f.Id).ToList();
+        var eventos = await _context.EventosTrazabilidad
+            .AsNoTracking()
+            .Where(e => ids.Contains(e.FilaDietaId)
+                        && e.TipoEvento == DietasReglasNegocio.TipoEventoCancelacionPorEgreso
+                        && e.EstadoAnterior != null)
+            .OrderByDescending(e => e.FechaEvento)
+            .ToListAsync(cancellationToken);
+
+        var ultimoEventoPorFila = eventos
+            .GroupBy(e => e.FilaDietaId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        foreach (var fila in canceladasEgreso)
+        {
+            if (!ultimoEventoPorFila.TryGetValue(fila.Id, out var evento)) continue;
+
+            var estadoAlEgreso = evento.EstadoAnterior!.Value;
+            if (!DietasReglasNegocio.EsDietaSolicitada(estadoAlEgreso)) continue;
+
+            var momentoColombia = HorarioOperativoHelper.AHoraColombia(evento.FechaEvento);
+            if (!DietasReglasNegocio.EgresoDebióSostenerse(
+                    estadoAlEgreso,
+                    configTiempo,
+                    fechaOperativa,
+                    momentoColombia))
+            {
+                continue;
+            }
+
+            AplicarSostenimientoTrasCorreccion(fila, estadoAlEgreso);
+        }
+    }
+
+    private void AplicarSostenimientoTrasCorreccion(FilaDieta fila, EstadoDieta estadoRestaurar)
+    {
+        var estadoAnterior = fila.Estado;
+        var ahora = DateTime.UtcNow;
+        const string motivoSostenida = DietasReglasNegocio.MotivoSalidaClinicaSostenida;
+
+        fila.Estado = estadoRestaurar;
+        fila.SalidaClinicaSostenida = true;
+        fila.CancelacionTardia = false;
+        if (!string.IsNullOrWhiteSpace(fila.Observaciones)
+            && !fila.Observaciones.Contains(motivoSostenida, StringComparison.OrdinalIgnoreCase))
+        {
+            fila.Observaciones = $"{fila.Observaciones}\n{motivoSostenida}";
+        }
+        else if (string.IsNullOrWhiteSpace(fila.Observaciones))
+        {
+            fila.Observaciones = motivoSostenida;
+        }
+
+        fila.ModificadoPor = UsuarioSistema;
+        fila.ModificadoEn = ahora;
+
+        _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+        {
+            Id = Guid.NewGuid(),
+            FilaDietaId = fila.Id,
+            TipoEvento = DietasReglasNegocio.TipoEventoSalidaClinicaSostenida,
+            Descripcion = "Corrección: egreso fuera del límite debió sostener la dieta",
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = estadoRestaurar,
+            Usuario = UsuarioSistema,
+            FechaEvento = ahora,
+            DatosAdicionales =
+                $"PacienteId: {fila.PacienteId}; IdIngreso: {fila.IdIngreso}; EstadoRestaurado: {estadoRestaurar}"
+        });
+
+        _logger.LogWarning(
+            "Dieta {FilaId} corregida: cancelación por egreso fuera de ventana → sostenida ({Estado})",
+            fila.Id,
+            estadoRestaurar);
+    }
+
     private async Task<ContextoReingreso> CargarContextoReingresoAsync(
         List<FilaDieta> filasExistentes,
         CancellationToken cancellationToken)
@@ -512,21 +683,33 @@ public class DietasService : IDietasService
     /// Paciente en censo con dieta cancelada por el sistema: se corrige el estado
     /// (reingreso real o cancelación automática previa que ya no aplica).
     /// </summary>
-    private void ReactivarDietaPorReingreso(FilaDieta fila, ContextoReingreso contexto)
+    private void ReactivarDietaPorReingreso(
+        FilaDieta fila,
+        ContextoReingreso contexto,
+        bool ventanaNovedadesAbierta)
     {
         var estadoAlCancelar = contexto.EstadoAlCancelar.TryGetValue(fila.Id, out var previo)
             ? previo
             : EstadoDieta.Pendiente;
 
         var estadoAnterior = fila.Estado;
-        var nuevoEstado = DietasReglasNegocio.EstadoTrasReingresoTrasSalidaClinica(estadoAlCancelar);
+        var nuevoEstado = DietasReglasNegocio.EstadoTrasReingresoTrasSalidaClinica(
+            estadoAlCancelar,
+            ventanaNovedadesAbierta);
         var ahora = DateTime.UtcNow;
-        const string motivo = DietasReglasNegocio.MotivoReactivacionReingreso;
+        var motivo = ventanaNovedadesAbierta
+            ? DietasReglasNegocio.MotivoReactivacionReingreso
+            : DietasReglasNegocio.MotivoReactivacionReingresoFueraVentana;
 
         fila.Estado = nuevoEstado;
+        fila.SalidaClinicaSostenida = false;
         // Se libera el cobro por cancelación tardía: la dieta vuelve al flujo normal.
         fila.CancelacionTardia = false;
-        if (fila.OrdenCocinaId.HasValue
+        if (!ventanaNovedadesAbierta || nuevoEstado == EstadoDieta.Pendiente)
+        {
+            fila.OrdenCocinaId = null;
+        }
+        else if (fila.OrdenCocinaId.HasValue
             && !contexto.OrdenesReutilizables.Contains(fila.OrdenCocinaId.Value))
         {
             // La orden quedó cancelada/completada: el turno se retoma con una orden nueva.
@@ -555,6 +738,52 @@ public class DietasService : IDietasService
         _logger.LogInformation(
             "Dieta {FilaId} reactivada por revisión de censo: {Anterior} → {Nuevo} (antes de cancelar: {AlCancelar})",
             fila.Id, estadoAnterior, nuevoEstado, estadoAlCancelar);
+    }
+
+    /// <summary>
+    /// Corrige dietas ya reactivadas a Confirmada/en cocina cuando el reingreso
+    /// ocurrió fuera del límite de novedades (turno de cocina cerrado).
+    /// </summary>
+    private void CorregirReingresoFueraDeVentana(FilaDieta fila, bool ventanaNovedadesAbierta)
+    {
+        if (!DietasReglasNegocio.DebeCorregirReingresoFueraVentana(fila, ventanaNovedadesAbierta))
+            return;
+
+        var estadoAnterior = fila.Estado;
+        var ahora = DateTime.UtcNow;
+        fila.Estado = EstadoDieta.Pendiente;
+        fila.OrdenCocinaId = null;
+        fila.CancelacionTardia = false;
+        fila.SalidaClinicaSostenida = false;
+        if (string.IsNullOrWhiteSpace(fila.Observaciones)
+            || !fila.Observaciones.Contains(
+                DietasReglasNegocio.MotivoReactivacionReingresoFueraVentana,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
+                ? DietasReglasNegocio.MotivoReactivacionReingresoFueraVentana
+                : $"{fila.Observaciones}\n{DietasReglasNegocio.MotivoReactivacionReingresoFueraVentana}";
+        }
+        fila.ModificadoPor = UsuarioSistema;
+        fila.ModificadoEn = ahora;
+
+        _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+        {
+            Id = Guid.NewGuid(),
+            FilaDietaId = fila.Id,
+            TipoEvento = DietasReglasNegocio.TipoEventoReactivacionPorReingreso,
+            Descripcion = "Reingreso fuera del límite: dieta corregida a sin solicitud",
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = EstadoDieta.Pendiente,
+            Usuario = UsuarioSistema,
+            FechaEvento = ahora,
+            DatosAdicionales =
+                $"PacienteId: {fila.PacienteId}; IdIngreso: {fila.IdIngreso}; VentanaCerrada: true"
+        });
+
+        _logger.LogInformation(
+            "Dieta {FilaId} corregida tras reingreso fuera de ventana: {Anterior} → Pendiente",
+            fila.Id, estadoAnterior);
     }
 
     /// <summary>Evita emparejar por sufijo con documentos muy cortos o parciales.</summary>
@@ -667,7 +896,9 @@ public class DietasService : IDietasService
             .OrderBy(f => f.Comida)
             .ToList();
 
-        return porComida.Select(MapearADto).ToList();
+        var dtos = porComida.Select(MapearADto).ToList();
+        await ResolverNombresSolicitantesAsync(dtos, cancellationToken);
+        return dtos;
     }
 
     public async Task<FilaDietaDto> SolicitarDietaAsync(Guid filaDietaId, SolicitudDietaDto solicitud, string usuario, CancellationToken cancellationToken = default)
@@ -682,10 +913,33 @@ public class DietasService : IDietasService
         }
 
         var estadoAnterior = fila.Estado;
+        if (fila.Estado == EstadoDieta.Cancelada)
+        {
+            PrepararReactivacionTrasCancelacion(
+                fila,
+                DietasReglasNegocio.MotivoReactivacionAlSolicitar,
+                DietasReglasNegocio.TipoEventoReactivacionManual,
+                usuario,
+                "Dieta reactivada al solicitar de nuevo tras cancelación",
+                EstadoDieta.Solicitada);
+        }
+
+        var configTiempo = await _context.TiemposComida
+            .FirstOrDefaultAsync(t => t.Comida == fila.Comida, cancellationToken);
+        var modoCarga = (await ParametrosOperativosHelper.ObtenerOSemillarAsync(_context, cancellationToken))
+            .ModoCarga;
+
+        if (!DietasReglasNegocio.VentanaSolicitudAbiertaConModo(
+                configTiempo, modoCarga, HorarioOperativoHelper.AhoraColombia()))
+        {
+            throw new InvalidOperationException(
+                "La ventana de solicitud está cerrada según los parámetros operativos de esta comida.");
+        }
+
         AplicarSolicitudClinica(fila, solicitud);
         DietasReglasNegocio.ValidarCamposClinicosPorComida(fila);
         await ValidarTarifaTipoDietaAsync(fila, cancellationToken);
-        fila.SolicitadoPor = usuario;
+        fila.SolicitadoPor = TruncarSolicitadoPor(usuario);
         fila.SolicitadoEn = DateTime.UtcNow;
         fila.ModificadoPor = usuario;
         fila.ModificadoEn = DateTime.UtcNow;
@@ -704,7 +958,7 @@ public class DietasService : IDietasService
             filaDietaId,
             usuario);
 
-        return MapearADto(fila);
+        return await MapearADtoConNombreAsync(fila, cancellationToken);
     }
 
     public async Task<FilaDietaDto> ConfirmarDietaAsync(Guid filaDietaId, SolicitudDietaDto confirmacion, string usuario, CancellationToken cancellationToken = default)
@@ -757,7 +1011,7 @@ public class DietasService : IDietasService
 
         _logger.LogInformation("Dieta {DietaId} confirmada por {Usuario}", filaDietaId, usuario);
 
-        return MapearADto(fila);
+        return await MapearADtoConNombreAsync(fila, cancellationToken);
     }
 
     public async Task<bool> ConfirmarDietaDeprecatedAsync(Guid filaDietaId, string usuario, CancellationToken cancellationToken = default)
@@ -778,7 +1032,7 @@ public class DietasService : IDietasService
         }
 
         fila.Estado = EstadoDieta.Confirmada;
-        fila.SolicitadoPor = usuario;
+        fila.SolicitadoPor = TruncarSolicitadoPor(usuario);
         fila.SolicitadoEn = DateTime.UtcNow;
         fila.ModificadoPor = usuario;
         fila.ModificadoEn = DateTime.UtcNow;
@@ -870,19 +1124,28 @@ public class DietasService : IDietasService
 
         if (fila == null) return false;
 
-        var esNormal = DietasReglasNegocio.EsCancelacionNormal(fila.Estado);
-        var esTardia = DietasReglasNegocio.EsCancelacionTardia(fila.Estado, cancelacion.RolUsuario);
+        var configTiempo = await _context.TiemposComida
+            .FirstOrDefaultAsync(t => t.Comida == fila.Comida, cancellationToken);
 
-        if (!esNormal && !esTardia)
+        var ventanaAbierta = DietasReglasNegocio.VentanaNovedadesAbiertaParaFecha(
+            configTiempo, fila.FechaOperativa, HorarioOperativoHelper.AhoraColombia());
+
+        var tipoCancelacion = DietasReglasNegocio.ResolverTipoCancelacion(
+            fila.Estado, cancelacion.RolUsuario, ventanaAbierta);
+
+        if (tipoCancelacion == null)
         {
             throw new InvalidOperationException(
-                $"No se puede cancelar la dieta en estado {fila.Estado}.");
+                MensajeBloqueoCancelacion(fila.Estado, ventanaAbierta, configTiempo));
         }
+
+        var esTardia = tipoCancelacion == TipoCancelacionDieta.Tardia;
 
         if (esTardia && !cancelacion.AceptaFacturacion)
         {
-            throw new InvalidOperationException(
-                "Debe aceptar la responsabilidad de facturación para cancelar una dieta confirmada o en preparación.");
+            throw new InvalidOperationException(ventanaAbierta
+                ? "Debe aceptar la responsabilidad de facturación para cancelar una dieta confirmada o en preparación."
+                : "Debe aceptar la responsabilidad de facturación: pasado el límite de novedades la dieta ya entró en producción.");
         }
 
         if (!MotivosEtiquetasCatalogo.CancelacionIds.Contains(cancelacion.Motivo.Trim()))
@@ -896,6 +1159,7 @@ public class DietasService : IDietasService
 
         fila.Estado = EstadoDieta.Cancelada;
         fila.CancelacionTardia = esTardia;
+        fila.SalidaClinicaSostenida = false;
         fila.Observaciones = $"{fila.Observaciones}\nCancelada: {motivoCompleto}".Trim();
         fila.ModificadoPor = usuario;
         fila.ModificadoEn = DateTime.UtcNow;
@@ -905,9 +1169,116 @@ public class DietasService : IDietasService
         Auditar(AuditoriaCatalogo.Modulos.Dietas, AuditoriaCatalogo.Acciones.Cancelar, usuario,
             AuditoriaCatalogo.Entidades.FilaDieta, filaDietaId,
             new { estado = estadoAnterior.ToString() },
-            new { estado = fila.Estado.ToString(), cancelacionTardia = esTardia, motivo = cancelacion.Motivo });
+            new
+            {
+                estado = fila.Estado.ToString(),
+                cancelacionTardia = esTardia,
+                ventanaNovedadesAbierta = ventanaAbierta,
+                motivo = cancelacion.Motivo
+            });
 
         return true;
+    }
+
+    /// <summary>
+    /// Explica por qué se rechaza la cancelación: estado no cancelable, o dieta ya
+    /// solicitada que requiere Administrador (dentro y fuera del límite de novedades).
+    /// </summary>
+    private static string MensajeBloqueoCancelacion(
+        EstadoDieta estado,
+        bool ventanaAbierta,
+        TiempoComidaConfig? configTiempo)
+    {
+        if (!DietasReglasNegocio.EsDietaSolicitada(estado))
+            return $"No se puede cancelar la dieta en estado {estado}.";
+
+        if (ventanaAbierta)
+            return "Solo un Administrador puede cancelar una dieta ya confirmada o en cocina.";
+
+        var limite = configTiempo is null
+            ? string.Empty
+            : $" (cerró a las {configTiempo.HoraCierre:hh\\:mm})";
+
+        return $"Pasó el límite de novedades{limite}: cocina ya inició la producción y solo un "
+            + "Administrador puede cancelar la dieta.";
+    }
+
+    public async Task<FilaDietaDto> ReactivarDietaCanceladaAsync(
+        Guid filaDietaId,
+        string usuario,
+        CancellationToken cancellationToken = default)
+    {
+        var fila = await _context.FilasDietas
+            .Include(f => f.TipoDieta)
+            .FirstOrDefaultAsync(f => f.Id == filaDietaId, cancellationToken);
+
+        if (fila == null)
+            throw new KeyNotFoundException($"FilaDieta con ID {filaDietaId} no encontrada");
+
+        if (fila.Estado != EstadoDieta.Cancelada)
+        {
+            throw new InvalidOperationException(
+                $"Solo se puede reactivar una dieta cancelada. Estado actual: {fila.Estado}");
+        }
+
+        var estadoAnterior = fila.Estado;
+        PrepararReactivacionTrasCancelacion(
+            fila,
+            DietasReglasNegocio.MotivoReactivacionManual,
+            DietasReglasNegocio.TipoEventoReactivacionManual,
+            usuario,
+            "Dieta reactivada manualmente a sin solicitud",
+            EstadoDieta.Pendiente);
+        fila.Estado = EstadoDieta.Pendiente;
+        fila.ModificadoPor = usuario;
+        fila.ModificadoEn = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        Auditar(AuditoriaCatalogo.Modulos.Dietas, AuditoriaCatalogo.Acciones.Reactivar, usuario,
+            AuditoriaCatalogo.Entidades.FilaDieta, filaDietaId,
+            new { estado = estadoAnterior.ToString() },
+            new { estado = fila.Estado.ToString() });
+
+        _logger.LogInformation(
+            "Dieta {DietaId} reactivada a Pendiente por {Usuario}",
+            filaDietaId,
+            usuario);
+
+        return await MapearADtoConNombreAsync(fila, cancellationToken);
+    }
+
+    /// <summary>
+    /// Limpia cobro tardío y orden de cocina no reutilizable al salir de Cancelada.
+    /// No asigna el estado destino: lo decide el llamador (Pendiente o Solicitada).
+    /// </summary>
+    private void PrepararReactivacionTrasCancelacion(
+        FilaDieta fila,
+        string motivo,
+        string tipoEvento,
+        string usuario,
+        string descripcion,
+        EstadoDieta estadoNuevo)
+    {
+        var estadoAnterior = fila.Estado;
+        fila.CancelacionTardia = false;
+        fila.OrdenCocinaId = null;
+        fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
+            ? motivo
+            : $"{fila.Observaciones}\n{motivo}";
+
+        _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+        {
+            Id = Guid.NewGuid(),
+            FilaDietaId = fila.Id,
+            TipoEvento = tipoEvento,
+            Descripcion = descripcion,
+            EstadoAnterior = estadoAnterior,
+            EstadoNuevo = estadoNuevo,
+            Usuario = usuario,
+            FechaEvento = DateTime.UtcNow,
+            DatosAdicionales = $"PacienteId: {fila.PacienteId}; IdIngreso: {fila.IdIngreso}",
+        });
     }
 
     public async Task<List<DietaCatalogoDto>> ObtenerCatalogoDietasAsync(CancellationToken cancellationToken = default)
@@ -1334,6 +1705,7 @@ public class DietasService : IDietasService
     public async Task<FilaDietaDto> RegistrarNovedadAsync(Guid filaDietaId, NovedadDietaDto novedad, string usuario, CancellationToken cancellationToken = default)
     {
         var fila = await _context.FilasDietas
+            .Include(f => f.TipoDieta)
             .FirstOrDefaultAsync(f => f.Id == filaDietaId, cancellationToken)
             ?? throw new KeyNotFoundException($"Dieta {filaDietaId} no encontrada");
 
@@ -1346,45 +1718,77 @@ public class DietasService : IDietasService
         var configTiempo = await _context.TiemposComida
             .FirstOrDefaultAsync(t => t.Comida == fila.Comida, cancellationToken);
 
-        if (!DietasReglasNegocio.VentanaNovedadesAbierta(configTiempo, DateTime.Now))
+        if (!DietasReglasNegocio.VentanaNovedadesAbierta(
+                configTiempo, HorarioOperativoHelper.AhoraColombia()))
         {
             throw new InvalidOperationException(
                 "La ventana de novedades está cerrada según los parámetros operativos.");
         }
 
-        // Registrar evento de trazabilidad
-        var evento = new EventoTrazabilidad
+        var motivo = PrimerTextoNoVacio(novedad.Descripcion, novedad.Motivo, "Novedad clínica");
+        var detalle = novedad.Observaciones?.Trim();
+        var hayCambioClinico =
+            novedad.TipoDietaId.HasValue
+            || novedad.Consistencia != null
+            || novedad.DescripcionDieta != null
+            || novedad.Aislado.HasValue
+            || novedad.Alergico.HasValue;
+
+        if (hayCambioClinico)
+        {
+            AplicarSolicitudClinica(fila, new SolicitudDietaDto
+            {
+                TipoDietaId = novedad.TipoDietaId,
+                Consistencia = novedad.Consistencia,
+                DescripcionDieta = novedad.DescripcionDieta,
+                Aislado = novedad.Aislado,
+                Aislamiento = novedad.Aislamiento,
+                ObservacionAislamiento = novedad.ObservacionAislamiento,
+                Alergico = novedad.Alergico,
+                Alergias = novedad.Alergias,
+            }, parcial: true);
+            DietasReglasNegocio.ValidarCamposClinicosPorComida(fila);
+            await ValidarTarifaTipoDietaAsync(fila, cancellationToken);
+        }
+
+        var nota = string.IsNullOrEmpty(detalle) ? motivo : $"{motivo}: {detalle}";
+        fila.Observaciones = CombinarObservaciones(
+            fila.Observaciones,
+            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] {nota}");
+        fila.ModificadoPor = usuario;
+        fila.ModificadoEn = DateTime.UtcNow;
+
+        var tipoEvento = TruncarTexto(
+            PrimerTextoNoVacio(novedad.TipoNovedad, "novedad_registrada"),
+            50);
+        _context.EventosTrazabilidad.Add(new EventoTrazabilidad
         {
             Id = Guid.NewGuid(),
             FilaDietaId = filaDietaId,
-            TipoEvento = novedad.TipoNovedad,
-            Descripcion = novedad.Descripcion,
+            TipoEvento = tipoEvento,
+            Descripcion = TruncarTexto(nota, 1000),
             EstadoAnterior = fila.Estado,
             EstadoNuevo = fila.Estado,
-            DatosAdicionales = novedad.Observaciones,
-            Usuario = usuario,
-            FechaEvento = DateTime.UtcNow
-        };
-
-        _context.EventosTrazabilidad.Add(evento);
-
-        // Actualizar observaciones si hay contenido adicional
-        if (!string.IsNullOrEmpty(novedad.Observaciones))
-        {
-            fila.Observaciones = string.IsNullOrEmpty(fila.Observaciones)
-                ? novedad.Observaciones
-                : $"{fila.Observaciones}\n[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] {novedad.Observaciones}";
-        }
+            DatosAdicionales = detalle,
+            Usuario = TruncarSolicitadoPor(usuario),
+            CreadoPor = TruncarSolicitadoPor(usuario),
+            FechaEvento = DateTime.UtcNow,
+        });
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        if (fila.TipoDietaId.HasValue)
+        {
+            await _context.Entry(fila).Reference(f => f.TipoDieta).LoadAsync(cancellationToken);
+        }
+
         Auditar(AuditoriaCatalogo.Modulos.Dietas, AuditoriaCatalogo.Acciones.Novedad, usuario,
             AuditoriaCatalogo.Entidades.FilaDieta, filaDietaId, null,
-            new { novedad.TipoNovedad, novedad.Descripcion, novedad.Observaciones });
+            new { tipoEvento, motivo, novedad.TipoDietaId, novedad.Consistencia });
 
-        _logger.LogInformation("Novedad registrada en dieta {DietaId} por {Usuario}: {Tipo}", filaDietaId, usuario, novedad.TipoNovedad);
+        _logger.LogInformation("Novedad registrada en dieta {DietaId} por {Usuario}: {Tipo}", filaDietaId, usuario, tipoEvento);
 
-        return MapearADto(fila);
+        return await MapearADtoConNombreAsync(fila, cancellationToken);
     }
 
     public async Task<FilaDietaDto> ObtenerDetalleDietaAsync(Guid filaDietaId, CancellationToken cancellationToken = default)
@@ -1394,7 +1798,7 @@ public class DietasService : IDietasService
             .FirstOrDefaultAsync(f => f.Id == filaDietaId, cancellationToken)
             ?? throw new KeyNotFoundException($"Dieta {filaDietaId} no encontrada");
 
-        return MapearADto(fila);
+        return await MapearADtoConNombreAsync(fila, cancellationToken);
     }
 
     public async Task<List<EventoTrazabilidadDto>> ObtenerHistorialDietaAsync(Guid filaDietaId, CancellationToken cancellationToken = default)
@@ -1469,6 +1873,9 @@ public class DietasService : IDietasService
             filas = filas.Where(f => dietasConNovedades.Contains(f.Id)).ToList();
         }
 
+        var dtos = filas.Select(MapearADto).ToList();
+        await ResolverNombresSolicitantesAsync(dtos, cancellationToken);
+
         return new CensoDietasDto
         {
             FechaOperativa = filtros.Fecha ?? DateTime.UtcNow.Date,
@@ -1477,7 +1884,7 @@ public class DietasService : IDietasService
             DietasConfirmadas = filas.Count(f => f.Estado == EstadoDieta.Confirmada),
             DietasSolicitadas = filas.Count(f => f.Estado == EstadoDieta.Solicitada),
             DietasPendientes = filas.Count(f => f.Estado == EstadoDieta.Pendiente),
-            Filas = filas.Select(MapearADto).ToList()
+            Filas = dtos
         };
     }
 
@@ -1576,7 +1983,7 @@ public class DietasService : IDietasService
             fila.Consistencia = string.IsNullOrWhiteSpace(fila.Consistencia) ? "Blanda" : fila.Consistencia;
             fila.Observaciones ??= "Seed desarrollo — lista para etiqueta";
             fila.Estado = EstadoDieta.ListaEnvio;
-            fila.SolicitadoPor ??= usuario;
+            fila.SolicitadoPor ??= TruncarSolicitadoPor(usuario);
             fila.SolicitadoEn ??= ahora;
             fila.ModificadoPor = usuario;
             fila.ModificadoEn = ahora;
@@ -1640,6 +2047,113 @@ public class DietasService : IDietasService
         };
     }
 
+    private async Task<FilaDietaDto> MapearADtoConNombreAsync(FilaDieta fila, CancellationToken cancellationToken)
+    {
+        var dto = MapearADto(fila);
+        await ResolverNombresSolicitantesAsync([dto], cancellationToken);
+        return dto;
+    }
+
+    private static string TruncarSolicitadoPor(string usuario)
+    {
+        var valor = usuario.Trim();
+        return valor.Length <= MaxSolicitadoPor
+            ? valor
+            : valor[..MaxSolicitadoPor].TrimEnd();
+    }
+
+    private static string PrimerTextoNoVacio(params string?[] valores)
+    {
+        foreach (var valor in valores)
+        {
+            var texto = valor?.Trim();
+            if (!string.IsNullOrEmpty(texto)) return texto;
+        }
+
+        return string.Empty;
+    }
+
+    private static string TruncarTexto(string valor, int max)
+    {
+        var texto = valor.Trim();
+        return texto.Length <= max ? texto : texto[..max].TrimEnd();
+    }
+
+    private static string CombinarObservaciones(string? actuales, string nota)
+    {
+        const int maxObservaciones = 1000;
+        var combinado = string.IsNullOrWhiteSpace(actuales)
+            ? nota
+            : $"{actuales.TrimEnd()}\n{nota}";
+        return TruncarTexto(combinado, maxObservaciones);
+    }
+
+    /// <summary>
+    /// SQL no conserva DateTimeKind; se marca UTC para que el JSON lleve Z y el front no desfase la hora.
+    /// </summary>
+    private static DateTime? ComoUtc(DateTime? valor)
+    {
+        if (valor is not { } fecha) return null;
+        return fecha.Kind switch
+        {
+            DateTimeKind.Utc => fecha,
+            DateTimeKind.Local => fecha.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(fecha, DateTimeKind.Utc),
+        };
+    }
+
+    /// <summary>
+    /// Registros legados guardaron el usuario de login (cédula o nombre de usuario) en SolicitadoPor;
+    /// se resuelve a NombreCompleto para la UI.
+    /// </summary>
+    private async Task ResolverNombresSolicitantesAsync(
+        IList<FilaDietaDto> dtos,
+        CancellationToken cancellationToken)
+    {
+        var claves = dtos
+            .Select(d => d.SolicitadoPor?.Trim())
+            .OfType<string>()
+            .Where(s =>
+                s.Length > 0
+                && !s.Equals(UsuarioSistema, StringComparison.OrdinalIgnoreCase))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (claves.Count == 0)
+        {
+            return;
+        }
+
+        var clavesLower = claves.Select(c => c.ToLowerInvariant()).ToList();
+
+        var usuarios = await _context.UsuariosModulo
+            .AsNoTracking()
+            .Where(u =>
+                u.Identificacion != null
+                && clavesLower.Contains(u.Identificacion!.ToLower()))
+            .Select(u => new { u.Identificacion, u.NombreCompleto })
+            .ToListAsync(cancellationToken);
+
+        var mapa = usuarios
+            .Where(u =>
+                !string.IsNullOrWhiteSpace(u.Identificacion)
+                && !string.IsNullOrWhiteSpace(u.NombreCompleto))
+            .GroupBy(u => u.Identificacion!.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => TruncarSolicitadoPor(g.First().NombreCompleto),
+                StringComparer.OrdinalIgnoreCase);
+
+        foreach (var dto in dtos)
+        {
+            var clave = dto.SolicitadoPor?.Trim();
+            if (clave != null && mapa.TryGetValue(clave, out var nombre))
+            {
+                dto.SolicitadoPor = nombre;
+            }
+        }
+    }
+
     private static FilaDietaDto MapearADto(FilaDieta fila)
     {
         return new FilaDietaDto
@@ -1666,11 +2180,13 @@ public class DietasService : IDietasService
             Estado = fila.Estado.ToString(),
             Observaciones = fila.Observaciones,
             SolicitadoPor = fila.SolicitadoPor,
-            SolicitadoEn = fila.SolicitadoEn,
+            SolicitadoEn = ComoUtc(fila.SolicitadoEn),
             CancelacionTardia = fila.CancelacionTardia,
             CancelacionPorSalidaClinica =
                 fila.Estado == EstadoDieta.Cancelada
                 && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones),
+            SalidaClinicaSostenida =
+                fila.SalidaClinicaSostenida && fila.Estado != EstadoDieta.Cancelada,
             OrdenCocinaId = fila.OrdenCocinaId,
             FechaOperativa = fila.FechaOperativa
         };

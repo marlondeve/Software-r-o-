@@ -14,7 +14,7 @@ interface CocinaKpiGridProps {
 
 export function CocinaKpiGrid({ kpis, kpiActivo, onKpiClick }: CocinaKpiGridProps) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-9">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-10">
       {kpis.map((kpi) => (
         <Card
           key={kpi.id}

@@ -25,12 +25,13 @@ interface CocinaFiltrosBarProps {
   onLimpiar: () => void
 }
 
-/** Una sola opción «En gestión» (cubre por_iniciar + en_preparacion). */
 const ESTADOS_FILTRO: { value: string; label: string }[] = [
   { value: "Todos", label: "Todos" },
   { value: "en_preparacion", label: labelEstadoCocina("en_preparacion") },
   { value: "lista", label: labelEstadoCocina("lista") },
   { value: "despachada", label: labelEstadoCocina("despachada") },
+  { value: "salida_clinica", label: "Salida clínica" },
+  { value: "cancelada", label: "Cancelada" },
 ]
 
 const SEGUIMIENTO_FILTRO: { value: FiltroSeguimientoCocina; label: string }[] = [
@@ -153,11 +154,6 @@ export function CocinaFiltrosBar({
                   {item.label}
                 </SelectItem>
               ))}
-              {filtros.estadoCocina === "cancelada" ? (
-                <SelectItem value="cancelada">
-                  Salida clínica / cancelada
-                </SelectItem>
-              ) : null}
             </SelectContent>
           </Select>
         </div>

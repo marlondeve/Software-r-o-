@@ -28,16 +28,42 @@ describe("labelEstadoOperativo", () => {
     expect(esCancelacionSalidaClinica("Cancelada: [otro] motivo")).toBe(false)
   })
 
-  it("muestra Salida clínica en lugar de Cancelada", () => {
+  it("muestra Salida clínica cuando la baja fue por egreso HIS", () => {
     expect(
       labelEstadoDietaVisible("cancelada", {
         observaciones: "Paciente con salida clínica",
+        cancelacionPorSalidaClinica: true,
       }),
     ).toBe("Salida clínica")
     expect(labelEstadoDietaVisible("cancelada")).toBe("Cancelada")
     expect(
       labelEstadoCocinaVisible("cancelada", {
-        observaciones: "salida clínica",
+        observaciones: "Paciente con salida clínica",
+      }),
+    ).toBe("Salida clínica")
+    expect(labelEstadoCocinaVisible("cancelada")).toBe("Cancelada")
+    expect(
+      labelEstadoCocinaVisible("cancelada", {
+        observaciones: "Cancelada por indicación médica",
+      }),
+    ).toBe("Cancelada")
+  })
+
+  it("no confunde salida clínica sostenida con cancelación aunque el texto mezcle ambos", () => {
+    const obs =
+      "Paciente con salida clínica\nSalida clínica fuera del límite de novedades: la dieta se mantiene y el proveedor la envía"
+    expect(esCancelacionSalidaClinica(obs, true, true, "confirmada")).toBe(false)
+    expect(esCancelacionSalidaClinica(obs, true, true, "cancelada")).toBe(true)
+    expect(
+      labelEstadoDietaVisible("confirmada", {
+        salidaClinicaSostenida: true,
+        observaciones: obs,
+      }),
+    ).toBe("Salida clínica sostenida")
+    expect(
+      labelEstadoDietaVisible("cancelada", {
+        salidaClinicaSostenida: true,
+        observaciones: obs,
       }),
     ).toBe("Salida clínica")
   })

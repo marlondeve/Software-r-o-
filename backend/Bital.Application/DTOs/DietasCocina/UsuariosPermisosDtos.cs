@@ -7,6 +7,8 @@ public class FiltrosUsuariosDto
 {
     public Guid? RolModuloId { get; set; }
     public bool? Activo { get; set; }
+    /// <summary>Nombre, usuario (identificación) o correo.</summary>
+    public string? Busqueda { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 24;
 }

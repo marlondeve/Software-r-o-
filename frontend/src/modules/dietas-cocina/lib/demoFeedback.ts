@@ -1,5 +1,7 @@
 import { sileo } from "sileo"
 
+import { descargarTexto } from "@/modules/dietas-cocina/lib/descargarBlob"
+
 export type DemoToastVariant = "success" | "error" | "warning" | "info"
 
 /** Notificación toast del módulo (Sileo). */
@@ -12,11 +14,5 @@ export function descargarArchivoDemo(
   nombreArchivo: string,
   tipo = "text/plain;charset=utf-8",
 ) {
-  const blob = new Blob([contenido], { type: tipo })
-  const url = URL.createObjectURL(blob)
-  const enlace = document.createElement("a")
-  enlace.href = url
-  enlace.download = nombreArchivo
-  enlace.click()
-  URL.revokeObjectURL(url)
+  descargarTexto(contenido, nombreArchivo, tipo)
 }

@@ -15,6 +15,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
+import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { construirAccionesDietaFila } from "@/modules/dietas-cocina/dietas/lib/dietasAcciones"
 import {
   cnFilaTabla,
@@ -47,6 +48,7 @@ interface DietasTablaProps {
   onAbrirDetalle: (fila: FilaDieta) => void
   onRegistrarNovedad: (fila: FilaDieta) => void
   onCancelarDieta: (fila: FilaDieta) => void
+  onDejarSinSolicitud?: (fila: FilaDieta) => void
 }
 
 export function DietasTabla({
@@ -67,6 +69,7 @@ export function DietasTabla({
   onAbrirDetalle,
   onRegistrarNovedad,
   onCancelarDieta,
+  onDejarSinSolicitud,
 }: DietasTablaProps) {
   const todasSeleccionadas =
     filas.length > 0 && filas.every((fila) => seleccionados.has(fila.id))
@@ -104,13 +107,19 @@ export function DietasTabla({
         id: "estado",
         header: "Estado",
         cell: ({ row }) => (
-          <EstadoBadge
-            estado={
-              resolverEstadoVisible?.(row.original) ?? row.original.estado
-            }
-            observaciones={row.original.observaciones}
-            cancelacionPorSalidaClinica={row.original.cancelacionPorSalidaClinica}
-          />
+          <div className="flex flex-col items-start gap-1">
+            <EstadoBadge
+              estado={
+                resolverEstadoVisible?.(row.original) ?? row.original.estado
+              }
+              observaciones={row.original.observaciones}
+              cancelacionPorSalidaClinica={row.original.cancelacionPorSalidaClinica}
+            />
+            <SalidaClinicaSostenidaBadge
+              activo={row.original.salidaClinicaSostenida}
+              className="text-[10px]"
+            />
+          </div>
         ),
       },
       {
@@ -190,6 +199,7 @@ export function DietasTabla({
               onAbrirSolicitud,
               onRegistrarNovedad,
               onCancelarDieta,
+              onDejarSinSolicitud,
             },
             {
               estadoVisible,
@@ -206,7 +216,11 @@ export function DietasTabla({
                   variant="outline"
                   size="icon-sm"
                   className="size-8 border-border bg-background shadow-xs"
-                  aria-label="Editar solicitud"
+                  aria-label={
+                    fila.estado === "cancelada"
+                      ? "Solicitar dieta"
+                      : "Editar solicitud"
+                  }
                   onClick={() => onAbrirSolicitud(fila)}
                 >
                   <PencilLine className="size-4" />
@@ -262,6 +276,7 @@ export function DietasTabla({
       onAbrirDetalle,
       onAbrirSolicitud,
       onCancelarDieta,
+      onDejarSinSolicitud,
       onRegistrarNovedad,
       onToggleFila,
       comidaActiva,

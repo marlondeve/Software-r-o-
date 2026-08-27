@@ -1,6 +1,10 @@
 import type { FilaDieta, KpiDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { cn } from "@/lib/utils"
+import {
+  esCanceladaManual,
+  esSalidaClinicaCancelada,
+} from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 
 export const ESTADO_FILTRO_LABEL: Record<string, string> = {
   todos: "Todos",
@@ -10,7 +14,8 @@ export const ESTADO_FILTRO_LABEL: Record<string, string> = {
   recibida: "Recibida",
   devuelta: "Devuelta",
   recogida: "Recogida",
-  cancelada: "Salida clínica / cancelada",
+  cancelada: "Cancelada",
+  "salida-clinica": "Salida clínica",
 }
 
 export const ESTADOS_PENDIENTES: EstadoDieta[] = ["no-solicitada", "guardado"]
@@ -166,9 +171,25 @@ export function calcularKpisDietas(
       variant: "muted",
     },
     {
+      id: "salidas-clinicas",
+      label: "Salidas clínicas",
+      value: filtradas.filter((fila) =>
+        esSalidaClinicaCancelada({
+          ...fila,
+          estado: estadoVisible(fila),
+        }),
+      ).length,
+      variant: "muted",
+    },
+    {
       id: "canceladas",
-      label: "Salidas / canceladas",
-      value: filtradas.filter((fila) => estadoVisible(fila) === "cancelada").length,
+      label: "Canceladas",
+      value: filtradas.filter((fila) =>
+        esCanceladaManual({
+          ...fila,
+          estado: estadoVisible(fila),
+        }),
+      ).length,
       variant: "muted",
     },
   ]

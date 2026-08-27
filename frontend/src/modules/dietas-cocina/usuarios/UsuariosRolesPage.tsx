@@ -51,6 +51,8 @@ export function UsuariosRolesPage() {
   const [permisosApi, setPermisosApi] = useState<PermisoRolDto[]>([])
   const [rolFiltro, setRolFiltro] = useState("todos")
   const [estadoFiltro, setEstadoFiltro] = useState("todos")
+  const [busqueda, setBusqueda] = useState("")
+  const [busquedaAplicada, setBusquedaAplicada] = useState("")
   const [paginaActual, setPaginaActual] = useState(1)
   const [usuarioRolEdit, setUsuarioRolEdit] = useState<UsuarioModulo | null>(
     null,
@@ -80,6 +82,7 @@ export function UsuariosRolesPage() {
       return listarUsuarios({
         rolModuloId: rolFiltro !== "todos" ? rolFiltro : undefined,
         estado: estadoFiltro !== "todos" ? estadoFiltro === "activo" : undefined,
+        busqueda: busquedaAplicada || undefined,
         page: pagina,
         pageSize: TAMANO_PAGINA_USUARIOS,
       })
@@ -96,7 +99,7 @@ export function UsuariosRolesPage() {
         })
         .finally(() => setCargandoUsuarios(false))
     },
-    [apiActiva, rolFiltro, estadoFiltro, paginaActual],
+    [apiActiva, rolFiltro, estadoFiltro, busquedaAplicada, paginaActual],
   )
 
   const cargarRoles = useCallback(() => {
@@ -120,6 +123,13 @@ export function UsuariosRolesPage() {
   }, [cargarRoles, refrescoRoles])
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setBusquedaAplicada(busqueda.trim())
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [busqueda])
+
+  useEffect(() => {
     if (apiActiva || !import.meta.env.DEV) return
     void cargarMockUsuarios().then((demo) => setUsuarios(demo.usuarios))
   }, [apiActiva])
@@ -127,14 +137,20 @@ export function UsuariosRolesPage() {
   const usuariosFiltrados = useMemo(() => {
     if (apiActiva) return usuarios
 
+    const termino = busquedaAplicada.toLowerCase()
     return usuarios.filter((usuario) => {
       const coincideRol =
         rolFiltro === "todos" || usuario.rolId === rolFiltro
       const coincideEstado =
         estadoFiltro === "todos" || usuario.estado === estadoFiltro
-      return coincideRol && coincideEstado
+      const coincideBusqueda =
+        !termino ||
+        usuario.nombre.toLowerCase().includes(termino) ||
+        usuario.usuario.toLowerCase().includes(termino) ||
+        usuario.correo.toLowerCase().includes(termino)
+      return coincideRol && coincideEstado && coincideBusqueda
     })
-  }, [usuarios, rolFiltro, estadoFiltro, apiActiva])
+  }, [usuarios, rolFiltro, estadoFiltro, busquedaAplicada, apiActiva])
 
   const totalFiltrados = apiActiva
     ? (metaUsuarios?.total ?? 0)
@@ -164,7 +180,7 @@ export function UsuariosRolesPage() {
 
   useEffect(() => {
     setPaginaActual(1)
-  }, [rolFiltro, estadoFiltro])
+  }, [rolFiltro, estadoFiltro, busquedaAplicada])
 
   useEffect(() => {
     if (paginaActual > totalPaginas) {
@@ -398,6 +414,8 @@ export function UsuariosRolesPage() {
             <UsuariosFiltros
               rolLabel={filtrosUi.rol}
               estadoLabel={filtrosUi.estado}
+              busqueda={busqueda}
+              busquedaPlaceholder={filtrosUi.busqueda}
               paginaDesde={paginaDesde}
               paginaHasta={paginaHasta}
               total={totalFiltrados}
@@ -406,6 +424,7 @@ export function UsuariosRolesPage() {
               rolSeleccionado={rolFiltro}
               estadoSeleccionado={estadoFiltro}
               roles={roles}
+              onBusquedaChange={setBusqueda}
               onRolChange={setRolFiltro}
               onEstadoChange={setEstadoFiltro}
               onCambiarPagina={setPaginaActual}

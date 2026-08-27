@@ -4,20 +4,14 @@ import {
   descargarPdfEtiquetas,
 } from "@/modules/dietas-cocina/api/services/etiquetas.service"
 import { crearEtiquetaPruebaImpresion } from "@/modules/dietas-cocina/etiquetas/lib/crearEtiquetaPruebaImpresion"
+import { descargarBlob } from "@/modules/dietas-cocina/lib/descargarBlob"
 import {
   generarPdfEtiquetaIndividual,
   generarPdfEtiquetas,
 } from "@/modules/dietas-cocina/etiquetas/lib/generarPdfEtiquetas"
 
 export function descargarBlobPdf(blob: Blob, nombreArchivo: string): void {
-  const url = URL.createObjectURL(blob)
-  const enlace = document.createElement("a")
-  enlace.href = url
-  enlace.download = nombreArchivo
-  document.body.appendChild(enlace)
-  enlace.click()
-  enlace.remove()
-  URL.revokeObjectURL(url)
+  descargarBlob(blob, nombreArchivo)
 }
 
 /** API cuando está activa; html2canvas + jsPDF en modo mock. */

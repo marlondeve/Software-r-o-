@@ -17,6 +17,7 @@ interface HandlersAccionesDieta {
   onAbrirSolicitud: (fila: FilaDieta) => void
   onRegistrarNovedad: (fila: FilaDieta) => void
   onCancelarDieta: (fila: FilaDieta) => void
+  onDejarSinSolicitud?: (fila: FilaDieta) => void
 }
 
 interface ContextoAccionesDietaFila {
@@ -39,7 +40,20 @@ export function construirAccionesDietaFila(
     rol: contexto.rol,
   })
 
-  if (esSolicitudEditable(fila)) {
+  if (evaluacion.puedeReactivarCancelada) {
+    acciones.push({
+      key: "solicitar",
+      label: "Solicitar dieta",
+      onClick: () => handlers.onAbrirSolicitud(fila),
+    })
+    if (handlers.onDejarSinSolicitud) {
+      acciones.push({
+        key: "sin-solicitud",
+        label: "Dejar sin solicitud",
+        onClick: () => handlers.onDejarSinSolicitud?.(fila),
+      })
+    }
+  } else if (esSolicitudEditable(fila)) {
     acciones.push({
       key: "editar",
       label: "Editar solicitud",

@@ -13,6 +13,7 @@ import {
   filtrarEtiquetasDelPeriodoOperativo,
   resolverEtiquetaParaFila,
 } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
+import { estuvoComprometidaConCocina } from "@/modules/dietas-cocina/cocina/lib/cocinaVisibilidad"
 
 const CHECKLIST_INICIAL: ChecklistItem[] = [
   { id: "ck-1", label: "Receta revisada", obligatorio: false, completado: false },
@@ -28,18 +29,6 @@ function checklistInicial(filaId: string): ChecklistItem[] {
   }
   return CHECKLIST_INICIAL.map((item) => ({ ...item }))
 }
-
-const ESTADOS_EN_COCINA = new Set<EstadoDieta>([
-  "confirmada",
-  "por-iniciar",
-  "preparando",
-  "en-preparacion",
-  "lista-despacho",
-  "despachada",
-  "recibida",
-  "devuelta",
-  "cancelada",
-])
 
 export function mapEstadoDietaToEstadoCocina(estado: EstadoDieta): EstadoCocina {
   switch (estado) {
@@ -70,7 +59,7 @@ export function mapFilaDietaToOrdenCocina(
   fila: FilaDieta,
   etiqueta?: EtiquetaEnfermera,
 ): OrdenCocina | null {
-  if (!ESTADOS_EN_COCINA.has(fila.estado)) return null
+  if (!estuvoComprometidaConCocina(fila)) return null
   if (!fila.tipoDieta) return null
   if (requiereConsistencia(fila.comida) && !fila.consistencia) return null
 
@@ -95,6 +84,7 @@ export function mapFilaDietaToOrdenCocina(
     alergias: fila.alergico ? parseAlergias(fila.alergias) : [],
     observaciones: fila.observaciones,
     cancelacionPorSalidaClinica: fila.cancelacionPorSalidaClinica,
+    salidaClinicaSostenida: fila.salidaClinicaSostenida,
     estadoCocina,
     estadoLogistica: etiqueta?.estadoLogistica,
     etiquetaImpresa:

@@ -6,12 +6,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y 
 
 ### Añadido
 
+- Botón **Generar reporte** en Preparación de dietas: descarga Excel (.xlsx) desde el servidor con los filtros activos (estado, pabellón, búsqueda, etc.) y tres hojas — Resumen, Producción (bandejas por tipo de dieta y consistencia) y Bandejas; en modo demo genera CSV local.
+- **«Salida clínica» y «Cancelada» son categorías separadas en toda la app**: KPIs de Gestión de dietas, KPIs y filtro de estado de Preparación de dietas, dashboard del nutricionista y reportes. La salida clínica usa además un badge propio (borde discontinuo) para no confundirla con una cancelación manual.
+- Consistencia **«Líquido»** disponible al solicitar dieta, registrar novedad y asignar consistencia.
 - Reingreso HIS (`IngInSlC = N`): dietas canceladas automáticamente por salida clínica se reactivan (`Pendiente` para solicitar, o `Confirmada` si ya estaban en cocina) y la etiqueta vuelve al flujo; cancelaciones manuales no se revierten.
 - Etiqueta de estado **«Salida clínica»** (en lugar de «Cancelada») cuando la baja fue automática por HIS.
+- Distintivo **«Salida clínica: enviar (asume la clínica)»** en Gestión de dietas (tabla y detalle) y en Cocina: el paciente egresó pasado el límite de novedades, la dieta conserva su estado, el proveedor la envía y la clínica asume el costo.
 
 ### Cambiado
 
 - Versión de producto **1.2.7** (package.json, `Directory.Build.props`, `VITE_APP_VERSION`, docs).
+- **Cancelar dieta pasado el límite de novedades:** solo **Administrador**, aceptando la responsabilidad de facturación, con aviso propio («cocina ya inició la producción»). Los demás roles ven el motivo del bloqueo con la hora del límite.
+- Registrar novedad usa el límite de novedades estricto (la carga anticipada extiende la solicitud, no los cambios clínicos): el formulario ya no habilita un guardado que el API rechaza.
 - Cancelación automática **solo** si `INGRESOS.IngInSlC = 'S'`; ausencia en el snapshot de censo no cancela ni saca del flujo.
 - Cancelación por egreso limitada a estados de cocina (`Pendiente` + cancelables normal/tardía); desde `EnRuta` la bandeja se cierra por devolución.
 - Una orden de cocina solo se cancela por egreso si **todas** sus dietas quedaron canceladas.
@@ -27,16 +33,27 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y 
 - Cancelaciones automáticas del sistema anterior («egresado del censo») también se reactivan; se emparejan por cédula aunque el `PacienteId` legado difiera y no se dejan duplicados viejos en el listado.
 - «Cancelada» ya no queda pegada en cocina tras un reingreso.
 - «Otras dietas del paciente hoy» (detalle de dieta) también muestra «Salida clínica».
-- Dashboards de enfermera y nutricionista, donut de estados, KPI y reportes usan la misma etiqueta («Salida clínica» / «Salidas / canceladas»).
+- Dashboards de enfermera y nutricionista, donut de estados, KPI y reportes usan la misma etiqueta de estado.
+- **Preparación de dietas mostraba «Cancelada» en bandejas dadas de baja por salida clínica:** la tabla ignoraba las observaciones al resolver la etiqueta, así que el listado no coincidía con sus propios KPIs.
+- El KPI «Salidas clínicas» de cocina solo miraba la marca del API: ahora también reconoce la baja por observaciones, igual que el resto de la app.
+- En Preparación de dietas, una bandeja dada de baja por egreso decía «Esta bandeja fue cancelada»; ahora indica «Salida clínica: el paciente egresó, esta bandeja no se prepara».
+- Auditoría: la acción **Reactivar** no existía en el filtro (el backend sí la registraba) y los estados de dieta se mostraban crudos (`ListaEnvio`, `EnRuta`, `NoConsumida`); ahora tienen etiqueta legible.
+- Descargas (Excel de cocina, CSV de auditoría, PDF de etiquetas): el enlace no se adjuntaba al documento, por lo que Firefox no descargaba nada. Si el servidor rechaza la descarga, ahora se muestra su mensaje real (p. ej. falta de permiso) y no «Request failed with status code 403».
+- **Cocina y reporte del proveedor mostraban dietas canceladas en Guardado/Solicitada** que nunca fueron confirmadas ni enviadas a cocina. Ahora solo entran las que llegaron a Confirmada (orden de cocina creada o cancelación tardía).
 - Detección de salida clínica centralizada en un solo helper (antes duplicada en dietas, cocina y mappers, con riesgo de desincronizarse).
 - Cancelar una orden de cocina ya no reactiva dietas canceladas por salida clínica.
 - Paciente repetido en «Gestión de dietas» (misma cédula y comida, p. ej. «Sin solicitud» + «Despachada»): se deja una sola fila, la de estado visible más avanzado. Se empareja por cédula, no por el formato del `PacienteId`.
 - KPIs de dietas y dashboard de nutrición cuentan sobre la lista sin duplicados: el total ya coincide con los registros de la tabla.
 - Censo de atenciones: una fila legada con otro formato de `PacienteId` conserva su estado operativo en lugar de crear una fila nueva.
-- KPI «Salidas / canceladas» usa el estado visible, igual que el resto de los indicadores.
+- KPIs de salida clínica y cancelación usan el estado visible, igual que el resto de los indicadores.
 - Recepción del proveedor: lista con orden fijo (ya no salta al sincronizar) y filtro por ubicación (pabellón/área) para confirmar solo el área correspondiente.
 - **KPIs del inicio nutricionista:** dejan de mostrar totales crudos del API (p. ej. 3545) y usan el censo único del turno, alineados con el donut (activos + salidas clínicas).
+- Dieta cancelada: acciones **Solicitar dieta** y **Dejar sin solicitud** para volver a gestionarla sin esperar un reingreso HIS.
+- Solicitud fuera de horario: el formulario de Gestión de dietas ya no permite Guardar con la ventana cerrada; el API también rechaza la solicitud fuera de los parámetros de la comida.
 - Hora en etiquetas (pantalla y PDF): UTC de `GeneradaEn` se muestra en hora Colombia; ya no aparece `…T12:00 a. m.` por usar `fechaOperativa`.
+- Cancelar dieta y ficha de detalle: muestran el **nombre** de quien solicitó la dieta y la fecha/hora reales de la solicitud (antes datos mock / cédula). El detalle no pisa el nombre al refrescar el censo; la novedad también muestra fecha/hora.
+- Registrar novedad en modo API: envía motivo y cambio clínico en el contrato del backend; el tipo/consistencia sí se persisten.
+- Usuarios y roles: buscador en la barra de filtros (nombre, usuario o correo).
 
 ## [1.2.6] — 2026-08-25
 

@@ -52,6 +52,15 @@ public class DietasCocinaController : ControllerBase
         {
             return BadRequest(new { error = ex.Message });
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al obtener censo de dietas para {Fecha} {Comida}", fecha, comida);
+            return StatusCode(500, new
+            {
+                error = "No se pudo obtener el censo de dietas.",
+                detail = ex.Message,
+            });
+        }
     }
 
     /// <summary>
@@ -89,8 +98,7 @@ public class DietasCocinaController : ControllerBase
     {
         try
         {
-            // TODO: Obtener usuario del token JWT
-            var usuario = User.GetUsuarioIdentificacion();
+            var usuario = User.GetUsuarioNombreDisplay();
 
             var resultado = await _dietasService.SolicitarDietaAsync(filaDietaId, solicitud, usuario, cancellationToken);
             return Ok(resultado);
@@ -193,6 +201,36 @@ public class DietasCocinaController : ControllerBase
             return NotFound(new { error = $"Dieta {filaDietaId} no encontrada" });
 
         return Ok(new { message = "Dieta cancelada exitosamente", dietaId = filaDietaId });
+    }
+
+    /// <summary>
+    /// Reactiva una dieta cancelada a Pendiente (sin solicitud).
+    /// </summary>
+    [HttpPost("dietas/{filaDietaId}/reactivar")]
+    [ProducesResponseType(typeof(FilaDietaDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReactivarDieta(
+        Guid filaDietaId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var usuario = User.GetUsuarioIdentificacion();
+            var resultado = await _dietasService.ReactivarDietaCanceladaAsync(
+                filaDietaId,
+                usuario,
+                cancellationToken);
+            return Ok(resultado);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(new { error = $"Dieta {filaDietaId} no encontrada" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     [HttpGet("catalogo")]
@@ -333,6 +371,7 @@ public class DietasCocinaController : ControllerBase
     [HttpPost("dietas/{filaDietaId}/novedad")]
     [ProducesResponseType(typeof(FilaDietaDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<FilaDietaDto>> RegistrarNovedad(
         Guid filaDietaId,
         [FromBody] NovedadDietaDto novedad,
@@ -347,6 +386,10 @@ public class DietasCocinaController : ControllerBase
         catch (KeyNotFoundException)
         {
             return NotFound(new { error = $"Dieta {filaDietaId} no encontrada" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
     }
 

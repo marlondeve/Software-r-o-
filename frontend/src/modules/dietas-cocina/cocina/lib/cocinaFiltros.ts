@@ -11,6 +11,23 @@ import {
   resolverEstadoLogisticaOrden,
   type FiltroSeguimientoCocina,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaLogistica"
+import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
+
+export function esOrdenSalidaClinica(orden: OrdenCocina): boolean {
+  return (
+    orden.estadoCocina === "cancelada" &&
+    esCancelacionSalidaClinica(
+      orden.observaciones,
+      orden.cancelacionPorSalidaClinica,
+      orden.salidaClinicaSostenida,
+      orden.estadoCocina,
+    )
+  )
+}
+
+export function esOrdenCanceladaManual(orden: OrdenCocina): boolean {
+  return orden.estadoCocina === "cancelada" && !esOrdenSalidaClinica(orden)
+}
 export interface FiltrosCocina {
   pabellon: string
   habitacion: string
@@ -58,6 +75,10 @@ export function ordenCoincideFiltros(
   if (filtros.estadoCocina !== "Todos") {
     if (filtros.estadoCocina === "en_preparacion") {
       if (!ordenEnGestion(orden)) return false
+    } else if (filtros.estadoCocina === "salida_clinica") {
+      if (!esOrdenSalidaClinica(orden)) return false
+    } else if (filtros.estadoCocina === "cancelada") {
+      if (!esOrdenCanceladaManual(orden)) return false
     } else if (orden.estadoCocina !== filtros.estadoCocina) {
       return false
     }
@@ -129,9 +150,15 @@ export function calcularKpisCocina(
       variant: "success" as const,
     },
     {
+      id: "salidas-clinicas",
+      label: "SALIDAS CLÍNICAS",
+      value: filtradas.filter((o) => esOrdenSalidaClinica(o)).length,
+      variant: "muted" as const,
+    },
+    {
       id: "canceladas",
-      label: "SALIDAS / CANCELADAS",
-      value: filtradas.filter((o) => o.estadoCocina === "cancelada").length,
+      label: "CANCELADAS",
+      value: filtradas.filter((o) => esOrdenCanceladaManual(o)).length,
       variant: "muted" as const,
     },
     {
@@ -169,6 +196,8 @@ export function filtrosDesdeKpiCocina(kpiId: string): Partial<FiltrosCocina> {
       return { estadoCocina: "despachada", seguimiento: "pre_entregada" }
     case "entregadas":
       return { estadoCocina: "Todos", seguimiento: "entregada" }
+    case "salidas-clinicas":
+      return { estadoCocina: "salida_clinica", seguimiento: "Todos" }
     case "canceladas":
       return { estadoCocina: "cancelada", seguimiento: "Todos" }
     case "devueltas":

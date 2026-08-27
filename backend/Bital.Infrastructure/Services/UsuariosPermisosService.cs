@@ -45,6 +45,16 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         if (filtros.Activo.HasValue)
             query = query.Where(u => u.Activo == filtros.Activo.Value);
 
+        var busqueda = filtros.Busqueda?.Trim();
+        if (!string.IsNullOrEmpty(busqueda))
+        {
+            var termino = busqueda.ToLowerInvariant();
+            query = query.Where(u =>
+                u.NombreCompleto.ToLower().Contains(termino)
+                || u.Email.ToLower().Contains(termino)
+                || (u.Identificacion != null && u.Identificacion.ToLower().Contains(termino)));
+        }
+
         var total = await query.CountAsync();
         var totalPages = (int)Math.Ceiling(total / (double)filtros.PageSize);
 

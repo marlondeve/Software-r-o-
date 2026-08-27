@@ -1,7 +1,21 @@
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import {
+  cargarConfigTiempos,
+  type ConfigTiempos,
+} from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
+import { minutosDelDiaEnColombia } from "@/modules/dietas-cocina/parametros/lib/horasOperativas"
 import { labelComida } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
 import { formatearHora12 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
-import { mockParametrosTiempos } from "@/modules/dietas-cocina/parametros/datos/mockTiempos"
+
+const ORDEN_COMIDAS: TiempoComida[] = [
+  "desayuno",
+  "merienda-manana",
+  "almuerzo",
+  "merienda-tarde",
+  "cena",
+  "merienda-noche",
+]
+
 function parseHora24(hora24: string): number {
   const [horasStr, minutosStr] = hora24.split(":")
   const horas = Number.parseInt(horasStr ?? "", 10)
@@ -10,45 +24,47 @@ function parseHora24(hora24: string): number {
   return horas * 60 + minutos
 }
 
-function minutosDelDia(fecha: Date): number {
-  return fecha.getHours() * 60 + fecha.getMinutes()
+function hitoHora(
+  config: ConfigTiempos,
+  comida: TiempoComida,
+  hitoId: string,
+): string | undefined {
+  return config.horasPorComida[comida]?.[hitoId]
 }
 
-function hitoHora(comida: TiempoComida, hitoId: string): string | undefined {
-  return mockParametrosTiempos.comidas
-    .find((item) => item.id === comida)
-    ?.hitos.find((hito) => hito.id === hitoId)?.hora
-}
-
-function comidasActivas() {
-  return mockParametrosTiempos.comidas.filter((comida) => comida.activo)
+function comidasActivas(config: ConfigTiempos): TiempoComida[] {
+  return ORDEN_COMIDAS.filter((id) => config.activos[id] !== false)
 }
 
 export function resolverComidaOperativaActual(
   fecha = new Date(),
+  config: ConfigTiempos = cargarConfigTiempos(),
 ): TiempoComida {
-  const ahora = minutosDelDia(fecha)
-  const comidas = comidasActivas()
+  const ahora = minutosDelDiaEnColombia(fecha)
+  const comidas = comidasActivas(config)
 
   const comidaEnCurso = comidas.find((comida) => {
-    const inicio = parseHora24(hitoHora(comida.id, "solicitud") ?? "00:00")
-    const fin = parseHora24(hitoHora(comida.id, "fin-dist") ?? "23:59")
+    const inicio = parseHora24(hitoHora(config, comida, "solicitud") ?? "00:00")
+    const fin = parseHora24(hitoHora(config, comida, "fin-dist") ?? "23:59")
     return ahora >= inicio && ahora <= fin
   })
-  if (comidaEnCurso) return comidaEnCurso.id
+  if (comidaEnCurso) return comidaEnCurso
 
   const comidaSiguiente = comidas.find((comida) => {
-    const inicio = parseHora24(hitoHora(comida.id, "solicitud") ?? "00:00")
+    const inicio = parseHora24(hitoHora(config, comida, "solicitud") ?? "00:00")
     return ahora < inicio
   })
-  if (comidaSiguiente) return comidaSiguiente.id
+  if (comidaSiguiente) return comidaSiguiente
 
-  return comidas[comidas.length - 1]?.id ?? "almuerzo"
+  return comidas[comidas.length - 1] ?? "almuerzo"
 }
 
-export function formatearPeriodoOperativo(fecha = new Date()): string {
-  const comida = resolverComidaOperativaActual(fecha)
-  const llegada = hitoHora(comida, "llegada")
+export function formatearPeriodoOperativo(
+  fecha = new Date(),
+  config: ConfigTiempos = cargarConfigTiempos(),
+): string {
+  const comida = resolverComidaOperativaActual(fecha, config)
+  const llegada = hitoHora(config, comida, "llegada")
   if (!llegada) return labelComida(comida)
   return `${labelComida(comida)} - ${formatearHora12(llegada)}`
 }
@@ -61,31 +77,43 @@ function formatearDuracionRestante(minutosRestantes: number): string {
   return `${minutos} min`
 }
 
-export function resolverProximoCierre(fecha = new Date()) {
-  const ahora = minutosDelDia(fecha)
-  const comidas = comidasActivas()
+/**
+ * Próximo fin de distribución según parámetros operativos (misma fuente que
+ * Pantalla Parámetros / ventana de solicitud). No usa el mock de demo.
+ */
+export function resolverProximoCierre(
+  fecha = new Date(),
+  config: ConfigTiempos = cargarConfigTiempos(),
+) {
+  const ahora = minutosDelDiaEnColombia(fecha)
+  const comidas = comidasActivas(config)
 
   let proximo:
     | { comida: TiempoComida; minutosObjetivo: number; hora24: string; diaSiguiente: boolean }
     | undefined
 
   for (const comida of comidas) {
-    const finDist = hitoHora(comida.id, "fin-dist")
+    const finDist = hitoHora(config, comida, "fin-dist")
     if (!finDist) continue
 
     const minutosObjetivo = parseHora24(finDist)
     if (minutosObjetivo <= ahora) continue
 
     if (!proximo || minutosObjetivo < proximo.minutosObjetivo) {
-      proximo = { comida: comida.id, minutosObjetivo, hora24: finDist, diaSiguiente: false }
+      proximo = {
+        comida,
+        minutosObjetivo,
+        hora24: finDist,
+        diaSiguiente: false,
+      }
     }
   }
 
   if (!proximo) {
-    const comida = comidas[0]
-    const finDist = hitoHora(comida?.id ?? "desayuno", "fin-dist") ?? "09:30"
+    const comida = comidas[0] ?? "desayuno"
+    const finDist = hitoHora(config, comida, "fin-dist") ?? "09:30"
     proximo = {
-      comida: comida?.id ?? "desayuno",
+      comida,
       minutosObjetivo: parseHora24(finDist),
       hora24: finDist,
       diaSiguiente: true,

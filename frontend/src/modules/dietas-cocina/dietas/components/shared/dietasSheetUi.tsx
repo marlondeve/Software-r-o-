@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
+import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { obtenerLineasContextoPaciente } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 
 export function SeccionTitulo({ children }: { children: ReactNode }) {
@@ -26,12 +27,18 @@ export function ContextoPacienteCard({ fila }: ContextoPacienteCardProps) {
     <section className="rounded-xl border border-border bg-muted/40 p-4">
       <div className="flex items-start justify-between gap-3">
         <SeccionTitulo>Contexto del paciente</SeccionTitulo>
-        <EstadoBadge
-          estado={fila.estado}
-          observaciones={fila.observaciones}
-          cancelacionPorSalidaClinica={fila.cancelacionPorSalidaClinica}
-          className="shrink-0 font-semibold uppercase tracking-wide"
-        />
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <EstadoBadge
+            estado={fila.estado}
+            observaciones={fila.observaciones}
+            cancelacionPorSalidaClinica={fila.cancelacionPorSalidaClinica}
+            className="shrink-0 font-semibold uppercase tracking-wide"
+          />
+          <SalidaClinicaSostenidaBadge
+            activo={fila.salidaClinicaSostenida}
+            className="shrink-0 text-[10px]"
+          />
+        </div>
       </div>
       <div className="mt-3 space-y-2">
         <p className="font-semibold text-foreground">{fila.paciente}</p>

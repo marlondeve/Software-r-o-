@@ -70,6 +70,7 @@ export function construirDashboardEnfermeraDesdeCiclo(
         estado,
         observaciones: fila.observaciones,
         cancelacionPorSalidaClinica: fila.cancelacionPorSalidaClinica,
+        salidaClinicaSostenida: fila.salidaClinicaSostenida,
       }
     })
 
