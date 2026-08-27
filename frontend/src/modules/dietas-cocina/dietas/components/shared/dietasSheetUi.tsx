@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { obtenerLineasContextoPaciente } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 
 export function SeccionTitulo({ children }: { children: ReactNode }) {
@@ -32,11 +31,8 @@ export function ContextoPacienteCard({ fila }: ContextoPacienteCardProps) {
             estado={fila.estado}
             observaciones={fila.observaciones}
             cancelacionPorSalidaClinica={fila.cancelacionPorSalidaClinica}
+            salidaClinicaSostenida={fila.salidaClinicaSostenida}
             className="shrink-0 font-semibold uppercase tracking-wide"
-          />
-          <SalidaClinicaSostenidaBadge
-            activo={fila.salidaClinicaSostenida}
-            className="shrink-0 text-[10px]"
           />
         </div>
       </div>

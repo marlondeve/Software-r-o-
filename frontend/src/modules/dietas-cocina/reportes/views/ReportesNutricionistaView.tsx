@@ -97,7 +97,7 @@ export function ReportesNutricionistaView() {
     <div className="space-y-5">
       <DashboardPageHeader
         title="Reportes clínicos"
-        subtitle="Analítica clínica, servicios y costo de dietas por día y tiempo de comida."
+        subtitle="Analítica clínica por fecha, servicio y comida. Por defecto usa la comida operativa actual (alineada con gestión/cocina)."
       />
       <BannerModuloSinConexion datosEnCache={desdeCache || !estaOnline} />
 

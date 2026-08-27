@@ -471,9 +471,8 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             CancelacionTardia = d.CancelacionTardia,
             CancelacionPorSalidaClinica =
                 d.Estado == EstadoDieta.Cancelada
-                && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones),
-            SalidaClinicaSostenida =
-                d.SalidaClinicaSostenida && d.Estado != EstadoDieta.Cancelada,
+                && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones, d.Estado),
+            SalidaClinicaSostenida = DietasReglasNegocio.EsSalidaClinicaSostenida(d),
             OrdenCocinaId = d.OrdenCocinaId,
             FechaOperativa = d.FechaOperativa
         }).ToList();

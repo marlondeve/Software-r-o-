@@ -37,6 +37,8 @@ const COLORES_ESTADO: Record<string, string> = {
   Cancelada: "#d8e0e8",
   "Salida clínica": "#94a3b8",
   "Salida clínica sostenida": "#f59e0b",
+  "Salida clínica · asume la clínica": "#f59e0b",
+  "Asume clínica": "#f59e0b",
 }
 
 function etiquetaSegmentoEstado(
@@ -126,7 +128,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
     esCanceladaManual({ ...f.fila, estado: f.estado }),
   ).length
   const salidasSostenidas = filasConEstado.filter((f) =>
-    esSalidaClinicaSostenida(f.fila),
+    esSalidaClinicaSostenida({ ...f.fila, estado: f.estado }),
   ).length
   const fueraHorario = filasComida.filter((f) => f.cancelacionTardia).length
 
@@ -194,7 +196,7 @@ export function construirDashboardNutricionistaDesdeCiclo(
         variant: "alert" as const,
       },
       {
-        label: "Salidas clínicas sostenidas",
+        label: "Asume clínica",
         value: String(salidasSostenidas),
         variant: salidasSostenidas > 0 ? ("default" as const) : ("muted" as const),
       },

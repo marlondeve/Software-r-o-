@@ -47,6 +47,8 @@ export interface FilaDieta {
   estado: EstadoDieta
   comida: TiempoComida
   ordenCocinaId?: string
+  /** Día operativo YYYY-MM-DD (America/Bogota). */
+  fechaOperativa?: string
 }
 
 export interface EventoTrazabilidad {

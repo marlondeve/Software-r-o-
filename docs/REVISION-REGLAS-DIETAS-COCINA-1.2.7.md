@@ -82,6 +82,10 @@ Pendiente → Guardado → Solicitada → Confirmada → EnPreparacion → Lista
 
 Configuración por comida en `TiemposComida` (HoraPreparacion, HoraCierre, HoraEntrega).
 
+**Zona horaria operativa:** `America/Bogota` (backend `HorarioOperativoHelper`, frontend `fechaOperativaHoy` / `minutosDelDiaEnColombia`). El «hoy» de censo, dashboards y reportes no usa la zona del servidor IIS ni la del navegador.
+
+**Confirmación / envío a cocina:** solo con ventana de novedades abierta para la **fecha operativa** de la fila. Fecha futura (carga anticipada) permanece abierta; fecha pasada ya cerró. Carga anticipada **no** extiende el límite de novedades.
+
 | Regla | Condición |
 |---|---|
 | **Ventana de novedades abierta** | Config activa **y** `HoraPreparacion ≤ ahora ≤ HoraCierre` (soporta cruce de medianoche) |
@@ -92,8 +96,8 @@ Configuración por comida en `TiemposComida` (HoraPreparacion, HoraCierre, HoraE
 
 ### Implicaciones
 
-- **Dentro del límite de novedades:** cocina aún no «cerró» el turno clínico; cancelaciones normales permitidas; salida clínica **cancela** dietas solicitadas (evita desperdicio).
-- **Fuera del límite:** cocina ya inició producción aunque el proveedor no haya cambiado estados; cancelar dietas solicitadas = **cancelación tardía** (solo Admin); salida clínica **sostiene** la dieta (no la cancela).
+- **Dentro del límite de novedades:** cancelaciones normales permitidas; salida clínica **cancela** Pendiente…EnPreparacion. **Lista para despacho** se **sostiene** (ya está preparada).
+- **Fuera del límite:** salida clínica **sostiene** Confirmada/EnPreparacion/ListaEnvio. Guardado/Solicitada sin orden **se cancelan**. Cancelar Confirmada+ manualmente = **cancelación tardía** (solo Admin).
 
 ### Parámetros de ejemplo (Almuerzo)
 
@@ -163,7 +167,7 @@ SI NO
 |---|---|---|---|
 | **Salida clínica** | `Cancelada` | «Salida clínica» | Cancelada + observaciones/flag de egreso HIS |
 | **Cancelada manual** | `Cancelada` | «Cancelada» | Cancelada sin patrón de salida clínica |
-| **Salida clínica sostenida** | Activa (Confirmada, etc.) | «Salida clínica sostenida» / badge «Se envía» | `SalidaClinicaSostenida = true` y NO cancelada |
+| **Salida clínica sostenida** | Activa (Confirmada…EnRuta+) | «Salida clínica · asume la clínica» | Flag `SalidaClinicaSostenida` **y** ya comprometida con cocina (nunca Guardado/Solicitada/Pendiente) |
 
 ### Detección de salida clínica (`EsObservacionSalidaClinica`)
 
@@ -178,13 +182,19 @@ Frontend centralizado en `labelEstadoOperativo.ts` — misma lógica que backend
 | Situación | Ventana | Acción automática |
 |---|---|---|
 | Dieta `Pendiente` + egreso | Cualquiera | **Cancelar** |
-| Dieta solicitada (Guardado…ListaEnvio) + egreso | **Abierta** | **Cancelar** (+ `CancelacionTardia` si Confirmada+) |
-| Dieta solicitada + egreso | **Cerrada** | **Sostener** (`SalidaClinicaSostenida = true`, estado NO cambia) |
+| Dieta `Guardado` / `Solicitada` + egreso | Cualquiera | **Cancelar** (aún no hay orden de cocina) |
+| Dieta Confirmada / EnPreparacion + egreso | **Abierta** | **Cancelar** (no marca `CancelacionTardia`; eso es solo cancelación **manual** Admin) |
+| Dieta Confirmada / EnPreparacion + egreso | **Cerrada** | **Sostener** |
+| Dieta **Lista para despacho** + egreso | Cualquiera | **Sostener** (ya está preparada) |
 | Dieta `EnRuta`+ | Cualquiera | **No cancelar** por egreso |
 
-**Ejemplo (Merienda noche):** límite novedades 15:00, egreso 17:10 con dieta confirmada (orden #157) → **sostenida**, badge «enviar (asume la clínica)», cocina sigue. **No** debe quedar «Salida clínica» cancelada ni bloquear el checklist.
+**Ejemplo (Merienda noche):** límite novedades 15:00, egreso 17:10 con dieta **confirmada** (orden #157) → **sostenida**, badge «Salida clínica · asume la clínica», cocina sigue.
 
-Si se canceló por error (p. ej. hora del servidor distinta a Colombia), el sync corrige automáticamente al sostener.
+**Lista para despacho:** egreso a cualquier hora → **sostenida** (la bandeja ya está lista; cancelar no evita el desperdicio).
+
+**Contraejemplo (Rufiela):** egreso con dieta solo en **Guardado** (nunca confirmada / no aparece en Cocina) → **cancelar** por salida clínica. No marcar sostenida ni «enviar».
+
+Si se canceló por error una Confirmada+ fuera de ventana o una ListaEnvio, el sync corrige automáticamente al sostener. Si se sostuvo por error un Guardado/Solicitada, el sync cancela y limpia el flag.
 
 ### Reingreso (`IngInSlC = N`, paciente vuelve al censo)
 
@@ -317,7 +327,7 @@ Además de la regla anterior, la fila debe tener:
 | Acción | Rol típico | Endpoint / UI |
 |---|---|---|
 | Solicitar / guardar dieta | Enfermera, Nutricionista | `POST .../solicitud` — valida ventana |
-| Confirmar (individual/masivo) | Nutricionista | `POST .../confirmar`, `.../bulk/confirmar` |
+| Confirmar (individual/masivo) | Nutricionista | `POST .../confirmar`, `.../bulk/confirmar` — **rechaza** si pasó el límite de novedades |
 | Cancelar | Según tipo | `POST .../cancelar` |
 | Reactivar cancelada | Enfermera/Nutricionista | `POST .../reactivar` o vía solicitud |
 | Registrar novedad | Enfermera/Nutricionista | `POST .../novedad` |
@@ -362,9 +372,9 @@ Además de la regla anterior, la fila debe tener:
 
 Cuentan sobre lista deduplicada por paciente+comida, usando **estado visible**:
 - Pendientes, confirmadas, novedades
-- **Salidas clínicas** (canceladas por egreso)
+- **Salidas clínicas** (canceladas por egreso) — filtro `salida-clinica`
+- **Asume clínica** (sostenidas reales en cocina) — filtro `asume-clinica`
 - **Canceladas** (manuales)
-- **Salidas clínicas sostenidas** (activas con flag)
 
 ### Preparación de dietas (KPIs proveedor)
 
@@ -380,19 +390,26 @@ Separados:
 | Pacientes activos | Filas no canceladas del turno |
 | Salidas clínicas | `esSalidaClinicaCancelada` |
 | Canceladas | `esCanceladaManual` |
-| Sostenidas | `esSalidaClinicaSostenida` — variante `muted` si valor = 0 |
+| Sostenidas | `esSalidaClinicaSostenida` — KPI «Asume clínica»; donut «Salida clínica · asume la clínica» |
 | Fuera de horario | `cancelacionTardia = true` |
 
 Donut de estados usa `labelEstadoDietaVisible` — incluye las tres categorías distintas.
 
 ### Reportes de periodo (nutricionista / proveedor)
 
+- **Filtro comida por defecto:** comida operativa actual (igual que gestión/cocina). «Todas las comidas» sigue disponible para el día completo.
+- **Tipos de dieta (producción):** solo filas comprometidas con cocina o sostenidas (cuadra con órdenes).
+- **Tipos de dieta (clínico):** filas con tipo y no «sin solicitud».
+- **Costos de producción / total:** solo comprometidas con cocina o sostenidas (no inflan Guardado sin orden).
+- **Costo canc. tardía:** solo `CancelacionTardia` (no incluye sostenidas).
+- **Costo salidas (asume clínica):** suma de tarifas de dietas sostenidas.
+
 Hallazgos separados:
 - `dietas_salida_clinica`
 - `dietas_canceladas`
 - `dietas_sostenidas_salida_clinica`
 
-Costos de producción incluyen dietas sostenidas (activas en flujo).
+Donut clínico: «Salida clínica» vs «Salida clínica (asume)».
 
 ### Deduplicación
 
@@ -436,7 +453,8 @@ Usar esta lista para validar en ambiente de prueba antes de producción.
 ### Salida clínica
 
 - [ ] Paciente con `IngInSlC=S` **dentro** de ventana → dieta solicitada se **cancela** y muestra «Salida clínica»
-- [ ] Paciente con `IngInSlC=S` **fuera** de ventana → dieta solicitada se **sostiene** (badge «Se envía»), NO cancelada
+- [ ] Paciente con `IngInSlC=S` **fuera** de ventana → dieta **Confirmada+** se **sostiene** (badge «Salida clínica · asume la clínica»), NO cancelada
+- [ ] Paciente con `IngInSlC=S` y dieta **Guardado** → **cancelar** (nunca sostenida; caso Rufiela)
 - [ ] Dieta `Pendiente` + egreso → cancelada en cualquier ventana
 - [ ] Dieta `EnRuta` + egreso → **no** se cancela automáticamente
 - [ ] Paciente ausente del censo pero sin `IngInSlC=S` → dieta **conservada**
@@ -449,7 +467,7 @@ Usar esta lista para validar en ambiente de prueba antes de producción.
 - [ ] Cancelada en Guardado/Solicitada (sin orden) → **no** en cocina ni Excel
 - [ ] Cancelada tardía (Confirmada+) → **sí** en cocina y Excel, al final
 - [ ] Salida clínica cancelada → etiqueta «Salida clínica», no «Cancelada»
-- [ ] Sostenida → aparece como activa con alerta «Salida clínica: enviar (asume la clínica)»
+- [ ] Sostenida → aparece como activa con badge único «Salida clínica · asume la clínica»
 
 ### Cancelación manual
 

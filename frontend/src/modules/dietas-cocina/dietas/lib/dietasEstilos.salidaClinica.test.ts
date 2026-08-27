@@ -80,8 +80,23 @@ describe("filtro de estado en gestión de dietas", () => {
     expect(filaCoincideFiltroEstado("confirmada", "guardado", fila())).toBe(false)
   })
 
-  it("las dos categorías tienen etiqueta propia en el selector", () => {
+  it("filtra asume clínica aparte de las canceladas por egreso", () => {
+    const sostenida = fila({
+      id: "f-asume",
+      estado: "confirmada",
+      salidaClinicaSostenida: true,
+    })
+    expect(
+      filaCoincideFiltroEstado("asume-clinica", "confirmada", sostenida),
+    ).toBe(true)
+    expect(
+      filaCoincideFiltroEstado("salida-clinica", "confirmada", sostenida),
+    ).toBe(false)
+    expect(
+      filaCoincideFiltroEstado("asume-clinica", "cancelada", salidaClinica),
+    ).toBe(false)
     expect(ESTADO_FILTRO_LABEL["salida-clinica"]).toBe("Salida clínica")
     expect(ESTADO_FILTRO_LABEL.cancelada).toBe("Cancelada")
+    expect(ESTADO_FILTRO_LABEL["asume-clinica"]).toBe("Asume clínica")
   })
 })

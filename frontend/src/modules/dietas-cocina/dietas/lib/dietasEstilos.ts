@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils"
 import {
   esCanceladaManual,
   esSalidaClinicaCancelada,
+  esSalidaClinicaSostenida,
 } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 
 export const ESTADO_FILTRO_LABEL: Record<string, string> = {
@@ -16,6 +17,7 @@ export const ESTADO_FILTRO_LABEL: Record<string, string> = {
   recogida: "Recogida",
   cancelada: "Cancelada",
   "salida-clinica": "Salida clínica",
+  "asume-clinica": "Asume clínica",
 }
 
 export const ESTADOS_PENDIENTES: EstadoDieta[] = ["no-solicitada", "guardado"]
@@ -180,6 +182,18 @@ export function calcularKpisDietas(
         }),
       ).length,
       variant: "muted",
+    },
+    {
+      id: "salidas-asume",
+      label: "Asume clínica",
+      value: filtradas.filter((fila) =>
+        esSalidaClinicaSostenida({
+          estado: estadoVisible(fila),
+          salidaClinicaSostenida: fila.salidaClinicaSostenida,
+          observaciones: fila.observaciones,
+        }),
+      ).length,
+      variant: "warning",
     },
     {
       id: "canceladas",

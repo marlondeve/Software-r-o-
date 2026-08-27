@@ -61,10 +61,10 @@ public class DashboardService : IDashboardService
     private static string EtiquetaEstadoDietaReporte(FilaDieta dieta)
     {
         if (DietasReglasNegocio.EsSalidaClinicaSostenida(dieta))
-            return "Salida clínica sostenida";
+            return "Asume clínica";
 
         if (dieta.Estado == EstadoDieta.Cancelada
-            && DietasReglasNegocio.EsObservacionSalidaClinica(dieta.Observaciones))
+            && DietasReglasNegocio.EsObservacionSalidaClinica(dieta.Observaciones, dieta.Estado))
             return "Salida clínica";
 
         return dieta.Estado switch
@@ -328,7 +328,7 @@ public class DashboardService : IDashboardService
         // Un hallazgo por categoría: así la cantidad destacada coincide con su texto.
         var salidasCanceladas = dietas.Count(d =>
             d.Estado == EstadoDieta.Cancelada
-            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones, d.Estado));
         if (salidasCanceladas > 0)
         {
             hallazgos.Add(new HallazgoDto
@@ -362,8 +362,7 @@ public class DashboardService : IDashboardService
             {
                 Tipo = "dietas_sostenidas_salida_clinica",
                 Descripcion =
-                    $"{sostenidas} dieta(s) solicitada(s) con salida clínica fuera del límite de novedades "
-                    + $"(se mantienen en producción y el proveedor las envía) en {contexto}",
+                    $"{sostenidas} dieta(s) en cocina con salida clínica (asume la clínica) en {contexto}",
                 Severidad = "info",
                 Cantidad = sostenidas,
             });
@@ -501,7 +500,7 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardNutricionistaDto> ObtenerDashboardNutricionistaAsync(DateTime? fecha, string? comida)
     {
-        var fechaOperativa = (fecha ?? DateTime.Today).Date;
+        var fechaOperativa = (fecha ?? HorarioOperativoHelper.HoyColombia()).Date;
         var (desde, hasta) = RangoDia(fechaOperativa);
 
         var dietasQuery = _context.FilasDietas
@@ -515,7 +514,7 @@ public class DashboardService : IDashboardService
         var canceladas = dietas.Count(d => d.Estado == EstadoDieta.Cancelada);
         var salidasClinicas = dietas.Count(d =>
             d.Estado == EstadoDieta.Cancelada
-            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones, d.Estado));
         var sostenidasSalida = dietas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
         var dietasActivas = totalDietas - canceladas;
         var pendientes = dietas.Count(d =>
@@ -539,7 +538,7 @@ public class DashboardService : IDashboardService
             new() { Clave = "novedades", Etiqueta = "Novedades", Valor = novedades, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "salidas_clinicas", Etiqueta = "Salidas clínicas", Valor = salidasClinicas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "canceladas", Etiqueta = "Canceladas", Valor = canceladasManuales, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "salidas_clinicas_sostenidas", Etiqueta = "Salidas clínicas sostenidas", Valor = sostenidasSalida, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "salidas_asume_clinica", Etiqueta = "Asume clínica", Valor = sostenidasSalida, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "fuera_horario", Etiqueta = "Fuera de horario", Valor = fueraHorario, Formato = "numero", Tendencia = null, Comparacion = null },
         };
 
@@ -613,7 +612,7 @@ public class DashboardService : IDashboardService
                         DietasReglasNegocio.TipoEventoCancelacionPorEgreso,
                         StringComparison.OrdinalIgnoreCase)
                     || (e.FilaDieta?.Estado == EstadoDieta.Cancelada
-                        && DietasReglasNegocio.EsObservacionSalidaClinica(observaciones));
+                        && DietasReglasNegocio.EsObservacionSalidaClinica(observaciones, e.FilaDieta?.Estado));
 
                 var salidaClinicaSostenida =
                     string.Equals(
@@ -653,7 +652,7 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardProveedorDto> ObtenerDashboardProveedorAsync(string? comida)
     {
-        var fechaHoy = DateTime.Today;
+        var fechaHoy = HorarioOperativoHelper.HoyColombia();
 
         // Órdenes del día
         var ordenesQuery = _context.OrdenesCocina
@@ -714,7 +713,7 @@ public class DashboardService : IDashboardService
 
     public async Task<DashboardEnfermeraDto> ObtenerDashboardEnfermeraAsync(string? comida, string? pabellon)
     {
-        var fechaHoy = DateTime.Today;
+        var fechaHoy = HorarioOperativoHelper.HoyColombia();
 
         // Etiquetas generadas para el pabellón
         var etiquetasQuery = _context.EtiquetasEnfermeria
@@ -790,8 +789,8 @@ public class DashboardService : IDashboardService
 
     public async Task<ReporteNutricionistaDto> ObtenerReporteNutricionistaAsync(FiltrosReportesDto filtros)
     {
-        var desde = (filtros.Desde ?? DateTime.Today.AddDays(-30)).Date;
-        var hasta = (filtros.Hasta ?? DateTime.Today).Date;
+        var desde = (filtros.Desde ?? HorarioOperativoHelper.HoyColombia().AddDays(-30)).Date;
+        var hasta = (filtros.Hasta ?? HorarioOperativoHelper.HoyColombia()).Date;
         var hastaExclusivo = hasta.AddDays(1);
         var diasPeriodo = ContarDiasPeriodo(desde, hasta);
 
@@ -804,7 +803,8 @@ public class DashboardService : IDashboardService
 
         var dietas = DeduplicarFilasDashboard(await dietasQuery.ToListAsync());
 
-        if (!string.IsNullOrEmpty(filtros.Servicio))
+        if (!string.IsNullOrWhiteSpace(filtros.Servicio) &&
+            !string.Equals(filtros.Servicio, "todos", StringComparison.OrdinalIgnoreCase))
         {
             dietas = dietas
                 .Where(d => DietasReglasNegocio.ResolverServicioClinico(d.Servicio, d.Pabellon) == filtros.Servicio)
@@ -815,10 +815,10 @@ public class DashboardService : IDashboardService
         var dietasActivas = dietas.Count(d => d.Estado != Domain.Enums.EstadoDieta.Cancelada);
         var salidasClinicasCanceladas = dietas.Count(d =>
             d.Estado == EstadoDieta.Cancelada
-            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+            && DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones, d.Estado));
         var canceladasManualesReporte = dietas.Count(d =>
             d.Estado == EstadoDieta.Cancelada
-            && !DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones));
+            && !DietasReglasNegocio.EsObservacionSalidaClinica(d.Observaciones, d.Estado));
         var salidasClinicasSostenidas = dietas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
 
         var ordenesQuery = _context.OrdenesCocina
@@ -852,7 +852,8 @@ public class DashboardService : IDashboardService
                 .ToListAsync();
 
         var dietasConCosto = dietas
-            .Where(d => d.Estado != EstadoDieta.Pendiente)
+            .Where(d => DietasReglasNegocio.EstuvoComprometidaConCocina(d)
+                        || DietasReglasNegocio.EsSalidaClinicaSostenida(d))
             .Select(d =>
             {
                 var monto = ResolverTarifaDieta(tarifas, d.TipoDietaId, d.Comida, d.FechaOperativa);
@@ -877,8 +878,8 @@ public class DashboardService : IDashboardService
             new() { Clave = "costo_total", Etiqueta = "Costo total", Valor = Math.Round(costoTotal, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
             new() { Clave = "costo_canc_tardia", Etiqueta = "Costo canc. tardía", Valor = Math.Round(costoCancTardia, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
             new() { Clave = "salidas_clinicas", Etiqueta = "Salidas clínicas", Valor = salidasClinicasCanceladas, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "salidas_asume_clinica", Etiqueta = "Asume clínica", Valor = salidasClinicasSostenidas, Formato = "numero", Tendencia = null, Comparacion = null },
             new() { Clave = "canceladas", Etiqueta = "Canceladas", Valor = canceladasManualesReporte, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "salidas_clinicas_sostenidas", Etiqueta = "Salidas clínicas sostenidas", Valor = salidasClinicasSostenidas, Formato = "numero", Tendencia = null, Comparacion = null },
         };
 
         // Hitos logísticos (promedios en minutos)
@@ -897,8 +898,9 @@ public class DashboardService : IDashboardService
             .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
             .ToList();
 
+        // Tipos con solicitud clínica (excluye sin solicitud); no exige cocina.
         var tiposDieta = dietas
-            .Where(d => d.TipoDieta != null)
+            .Where(d => d.TipoDieta != null && d.Estado != EstadoDieta.Pendiente)
             .GroupBy(d => d.TipoDieta!.Nombre)
             .OrderByDescending(g => g.Count())
             .Take(5)
@@ -978,8 +980,8 @@ public class DashboardService : IDashboardService
 
     public async Task<ReporteProveedorDto> ObtenerReporteProveedorAsync(FiltrosReportesDto filtros)
     {
-        var desde = (filtros.Desde ?? DateTime.Today.AddDays(-30)).Date;
-        var hasta = (filtros.Hasta ?? DateTime.Today).Date;
+        var desde = (filtros.Desde ?? HorarioOperativoHelper.HoyColombia().AddDays(-30)).Date;
+        var hasta = (filtros.Hasta ?? HorarioOperativoHelper.HoyColombia()).Date;
         var hastaExclusivo = hasta.AddDays(1);
 
         var ordenesQuery = _context.OrdenesCocina
@@ -1032,9 +1034,10 @@ public class DashboardService : IDashboardService
                 .Where(t => t.Activa && catalogIds.Contains(t.DietaCatalogoId))
                 .ToListAsync();
 
-        // Costos: raciones con solicitud (no pendientes) × tarifa vigente; retrasos = cancelación tardía.
+        // Costos de producción: solo dietas ya comprometidas con cocina (o sostenidas).
         var dietasFacturables = dietas
-            .Where(d => d.Estado != EstadoDieta.Pendiente)
+            .Where(d => DietasReglasNegocio.EstuvoComprometidaConCocina(d)
+                        || DietasReglasNegocio.EsSalidaClinicaSostenida(d))
             .Select(d =>
             {
                 var monto = ResolverTarifaDieta(tarifas, d.TipoDietaId, d.Comida, d.FechaOperativa);
@@ -1050,6 +1053,8 @@ public class DashboardService : IDashboardService
             .Where(x => x.Dieta.CancelacionTardia)
             .Sum(x => x.Monto);
 
+        var sostenidasProduccion = dietas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
+
         // KPIs
         var kpis = new List<KpiDto>
         {
@@ -1060,6 +1065,7 @@ public class DashboardService : IDashboardService
             new() { Clave = "porcentaje_cumplimiento", Etiqueta = "% Cumplimiento entregas", Valor = totalEtiquetas > 0 ? Math.Round((decimal)etiquetasEntregadas / totalEtiquetas * 100, 1) : 0, Formato = "porcentaje", Tendencia = null, Comparacion = null },
             new() { Clave = "costo_produccion", Etiqueta = "Costo producción", Valor = Math.Round(costoProduccion, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
             new() { Clave = "costo_retrasos", Etiqueta = "Costo por retrasos", Valor = Math.Round(costoRetrasos, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
+            new() { Clave = "salidas_asume_clinica", Etiqueta = "Asume clínica", Valor = sostenidasProduccion, Formato = "numero", Tendencia = null, Comparacion = null },
         };
 
         // Hallazgos
@@ -1100,6 +1106,18 @@ public class DashboardService : IDashboardService
             });
         }
 
+        if (sostenidasProduccion > 0)
+        {
+            hallazgos.Add(new HallazgoDto
+            {
+                Tipo = "dietas_sostenidas_salida_clinica",
+                Descripcion =
+                    $"{sostenidasProduccion} dieta(s) en cocina con salida clínica (asume la clínica)",
+                Severidad = "info",
+                Cantidad = sostenidasProduccion,
+            });
+        }
+
         // Gráficos operativos
         var estadosOrdenes = ordenes
             .GroupBy(o => EtiquetaEstadoOrdenReporte(o.Estado))
@@ -1107,8 +1125,11 @@ public class DashboardService : IDashboardService
             .Select(g => (g.Key, g.Count()))
             .ToList();
 
+        // Solo dietas que llegaron a cocina (o sostenidas): cuadra con órdenes/etiquetas.
         var tiposDieta = dietas
-            .Where(d => d.TipoDieta != null)
+            .Where(d => d.TipoDieta != null
+                        && (DietasReglasNegocio.EstuvoComprometidaConCocina(d)
+                            || DietasReglasNegocio.EsSalidaClinicaSostenida(d)))
             .GroupBy(d => d.TipoDieta!.Nombre)
             .OrderByDescending(g => g.Count())
             .Take(5)
@@ -1159,7 +1180,7 @@ public class DashboardService : IDashboardService
         var graficos = new List<GraficoDto>
         {
             CrearGraficoPie("Estado de órdenes", estadosOrdenes),
-            CrearGraficoBarra("Tipos de dieta producidos", tiposDieta),
+            CrearGraficoBarra("Tipos de dieta en cocina", tiposDieta),
             CrearGraficoBarra("Rechazos antes de entrega (Top 3)", motivosRechazo),
             CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
             CrearGraficoBarra("Volumen por comida", distribucionTurno),

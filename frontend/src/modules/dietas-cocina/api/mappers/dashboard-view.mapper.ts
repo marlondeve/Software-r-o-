@@ -10,7 +10,7 @@ import { formatearPeriodoOperativo } from "@/modules/dietas-cocina/lib/resolverP
 import {
   etiquetaAccionDesdeTipoEvento,
 } from "@/modules/dietas-cocina/lib/construirActividadEnfermeria"
-import { esCancelacionSalidaClinica } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
+import { esCancelacionSalidaClinica, TEXTO_SALIDA_CLINICA_ASUME } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import { normalizarEstadoDietaDesdeApi } from "@/modules/dietas-cocina/api/mappers/filaDieta.mapper"
 
 // Con salida clínica y cancelada separadas el donut puede pasar de 6 segmentos.
@@ -160,7 +160,7 @@ function mapActividadApi(dto: Record<string, unknown>) {
       tipo.trim().toLowerCase() === "dieta_sostenida_salida_clinica"
 
     const accion = salidaClinicaSostenida
-      ? "Salida clínica sostenida"
+      ? TEXTO_SALIDA_CLINICA_ASUME
       : etiquetaAccionDesdeTipoEvento(tipo, descripcion)
 
     const estadoRaw = leerCampo(row, "estado", "Estado")

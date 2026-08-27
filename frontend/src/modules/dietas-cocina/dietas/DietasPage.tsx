@@ -45,6 +45,10 @@ import { crearResolverEstadoVisibleFila } from "@/modules/dietas-cocina/lib/esta
 import { filaCoincideFiltroEstado } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import { evaluarAccionesDietaClinica } from "@/modules/dietas-cocina/dietas/lib/solicitudDieta"
 import {
+  puedeConfirmarEnvioACocina,
+  resolverEstadoVentanaComida,
+} from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
+import {
   normalizarConsistenciaParaComida,
   requiereConsistencia,
 } from "@/modules/dietas-cocina/lib/comidaOperativa"
@@ -114,6 +118,17 @@ export function DietasPage() {
   const [cancelarAbierto, setCancelarAbierto] = useState(false)
   const [filaCancelarId, setFilaCancelarId] = useState<string | null>(null)
   const [consistenciaAbierto, setConsistenciaAbierto] = useState(false)
+  const [ahora, setAhora] = useState(() => new Date())
+
+  useEffect(() => {
+    const intervalo = window.setInterval(() => setAhora(new Date()), 60_000)
+    return () => window.clearInterval(intervalo)
+  }, [])
+
+  const estadoVentanaComida = useMemo(
+    () => resolverEstadoVentanaComida(comidaActiva, ahora),
+    [comidaActiva, ahora],
+  )
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim()
@@ -129,6 +144,15 @@ export function DietasPage() {
     () => deduplicarFilasPorPacienteComida(filas, resolverEstadoVisible),
     [filas, resolverEstadoVisible],
   )
+
+  const fechaCensoOperativa =
+    filasUnicas.find((fila) => fila.comida === comidaActiva)?.fechaOperativa ??
+    filasUnicas[0]?.fechaOperativa
+  const puedeConfirmarEnvioCocina = puedeConfirmarEnvioACocina(
+    estadoVentanaComida.ventanaNovedadesAbierta,
+    fechaCensoOperativa,
+  )
+  const motivoBloqueoConfirmacion = `Pasó el límite de novedades (${estadoVentanaComida.horaLimiteNovedades}): cocina ya cerró la preparación. No se puede confirmar ni enviar a cocina.`
 
   const filasFiltradas = useMemo(() => {
     if (comidaOrdenRef.current !== comidaActiva) {
@@ -390,6 +414,10 @@ export function DietasPage() {
   }
 
   function confirmarDieta(fila: FilaDieta) {
+    if (!puedeConfirmarEnvioCocina) {
+      demoToast(motivoBloqueoConfirmacion, "error")
+      return
+    }
     if (apiActiva) {
       void confirmarDietaApi(fila.id)
         .then((actualizada) => {
@@ -447,6 +475,10 @@ export function DietasPage() {
   }
 
   function confirmarSeleccionados() {
+    if (!puedeConfirmarEnvioCocina) {
+      demoToast(motivoBloqueoConfirmacion, "error")
+      return
+    }
     const ids = idsSeleccionados()
     if (apiActiva) {
       void confirmarMasivoApi(ids, usuario?.nombre ?? usuario?.email ?? "Usuario")
@@ -715,6 +747,8 @@ export function DietasPage() {
         resolverEstadoVisible={resolverEstadoVisible}
         onEditar={(fila) => cambiarSheetDesdeDetalle("solicitud", fila)}
         onConfirmar={confirmarDieta}
+        puedeConfirmarEnvioCocina={puedeConfirmarEnvioCocina}
+        motivoBloqueoConfirmacion={motivoBloqueoConfirmacion}
         cargarHistorial={apiActiva ? obtenerHistorialApi : undefined}
         cargarDetalle={apiActiva ? obtenerDetalleApi : undefined}
         cargarDietasPaciente={apiActiva ? obtenerDietasPaciente : undefined}
@@ -792,6 +826,8 @@ export function DietasPage() {
       <DietasBarraSeleccion
         cantidad={seleccionadosVisibles}
         visible={seleccionadosVisibles > 0}
+        confirmarDeshabilitado={!puedeConfirmarEnvioCocina}
+        motivoConfirmarDeshabilitado={motivoBloqueoConfirmacion}
         onExportar={exportarSeleccionados}
         onAsignarConsistencia={
           requiereConsistencia(comidaActiva)

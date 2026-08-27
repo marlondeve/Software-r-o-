@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/sheet"
 import { SheetDetailSkeleton } from "@/components/shared/skeletons"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { SeccionTitulo } from "@/modules/dietas-cocina/dietas/components/shared/dietasSheetUi"
 import {
   preferirNombreSolicitante,
@@ -36,6 +35,9 @@ interface DietasDetalleSheetProps {
   resolverEstadoVisible?: (fila: FilaDieta) => EstadoDieta
   onEditar?: (fila: FilaDieta) => void
   onConfirmar?: (fila: FilaDieta) => void
+  /** false cuando pasó el límite de novedades (cocina cerró preparación). */
+  puedeConfirmarEnvioCocina?: boolean
+  motivoBloqueoConfirmacion?: string
   cargarHistorial?: (filaId: string) => Promise<EventoTrazabilidad[]>
   cargarDetalle?: (filaId: string) => Promise<FilaDieta>
   cargarDietasPaciente?: (pacienteId: string) => Promise<FilaDieta[]>
@@ -56,6 +58,8 @@ export function DietasDetalleSheet({
   resolverEstadoVisible,
   onEditar,
   onConfirmar,
+  puedeConfirmarEnvioCocina = true,
+  motivoBloqueoConfirmacion,
   cargarHistorial,
   cargarDetalle,
   cargarDietasPaciente,
@@ -220,11 +224,8 @@ export function DietasDetalleSheet({
                     cancelacionPorSalidaClinica={
                       filaMostrada.cancelacionPorSalidaClinica
                     }
+                    salidaClinicaSostenida={filaMostrada.salidaClinicaSostenida}
                     className="shrink-0 font-semibold uppercase tracking-wide"
-                  />
-                  <SalidaClinicaSostenidaBadge
-                    activo={filaMostrada.salidaClinicaSostenida}
-                    className="shrink-0 text-[10px]"
                   />
                   {(filaMostrada.estado === "guardado" ||
                     filaMostrada.estado === "no-solicitada" ||
@@ -323,10 +324,19 @@ export function DietasDetalleSheet({
         </ScrollAreaFlex>
 
         {puedeConfirmar && onConfirmar && (
-          <div className="shrink-0 border-t bg-muted/30 px-5 py-4">
+          <div className="shrink-0 border-t bg-muted/30 px-5 py-4 space-y-2">
+            {!puedeConfirmarEnvioCocina && motivoBloqueoConfirmacion ? (
+              <p className="text-xs text-muted-foreground">{motivoBloqueoConfirmacion}</p>
+            ) : null}
             <Button
               type="button"
               className="w-full"
+              disabled={!puedeConfirmarEnvioCocina}
+              title={
+                !puedeConfirmarEnvioCocina
+                  ? (motivoBloqueoConfirmacion ?? undefined)
+                  : undefined
+              }
               onClick={() => onConfirmar(filaMostrada)}
             >
               Confirmar Dieta

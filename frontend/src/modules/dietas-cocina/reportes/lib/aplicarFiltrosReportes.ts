@@ -95,6 +95,7 @@ export function calcularFactor(filtros: FiltrosReportes): number {
 }
 
 import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
+import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
 
 export function crearFiltrosReportesIniciales(): FiltrosReportes {
   const hoy = fechaOperativaHoy()
@@ -102,7 +103,9 @@ export function crearFiltrosReportesIniciales(): FiltrosReportes {
     desde: hoy,
     hasta: hoy,
     servicio: "todos",
-    horario: "todos",
+    // Misma comida operativa que gestión/cocina (no «todas»): evita comparar
+    // un reporte del día completo con pantallas filtradas por un solo turno.
+    horario: obtenerComidaActivaOperativa(),
   }
 }
 

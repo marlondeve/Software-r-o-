@@ -10,6 +10,8 @@ internal static class HorarioOperativoHelper
     internal static DateTime AhoraColombia() =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ZonaColombia);
 
+    internal static DateTime HoyColombia() => AhoraColombia().Date;
+
     internal static DateTime AHoraColombia(DateTime fechaHora)
     {
         var comoUtc = fechaHora.Kind switch

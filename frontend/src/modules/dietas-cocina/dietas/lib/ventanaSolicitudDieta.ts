@@ -1,4 +1,5 @@
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
+import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
 import {
   cargarConfigTiempos,
   type ConfigTiempos,
@@ -154,4 +155,21 @@ export function resolverEstadoVentanaComida(
 /** @deprecated Usar resolverEstadoVentanaComida().ventanaTexto */
 export function obtenerVentanaComida(comida: TiempoComida): string {
   return resolverEstadoVentanaComida(comida).ventanaTexto
+}
+
+/**
+ * Confirmar / enviar a cocina: misma regla que el API.
+ * Fecha futura (carga anticipada) sigue abierta; fecha pasada ya cerró;
+ * el día operativo actual usa el límite de novedades.
+ */
+export function puedeConfirmarEnvioACocina(
+  ventanaNovedadesAbiertaHoy: boolean,
+  fechaOperativa?: string | null,
+  hoy = fechaOperativaHoy(),
+): boolean {
+  const fecha = fechaOperativa?.slice(0, 10)
+  if (!fecha) return ventanaNovedadesAbiertaHoy
+  if (fecha > hoy) return true
+  if (fecha < hoy) return false
+  return ventanaNovedadesAbiertaHoy
 }

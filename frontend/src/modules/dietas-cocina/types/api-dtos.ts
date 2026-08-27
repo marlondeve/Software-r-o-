@@ -46,6 +46,7 @@ export interface FilaDietaDto {
   estado?: string
   comida?: string
   ordenCocinaId?: string
+  fechaOperativa?: string
 }
 
 export interface SolicitudDietaRequestDto {

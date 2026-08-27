@@ -95,7 +95,7 @@ export function ReportesFiltros({
             <SelectValue placeholder={horario} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="todos">Todos los turnos</SelectItem>
+            <SelectItem value="todos">Todas las comidas</SelectItem>
             {COMIDAS_TABS.map((comida) => (
               <SelectItem key={comida.id} value={comida.id}>
                 {comida.label}

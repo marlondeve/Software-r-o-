@@ -6,6 +6,7 @@ import { estadoDietaDesdeCiclo } from "@/modules/dietas-cocina/lib/mapearEstadoD
 import {
   esCancelacionSalidaClinica,
   esObservacionSalidaClinicaSostenida,
+  TEXTO_SALIDA_CLINICA_ASUME,
 } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 import {
   filtrarEtiquetasDelPeriodoOperativo,
@@ -52,7 +53,7 @@ export function accionDesdeEstadoEnfermeria(
     (opciones?.observaciones &&
       /salida\s*cl[ií]nica\s+fuera\s+del\s+l[ií]mite/i.test(opciones.observaciones))
   ) {
-    return "Salida clínica sostenida"
+    return TEXTO_SALIDA_CLINICA_ASUME
   }
   switch (estado) {
     case "no-solicitada":
@@ -88,7 +89,7 @@ export function etiquetaAccionDesdeTipoEvento(
     return "Cancelación por salida clínica"
   }
   if (clave === "dieta_sostenida_salida_clinica") {
-    return "Salida clínica sostenida"
+    return TEXTO_SALIDA_CLINICA_ASUME
   }
   if (clave === "dieta_reactivada_reingreso") {
     return "Reingreso al censo"
@@ -97,7 +98,7 @@ export function etiquetaAccionDesdeTipoEvento(
   const texto = descripcion?.trim()
   if (texto) {
     if (esObservacionSalidaClinicaSostenida(texto)) {
-      return "Salida clínica sostenida"
+      return TEXTO_SALIDA_CLINICA_ASUME
     }
     if (esCancelacionSalidaClinica(texto)) {
       return "Cancelación por salida clínica"

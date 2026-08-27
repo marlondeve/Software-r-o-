@@ -1,4 +1,4 @@
-import { mapearComidaInterna, normalizarClave } from "@/modules/dietas-cocina/api/utils"
+import { mapearComidaInterna, fechaOperativaDesdeApi, normalizarClave } from "@/modules/dietas-cocina/api/utils"
 import { repararTextoUtf8 } from "@/modules/dietas-cocina/api/utils/texto"
 import { normalizarConsistenciaParaComida } from "@/modules/dietas-cocina/lib/comidaOperativa"
 import { resolverServicioClinico } from "@/modules/dietas-cocina/lib/servicioClinico"
@@ -106,6 +106,9 @@ export function mapFilaDietaDtoToDomain(
     estado: normalizarEstadoDietaDesdeApi(dto.estado),
     comida: mapearComidaInterna(comidaRaw),
     ordenCocinaId: dto.ordenCocinaId ? String(dto.ordenCocinaId) : undefined,
+    fechaOperativa: fechaOperativaDesdeApi(
+      dto.fechaOperativa != null ? String(dto.fechaOperativa) : undefined,
+    ),
   }
 }
 
@@ -179,7 +182,7 @@ const TITULOS_TIPO_EVENTO: Record<string, string> = {
   solicitud_confirmada: "Solicitud confirmada",
   dieta_cancelada: "Dieta cancelada",
   dieta_cancelada_egreso: "Cancelación por salida clínica",
-  dieta_sostenida_salida_clinica: "Salida clínica sostenida",
+  dieta_sostenida_salida_clinica: "Salida clínica · asume la clínica",
   dieta_reactivada_reingreso: "Reingreso al censo",
   novedad_registrada: "Novedad registrada",
 }
@@ -190,7 +193,7 @@ function descripcionEventoLegible(tipoEvento: string, descripcion: string): stri
     return "Paciente con salida clínica dentro del límite de novedades: la dieta se cancela para evitar preparación."
   }
   if (clave === "dieta_sostenida_salida_clinica") {
-    return "Paciente con salida clínica fuera del límite: la dieta se mantiene y el proveedor la envía (costo clínica)."
+    return "Paciente con salida clínica: la dieta se mantiene y el proveedor la envía (costo clínica)."
   }
   if (clave === "dieta_reactivada_reingreso") {
     return "Paciente de nuevo en censo; la dieta vuelve al flujo operativo."

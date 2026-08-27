@@ -31,10 +31,26 @@ export function buildDietasCocinaPath(path: string): string {
 }
 
 export function fechaOperativaHoy(fecha = new Date()): string {
-  const year = fecha.getFullYear()
-  const month = String(fecha.getMonth() + 1).padStart(2, "0")
-  const day = String(fecha.getDate()).padStart(2, "0")
-  return `${year}-${month}-${day}`
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(fecha)
+}
+
+/** Fecha operativa YYYY-MM-DD desde el API (date-only o instante UTC). */
+export function fechaOperativaDesdeApi(valor?: string | null): string | undefined {
+  if (!valor?.trim()) return undefined
+  const texto = valor.trim()
+  const soloFecha = texto.match(/^(\d{4}-\d{2}-\d{2})/)
+  const sufijo = texto.slice(10)
+  if (soloFecha && !/[zZ]|[+-]\d{2}:\d{2}/.test(sufijo)) {
+    return soloFecha[1]
+  }
+  const parsed = new Date(texto)
+  if (Number.isNaN(parsed.getTime())) return soloFecha?.[1]
+  return fechaOperativaHoy(parsed)
 }
 
 export function mapearComidaApi(comida: TiempoComida): string {

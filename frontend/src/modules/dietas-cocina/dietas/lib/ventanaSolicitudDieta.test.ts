@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import type { ConfigTiempos } from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
-import { resolverEstadoVentanaComida } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
+import { resolverEstadoVentanaComida, puedeConfirmarEnvioACocina } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
 
 function configAlmuerzo(
   solicitud = "07:00",
@@ -80,5 +80,14 @@ describe("resolverEstadoVentanaComida", () => {
 
     expect(estado.ventanaAbierta).toBe(false)
     expect(estado.mensajeCierre).toBe("Abre en: 7h")
+  })
+})
+
+describe("puedeConfirmarEnvioACocina", () => {
+  it("respeta fecha operativa futura, pasada y del día", () => {
+    expect(puedeConfirmarEnvioACocina(false, "2099-01-01", "2026-08-27")).toBe(true)
+    expect(puedeConfirmarEnvioACocina(true, "2026-08-26", "2026-08-27")).toBe(false)
+    expect(puedeConfirmarEnvioACocina(true, "2026-08-27", "2026-08-27")).toBe(true)
+    expect(puedeConfirmarEnvioACocina(false, "2026-08-27", "2026-08-27")).toBe(false)
   })
 })

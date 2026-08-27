@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   esCancelacionSalidaClinica,
+  esSalidaClinicaSostenida,
   labelEstadoCocinaVisible,
   labelEstadoDietaVisible,
 } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
@@ -59,12 +60,43 @@ describe("labelEstadoOperativo", () => {
         salidaClinicaSostenida: true,
         observaciones: obs,
       }),
-    ).toBe("Salida clínica sostenida")
+    ).toBe("Salida clínica · asume la clínica")
     expect(
       labelEstadoDietaVisible("cancelada", {
         salidaClinicaSostenida: true,
         observaciones: obs,
       }),
     ).toBe("Salida clínica")
+  })
+
+  it("no cuenta Guardado como sostenida aunque tenga flag o texto", () => {
+    expect(
+      esSalidaClinicaSostenida({
+        estado: "guardado",
+        salidaClinicaSostenida: true,
+        observaciones:
+          "Salida clínica: la dieta se mantiene y el proveedor la envía (asume la clínica)",
+      }),
+    ).toBe(false)
+    expect(
+      labelEstadoDietaVisible("guardado", {
+        salidaClinicaSostenida: true,
+        observaciones:
+          "Salida clínica: la dieta se mantiene y el proveedor la envía (asume la clínica)",
+      }),
+    ).toBe("Guardado")
+  })
+
+  it("sí marca asumida solo si ya está en cocina", () => {
+    expect(
+      labelEstadoDietaVisible("lista-despacho", {
+        salidaClinicaSostenida: true,
+      }),
+    ).toBe("Salida clínica · asume la clínica")
+    expect(
+      labelEstadoDietaVisible("despachada", {
+        salidaClinicaSostenida: true,
+      }),
+    ).toBe("Salida clínica · asume la clínica")
   })
 })

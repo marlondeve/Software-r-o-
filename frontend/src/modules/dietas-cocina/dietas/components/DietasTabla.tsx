@@ -15,7 +15,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
-import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { construirAccionesDietaFila } from "@/modules/dietas-cocina/dietas/lib/dietasAcciones"
 import {
   cnFilaTabla,
@@ -114,10 +113,7 @@ export function DietasTabla({
               }
               observaciones={row.original.observaciones}
               cancelacionPorSalidaClinica={row.original.cancelacionPorSalidaClinica}
-            />
-            <SalidaClinicaSostenidaBadge
-              activo={row.original.salidaClinicaSostenida}
-              className="text-[10px]"
+              salidaClinicaSostenida={row.original.salidaClinicaSostenida}
             />
           </div>
         ),

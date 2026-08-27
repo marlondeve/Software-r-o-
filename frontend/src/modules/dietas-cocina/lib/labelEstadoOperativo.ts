@@ -8,16 +8,23 @@ import {
   labelEstadoDieta,
 } from "@/modules/dietas-cocina/lib/estadosEstilos"
 
-/** Texto del distintivo y alertas cuando la dieta sigue activa tras egreso fuera del límite. */
-export const TEXTO_ALERTA_SALIDA_CLINICA_SOSTENIDA =
-  "Salida clínica: enviar (asume la clínica)"
+/** Badge único cuando la dieta se sostiene y la clínica asume el costo. */
+export const TEXTO_SALIDA_CLINICA_ASUME =
+  "Salida clínica · asume la clínica"
 
-/** Tooltip del distintivo de salida clínica sostenida. */
+/** @deprecated Usar TEXTO_SALIDA_CLINICA_ASUME */
+export const TEXTO_ALERTA_SALIDA_CLINICA_SOSTENIDA = TEXTO_SALIDA_CLINICA_ASUME
+
+/** Tooltip del badge de salida clínica con envío a cargo de la clínica. */
 export const TOOLTIP_SALIDA_CLINICA_SOSTENIDA =
-  "Paciente con salida clínica pasada la hora límite de novedades. La dieta ya está en producción: el proveedor debe enviarla y la clínica asume el costo. Si el egreso ocurre dentro del límite, la dieta se cancela para evitar desperdicio."
+  "Paciente con salida clínica y dieta ya preparada o fuera del límite de novedades: el proveedor la envía y la clínica asume el costo."
 
 /** La salida clínica se lee distinto de una cancelación manual. */
 const CLASE_BADGE_SALIDA_CLINICA = estadoBadgeTokens.clinicalExit
+
+/** Estilo del badge único «asume la clínica» (borde ámbar + fondo suave). */
+export const CLASE_BADGE_SALIDA_CLINICA_ASUME =
+  "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200"
 
 /** Detecta cancelación automática por salida clínica / egreso (textos actuales y legados). */
 export function esCancelacionSalidaClinica(
@@ -29,8 +36,11 @@ export function esCancelacionSalidaClinica(
   const dietaActiva = estado != null && estado !== "cancelada"
   if (
     dietaActiva &&
-    (salidaClinicaSostenida === true ||
-      esObservacionSalidaClinicaSostenida(observaciones))
+    esSalidaClinicaSostenida({
+      estado,
+      salidaClinicaSostenida,
+      observaciones,
+    })
   ) {
     return false
   }
@@ -48,7 +58,7 @@ export function esCancelacionSalidaClinica(
 }
 
 const TEXTO_SALIDA_SOSTENIDA =
-  /salida\s*cl[ií]nica\s+fuera\s+del\s+l[ií]mite\s+de\s+novedades/i
+  /salida\s*cl[ií]nica\s+fuera\s+del\s+l[ií]mite\s+de\s+novedades|proveedor\s+la\s+env[ií]a|asume\s+la\s+cl[ií]nica/i
 
 export function esObservacionSalidaClinicaSostenida(
   observaciones?: string | null,
@@ -56,19 +66,38 @@ export function esObservacionSalidaClinicaSostenida(
   return !!observaciones && TEXTO_SALIDA_SOSTENIDA.test(observaciones)
 }
 
+/** Estados con orden/cocina: solo ahí aplica «asume la clínica». */
+const ESTADOS_SOSTENIBLE_COCINA = new Set<EstadoDieta | EstadoCocina>([
+  "confirmada",
+  "por-iniciar",
+  "preparando",
+  "en-preparacion",
+  "lista-despacho",
+  "despachada",
+  "recibida",
+  "devuelta",
+  "recogida",
+  "en_preparacion",
+  "lista",
+])
+
 export function esSalidaClinicaSostenida(fila: {
-  estado?: EstadoDieta
+  estado?: EstadoDieta | EstadoCocina
   salidaClinicaSostenida?: boolean
   observaciones?: string | null
 }): boolean {
   if (fila.estado === "cancelada") return false
+  // Guardado / sin solicitud / etc.: flag o texto legado no cuentan como sostenida.
+  if (fila.estado != null && !ESTADOS_SOSTENIBLE_COCINA.has(fila.estado)) {
+    return false
+  }
   return (
     fila.salidaClinicaSostenida === true ||
     esObservacionSalidaClinicaSostenida(fila.observaciones)
   )
 }
 
-/** Etiqueta legible del estado de dieta. Salida clínica y cancelación manual van aparte. */
+/** Etiqueta legible del estado de dieta. Un solo badge para salida clínica. */
 export function labelEstadoDietaVisible(
   estado: EstadoDieta,
   opciones?: {
@@ -80,11 +109,12 @@ export function labelEstadoDietaVisible(
   if (
     estado !== "cancelada" &&
     esSalidaClinicaSostenida({
+      estado,
       salidaClinicaSostenida: opciones?.salidaClinicaSostenida,
       observaciones: opciones?.observaciones,
     })
   ) {
-    return "Salida clínica sostenida"
+    return TEXTO_SALIDA_CLINICA_ASUME
   }
 
   if (
@@ -111,6 +141,16 @@ export function claseBadgeEstadoDietaVisible(
   },
 ): string {
   if (
+    estado !== "cancelada" &&
+    esSalidaClinicaSostenida({
+      estado,
+      salidaClinicaSostenida: opciones?.salidaClinicaSostenida,
+      observaciones: opciones?.observaciones,
+    })
+  ) {
+    return CLASE_BADGE_SALIDA_CLINICA_ASUME
+  }
+  if (
     estado === "cancelada" &&
     esCancelacionSalidaClinica(
       opciones?.observaciones,
@@ -132,6 +172,16 @@ export function claseBadgeEstadoCocinaVisible(
     salidaClinicaSostenida?: boolean
   },
 ): string {
+  if (
+    estado !== "cancelada" &&
+    esSalidaClinicaSostenida({
+      estado,
+      salidaClinicaSostenida: opciones?.salidaClinicaSostenida,
+      observaciones: opciones?.observaciones,
+    })
+  ) {
+    return CLASE_BADGE_SALIDA_CLINICA_ASUME
+  }
   if (
     estado === "cancelada" &&
     esCancelacionSalidaClinica(
@@ -184,13 +234,20 @@ export function filaCoincideFiltroEstado(
   if (filtroEstado === "salida-clinica") {
     return esSalidaClinicaCancelada({ ...fila, estado: estadoVisible })
   }
+  if (filtroEstado === "asume-clinica") {
+    return esSalidaClinicaSostenida({
+      estado: estadoVisible,
+      salidaClinicaSostenida: fila.salidaClinicaSostenida,
+      observaciones: fila.observaciones,
+    })
+  }
   if (filtroEstado === "cancelada") {
     return esCanceladaManual({ ...fila, estado: estadoVisible })
   }
   return estadoVisible === filtroEstado
 }
 
-/** Etiqueta legible del estado de cocina. Salida clínica y cancelación manual van aparte. */
+/** Etiqueta legible del estado de cocina. Un solo badge para salida clínica. */
 export function labelEstadoCocinaVisible(
   estado: EstadoCocina,
   opciones?: {
@@ -199,6 +256,16 @@ export function labelEstadoCocinaVisible(
     salidaClinicaSostenida?: boolean
   },
 ): string {
+  if (
+    estado !== "cancelada" &&
+    esSalidaClinicaSostenida({
+      estado,
+      salidaClinicaSostenida: opciones?.salidaClinicaSostenida,
+      observaciones: opciones?.observaciones,
+    })
+  ) {
+    return TEXTO_SALIDA_CLINICA_ASUME
+  }
   if (
     estado === "cancelada" &&
     esCancelacionSalidaClinica(

@@ -66,7 +66,7 @@ internal static class ReporteCocinaHelper
 
         if (fila.Estado == EstadoDieta.Cancelada)
         {
-            if (DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones))
+            if (DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones, fila.Estado))
                 return "Salida clínica";
             return "Cancelada";
         }
@@ -235,12 +235,12 @@ internal static class ReporteCocinaHelper
         if (normalizado == "salida_clinica")
         {
             return fila.Estado == EstadoDieta.Cancelada
-                && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones);
+                && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones, fila.Estado);
         }
         if (normalizado == "cancelada")
         {
             return fila.Estado == EstadoDieta.Cancelada
-                && !DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones);
+                && !DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones, fila.Estado);
         }
 
         return ResolverEstadoCocina(fila) == normalizado;

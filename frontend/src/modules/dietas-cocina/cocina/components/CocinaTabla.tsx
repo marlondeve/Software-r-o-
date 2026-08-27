@@ -19,7 +19,6 @@ import {
   labelEstadoVisibleCocina,
   claseTipoDieta,
 } from "@/modules/dietas-cocina/cocina/lib/cocinaEstilos"
-import { SalidaClinicaSostenidaBadge } from "@/modules/dietas-cocina/components/SalidaClinicaSostenidaBadge"
 import { cn } from "@/lib/utils"
 
 interface CocinaTablaProps {
@@ -47,12 +46,15 @@ function BadgeEstadoCocina({
   orden: OrdenCocina
   etiqueta?: EtiquetaEnfermera
 }) {
+  const asume = Boolean(orden.salidaClinicaSostenida)
   return (
     <span
       className={cn(
         "inline-flex h-5 items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        asume && "gap-1",
         claseBadgeEstadoVisibleCocina(orden, etiqueta),
       )}
+      title={asume ? "Proveedor envía; la clínica asume el costo" : undefined}
     >
       {labelEstadoVisibleCocina(orden, etiqueta)}
     </span>
@@ -182,10 +184,6 @@ export function CocinaTabla({
                 />
               </>
             )}
-            <SalidaClinicaSostenidaBadge
-              activo={row.original.salidaClinicaSostenida}
-              className="text-[10px]"
-            />
           </div>
         ),
       },

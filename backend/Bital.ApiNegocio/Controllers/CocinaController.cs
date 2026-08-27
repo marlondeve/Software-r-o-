@@ -68,7 +68,7 @@ public class CocinaController : ControllerBase
 
             var filtros = new FiltrosReporteCocinaDto
             {
-                Fecha = (fecha ?? DateTime.Today).Date,
+                Fecha = fecha?.Date ?? default,
                 Comida = comida,
                 Pabellon = pabellon,
                 Habitacion = habitacion,

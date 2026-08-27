@@ -93,7 +93,7 @@ export function ReportesProveedorView() {
     <div className="space-y-5">
       <DashboardPageHeader
         title="Reportes de producción"
-        subtitle="Analítica operativa y costo de comida por día, servicio y tiempo de comida."
+        subtitle="Analítica operativa por fecha, servicio y comida. Por defecto usa la comida operativa actual (alineada con cocina)."
       />
       <BannerModuloSinConexion datosEnCache={desdeCache || !estaOnline} />
 

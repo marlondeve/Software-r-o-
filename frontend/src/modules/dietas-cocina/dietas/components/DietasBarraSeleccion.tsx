@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils"
 interface DietasBarraSeleccionProps {
   cantidad: number
   visible: boolean
+  confirmarDeshabilitado?: boolean
+  motivoConfirmarDeshabilitado?: string
   onExportar?: () => void
   onAsignarConsistencia?: () => void
   onConfirmarSeleccionados?: () => void
@@ -14,6 +16,8 @@ interface DietasBarraSeleccionProps {
 export function DietasBarraSeleccion({
   cantidad,
   visible,
+  confirmarDeshabilitado = false,
+  motivoConfirmarDeshabilitado,
   onExportar,
   onAsignarConsistencia,
   onConfirmarSeleccionados,
@@ -48,7 +52,17 @@ export function DietasBarraSeleccion({
               Asignar consistencia
             </Button>
           )}
-          <Button type="button" size="sm" onClick={onConfirmarSeleccionados}>
+          <Button
+            type="button"
+            size="sm"
+            disabled={confirmarDeshabilitado}
+            title={
+              confirmarDeshabilitado
+                ? (motivoConfirmarDeshabilitado ?? undefined)
+                : undefined
+            }
+            onClick={onConfirmarSeleccionados}
+          >
             <ClipboardCheck data-icon="inline-start" />
             Confirmar seleccionados
           </Button>

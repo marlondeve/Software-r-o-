@@ -101,34 +101,58 @@ internal static class DietasReglasNegocio
     ];
 
     /// <summary>
+    /// Ya llegó a cocina (Confirmada / EnPreparacion / ListaEnvio).
+    /// </summary>
+    internal static bool EsComprometidaConCocinaPorEstado(EstadoDieta estado) =>
+        EstadosCancelarTardia.Contains(estado);
+
+    /// <summary>
+    /// Ya preparada y lista para despacho: la comida existe; salida clínica no la cancela.
+    /// </summary>
+    internal static bool EsListaParaDespacho(EstadoDieta estado) =>
+        estado == EstadoDieta.ListaEnvio;
+
+    /// <summary>
     /// Salida clínica (IngInSlC=S) y límite de novedades:
     /// <list type="bullet">
-    /// <item>Dentro del límite: cancelar también dietas ya solicitadas para que el
-    /// proveedor no prepare y no se desperdicie comida.</item>
-    /// <item>Fuera del límite: solo cancelar <see cref="EstadoDieta.Pendiente"/>; las
-    /// solicitadas se sostienen (<see cref="DebeSostenerPorEgreso"/>).</item>
+    /// <item>Lista para despacho: siempre sostener (ya está preparada).</item>
+    /// <item>Dentro del límite: cancelar Pendiente, Guardado, Solicitada, Confirmada
+    /// y EnPreparacion (aún se puede frenar producción).</item>
+    /// <item>Fuera del límite: cancelar Pendiente/Guardado/Solicitada; sostener
+    /// Confirmada / EnPreparacion / ListaEnvio.</item>
     /// </list>
     /// </summary>
     internal static bool DebeCancelarPorEgreso(EstadoDieta estado, bool ventanaNovedadesAbierta)
     {
         if (!EstadosCancelarPorEgreso.Contains(estado)) return false;
+        if (DebeSostenerPorEgreso(estado, ventanaNovedadesAbierta)) return false;
+        if (ventanaNovedadesAbierta) return true;
 
-        return ventanaNovedadesAbierta || !EsDietaSolicitada(estado);
+        // Fuera del límite: no cancelar lo ya comprometido con cocina (se sostiene).
+        return !EsComprometidaConCocinaPorEstado(estado);
     }
 
     /// <summary>
-    /// Salida clínica sobre una dieta solicitada fuera de la ventana: no se cancela,
-    /// se sostiene marcada para que el proveedor la envíe y se pueda conciliar.
+    /// No cancelar: lista para despacho siempre; Confirmada/EnPreparacion solo fuera del límite.
+    /// Guardado/Solicitada sin orden no aplican (se cancelan).
     /// </summary>
     internal static bool DebeSostenerPorEgreso(EstadoDieta estado, bool ventanaNovedadesAbierta) =>
-        !ventanaNovedadesAbierta && EsDietaSolicitada(estado);
+        EsListaParaDespacho(estado)
+        || (!ventanaNovedadesAbierta && EsComprometidaConCocinaPorEstado(estado));
 
     /// <summary>
-    /// La salida clínica sobre una dieta ya comprometida con el proveedor factura
-    /// igual que una cancelación tardía manual.
+    /// Flag de sostenida sobre Guardado/Solicitada es indebido: nunca hubo cocina.
+    /// El sync debe cancelar por egreso y limpiar el flag (caso Rufiela).
     /// </summary>
-    internal static bool EsCancelacionTardiaPorEgreso(EstadoDieta estado) =>
-        EstadosCancelarTardia.Contains(estado);
+    internal static bool SostenidaSinCocinaEsIndevida(EstadoDieta estado) =>
+        EsCancelacionNormal(estado);
+
+    /// <summary>
+    /// La cancelación automática por egreso no factura como tardía: dentro del
+    /// límite se cancela para evitar desperdicio; fuera del límite las de cocina
+    /// se sostienen. Solo la cancelación manual tardía (Admin) marca el flag.
+    /// </summary>
+    internal static bool EsCancelacionTardiaPorEgreso(EstadoDieta estado) => false;
 
     /// <summary>
     /// Texto visible en observaciones / UI. Conserva la marca HIS para detección.
@@ -137,7 +161,19 @@ internal static class DietasReglasNegocio
         "Paciente con salida clínica";
 
     internal const string MotivoSalidaClinicaSostenida =
-        "Salida clínica fuera del límite de novedades: la dieta se mantiene y el proveedor la envía";
+        "Salida clínica: la dieta se mantiene y el proveedor la envía (asume la clínica)";
+
+    internal const string MensajeConfirmacionFueraDeLimite =
+        "Pasó el límite de novedades: cocina ya cerró la preparación de esta comida. No se puede confirmar ni enviar a cocina.";
+
+    /// <summary>
+    /// Confirmar / enviar a cocina solo mientras el límite de novedades esté abierto.
+    /// </summary>
+    internal static bool PuedeConfirmarEnvioACocina(
+        TiempoComidaConfig? config,
+        DateTime fechaOperativa,
+        DateTime ahoraLocal) =>
+        VentanaNovedadesAbiertaParaFecha(config, fechaOperativa, ahoraLocal);
 
     internal const string TipoEventoSalidaClinicaSostenida = "dieta_sostenida_salida_clinica";
 
@@ -160,7 +196,10 @@ internal static class DietasReglasNegocio
     internal const string TipoEventoReactivacionPorReingreso = "dieta_reactivada_reingreso";
 
     internal static bool EsSalidaClinicaSostenida(FilaDieta fila) =>
-        fila.SalidaClinicaSostenida && fila.Estado != EstadoDieta.Cancelada;
+        fila.SalidaClinicaSostenida
+        && fila.Estado != EstadoDieta.Cancelada
+        && !EsCancelacionNormal(fila.Estado)
+        && fila.Estado != EstadoDieta.Pendiente;
 
     private static readonly HashSet<EstadoDieta> EstadosActivosEnCocina =
     [
@@ -193,14 +232,19 @@ internal static class DietasReglasNegocio
         !string.IsNullOrWhiteSpace(observaciones)
         && (observaciones.Contains(MotivoSalidaClinicaSostenida, StringComparison.OrdinalIgnoreCase)
             || observaciones.Contains("fuera del límite de novedades", StringComparison.OrdinalIgnoreCase)
-            || observaciones.Contains("fuera del limite de novedades", StringComparison.OrdinalIgnoreCase));
+            || observaciones.Contains("fuera del limite de novedades", StringComparison.OrdinalIgnoreCase)
+            || observaciones.Contains("proveedor la envía", StringComparison.OrdinalIgnoreCase)
+            || observaciones.Contains("proveedor la envia", StringComparison.OrdinalIgnoreCase));
 
-    internal static bool EsObservacionSalidaClinica(string? observaciones)
+    internal static bool EsObservacionSalidaClinica(
+        string? observaciones,
+        EstadoDieta? estado = null)
     {
         if (string.IsNullOrWhiteSpace(observaciones)) return false;
 
         // Texto de sostenida también contiene «salida clínica» pero la dieta sigue activa.
-        if (EsObservacionSalidaClinicaSostenida(observaciones))
+        // Si ya está cancelada, el texto mixto (legado) cuenta como baja por egreso.
+        if (estado != EstadoDieta.Cancelada && EsObservacionSalidaClinicaSostenida(observaciones))
             return false;
 
         // Textos actuales y legados del cancelado automático por HIS / censo.

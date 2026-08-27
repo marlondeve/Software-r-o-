@@ -104,6 +104,9 @@ public class DietasService : IDietasService
             configTiempo,
             cancellationToken);
 
+        // Flag sostenida sobre Guardado/Solicitada es inválido (nunca hubo cocina).
+        LimpiarSostenidasSinCocinaIndevidas(filasExistentes);
+
         var resultado = new CensoDietasDto
         {
             FechaOperativa = fecha,
@@ -236,9 +239,10 @@ public class DietasService : IDietasService
     /// Cancela dietas solo si INGRESOS.IngInSlC = 'S' y el estado aún permite
     /// cancelar (desde EnRuta la bandeja se cierra por devolución).
     /// Faltar en el snapshot de censo (pabellón, TMPFAC, etc.) no es egreso.
-    /// Dentro del límite de novedades se cancelan también las dietas solicitadas
-    /// (evita preparación y desperdicio). Pasado el límite las solicitadas se sostienen
-    /// marcadas para que el proveedor las envíe.
+    /// Dentro del límite se cancelan Pendiente y todo lo solicitado (evitar desperdicio).
+    /// Pasado el límite: Guardado/Solicitada se cancelan; Confirmada+ se sostienen.
+    /// Lista para despacho se sostiene siempre (ya preparada).
+    /// Corrige sostenidas indebidas sobre Guardado/Solicitada.
     /// </summary>
     private async Task CancelarDietasPorEgresoAsync(
         DateTime fechaOperativa,
@@ -255,10 +259,20 @@ public class DietasService : IDietasService
 
         var candidatos = filasExistentes
             .Where(f =>
-                !EstaEnCensoHis(f, pacienteIdsEnCenso)
-                && !f.SalidaClinicaSostenida
-                && (DietasReglasNegocio.DebeCancelarPorEgreso(f.Estado, ventanaAbierta)
-                    || DietasReglasNegocio.DebeSostenerPorEgreso(f.Estado, ventanaAbierta)))
+            {
+                if (EstaEnCensoHis(f, pacienteIdsEnCenso)) return false;
+
+                var cancelarOSostener =
+                    DietasReglasNegocio.DebeCancelarPorEgreso(f.Estado, ventanaAbierta)
+                    || DietasReglasNegocio.DebeSostenerPorEgreso(f.Estado, ventanaAbierta);
+
+                // Caso Rufiela: sostenida en Guardado/Solicitada sin cocina → reevaluar.
+                var sostenidaIndevida = f.SalidaClinicaSostenida
+                    && DietasReglasNegocio.SostenidaSinCocinaEsIndevida(f.Estado);
+
+                if (sostenidaIndevida) return cancelarOSostener;
+                return !f.SalidaClinicaSostenida && cancelarOSostener;
+            })
             .ToList();
 
         if (candidatos.Count == 0) return;
@@ -361,8 +375,7 @@ public class DietasService : IDietasService
             var estadoAnterior = fila.Estado;
             fila.Estado = EstadoDieta.Cancelada;
             fila.SalidaClinicaSostenida = false;
-            fila.CancelacionTardia =
-                DietasReglasNegocio.EsCancelacionTardiaPorEgreso(estadoAnterior);
+            fila.CancelacionTardia = false;
             fila.Observaciones = string.IsNullOrWhiteSpace(fila.Observaciones)
                 ? motivoSalida
                 : $"{fila.Observaciones}\n{motivoSalida}";
@@ -428,7 +441,7 @@ public class DietasService : IDietasService
             return true;
 
         return string.IsNullOrWhiteSpace(fila.ModificadoPor)
-               && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones);
+               && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones, fila.Estado);
     }
 
     /// <summary>
@@ -545,7 +558,7 @@ public class DietasService : IDietasService
     {
         var canceladasEgreso = filas
             .Where(f => f.Estado == EstadoDieta.Cancelada
-                        && DietasReglasNegocio.EsObservacionSalidaClinica(f.Observaciones))
+                        && DietasReglasNegocio.EsObservacionSalidaClinica(f.Observaciones, f.Estado))
             .ToList();
 
         if (canceladasEgreso.Count == 0) return;
@@ -581,6 +594,62 @@ public class DietasService : IDietasService
             }
 
             AplicarSostenimientoTrasCorreccion(fila, estadoAlEgreso);
+        }
+    }
+
+    /// <summary>
+    /// Quita el flag de sostenida en Guardado/Solicitada (nunca debió marcarse).
+    /// El egreso posterior las cancelará en <see cref="CancelarDietasPorEgresoAsync"/>.
+    /// </summary>
+    private void LimpiarSostenidasSinCocinaIndevidas(List<FilaDieta> filas)
+    {
+        var ahora = DateTime.UtcNow;
+        const string motivoSostenida = DietasReglasNegocio.MotivoSalidaClinicaSostenida;
+
+        foreach (var fila in filas)
+        {
+            if (!fila.SalidaClinicaSostenida) continue;
+            if (!DietasReglasNegocio.SostenidaSinCocinaEsIndevida(fila.Estado)) continue;
+
+            fila.SalidaClinicaSostenida = false;
+            if (!string.IsNullOrWhiteSpace(fila.Observaciones)
+                && fila.Observaciones.Contains(motivoSostenida, StringComparison.OrdinalIgnoreCase))
+            {
+                fila.Observaciones = string.Join(
+                    '\n',
+                    fila.Observaciones
+                        .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Where(linea =>
+                            !linea.Contains(motivoSostenida, StringComparison.OrdinalIgnoreCase)
+                            && !linea.Contains("fuera del límite de novedades", StringComparison.OrdinalIgnoreCase)
+                            && !linea.Contains("fuera del limite de novedades", StringComparison.OrdinalIgnoreCase)
+                            && !linea.Contains("asume la clínica", StringComparison.OrdinalIgnoreCase)
+                            && !linea.Contains("asume la clinica", StringComparison.OrdinalIgnoreCase)));
+                if (string.IsNullOrWhiteSpace(fila.Observaciones))
+                    fila.Observaciones = null;
+            }
+
+            fila.ModificadoPor = UsuarioSistema;
+            fila.ModificadoEn = ahora;
+
+            _context.EventosTrazabilidad.Add(new EventoTrazabilidad
+            {
+                Id = Guid.NewGuid(),
+                FilaDietaId = fila.Id,
+                TipoEvento = "dieta_sostenida_indebida_limpiada",
+                Descripcion =
+                    "Corrección: sostenida indebida en Guardado/Solicitada (sin cocina); se limpia el flag",
+                EstadoAnterior = fila.Estado,
+                EstadoNuevo = fila.Estado,
+                Usuario = UsuarioSistema,
+                FechaEvento = ahora,
+                DatosAdicionales = $"PacienteId: {fila.PacienteId}; IdIngreso: {fila.IdIngreso}",
+            });
+
+            _logger.LogWarning(
+                "Dieta {FilaId} corregida: sostenida indebida en {Estado} → se limpia flag",
+                fila.Id,
+                fila.Estado);
         }
     }
 
@@ -972,10 +1041,19 @@ public class DietasService : IDietasService
             throw new KeyNotFoundException($"FilaDieta con ID {filaDietaId} no encontrada");
         }
 
-        // Validar que esté en estado Solicitada
-        if (fila.Estado != EstadoDieta.Solicitada)
+        if (fila.Estado != EstadoDieta.Solicitada && fila.Estado != EstadoDieta.Guardado)
         {
-            throw new InvalidOperationException($"La dieta debe estar en estado Solicitada para ser confirmada. Estado actual: {fila.Estado}");
+            throw new InvalidOperationException($"La dieta debe estar en estado Solicitada o Guardado para ser confirmada. Estado actual: {fila.Estado}");
+        }
+
+        var configTiempo = await _context.TiemposComida
+            .FirstOrDefaultAsync(t => t.Comida == fila.Comida, cancellationToken);
+        if (!DietasReglasNegocio.PuedeConfirmarEnvioACocina(
+                configTiempo,
+                fila.FechaOperativa,
+                HorarioOperativoHelper.AhoraColombia()))
+        {
+            throw new InvalidOperationException(DietasReglasNegocio.MensajeConfirmacionFueraDeLimite);
         }
 
         AplicarSolicitudClinica(fila, confirmacion, parcial: true);
@@ -1048,16 +1126,44 @@ public class DietasService : IDietasService
             .Where(f => confirmacion.DietasIds.Contains(f.Id))
             .ToListAsync(cancellationToken);
 
+        var configs = await _context.TiemposComida.ToListAsync(cancellationToken);
+        var configPorComida = configs.ToDictionary(c => c.Comida);
+        var ahora = HorarioOperativoHelper.AhoraColombia();
+
+        var candidatas = filas
+            .Where(f => f.Estado is EstadoDieta.Solicitada or EstadoDieta.Guardado)
+            .ToList();
+
+        if (candidatas.Count > 0
+            && candidatas.All(f =>
+            {
+                configPorComida.TryGetValue(f.Comida, out var cfg);
+                return !DietasReglasNegocio.PuedeConfirmarEnvioACocina(cfg, f.FechaOperativa, ahora);
+            }))
+        {
+            throw new InvalidOperationException(DietasReglasNegocio.MensajeConfirmacionFueraDeLimite);
+        }
+
         int confirmadas = 0;
 
         foreach (var fila in filas)
         {
-            if (fila.Estado != EstadoDieta.Solicitada)
+            if (fila.Estado is not (EstadoDieta.Solicitada or EstadoDieta.Guardado))
             {
                 _logger.LogWarning(
-                    "Dieta {DietaId} no está en estado Solicitada (estado actual: {Estado}), no se puede confirmar",
+                    "Dieta {DietaId} no está en estado Solicitada/Guardado (estado actual: {Estado}), no se puede confirmar",
                     fila.Id,
                     fila.Estado);
+                continue;
+            }
+
+            configPorComida.TryGetValue(fila.Comida, out var configTiempo);
+            if (!DietasReglasNegocio.PuedeConfirmarEnvioACocina(
+                    configTiempo, fila.FechaOperativa, ahora))
+            {
+                _logger.LogWarning(
+                    "Dieta {DietaId} fuera del límite de novedades, no se confirma",
+                    fila.Id);
                 continue;
             }
 
@@ -2184,9 +2290,8 @@ public class DietasService : IDietasService
             CancelacionTardia = fila.CancelacionTardia,
             CancelacionPorSalidaClinica =
                 fila.Estado == EstadoDieta.Cancelada
-                && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones),
-            SalidaClinicaSostenida =
-                fila.SalidaClinicaSostenida && fila.Estado != EstadoDieta.Cancelada,
+                && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones, fila.Estado),
+            SalidaClinicaSostenida = DietasReglasNegocio.EsSalidaClinicaSostenida(fila),
             OrdenCocinaId = fila.OrdenCocinaId,
             FechaOperativa = fila.FechaOperativa
         };

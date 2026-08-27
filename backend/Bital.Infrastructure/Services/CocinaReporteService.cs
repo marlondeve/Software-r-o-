@@ -26,7 +26,9 @@ public class CocinaReporteService : ICocinaReporteService
         if (!Enum.TryParse<TiempoComida>(filtros.Comida, true, out var tiempoComida))
             throw new ArgumentException($"Tiempo de comida inválido: {filtros.Comida}");
 
-        var fecha = filtros.Fecha.Date;
+        var fecha = filtros.Fecha == default
+            ? HorarioOperativoHelper.HoyColombia().Date
+            : filtros.Fecha.Date;
         var finFecha = fecha.AddDays(1);
 
         var filas = await _context.FilasDietas
@@ -118,7 +120,7 @@ public class CocinaReporteService : ICocinaReporteService
         var canceladas = filas.Count(f => f.Estado == EstadoDieta.Cancelada);
         var salidasClinicas = filas.Count(f =>
             f.Estado == EstadoDieta.Cancelada
-            && DietasReglasNegocio.EsObservacionSalidaClinica(f.Observaciones));
+            && DietasReglasNegocio.EsObservacionSalidaClinica(f.Observaciones, f.Estado));
         var canceladasManuales = canceladas - salidasClinicas;
         var sostenidas = filas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
         var enGestion = filas.Count(f =>
@@ -229,7 +231,7 @@ public class CocinaReporteService : ICocinaReporteService
     {
         var cancelacionPorSalida =
             fila.Estado == EstadoDieta.Cancelada
-            && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones);
+            && DietasReglasNegocio.EsObservacionSalidaClinica(fila.Observaciones, fila.Estado);
 
         return new Dictionary<string, object?>
         {

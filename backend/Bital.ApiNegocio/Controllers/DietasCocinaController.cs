@@ -158,20 +158,28 @@ public class DietasCocinaController : ControllerBase
     /// <returns>Número de dietas confirmadas</returns>
     [HttpPost("dietas/bulk/confirmar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<ActionResult<object>> ConfirmarDietasMasivas(
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ConfirmarDietasMasivas(
         [FromBody] ConfirmacionMasivaDto confirmacion,
         CancellationToken cancellationToken)
     {
-        confirmacion.Usuario = User.GetUsuarioIdentificacion();
-
-        var confirmadas = await _dietasService.ConfirmarDietasMasivasAsync(confirmacion, cancellationToken);
-
-        return Ok(new
+        try
         {
-            confirmadas,
-            total = confirmacion.DietasIds.Count,
-            message = $"{confirmadas} dietas confirmadas exitosamente"
-        });
+            confirmacion.Usuario = User.GetUsuarioIdentificacion();
+
+            var confirmadas = await _dietasService.ConfirmarDietasMasivasAsync(confirmacion, cancellationToken);
+
+            return Ok(new
+            {
+                confirmadas,
+                total = confirmacion.DietasIds.Count,
+                message = $"{confirmadas} dietas confirmadas exitosamente"
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
     }
 
     /// <summary>

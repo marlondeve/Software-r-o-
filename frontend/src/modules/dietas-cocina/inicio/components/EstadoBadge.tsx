@@ -1,7 +1,11 @@
+import { TruckIcon } from "lucide-react"
+
 import type { EstadoDieta } from "@/modules/dietas-cocina/types/enums"
 import {
   claseBadgeEstadoDietaVisible,
+  esSalidaClinicaSostenida,
   labelEstadoDietaVisible,
+  TOOLTIP_SALIDA_CLINICA_SOSTENIDA,
 } from "@/modules/dietas-cocina/lib/labelEstadoOperativo"
 
 import { Badge } from "@/components/ui/badge"
@@ -26,25 +30,30 @@ export function EstadoBadge({
   label,
   className,
 }: EstadoBadgeProps) {
-  const texto =
-    label ??
-    labelEstadoDietaVisible(estado, {
-      observaciones,
-      cancelacionPorSalidaClinica,
-      salidaClinicaSostenida,
-    })
+  const opciones = {
+    observaciones,
+    cancelacionPorSalidaClinica,
+    salidaClinicaSostenida,
+  }
+  const texto = label ?? labelEstadoDietaVisible(estado, opciones)
+  const asumeClinica = esSalidaClinicaSostenida({
+    estado,
+    salidaClinicaSostenida,
+    observaciones,
+  })
+
   return (
     <Badge
       variant="outline"
+      title={asumeClinica ? TOOLTIP_SALIDA_CLINICA_SOSTENIDA : undefined}
       className={cn(
         "rounded-full font-medium",
-        claseBadgeEstadoDietaVisible(estado, {
-          observaciones,
-          cancelacionPorSalidaClinica,
-        }),
+        asumeClinica && "gap-1",
+        claseBadgeEstadoDietaVisible(estado, opciones),
         className,
       )}
     >
+      {asumeClinica ? <TruckIcon className="size-3 shrink-0" aria-hidden /> : null}
       {texto}
     </Badge>
   )
