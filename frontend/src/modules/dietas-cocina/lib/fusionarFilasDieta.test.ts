@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { fusionarFilasPorComida, deduplicarFilasPorPacienteComida } from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
+import { fusionarFilasPorComida, deduplicarFilasPorPacienteComida, reemplazarFilaPorIdOIdentidad } from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 
 function filaBase(id: string, overrides: Partial<FilaDieta> = {}): FilaDieta {
@@ -171,5 +171,37 @@ describe("fusionarFilasPorComida", () => {
 
     expect(result).toHaveLength(1)
     expect(result[0].id).toBe("con-orden")
+  })
+})
+
+describe("reemplazarFilaPorIdOIdentidad", () => {
+  it("sustituye por id y no duplica", () => {
+    const previas = [filaBase("a", { estado: "confirmada", cedula: "12345678" })]
+    const result = reemplazarFilaPorIdOIdentidad(previas, filaBase("a", {
+      estado: "en-preparacion",
+      cedula: "12345678",
+    }))
+    expect(result).toHaveLength(1)
+    expect(result[0].estado).toBe("en-preparacion")
+  })
+
+  it("si el id es otro, reemplaza por cédula+comida+fecha", () => {
+    const previas = [filaBase("viejo", {
+      pacienteId: "PAC-X",
+      cedula: "78714472",
+      comida: "almuerzo",
+      fechaOperativa: "2026-08-27",
+      estado: "confirmada",
+    })]
+    const result = reemplazarFilaPorIdOIdentidad(previas, filaBase("nuevo", {
+      pacienteId: "PAC-Y",
+      cedula: "78714472",
+      comida: "almuerzo",
+      fechaOperativa: "2026-08-27",
+      estado: "en-preparacion",
+    }))
+    expect(result).toHaveLength(1)
+    expect(result[0].id).toBe("nuevo")
+    expect(result[0].estado).toBe("en-preparacion")
   })
 })

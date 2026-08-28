@@ -15,17 +15,20 @@ public class ParametrosService : IParametrosService
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<ParametrosService> _logger;
+    private readonly IDietasCocinaRealtime _realtime;
 
     public ParametrosService(
         BitalNegocioDbContext context,
         IAuditoriaService auditoria,
         IAuditoriaContextoRequest contextoAuditoria,
-        ILogger<ParametrosService> logger)
+        ILogger<ParametrosService> logger,
+        IDietasCocinaRealtime? realtime = null)
     {
         _context = context;
         _auditoria = auditoria;
         _contextoAuditoria = contextoAuditoria;
         _logger = logger;
+        _realtime = realtime ?? NullDietasCocinaRealtime.Instance;
     }
 
     public async Task<TiemposComidaConfiguracionDto> ObtenerTiemposComidaAsync()
@@ -103,6 +106,7 @@ public class ParametrosService : IParametrosService
             new { modoCarga = modoCargaAnterior },
             new { modoCarga = config.ModoCarga, tiempos = dto.Tiempos.Count });
 
+        await _realtime.NotificarParametrosAsync();
         return await ObtenerTiemposComidaAsync();
     }
 
@@ -190,6 +194,7 @@ public class ParametrosService : IParametrosService
             new { categorias = categoriasAnteriores },
             new { categorias = dto.Categorias.Select(c => new { c.Nombre, c.EdadMinima, c.EdadMaxima }) });
 
+        await _realtime.NotificarParametrosAsync();
         return await ObtenerCategoriasEdadAsync();
     }
 

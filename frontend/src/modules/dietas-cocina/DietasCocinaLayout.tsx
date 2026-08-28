@@ -6,6 +6,7 @@ import { SincronizarBandejasPendientes } from "@/modules/dietas-cocina/context/S
 import { SincronizarCocinaDesdeDietas } from "@/modules/dietas-cocina/context/SincronizarCocinaDesdeDietas"
 import { CargarPermisosRolesModulo } from "@/modules/dietas-cocina/components/CargarPermisosRolesModulo"
 import { SincronizarConfigTiempos } from "@/modules/dietas-cocina/components/SincronizarConfigTiempos"
+import { SincronizarRealtimeDietasCocina } from "@/modules/dietas-cocina/realtime/SincronizarRealtimeDietasCocina"
 
 /** Envuelve todas las rutas de dietas-cocina con el store compartido del ciclo de bandejas. */
 export function DietasCocinaLayout() {
@@ -14,6 +15,7 @@ export function DietasCocinaLayout() {
       <DietasOperativasProvider>
         <CargarPermisosRolesModulo />
         <SincronizarConfigTiempos />
+        <SincronizarRealtimeDietasCocina />
         <SincronizarCocinaDesdeDietas />
         <SincronizarBandejasPendientes />
         <Outlet />

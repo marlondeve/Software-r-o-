@@ -2,6 +2,30 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.8] — 2026-08-27
+
+### Añadido
+
+- **Tiempo real en Dietas y Cocina (SignalR):** hub autenticado `/hubs/dietas-cocina` que avisa a todas las sesiones abiertas tras persistir y auditar (no sustituye REST/EF ni la trazabilidad).
+- Eventos de push: `FilaActualizada`, `CensoActualizado`, `OrdenActualizada`, `EtiquetasActualizadas`, `ParametrosActualizados`, `CatalogoActualizado`, `ConciliacionActualizada`, `PermisosActualizados`.
+- Sync HIS en servidor (`CensoHisSyncHostedService`) con candado SQL (`sp_getapplock` por fecha+comida) compartido con `GET /censo`: un solo writer aunque haya varias pestañas o workers IIS.
+- Cliente `@microsoft/signalr` en el layout del módulo: reconexión automática; **cero poll** con hub conectado; fallback de censo cada **60 s** solo si el socket está caído.
+- HTTP **409** (`ConflictoEstadoOperativo`) si otro usuario ya cambió dieta, orden o etiqueta; la UI reemplaza por id o identidad (cédula+comida+fecha) y no concatena duplicados.
+- Refetch en vivo de dashboards, reportes (vista), auditoría y conciliación al recibir eventos; permisos y parámetros se recargan en sesiones abiertas.
+- Reloj de ventanas operativas a **1 s** (Dietas, solicitud/novedad, dashboard nutricionista).
+- WebSockets habilitados en `web.config` de ApiNegocio (requisito IIS).
+
+### Cambiado
+
+- Versión de producto **1.2.8** (package.json, `Directory.Build.props`, `VITE_APP_VERSION`, docs).
+- El poll de censo cada **15 s** del navegador deja de ser el writer: el hosted service sincroniza el HIS; `GET /censo` queda para carga inicial, botón «Actualizar» y fallback.
+- «Hoy» operativo, textos embebidos y prefijo de código de etiqueta usan día/hora **Colombia**; los instantes siguen guardándose en **UTC** (`DateTime.UtcNow`).
+- Parsers del front (`auditoria`, `catálogo`, actividad enfermería) interpretan ISO sin zona como UTC vía `parsearFechaApi`.
+
+### Corregido
+
+- Residuales que mostraban hora UTC o tomaban el día UTC como «hoy» (catálogo/tarifas, marcas de tiempo, códigos de etiqueta tras las 19:00 COT).
+
 ## [1.2.7] — 2026-08-26
 
 ### Añadido
@@ -147,6 +171,7 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.8]: https://github.com/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/compare/v1.2.6...v1.2.7
 [1.2.6]: https://github.com/compare/v1.2.5...v1.2.6
 [1.2.5]: https://github.com/compare/v1.2.4...v1.2.5

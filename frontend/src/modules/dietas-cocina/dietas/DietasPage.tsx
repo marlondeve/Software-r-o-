@@ -121,7 +121,7 @@ export function DietasPage() {
   const [ahora, setAhora] = useState(() => new Date())
 
   useEffect(() => {
-    const intervalo = window.setInterval(() => setAhora(new Date()), 60_000)
+    const intervalo = window.setInterval(() => setAhora(new Date()), 1_000)
     return () => window.clearInterval(intervalo)
   }, [])
 

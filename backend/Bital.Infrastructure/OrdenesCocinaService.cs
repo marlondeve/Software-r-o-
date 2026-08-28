@@ -5,6 +5,7 @@ using Bital.Domain.Enums;
 using Bital.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Bital.Infrastructure.DietasCocina;
+using Bital.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 
 namespace Bital.Infrastructure;
@@ -18,17 +19,20 @@ public class OrdenesCocinaService : IOrdenesCocinaService
     private readonly ILogger<OrdenesCocinaService> _logger;
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
+    private readonly IDietasCocinaRealtime _realtime;
 
     public OrdenesCocinaService(
         BitalNegocioDbContext context,
         ILogger<OrdenesCocinaService> logger,
         IAuditoriaService auditoria,
-        IAuditoriaContextoRequest contextoAuditoria)
+        IAuditoriaContextoRequest contextoAuditoria,
+        IDietasCocinaRealtime? realtime = null)
     {
         _context = context;
         _logger = logger;
         _auditoria = auditoria;
         _contextoAuditoria = contextoAuditoria;
+        _realtime = realtime ?? NullDietasCocinaRealtime.Instance;
     }
 
     private static bool TryParseTiempoComida(string? comida, out TiempoComida tiempoComida)
@@ -195,7 +199,11 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             AuditoriaSnapshot.Json(new { orden.NumeroOrden, datos.Comida, datos.FechaOperativa, totalDietas = dietas.Count }),
             contexto: _contextoAuditoria);
 
-        return MapearADtoConDietas(orden);
+        var dtoCreada = MapearADtoConDietas(orden);
+        await _realtime.NotificarOrdenAsync(dtoCreada, cancellationToken);
+        foreach (var dieta in orden.Dietas)
+            await _realtime.NotificarFilaAsync(DietasService.MapearADto(dieta), cancellationToken);
+        return dtoCreada;
     }
 
     public async Task<OrdenCocinaDto> ActualizarEstadoOrdenAsync(
@@ -208,6 +216,18 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             .Include(o => o.Dietas)
             .FirstOrDefaultAsync(o => o.Id == ordenId, cancellationToken)
             ?? throw new KeyNotFoundException($"Orden {ordenId} no encontrada");
+
+        if (string.Equals(orden.Estado, datos.Estado, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new Bital.Application.ConflictoEstadoOperativoException(
+                $"La orden ya está en {orden.Estado}.", MapearADto(orden));
+        }
+
+        if (string.Equals(orden.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new Bital.Application.ConflictoEstadoOperativoException(
+                "La orden ya está cancelada.", MapearADto(orden));
+        }
 
         var estadoAnterior = orden.Estado;
 
@@ -227,7 +247,7 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         {
             orden.Observaciones = string.IsNullOrEmpty(orden.Observaciones)
                 ? datos.Observaciones
-                : $"{orden.Observaciones}\n[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] {datos.Observaciones}";
+                : $"{orden.Observaciones}\n{HorarioOperativoHelper.MarcaTiempoColombia()} {datos.Observaciones}";
         }
 
         if (datos.Estado == "Completada")
@@ -316,6 +336,9 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             AuditoriaSnapshot.Json(new { estado = datos.Estado }),
             contexto: _contextoAuditoria);
 
+        await _realtime.NotificarOrdenAsync(MapearADto(orden), cancellationToken);
+        foreach (var dieta in orden.Dietas)
+            await _realtime.NotificarFilaAsync(DietasService.MapearADto(dieta), cancellationToken);
         return MapearADto(orden);
     }
 
@@ -333,10 +356,13 @@ public class OrdenesCocinaService : IOrdenesCocinaService
         if (orden.Estado == "Completada")
             throw new InvalidOperationException("No se puede cancelar una orden completada");
 
+        if (string.Equals(orden.Estado, "Cancelada", StringComparison.OrdinalIgnoreCase))
+            throw new Bital.Application.ConflictoEstadoOperativoException("La orden ya está cancelada.", MapearADto(orden));
+
         orden.Estado = "Cancelada";
         orden.Observaciones = string.IsNullOrEmpty(orden.Observaciones)
             ? $"Cancelada: {motivo}"
-            : $"{orden.Observaciones}\n[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] Cancelada: {motivo}";
+            : $"{orden.Observaciones}\n{HorarioOperativoHelper.MarcaTiempoColombia()} Cancelada: {motivo}";
 
         // Revertir estado de las dietas a Confirmada y desasociar de la orden.
         // Las canceladas (salida clínica) no se reactivan al cancelar la orden.
@@ -380,6 +406,9 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             AuditoriaSnapshot.Json(new { orden.NumeroOrden, motivo }),
             contexto: _contextoAuditoria);
 
+        await _realtime.NotificarOrdenAsync(MapearADto(orden), cancellationToken);
+        foreach (var dieta in orden.Dietas)
+            await _realtime.NotificarFilaAsync(DietasService.MapearADto(dieta), cancellationToken);
         return true;
     }
 
@@ -419,7 +448,9 @@ public class OrdenesCocinaService : IOrdenesCocinaService
             AuditoriaSnapshot.Json(actualizado),
             contexto: _contextoAuditoria);
 
-        return MapearADtoConDietas(orden);
+        var dtoChecklist = MapearADtoConDietas(orden);
+        await _realtime.NotificarOrdenAsync(dtoChecklist, cancellationToken);
+        return dtoChecklist;
     }
 
     private static OrdenCocinaDto MapearADto(OrdenCocina orden)

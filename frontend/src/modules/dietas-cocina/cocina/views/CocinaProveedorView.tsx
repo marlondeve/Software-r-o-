@@ -26,6 +26,7 @@ import {
 } from "@/modules/dietas-cocina/cocina/lib/ordenarOrdenesCocina"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
+import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { DietasComidaTabs } from "@/modules/dietas-cocina/dietas/components/DietasComidaTabs"
@@ -327,7 +328,7 @@ export function CocinaProveedorView() {
         descripcion: "El servidor está generando el archivo de impresión.",
       })
       try {
-        const fecha = new Date().toISOString().slice(0, 10)
+        const fecha = fechaOperativaHoy()
         await imprimirEtiquetasPdf({
           etiquetas: [etiqueta],
           nombreArchivo: `etiquetas-${orden.comida}-${fecha}.pdf`,

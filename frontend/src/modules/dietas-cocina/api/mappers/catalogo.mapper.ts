@@ -6,6 +6,7 @@ import {
   formatearFechaCatalogo,
   formatearFechaHoraCatalogo,
 } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
+import { parsearFechaApi } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import {
   normalizarTiempoComidaTarifa,
   resolverTarifaVigenteMinima,
@@ -18,7 +19,15 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function parseFechaApi(valor: unknown): Date | null {
   if (!valor) return null
-  const fecha = new Date(String(valor))
+  const texto = String(valor).trim()
+  if (!texto) return null
+  const soloFecha = texto.match(/^(\d{4}-\d{2}-\d{2})/)
+  const sufijo = texto.slice(10)
+  if (soloFecha && !/[zZ]|[+-]\d{2}:\d{2}/.test(sufijo) && !/\d{2}:\d{2}/.test(sufijo)) {
+    const fecha = new Date(`${soloFecha[1]}T12:00:00`)
+    return Number.isNaN(fecha.getTime()) ? null : fecha
+  }
+  const fecha = parsearFechaApi(texto)
   if (Number.isNaN(fecha.getTime())) return null
   if (fecha.getFullYear() < 1900) return null
   return fecha

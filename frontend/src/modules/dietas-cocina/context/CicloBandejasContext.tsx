@@ -252,8 +252,8 @@ async function completarOrdenesCocinaEnApi(
     } catch (error) {
       const mensaje =
         error instanceof Error ? error.message : "Error al completar orden"
-      // Si ya estaba completada, se puede generar etiqueta de todas formas.
-      if (/completad/i.test(mensaje) || /ya está/i.test(mensaje)) {
+      // Solo idempotencia de Completada: un 409 de cancelada no debe seguir el flujo.
+      if (/ya está en completada/i.test(mensaje) || /ya (está|esta) completad/i.test(mensaje)) {
         completadas.push(apiId)
       } else {
         fallidas.push(`${orden.paciente || apiId}: ${mensaje}`)
@@ -360,8 +360,10 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
   const estaOnlineRef = useRef(estaOnline)
   estaOnlineRef.current = estaOnline
   const sincronizandoRef = useRef(false)
-  /** Órdenes con PATCH de checklist en vuelo: el poll/GET no pisa el estado local. */
+  /** Órdenes con PATCH de checklist en vuelo: el GET no pisa el estado local. */
   const checklistPendienteRef = useRef(new Map<string, number>())
+  const recargaCicloEnVuelo = useRef<Promise<void> | null>(null)
+  const recargaCicloPendiente = useRef(false)
 
   useEffect(() => {
     return suscribirConectividadRed(setEstaOnline)
@@ -441,6 +443,27 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       )
     })
   }, [repository, syncOrdenesFromEtiquetas])
+
+  const recargarEtiquetasYOrdenes = useCallback(async () => {
+    if (recargaCicloEnVuelo.current) {
+      recargaCicloPendiente.current = true
+      await recargaCicloEnVuelo.current
+      return
+    }
+    recargaCicloEnVuelo.current = (async () => {
+      await recargarDesdeApi()
+      await recargarEtiquetas()
+    })()
+    try {
+      await recargaCicloEnVuelo.current
+    } finally {
+      recargaCicloEnVuelo.current = null
+      if (recargaCicloPendiente.current) {
+        recargaCicloPendiente.current = false
+        await recargarEtiquetasYOrdenes()
+      }
+    }
+  }, [recargarDesdeApi, recargarEtiquetas])
 
   const sincronizarOrdenesDesdeFilas = useCallback((filas: FilaDieta[]) => {
     if (!apiActiva) return
@@ -601,6 +624,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           solicitarRefreshCenso(referencia.comida)
         })
         .catch((error) => {
+          void recargarEtiquetasYOrdenes().catch(() => {})
           demoToast(
             error instanceof Error
               ? error.message
@@ -609,7 +633,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           )
         })
     },
-    [apiActiva],
+    [apiActiva, recargarEtiquetasYOrdenes],
   )
 
   const marcarComoLista = useCallback(
@@ -1027,7 +1051,18 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
 
   const marcarEtiquetasImpresas = useCallback((etiquetaIds: string[]) => {
     if (apiActiva) {
-      void etiquetasRepository.marcarImpresas(etiquetaIds).then(() => recargarEtiquetas())
+      void etiquetasRepository
+        .marcarImpresas(etiquetaIds)
+        .then(() => recargarEtiquetas())
+        .catch((error) => {
+          void recargarEtiquetas().catch(() => {})
+          demoToast(
+            error instanceof Error
+              ? error.message
+              : "No se pudieron marcar las etiquetas como impresas.",
+            "error",
+          )
+        })
       return
     }
     setEtiquetas((prev) => {
@@ -1050,7 +1085,18 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
 
   const reimprimirEtiquetas = useCallback((etiquetaIds: string[]) => {
     if (apiActiva) {
-      void etiquetasRepository.marcarReimpresas(etiquetaIds).then(() => recargarEtiquetas())
+      void etiquetasRepository
+        .marcarReimpresas(etiquetaIds)
+        .then(() => recargarEtiquetas())
+        .catch((error) => {
+          void recargarEtiquetas().catch(() => {})
+          demoToast(
+            error instanceof Error
+              ? error.message
+              : "No se pudieron reimprimir las etiquetas.",
+            "error",
+          )
+        })
       return
     }
     setEtiquetas((prev) => {
@@ -1159,6 +1205,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           await cancelarOrdenCocinaApi(ordenApiId, motivo)
           solicitarRefreshCenso(orden.comida)
         } catch (error) {
+          void recargarEtiquetasYOrdenes().catch(() => {})
           demoToast(
             error instanceof Error
               ? error.message
@@ -1176,7 +1223,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       )
       return true
     },
-    [apiActiva],
+    [apiActiva, recargarEtiquetasYOrdenes],
   )
 
   const aplicarPreEntregaLocal = useCallback(
@@ -1374,6 +1421,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           return
         } catch (error) {
           if (!esErrorRed(error)) {
+            void recargarEtiquetasYOrdenes().catch(() => {})
             demoToast(
               error instanceof Error
                 ? error.message
@@ -1400,6 +1448,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       aplicarPreEntregaLocal,
       encolarPreEntregaOffline,
       recargarEtiquetas,
+      recargarEtiquetasYOrdenes,
       etiquetasRepository,
     ],
   )
@@ -1457,6 +1506,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
           return
         } catch (error) {
           if (!esErrorRed(error)) {
+            void recargarEtiquetasYOrdenes().catch(() => {})
             demoToast(
               error instanceof Error
                 ? error.message
@@ -1478,6 +1528,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       aplicarDevolucionLocal,
       encolarDevolucionOffline,
       recargarEtiquetas,
+      recargarEtiquetasYOrdenes,
       etiquetasRepository,
     ],
   )
@@ -1618,6 +1669,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       sincronizarChecklistOrden,
       rehidratarDesdeStorage,
       sincronizarOrdenesDesdeFilas,
+      recargarEtiquetasYOrdenes,
       hidrato,
       estaOnline,
       cantidadPendientesSync,
@@ -1650,6 +1702,7 @@ export function CicloBandejasProvider({ children }: { children: ReactNode }) {
       sincronizarChecklistOrden,
       rehidratarDesdeStorage,
       sincronizarOrdenesDesdeFilas,
+      recargarEtiquetasYOrdenes,
       hidrato,
       estaOnline,
       cantidadPendientesSync,

@@ -1,5 +1,6 @@
 export {
   mapFilaDietaDtoToDomain,
+  normalizarFilaDietaDto,
   mapFilaDietaList,
   mapEventoTrazabilidadDto,
   mapSolicitudToRequest,

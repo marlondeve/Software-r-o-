@@ -1,6 +1,6 @@
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import type { ParametrosTiempoComida } from "@/modules/dietas-cocina/types/parameters"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
 
 import { ParametrosPageSkeleton } from "@/components/shared/skeletons"
@@ -21,6 +21,8 @@ import {
 } from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
 import { resolverVistaPreviaEnfermeria } from "@/modules/dietas-cocina/parametros/lib/resolverVistaPreviaEnfermeria"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 import {
   actualizarTiemposComida,
   obtenerTiemposComidaConfig,
@@ -56,6 +58,10 @@ export function TiemposRestriccionesView() {
   const [configGuardada, setConfigGuardada] = useState<ConfigTiempos>(config)
   const [cargando, setCargando] = useState(apiActiva)
   const [guardando, setGuardando] = useState(false)
+  const configRef = useRef(config)
+  const configGuardadaRef = useRef(configGuardada)
+  configRef.current = config
+  configGuardadaRef.current = configGuardada
 
   useEffect(() => {
     if (!apiActiva) return
@@ -84,6 +90,30 @@ export function TiemposRestriccionesView() {
       })
       .finally(() => setCargando(false))
   }, [apiActiva])
+
+  useRefetchOnDietasEvento(
+    [EVENTOS_DIETAS_COCINA.ParametrosActualizados],
+    () => {
+      if (!apiActiva) return
+      if (JSON.stringify(configRef.current) !== JSON.stringify(configGuardadaRef.current)) {
+        return
+      }
+      void obtenerTiemposComidaConfig()
+        .then(({ tiempos, modoCarga }) => {
+          const base = tiempos.length > 0 ? tiempos : tiemposBaseDesdeMock()
+          setTiemposBase(base)
+          const nextConfig = combinarConfigConPersistido(
+            parametrosToConfig(base, mockParametrosTiempos, modoCarga),
+            true,
+          )
+          setConfig(nextConfig)
+          setConfigGuardada(nextConfig)
+          guardarConfigTiempos(nextConfig)
+        })
+        .catch(() => {})
+    },
+    apiActiva,
+  )
 
   const vistaPrevia = useMemo(
     () => resolverVistaPreviaEnfermeria(tiemposBase, config),

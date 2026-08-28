@@ -74,7 +74,7 @@ export function NutricionistaDashboard() {
   const dashboardApi = useDashboardApi("nutricionista", comidaActiva)
 
   useEffect(() => {
-    const intervalo = window.setInterval(() => setAhora(new Date()), 60_000)
+    const intervalo = window.setInterval(() => setAhora(new Date()), 1_000)
     const onConfig = () => {
       setVersionConfigTiempos((v) => v + 1)
       setAhora(new Date())

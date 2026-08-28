@@ -13,7 +13,8 @@ public static class EtiquetasCodigoHelper
 
     public static string Generar(DateTime? utc = null)
     {
-        var fecha = (utc ?? DateTime.UtcNow).ToString("yyMMdd");
+        var instante = utc ?? DateTime.UtcNow;
+        var fecha = HorarioOperativoHelper.AHoraColombia(instante).ToString("yyMMdd");
         Span<char> sufijo = stackalloc char[4];
         Span<byte> random = stackalloc byte[4];
         RandomNumberGenerator.Fill(random);

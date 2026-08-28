@@ -1,3 +1,4 @@
+using Bital.Application;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
 using Bital.Domain.Entities.DietasCocina;
@@ -21,6 +22,7 @@ public class DietasService : IDietasService
     private readonly IOrdenesCocinaService _ordenesCocinaService;
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
+    private readonly IDietasCocinaRealtime _realtime;
     private readonly ILogger<DietasService> _logger;
 
     /// <summary>Autor de los cambios automáticos (censo, egreso, reingreso).</summary>
@@ -35,7 +37,8 @@ public class DietasService : IDietasService
         IOrdenesCocinaService ordenesCocinaService,
         IAuditoriaService auditoria,
         IAuditoriaContextoRequest contextoAuditoria,
-        ILogger<DietasService> logger)
+        ILogger<DietasService> logger,
+        IDietasCocinaRealtime? realtime = null)
     {
         _context = context;
         _atencionesQueryService = atencionesQueryService;
@@ -43,6 +46,7 @@ public class DietasService : IDietasService
         _auditoria = auditoria;
         _contextoAuditoria = contextoAuditoria;
         _logger = logger;
+        _realtime = realtime ?? NullDietasCocinaRealtime.Instance;
     }
 
     public async Task<CensoDietasDto> ObtenerCensoAsync(DateTime fecha, string comida, CancellationToken cancellationToken = default)
@@ -54,6 +58,9 @@ public class DietasService : IDietasService
         {
             throw new ArgumentException($"Tiempo de comida inválido: {comida}");
         }
+
+        await using var censoLock = await CensoHisAppLock.AdquirirAsync(
+            _context, fecha.Date, tiempoComida, cancellationToken);
 
         // 1. Obtener censo de pacientes hospitalizados dentro del host único
         // TMPFAC u otras uniones pueden repetir el mismo ingreso: una fila por persona.
@@ -78,6 +85,7 @@ public class DietasService : IDietasService
                 "Censo HIS vacío para {Fecha} {Comida}: se omite la cancelación por egreso",
                 fecha, comida);
 
+            censoLock.MarcarExito();
             return new CensoDietasDto
             {
                 FechaOperativa = fecha,
@@ -223,7 +231,21 @@ public class DietasService : IDietasService
         await ResolverNombresSolicitantesAsync(resultado.Filas, cancellationToken);
 
         // 6. Guardar nuevas filas y cancelaciones por salida clínica
+        var huboCambios = _context.ChangeTracker.HasChanges();
         await _context.SaveChangesAsync(cancellationToken);
+        censoLock.MarcarExito();
+        await censoLock.CompletarAsync(cancellationToken);
+
+        if (huboCambios)
+        {
+            await _realtime.NotificarCensoAsync(
+                new CensoActualizadoDto
+                {
+                    FechaOperativa = fecha.Date,
+                    Comida = tiempoComida.ToString(),
+                },
+                cancellationToken);
+        }
 
         // 7. Estadísticas del turno: las canceladas viajan como historial y no cuentan
         var cancelada = EstadoDieta.Cancelada.ToString();
@@ -411,7 +433,7 @@ public class DietasService : IDietasService
             orden.Estado = "Cancelada";
             orden.Observaciones = string.IsNullOrWhiteSpace(orden.Observaciones)
                 ? motivoSalida
-                : $"{orden.Observaciones}\n[{ahora:yyyy-MM-dd HH:mm}] {motivoSalida}";
+                : $"{orden.Observaciones}\n{HorarioOperativoHelper.MarcaTiempoColombia()} {motivoSalida}";
         }
 
         _logger.LogInformation(
@@ -1027,7 +1049,9 @@ public class DietasService : IDietasService
             filaDietaId,
             usuario);
 
-        return await MapearADtoConNombreAsync(fila, cancellationToken);
+        var dtoSolicitud = await MapearADtoConNombreAsync(fila, cancellationToken);
+        await _realtime.NotificarFilaAsync(dtoSolicitud, cancellationToken);
+        return dtoSolicitud;
     }
 
     public async Task<FilaDietaDto> ConfirmarDietaAsync(Guid filaDietaId, SolicitudDietaDto confirmacion, string usuario, CancellationToken cancellationToken = default)
@@ -1043,7 +1067,9 @@ public class DietasService : IDietasService
 
         if (fila.Estado != EstadoDieta.Solicitada && fila.Estado != EstadoDieta.Guardado)
         {
-            throw new InvalidOperationException($"La dieta debe estar en estado Solicitada o Guardado para ser confirmada. Estado actual: {fila.Estado}");
+            var actual = await MapearADtoConNombreAsync(fila, cancellationToken);
+            throw new ConflictoEstadoOperativoException(
+                $"La dieta ya cambió de estado ({fila.Estado}).", actual);
         }
 
         var configTiempo = await _context.TiemposComida
@@ -1089,7 +1115,9 @@ public class DietasService : IDietasService
 
         _logger.LogInformation("Dieta {DietaId} confirmada por {Usuario}", filaDietaId, usuario);
 
-        return await MapearADtoConNombreAsync(fila, cancellationToken);
+        var dtoConfirmada = await MapearADtoConNombreAsync(fila, cancellationToken);
+        await _realtime.NotificarFilaAsync(dtoConfirmada, cancellationToken);
+        return dtoConfirmada;
     }
 
     public async Task<bool> ConfirmarDietaDeprecatedAsync(Guid filaDietaId, string usuario, CancellationToken cancellationToken = default)
@@ -1216,6 +1244,22 @@ public class DietasService : IDietasService
         _logger.LogInformation("Confirmadas {Confirmadas} de {Total} dietas por {Usuario}",
             confirmadas, confirmacion.DietasIds.Count, confirmacion.Usuario);
 
+        if (confirmadas > 0)
+        {
+            var comida = filas.FirstOrDefault(f => f.Estado == EstadoDieta.Confirmada)?.Comida
+                ?? filas.FirstOrDefault()?.Comida;
+            if (comida is TiempoComida comidaNotificar)
+            {
+                await _realtime.NotificarCensoAsync(
+                    new CensoActualizadoDto
+                    {
+                        FechaOperativa = (filas.FirstOrDefault()?.FechaOperativa ?? HorarioOperativoHelper.HoyColombia()).Date,
+                        Comida = comidaNotificar.ToString(),
+                    },
+                    cancellationToken);
+            }
+        }
+
         return confirmadas;
     }
 
@@ -1229,6 +1273,12 @@ public class DietasService : IDietasService
             .FirstOrDefaultAsync(f => f.Id == filaDietaId, cancellationToken);
 
         if (fila == null) return false;
+
+        if (fila.Estado == EstadoDieta.Cancelada)
+        {
+            throw new ConflictoEstadoOperativoException(
+                "La dieta ya está cancelada.", MapearADto(fila));
+        }
 
         var configTiempo = await _context.TiemposComida
             .FirstOrDefaultAsync(t => t.Comida == fila.Comida, cancellationToken);
@@ -1283,6 +1333,7 @@ public class DietasService : IDietasService
                 motivo = cancelacion.Motivo
             });
 
+        await _realtime.NotificarFilaAsync(MapearADto(fila), cancellationToken);
         return true;
     }
 
@@ -1323,8 +1374,12 @@ public class DietasService : IDietasService
 
         if (fila.Estado != EstadoDieta.Cancelada)
         {
-            throw new InvalidOperationException(
-                $"Solo se puede reactivar una dieta cancelada. Estado actual: {fila.Estado}");
+            var actual = await MapearADtoConNombreAsync(fila, cancellationToken);
+            throw new ConflictoEstadoOperativoException(
+                fila.Estado == EstadoDieta.Pendiente
+                    ? "La dieta ya está sin solicitud."
+                    : $"Solo se puede reactivar una dieta cancelada. Estado actual: {fila.Estado}",
+                actual);
         }
 
         var estadoAnterior = fila.Estado;
@@ -1351,7 +1406,9 @@ public class DietasService : IDietasService
             filaDietaId,
             usuario);
 
-        return await MapearADtoConNombreAsync(fila, cancellationToken);
+        var dtoReactivada = await MapearADtoConNombreAsync(fila, cancellationToken);
+        await _realtime.NotificarFilaAsync(dtoReactivada, cancellationToken);
+        return dtoReactivada;
     }
 
     /// <summary>
@@ -1389,7 +1446,7 @@ public class DietasService : IDietasService
 
     public async Task<List<DietaCatalogoDto>> ObtenerCatalogoDietasAsync(CancellationToken cancellationToken = default)
     {
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = HorarioOperativoHelper.HoyColombia();
 
         var catalogo = await _context.DietasCatalogo
             .Include(d => d.HistoricoTarifas)
@@ -1478,7 +1535,7 @@ public class DietasService : IDietasService
             .FirstOrDefaultAsync(d => d.Id == id, cancellationToken)
             ?? throw new KeyNotFoundException($"Dieta de catálogo {id} no encontrada");
 
-        return MapDietaCatalogoDto(dieta, DateTime.UtcNow.Date);
+        return MapDietaCatalogoDto(dieta, HorarioOperativoHelper.HoyColombia());
     }
 
     public async Task<DietaCatalogoDto> CrearDietaCatalogoAsync(
@@ -1492,7 +1549,7 @@ public class DietasService : IDietasService
             throw new InvalidOperationException($"Ya existe una dieta con código {codigo}");
         }
 
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = HorarioOperativoHelper.HoyColombia();
         var dieta = new DietaCatalogo
         {
             Id = Guid.NewGuid(),
@@ -1541,6 +1598,7 @@ public class DietasService : IDietasService
             AuditoriaCatalogo.Entidades.DietaCatalogo, dieta.Id, null,
             new { dieta.Codigo, dieta.Nombre, dieta.Activa, tarifasIniciales = montosPorComida.Count });
 
+        await _realtime.NotificarCatalogoAsync(cancellationToken);
         return await ObtenerCatalogoDietaPorIdAsync(dieta.Id, cancellationToken);
     }
 
@@ -1605,6 +1663,7 @@ public class DietasService : IDietasService
                 dieta.Activa,
             });
 
+        await _realtime.NotificarCatalogoAsync(cancellationToken);
         return await ObtenerCatalogoDietaPorIdAsync(id, cancellationToken);
     }
 
@@ -1628,6 +1687,7 @@ public class DietasService : IDietasService
             AuditoriaCatalogo.Entidades.DietaCatalogo, id,
             new { activa = true }, new { activa = false, dieta.Codigo, dieta.Nombre });
 
+        await _realtime.NotificarCatalogoAsync(cancellationToken);
         return await ObtenerCatalogoDietaPorIdAsync(id, cancellationToken);
     }
 
@@ -1727,7 +1787,8 @@ public class DietasService : IDietasService
                 dto.MotivoCambio,
             });
 
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = HorarioOperativoHelper.HoyColombia();
+        await _realtime.NotificarCatalogoAsync(cancellationToken);
         return creadas
             .Select(t => TarifasCatalogoHelper.MapTarifaHistoricoDto(t, hoy, usuario))
             .ToList();
@@ -1800,7 +1861,7 @@ public class DietasService : IDietasService
             return;
         }
 
-        var hoy = DateTime.UtcNow.Date;
+        var hoy = HorarioOperativoHelper.HoyColombia();
         var tarifas = await _context.TarifasHistorico
             .Where(t => t.DietaCatalogoId == fila.TipoDietaId && t.Activa)
             .ToListAsync(cancellationToken);
@@ -1817,8 +1878,9 @@ public class DietasService : IDietasService
 
         if (!DietasReglasNegocio.PermiteRegistrarNovedad(fila.Estado))
         {
-            throw new InvalidOperationException(
-                $"No se puede registrar novedad en estado {fila.Estado}.");
+            throw new ConflictoEstadoOperativoException(
+                $"No se puede registrar novedad en estado {fila.Estado}.",
+                MapearADto(fila));
         }
 
         var configTiempo = await _context.TiemposComida
@@ -1860,7 +1922,7 @@ public class DietasService : IDietasService
         var nota = string.IsNullOrEmpty(detalle) ? motivo : $"{motivo}: {detalle}";
         fila.Observaciones = CombinarObservaciones(
             fila.Observaciones,
-            $"[{DateTime.UtcNow:yyyy-MM-dd HH:mm}] {nota}");
+            $"{HorarioOperativoHelper.MarcaTiempoColombia()} {nota}");
         fila.ModificadoPor = usuario;
         fila.ModificadoEn = DateTime.UtcNow;
 
@@ -1894,7 +1956,9 @@ public class DietasService : IDietasService
 
         _logger.LogInformation("Novedad registrada en dieta {DietaId} por {Usuario}: {Tipo}", filaDietaId, usuario, tipoEvento);
 
-        return await MapearADtoConNombreAsync(fila, cancellationToken);
+        var dtoNovedad = await MapearADtoConNombreAsync(fila, cancellationToken);
+        await _realtime.NotificarFilaAsync(dtoNovedad, cancellationToken);
+        return dtoNovedad;
     }
 
     public async Task<FilaDietaDto> ObtenerDetalleDietaAsync(Guid filaDietaId, CancellationToken cancellationToken = default)
@@ -1984,7 +2048,7 @@ public class DietasService : IDietasService
 
         return new CensoDietasDto
         {
-            FechaOperativa = filtros.Fecha ?? DateTime.UtcNow.Date,
+            FechaOperativa = filtros.Fecha ?? HorarioOperativoHelper.HoyColombia(),
             Comida = filtros.Comida ?? "Todos",
             TotalPacientes = filas.Count,
             DietasConfirmadas = filas.Count(f => f.Estado == EstadoDieta.Confirmada),
@@ -2260,7 +2324,7 @@ public class DietasService : IDietasService
         }
     }
 
-    private static FilaDietaDto MapearADto(FilaDieta fila)
+    internal static FilaDietaDto MapearADto(FilaDieta fila)
     {
         return new FilaDietaDto
         {

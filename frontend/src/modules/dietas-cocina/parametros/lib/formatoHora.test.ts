@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   formatearFechaHoraEnCadena,
   formatearFechaHoraLocalEtiqueta,
+  parsearFechaApi,
 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 
 describe("formatearFechaHoraEnCadena", () => {
@@ -28,5 +29,17 @@ describe("formatearFechaHoraLocalEtiqueta", () => {
   it("formatea un instante UTC como hora Colombia", () => {
     const fecha = new Date("2026-08-26T13:45:00Z")
     expect(formatearFechaHoraLocalEtiqueta(fecha)).toBe("26/08/2026 08:45 a. m.")
+  })
+})
+
+describe("parsearFechaApi", () => {
+  it("trata ISO sin zona como UTC", () => {
+    const fecha = parsearFechaApi("2026-08-26T20:45:00")
+    expect(fecha.toISOString()).toBe("2026-08-26T20:45:00.000Z")
+  })
+
+  it("respeta el sufijo Z ya presente", () => {
+    const fecha = parsearFechaApi("2026-08-26T20:45:00Z")
+    expect(fecha.toISOString()).toBe("2026-08-26T20:45:00.000Z")
   })
 })

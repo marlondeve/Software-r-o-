@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react"
 
+import { BitalApiError } from "@/api/client"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api/flags"
 import { estaOnlineAhora } from "@/hooks/useConectividadRed"
 import { requiereConsistencia } from "@/modules/dietas-cocina/lib/comidaOperativa"
@@ -26,16 +27,28 @@ import type {
   NovedadDietaPayload,
 } from "@/modules/dietas-cocina/types/repositories"
 import type { DatosSolicitudDietaInput } from "@/modules/dietas-cocina/api/mappers"
+import {
+  mapFilaDietaDtoToDomain,
+  normalizarFilaDietaDto,
+} from "@/modules/dietas-cocina/api/mappers"
 import { configDietasOperativas, mockDietas, MOCK_CATALOGO_DIETAS } from "@/modules/dietas-cocina/dietas/datos/mockDietas"
 import { obtenerComidaActivaOperativa } from "@/modules/dietas-cocina/config/operativa-defaults"
-import { solicitarRefreshCenso } from "@/modules/dietas-cocina/lib/cocinaSyncBus"
 import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
+import { invalidarCacheCatalogoDietas } from "@/modules/dietas-cocina/api/services/dietas.service"
+import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import { suscribirRefreshCenso } from "@/modules/dietas-cocina/lib/cocinaSyncBus"
 import {
   cargarDietasOperativas,
   guardarDietasOperativas,
 } from "@/modules/dietas-cocina/lib/dietasStorage"
-import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
+import {
+  deduplicarFilasPorPacienteComida,
+  reemplazarFilaPorIdOIdentidad,
+} from "@/modules/dietas-cocina/lib/fusionarFilasDieta"
+import {
+  EVENTOS_DIETAS_COCINA,
+  suscribirEventosDietasCocina,
+} from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
 
 const GUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -130,6 +143,7 @@ export interface DietasOperativasContextValue {
   registrarNovedadApi: (id: string, payload: NovedadDietaPayload) => Promise<FilaDieta>
   obtenerDetalleApi: (id: string) => Promise<FilaDieta>
   obtenerHistorialApi: (id: string) => Promise<EventoTrazabilidad[]>
+  aplicarFilaRemota: (fila: FilaDieta) => void
 }
 
 const DietasOperativasContext = createContext<DietasOperativasContextValue | null>(
@@ -166,6 +180,18 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       .catch(() => setCatalogo([]))
   }, [apiActiva, dietasRepository])
 
+  useEffect(() => {
+    if (!apiActiva) return
+    return suscribirEventosDietasCocina((evento) => {
+      if (evento.tipo !== EVENTOS_DIETAS_COCINA.CatalogoActualizado) return
+      invalidarCacheCatalogoDietas()
+      void dietasRepository
+        .obtenerCatalogo()
+        .then(setCatalogo)
+        .catch(() => {})
+    })
+  }, [apiActiva, dietasRepository])
+
   const actualizarFila = useCallback(
     (id: string, cambios: Partial<FilaDieta>) => {
       setFilas((prev) =>
@@ -176,17 +202,31 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
   )
 
   const reemplazarFila = useCallback((fila: FilaDieta) => {
-    setFilas((prev) => {
-      const existe = prev.some((f) => f.id === fila.id)
-      if (existe) {
-        return prev.map((f) => (f.id === fila.id ? fila : f))
-      }
-      return [...prev, fila]
-    })
+    setFilas((prev) => reemplazarFilaPorIdOIdentidad(prev, fila))
   }, [])
+
+  const aplicarFilaRemota = reemplazarFila
+
+  const aplicarConflictoFila = useCallback(
+    (error: unknown) => {
+      if (!(error instanceof BitalApiError) || error.status !== 409) return
+      if (!error.estadoActual || typeof error.estadoActual !== "object") return
+      const fila = mapFilaDietaDtoToDomain(normalizarFilaDietaDto(error.estadoActual))
+      if (fila.id || fila.pacienteId || fila.cedula) reemplazarFila(fila)
+    },
+    [reemplazarFila],
+  )
+
+  const syncEnVueloRef = useRef(false)
+  const syncPendienteRef = useRef<Set<TiempoComida>>(new Set())
 
   const sincronizarCenso = useCallback(
     async (comida: TiempoComida = "almuerzo"): Promise<number> => {
+      if (syncEnVueloRef.current) {
+        syncPendienteRef.current.add(comida)
+        return 0
+      }
+      syncEnVueloRef.current = true
       setSincronizandoCenso(true)
       setErrorSincronizacion(null)
 
@@ -195,7 +235,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
           requiereConexionApi()
           const { filas: filasFusionadas, totalEnCenso } =
             await sincronizarFilasDesdeCensoApi(comida, filasRef.current)
-          setFilas(filasFusionadas)
+          setFilas(deduplicarFilasPorPacienteComida(filasFusionadas))
           setUltimaSincronizacion(formatearHoraSincronizacion())
           return totalEnCenso
         }
@@ -214,7 +254,9 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
               id: fila.id || `censo-${Date.now()}-${index}`,
             }))
           resultado = nuevos.length
-          return nuevos.length > 0 ? [...prev, ...nuevos] : prev
+          return deduplicarFilasPorPacienteComida(
+            nuevos.length > 0 ? [...prev, ...nuevos] : prev,
+          )
         })
         setUltimaSincronizacion(formatearHoraSincronizacion())
         return resultado
@@ -227,6 +269,12 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
         throw error
       } finally {
         setSincronizandoCenso(false)
+        syncEnVueloRef.current = false
+        const [siguiente] = syncPendienteRef.current
+        if (siguiente) {
+          syncPendienteRef.current.delete(siguiente)
+          void sincronizarCenso(siguiente)
+        }
       }
     },
     [apiActiva, dietasRepository],
@@ -239,7 +287,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
     setSincronizandoCenso(true)
     void cargarFilasCensoDesdeApi(obtenerComidaActivaOperativa(), [])
       .then(({ filas: filasCargadas, totalEnCenso }) => {
-        setFilas(filasCargadas)
+        setFilas(deduplicarFilasPorPacienteComida(filasCargadas))
         setUltimaSincronizacion(formatearHoraSincronizacion())
         if (totalEnCenso === 0) {
           setErrorSincronizacion(null)
@@ -289,11 +337,16 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
-      const fila = await dietasRepository.guardarSolicitud(filaId, datos)
-      reemplazarFila(fila)
-      return fila
+      try {
+        const fila = await dietasRepository.guardarSolicitud(filaId, datos)
+        reemplazarFila(fila)
+        return fila
+      } catch (error) {
+        aplicarConflictoFila(error)
+        throw error
+      }
     },
-    [apiActiva, dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila, aplicarConflictoFila],
   )
 
   const confirmarDietaApi = useCallback(
@@ -301,12 +354,16 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
-      const fila = await dietasRepository.confirmar(filaId)
-      reemplazarFila(fila)
-      solicitarRefreshCenso(fila.comida)
-      return fila
+      try {
+        const fila = await dietasRepository.confirmar(filaId)
+        reemplazarFila(fila)
+        return fila
+      } catch (error) {
+        aplicarConflictoFila(error)
+        throw error
+      }
     },
-    [apiActiva, dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila, aplicarConflictoFila],
   )
 
   const confirmarMasivoApi = useCallback(
@@ -331,11 +388,16 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
-      const fila = await dietasRepository.cancelar(filaId, payload)
-      reemplazarFila(fila)
-      return fila
+      try {
+        const fila = await dietasRepository.cancelar(filaId, payload)
+        reemplazarFila(fila)
+        return fila
+      } catch (error) {
+        aplicarConflictoFila(error)
+        throw error
+      }
     },
-    [apiActiva, dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila, aplicarConflictoFila],
   )
 
   const reactivarDietaCanceladaApi = useCallback(
@@ -343,11 +405,16 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
-      const fila = await dietasRepository.reactivarCancelada(filaId)
-      reemplazarFila(fila)
-      return fila
+      try {
+        const fila = await dietasRepository.reactivarCancelada(filaId)
+        reemplazarFila(fila)
+        return fila
+      } catch (error) {
+        aplicarConflictoFila(error)
+        throw error
+      }
     },
-    [apiActiva, dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila, aplicarConflictoFila],
   )
 
   const registrarNovedadApi = useCallback(
@@ -355,11 +422,16 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       if (apiActiva) requiereConexionApi()
       const { id: filaId, filas: filasSync } = await resolverIdFilaApi(id, filasRef.current)
       if (filasSync !== filasRef.current) setFilas(filasSync)
-      const fila = await dietasRepository.registrarNovedad(filaId, payload)
-      reemplazarFila(fila)
-      return fila
+      try {
+        const fila = await dietasRepository.registrarNovedad(filaId, payload)
+        reemplazarFila(fila)
+        return fila
+      } catch (error) {
+        aplicarConflictoFila(error)
+        throw error
+      }
     },
-    [apiActiva, dietasRepository, reemplazarFila],
+    [apiActiva, dietasRepository, reemplazarFila, aplicarConflictoFila],
   )
 
   const obtenerDetalleApi = useCallback(
@@ -419,6 +491,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       registrarNovedadApi,
       obtenerDetalleApi,
       obtenerHistorialApi,
+      aplicarFilaRemota,
     }),
     [
       filas,
@@ -441,6 +514,7 @@ export function DietasOperativasProvider({ children }: { children: ReactNode }) 
       registrarNovedadApi,
       obtenerDetalleApi,
       obtenerHistorialApi,
+      aplicarFilaRemota,
     ],
   )
 

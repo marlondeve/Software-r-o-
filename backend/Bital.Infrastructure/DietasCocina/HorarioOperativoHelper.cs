@@ -3,16 +3,19 @@ namespace Bital.Infrastructure.DietasCocina;
 /// <summary>
 /// Hora operativa del hospital (America/Bogota) para ventanas de solicitud y novedades.
 /// </summary>
-internal static class HorarioOperativoHelper
+public static class HorarioOperativoHelper
 {
     private static readonly TimeZoneInfo ZonaColombia = ResolverZonaColombia();
 
-    internal static DateTime AhoraColombia() =>
+    public static DateTime AhoraColombia() =>
         TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ZonaColombia);
 
-    internal static DateTime HoyColombia() => AhoraColombia().Date;
+    public static DateTime HoyColombia() => AhoraColombia().Date;
 
-    internal static DateTime AHoraColombia(DateTime fechaHora)
+    public static string MarcaTiempoColombia() =>
+        $"[{AhoraColombia():yyyy-MM-dd HH:mm}]";
+
+    public static DateTime AHoraColombia(DateTime fechaHora)
     {
         var comoUtc = fechaHora.Kind switch
         {

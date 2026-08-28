@@ -7,11 +7,13 @@ const SESSION_KEY = "bital:session"
 
 export class BitalApiError extends Error {
   status?: number
+  estadoActual?: unknown
 
-  constructor(message: string, status?: number) {
+  constructor(message: string, status?: number, estadoActual?: unknown) {
     super(message)
     this.name = "BitalApiError"
     this.status = status
+    this.estadoActual = estadoActual
   }
 }
 
@@ -41,6 +43,7 @@ function extraerMensajeError(
 ): string {
   const body = error.response?.data
   if (body?.message) return body.message
+  if (typeof body?.error === "string" && body.error.trim()) return body.error
   if (body?.errors && typeof body.errors === "object") {
     const mensajes = Object.entries(body.errors).flatMap(([campo, msgs]) => {
       const lista = Array.isArray(msgs) ? msgs : [msgs]
@@ -62,7 +65,6 @@ function extraerMensajeError(
   if (body?.title?.toLowerCase().includes("validation")) {
     return "Revise los datos del formulario e intente de nuevo."
   }
-  if (body?.error) return body.error
   if (error.response?.status === 404) {
     return import.meta.env.DEV
       ? "Servicio no disponible. Verifique que el backend esté en ejecución."
@@ -107,7 +109,11 @@ apiClient.interceptors.response.use(
     }
 
     return Promise.reject(
-      new BitalApiError(extraerMensajeError(error), status),
+      new BitalApiError(
+        extraerMensajeError(error),
+        status,
+        (error.response?.data as { estadoActual?: unknown } | undefined)?.estadoActual,
+      ),
     )
   },
 )

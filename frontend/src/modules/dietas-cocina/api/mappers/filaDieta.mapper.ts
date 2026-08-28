@@ -46,6 +46,18 @@ export function normalizarEstadoDietaDesdeApi(valor: unknown): EstadoDieta {
   return mapa[estado] ?? "no-solicitada"
 }
 
+/** SignalR/JSON puede llegar camelCase o PascalCase. */
+export function normalizarFilaDietaDto(raw: unknown): FilaDietaDto {
+  if (!raw || typeof raw !== "object") return {} as FilaDietaDto
+  const r = raw as Record<string, unknown>
+  if (r.id != null || r.pacienteId != null) return raw as FilaDietaDto
+  const plano: Record<string, unknown> = {}
+  for (const [clave, valor] of Object.entries(r)) {
+    plano[clave.charAt(0).toLowerCase() + clave.slice(1)] = valor
+  }
+  return plano as FilaDietaDto
+}
+
 export function mapFilaDietaDtoToDomain(
   dto: FilaDietaDto,
   nombresCatalogo?: Map<string, string>,

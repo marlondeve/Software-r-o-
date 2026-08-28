@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Bookmark, CalendarDays, Download } from "lucide-react"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -27,6 +27,8 @@ import {
   descargarArchivoDemo,
 } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { descargarBlob } from "@/modules/dietas-cocina/lib/descargarBlob"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 
 export function AuditoriaPage() {
   const apiActiva = usarApiDietasCocina()
@@ -47,7 +49,7 @@ export function AuditoriaPage() {
 
   const busquedaApi = busqueda.trim()
 
-  useEffect(() => {
+  const recargarAuditoria = useCallback(() => {
     if (!apiActiva) return
     setCargandoAuditoria(true)
     setErrorAuditoria(null)
@@ -80,6 +82,25 @@ export function AuditoriaPage() {
       })
       .finally(() => setCargandoAuditoria(false))
   }, [apiActiva, paginaActual, modulo, accion, actor, resultado, busquedaApi])
+
+  useEffect(() => {
+    recargarAuditoria()
+  }, [recargarAuditoria])
+
+  useRefetchOnDietasEvento(
+    [
+      EVENTOS_DIETAS_COCINA.FilaActualizada,
+      EVENTOS_DIETAS_COCINA.CensoActualizado,
+      EVENTOS_DIETAS_COCINA.OrdenActualizada,
+      EVENTOS_DIETAS_COCINA.EtiquetasActualizadas,
+      EVENTOS_DIETAS_COCINA.PermisosActualizados,
+      EVENTOS_DIETAS_COCINA.CatalogoActualizado,
+      EVENTOS_DIETAS_COCINA.ParametrosActualizados,
+      EVENTOS_DIETAS_COCINA.ConciliacionActualizada,
+    ],
+    recargarAuditoria,
+    apiActiva,
+  )
 
   const filasBase = apiActiva ? filasApi : data.filas
 

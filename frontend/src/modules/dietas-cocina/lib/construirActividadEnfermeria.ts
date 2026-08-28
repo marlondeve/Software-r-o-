@@ -12,7 +12,7 @@ import {
   filtrarEtiquetasDelPeriodoOperativo,
   resolverContextoFilaDieta,
 } from "@/modules/dietas-cocina/lib/resolverOrdenEtiquetaFila"
-import { formatearHoraDesdeFecha } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
+import { formatearHoraDesdeFecha, parsearFechaApi } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 
 export interface ActividadEnfermeriaFila {
   paciente: string
@@ -26,15 +26,16 @@ export interface ActividadEnfermeriaFila {
 
 function parseSolicitadoEnMs(valor?: string): number {
   if (!valor?.trim()) return 0
-  const parsed = Date.parse(valor.trim())
-  return Number.isNaN(parsed) ? 0 : parsed
+  const fecha = parsearFechaApi(valor.trim())
+  const ms = fecha.getTime()
+  return Number.isNaN(ms) ? 0 : ms
 }
 
 function horaActividadDesdeTexto(valor?: string): string {
   if (!valor?.trim()) return "—"
-  const parsed = Date.parse(valor.trim())
-  if (!Number.isNaN(parsed)) {
-    return formatearHoraDesdeFecha(new Date(parsed))
+  const fecha = parsearFechaApi(valor.trim())
+  if (!Number.isNaN(fecha.getTime())) {
+    return formatearHoraDesdeFecha(fecha)
   }
   const match = valor.match(/(\d{1,2}:\d{2}\s*(?:a\.\s*m\.|p\.\s*m\.)?)/i)
   return match?.[1] ?? "—"

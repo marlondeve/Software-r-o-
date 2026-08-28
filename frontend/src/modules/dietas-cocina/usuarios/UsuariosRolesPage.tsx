@@ -23,6 +23,8 @@ import { UsuariosTabla } from "@/modules/dietas-cocina/usuarios/components/Usuar
 import { cargarMockUsuarios } from "@/modules/dietas-cocina/usuarios/datos/cargarMockUsuarios"
 import { USUARIOS_FILTROS_UI } from "@/modules/dietas-cocina/usuarios/datos/usuariosFiltrosUi"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 import { restablecerPasswordUsuario } from "@/api/authModulo.service"
 import {
   crearUsuario as crearUsuarioApi,
@@ -177,6 +179,15 @@ export function UsuariosRolesPage() {
   useEffect(() => {
     void cargarUsuarios()
   }, [cargarUsuarios])
+
+  useRefetchOnDietasEvento(
+    [EVENTOS_DIETAS_COCINA.PermisosActualizados],
+    () => {
+      void cargarUsuarios()
+      cargarRoles()
+    },
+    apiActiva,
+  )
 
   useEffect(() => {
     setPaginaActual(1)

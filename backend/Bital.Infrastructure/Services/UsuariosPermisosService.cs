@@ -16,17 +16,20 @@ public class UsuariosPermisosService : IUsuariosPermisosService
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<UsuariosPermisosService> _logger;
+    private readonly IDietasCocinaRealtime _realtime;
 
     public UsuariosPermisosService(
         BitalNegocioDbContext context,
         IAuditoriaService auditoria,
         IAuditoriaContextoRequest contextoAuditoria,
-        ILogger<UsuariosPermisosService> logger)
+        ILogger<UsuariosPermisosService> logger,
+        IDietasCocinaRealtime? realtime = null)
     {
         _context = context;
         _auditoria = auditoria;
         _contextoAuditoria = contextoAuditoria;
         _logger = logger;
+        _realtime = realtime ?? NullDietasCocinaRealtime.Instance;
     }
 
     public async Task<ListaUsuariosDto> ObtenerUsuariosAsync(FiltrosUsuariosDto filtros)
@@ -117,6 +120,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         Auditar(AuditoriaCatalogo.Modulos.Usuarios, AuditoriaCatalogo.Acciones.Crear, creadoPor,
             AuditoriaCatalogo.Entidades.UsuarioModulo, usuario.Id, null,
             new { usuario.NombreCompleto, usuario.Email, usuario.Identificacion, rol = rol.Nombre });
+        await _realtime.NotificarPermisosAsync();
         return MapUsuarioToDto(usuario);
     }
 
@@ -168,6 +172,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         Auditar(AuditoriaCatalogo.Modulos.Usuarios, AuditoriaCatalogo.Acciones.Editar, identificacion ?? usuario.Email,
             AuditoriaCatalogo.Entidades.UsuarioModulo, usuario.Id, antes,
             new { dto.NombreCompleto, dto.Email, dto.Identificacion, dto.Observaciones });
+        await _realtime.NotificarPermisosAsync();
         return MapUsuarioToDto(usuario);
     }
 
@@ -190,6 +195,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             usuario.Identificacion ?? usuario.Email, AuditoriaCatalogo.Entidades.UsuarioModulo, usuario.Id,
             new { rol = rolAnterior }, new { rol = rol.Nombre });
 
+        await _realtime.NotificarPermisosAsync();
         return MapUsuarioToDto(usuario);
     }
 
@@ -208,6 +214,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             usuario.Identificacion ?? usuario.Email, AuditoriaCatalogo.Entidades.UsuarioModulo, usuario.Id,
             new { activo = activoAnterior }, new { activo = dto.Activo });
 
+        await _realtime.NotificarPermisosAsync();
         return MapUsuarioToDto(usuario);
     }
 
@@ -272,6 +279,8 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             AuditoriaCatalogo.Entidades.RolModulo, rol.Id, null,
             new { rol.Nombre, permisos = rutas.Count });
 
+        await _realtime.NotificarPermisosAsync();
+
         return new RolModuloDto
         {
             Id = rol.Id,
@@ -306,6 +315,8 @@ public class UsuariosPermisosService : IUsuariosPermisosService
         Auditar(AuditoriaCatalogo.Modulos.Roles, AuditoriaCatalogo.Acciones.Renombrar, nombreAnterior,
             AuditoriaCatalogo.Entidades.RolModulo, rol.Id,
             new { nombre = nombreAnterior }, new { nombre });
+
+        await _realtime.NotificarPermisosAsync();
 
         var totalPermisos = await _context.PermisosRol
             .CountAsync(p => p.RolModuloId == rol.Id && p.Permitido);
@@ -378,6 +389,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
             AuditoriaCatalogo.Entidades.RolModulo, rol.Id,
             new { rutas = rutasAnteriores },
             new { rutas = rutas.Select(r => r.ToString()).ToList() });
+        await _realtime.NotificarPermisosAsync();
     }
 
     public async Task EliminarRolAsync(Guid rolModuloId)
@@ -400,6 +412,7 @@ public class UsuariosPermisosService : IUsuariosPermisosService
 
         Auditar(AuditoriaCatalogo.Modulos.Roles, AuditoriaCatalogo.Acciones.Eliminar, "system",
             AuditoriaCatalogo.Entidades.RolModulo, rolModuloId, new { nombre = nombreRol }, null);
+        await _realtime.NotificarPermisosAsync();
     }
 
     public async Task<Guid?> ResolverRolModuloIdPorNombreAsync(string nombreRol)

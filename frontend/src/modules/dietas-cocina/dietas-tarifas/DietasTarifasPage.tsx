@@ -27,6 +27,8 @@ import {
   registrarTarifaDieta,
 } from "@/modules/dietas-cocina/api/services/dietas.service"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 import { fechaCatalogoAISO } from "@/modules/dietas-cocina/dietas-tarifas/lib/dietasTarifasEstilos"
 
 export function DietasTarifasPage() {
@@ -45,24 +47,34 @@ export function DietasTarifasPage() {
   const [activarDieta, setActivarDieta] = useState<DietaCatalogo | null>(null)
   const [cargandoCatalogo, setCargandoCatalogo] = useState(false)
 
-  const recargarCatalogo = useCallback(async () => {
+  const recargarCatalogo = useCallback(async (mostrarCarga = true) => {
     if (!apiActiva) return
-    setCargandoCatalogo(true)
+    invalidarCacheCatalogoDietas()
+    if (mostrarCarga) setCargandoCatalogo(true)
     try {
       const catalogo = await obtenerCatalogoDietas()
       setDietas(mapCatalogoList(catalogo))
     } catch (error) {
+      if (!mostrarCarga) return
       const detalle =
         error instanceof Error && error.message ? `: ${error.message}` : ""
       demoToast(`No se pudo cargar el catálogo de dietas${detalle}`, "error")
     } finally {
-      setCargandoCatalogo(false)
+      if (mostrarCarga) setCargandoCatalogo(false)
     }
   }, [apiActiva])
 
   useEffect(() => {
     void recargarCatalogo()
   }, [recargarCatalogo])
+
+  useRefetchOnDietasEvento(
+    [EVENTOS_DIETAS_COCINA.CatalogoActualizado],
+    () => {
+      void recargarCatalogo(false)
+    },
+    apiActiva,
+  )
 
   useEffect(() => {
     if (searchParams.get("crear") === "1") {

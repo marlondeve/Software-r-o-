@@ -36,6 +36,7 @@ export interface CicloBandejasContextValue {
   hidrato: boolean
   rehidratarDesdeStorage: () => void
   sincronizarOrdenesDesdeFilas: (filas: FilaDieta[]) => void
+  recargarEtiquetasYOrdenes: () => Promise<void>
   estaOnline: boolean
   cantidadPendientesSync: number
   cantidadConflictosSync: number

@@ -10,6 +10,7 @@ import {
   etiquetaEntidad,
   MODULO_API_A_UI,
 } from "@/modules/dietas-cocina/auditoria/lib/auditoriaCatalogo"
+import { parsearFechaApi } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 import {
   cambiosFormateadosALineas,
   formatearCambiosAuditoria,
@@ -35,7 +36,7 @@ function normalizarResultado(valor: unknown): ResultadoAuditoria {
 function formatearFechaEvento(valor: unknown): string {
   const texto = String(valor ?? "").trim()
   if (!texto) return ""
-  const fecha = new Date(texto)
+  const fecha = parsearFechaApi(texto)
   if (Number.isNaN(fecha.getTime())) return texto
   return formatearFechaHoraCatalogo(fecha)
 }

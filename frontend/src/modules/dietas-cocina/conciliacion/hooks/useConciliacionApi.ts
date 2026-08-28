@@ -1,6 +1,7 @@
 import type { FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
 import { useCallback, useEffect, useMemo, useState } from "react"
 
+import { TAMANO_PAGINA_TABLA } from "@/lib/tamanoPaginaTabla"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
   listarConciliacion,
@@ -12,7 +13,8 @@ import { CONCILIACION_FILTROS_UI } from "@/modules/dietas-cocina/config/concilia
 import {
   calcularKpisConciliacion,
 } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionFiltros"
-import { TAMANO_PAGINA_TABLA } from "@/lib/tamanoPaginaTabla"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 
 export function useConciliacionApi() {
   const apiActiva = usarApiDietasCocina()
@@ -62,6 +64,20 @@ export function useConciliacionApi() {
   useEffect(() => {
     if (apiActiva) void recargar()
   }, [apiActiva, recargar])
+
+  useRefetchOnDietasEvento(
+    [
+      EVENTOS_DIETAS_COCINA.ConciliacionActualizada,
+      EVENTOS_DIETAS_COCINA.FilaActualizada,
+      EVENTOS_DIETAS_COCINA.CensoActualizado,
+      EVENTOS_DIETAS_COCINA.OrdenActualizada,
+      EVENTOS_DIETAS_COCINA.EtiquetasActualizadas,
+    ],
+    () => {
+      void recargar()
+    },
+    apiActiva,
+  )
 
   useEffect(() => {
     setPaginaActual(1)

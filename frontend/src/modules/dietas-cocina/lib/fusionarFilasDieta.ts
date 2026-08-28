@@ -191,3 +191,30 @@ export function fusionarFilasPorComida(
     ...conservadas,
   ])
 }
+
+/** Sustituye por id o por paciente+comida+fecha. Nunca concatena un duplicado. */
+export function reemplazarFilaPorIdOIdentidad(
+  filas: FilaDieta[],
+  fila: FilaDieta,
+): FilaDieta[] {
+  const porId = filas.findIndex((f) => f.id === fila.id)
+  let siguiente: FilaDieta[]
+  if (porId >= 0) {
+    siguiente = filas.map((f) => (f.id === fila.id ? fila : f))
+  } else {
+    const porIdentidad = filas.findIndex(
+      (f) =>
+        f.comida === fila.comida
+        && (!fila.fechaOperativa
+          || !f.fechaOperativa
+          || f.fechaOperativa === fila.fechaOperativa)
+        && mismaIdentidadPacienteDieta(f, fila),
+    )
+    if (porIdentidad >= 0) {
+      siguiente = filas.map((item, i) => (i === porIdentidad ? fila : item))
+    } else {
+      siguiente = [...filas, fila]
+    }
+  }
+  return deduplicarFilasPorPacienteComida(siguiente)
+}

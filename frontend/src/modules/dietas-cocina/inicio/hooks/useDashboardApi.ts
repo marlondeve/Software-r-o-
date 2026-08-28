@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
@@ -10,6 +10,8 @@ import {
   obtenerDashboardNutricionista,
   obtenerDashboardProveedor,
 } from "@/modules/dietas-cocina/api/services/dashboards.service"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 import type { DashboardDto } from "@/modules/dietas-cocina/types/api-dtos"
 import type { TiempoComida } from "@/modules/dietas-cocina/types/enums"
 
@@ -23,24 +25,46 @@ export function useDashboardApi(
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!apiActiva) return
-    setCargando(true)
-    setError(null)
-    const cargar =
-      rol === "nutricionista"
-        ? obtenerDashboardNutricionista(comida)
-        : rol === "proveedor"
-          ? obtenerDashboardProveedor(comida)
-          : obtenerDashboardEnfermera(comida, pabellon)
+  const recargar = useCallback(
+    (mostrarCarga = false) => {
+      if (!apiActiva) return
+      if (mostrarCarga) setCargando(true)
+      setError(null)
+      const cargar =
+        rol === "nutricionista"
+          ? obtenerDashboardNutricionista(comida)
+          : rol === "proveedor"
+            ? obtenerDashboardProveedor(comida)
+            : obtenerDashboardEnfermera(comida, pabellon)
 
-    void cargar
-      .then(setData)
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Error al cargar dashboard"),
-      )
-      .finally(() => setCargando(false))
-  }, [apiActiva, rol, comida, pabellon])
+      void cargar
+        .then(setData)
+        .catch((err) =>
+          setError(err instanceof Error ? err.message : "Error al cargar dashboard"),
+        )
+        .finally(() => {
+          if (mostrarCarga) setCargando(false)
+        })
+    },
+    [apiActiva, rol, comida, pabellon],
+  )
+
+  useEffect(() => {
+    recargar(true)
+  }, [recargar])
+
+  useRefetchOnDietasEvento(
+    [
+      EVENTOS_DIETAS_COCINA.FilaActualizada,
+      EVENTOS_DIETAS_COCINA.CensoActualizado,
+      EVENTOS_DIETAS_COCINA.OrdenActualizada,
+      EVENTOS_DIETAS_COCINA.EtiquetasActualizadas,
+      EVENTOS_DIETAS_COCINA.ParametrosActualizados,
+      EVENTOS_DIETAS_COCINA.CatalogoActualizado,
+    ],
+    () => recargar(false),
+    apiActiva,
+  )
 
   const kpis = useMemo(() => mapKpisDashboardApi(data?.kpis), [data])
 

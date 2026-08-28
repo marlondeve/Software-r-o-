@@ -19,17 +19,20 @@ public class ConciliacionService : IConciliacionService
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<ConciliacionService> _logger;
+    private readonly IDietasCocinaRealtime _realtime;
 
     public ConciliacionService(
         BitalNegocioDbContext context,
         IAuditoriaService auditoria,
         IAuditoriaContextoRequest contextoAuditoria,
-        ILogger<ConciliacionService> logger)
+        ILogger<ConciliacionService> logger,
+        IDietasCocinaRealtime? realtime = null)
     {
         _context = context;
         _auditoria = auditoria;
         _contextoAuditoria = contextoAuditoria;
         _logger = logger;
+        _realtime = realtime ?? NullDietasCocinaRealtime.Instance;
     }
 
     public async Task<ListaConciliacionDto> ObtenerConciliacionAsync(
@@ -246,6 +249,7 @@ public class ConciliacionService : IConciliacionService
             "Línea de conciliación {Id} marcada como conciliada por {Usuario}: {Motivo}",
             id, usuario, datos.Motivo);
 
+        await _realtime.NotificarConciliacionAsync(cancellationToken);
         return MapearADto(fila);
     }
 
@@ -285,6 +289,7 @@ public class ConciliacionService : IConciliacionService
             "Línea de conciliación {Id} marcada como pendiente revisión por {Usuario}: {Motivo}",
             id, usuario, datos.Motivo);
 
+        await _realtime.NotificarConciliacionAsync(cancellationToken);
         return MapearADto(fila);
     }
 
@@ -409,6 +414,7 @@ public class ConciliacionService : IConciliacionService
             null, new { url, nombreArchivo });
 
         _logger.LogInformation("Factura cargada para conciliación {Id}: {Url}", id, url);
+        await _realtime.NotificarConciliacionAsync(cancellationToken);
         return MapearADto(fila);
     }
 

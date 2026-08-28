@@ -9,6 +9,8 @@ import {
   guardarReporteEnCache,
 } from "@/modules/dietas-cocina/lib/reportesCacheStorage"
 import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 
 type ReporteView = ReturnType<typeof mapReporteDto>
 
@@ -92,6 +94,29 @@ export function useReporteApi({
     }
     // Intencional: cargar/mapear vía ref para no re-disparar el fetch en cada render.
   }, [apiActiva, tipo, filtrosKey])
+
+  useRefetchOnDietasEvento(
+    [
+      EVENTOS_DIETAS_COCINA.FilaActualizada,
+      EVENTOS_DIETAS_COCINA.CensoActualizado,
+      EVENTOS_DIETAS_COCINA.OrdenActualizada,
+      EVENTOS_DIETAS_COCINA.EtiquetasActualizadas,
+    ],
+    () => {
+      if (!apiActiva || !estaOnlineAhora()) return
+      const filtrosCache: FiltrosReporteCache = JSON.parse(filtrosKey)
+      void cargarRef
+        .current()
+        .then((resp) => {
+          const mapped = mapearRef.current(resp)
+          setReporteApi(mapped)
+          guardarReporteEnCache(tipo, filtrosCache, mapped)
+          setTextoActualizacion(formatearUltimaActualizacionReporte(new Date()))
+        })
+        .catch(() => {})
+    },
+    apiActiva,
+  )
 
   return {
     reporteApi,

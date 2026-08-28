@@ -100,7 +100,7 @@ export function DietasSolicitudSheet({
   useEffect(() => {
     if (!open) return
     setAhora(new Date())
-    const timer = window.setInterval(() => setAhora(new Date()), 60_000)
+    const timer = window.setInterval(() => setAhora(new Date()), 1_000)
     const onConfig = () => setAhora(new Date())
     window.addEventListener(CONFIG_TIEMOS_CAMBIO_EVENTO, onConfig)
     return () => {

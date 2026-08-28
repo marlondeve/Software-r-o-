@@ -16,6 +16,8 @@ import {
   obtenerTiposPaciente,
 } from "@/modules/dietas-cocina/api/services/parametros.service"
 import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
+import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
 import { mockTiposPaciente } from "@/modules/dietas-cocina/parametros/datos/mockTiposPaciente"
 
 interface ParametrosTiposPacienteContextValue {
@@ -77,6 +79,15 @@ export function ParametrosTiposPacienteProvider({
       })
       .finally(() => setCargando(false))
   }, [apiActiva])
+
+  useRefetchOnDietasEvento(
+    [EVENTOS_DIETAS_COCINA.ParametrosActualizados],
+    () => {
+      if (!apiActiva) return
+      void obtenerTiposPaciente().then(setCategorias).catch(() => {})
+    },
+    apiActiva,
+  )
 
   const crearCategoria = useCallback(() => {
     const nums = categorias

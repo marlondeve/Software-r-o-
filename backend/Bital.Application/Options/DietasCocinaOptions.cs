@@ -18,4 +18,9 @@ public class DietasCocinaOptions
     /// 0 = desactivado.
     /// </summary>
     public int DevSeedHospitalizadosCount { get; set; }
+
+    /// <summary>
+    /// Intervalo del sync HIS en servidor. Mínimo efectivo 5 s. 0 desactiva el hosted service.
+    /// </summary>
+    public int CensoHisSyncIntervalSeconds { get; set; } = 15;
 }

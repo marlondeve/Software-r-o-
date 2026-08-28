@@ -2,6 +2,24 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/) y [Semantic Versioning](https://semver.org/lang/es/).
 
+## [1.2.8] — 2026-08-27
+
+### Añadido
+
+- **Tiempo real (SignalR)** en el módulo Dietas y Cocina: las pantallas abiertas se actualizan al mutar dietas, censo HIS, órdenes, etiquetas, parámetros, catálogo, conciliación y permisos.
+- Conexión al hub en el layout del módulo (`@microsoft/signalr`); sin poll de 15 s si el socket está vivo; fallback de censo cada 60 s solo si está desconectado.
+- Dashboards, reportes (vista), auditoría y conciliación se refrescan al evento; reloj de ventanas a **1 s**.
+
+### Cambiado
+
+- Versión de producto **1.2.8** (package.json, `Directory.Build.props`, `VITE_APP_VERSION`, docs).
+- Sustitución de filas por id o identidad (cédula+comida+fecha) para no duplicar con varios usuarios/pestañas.
+- Fechas ISO del API sin zona se interpretan como UTC y se muestran en hora Colombia (`parsearFechaApi`).
+
+### Corregido
+
+- Horas que parecían «tarde» o +5 h al parsear timestamps del API sin sufijo `Z`.
+
 ## [1.2.7] — 2026-08-26
 
 ### Añadido
@@ -141,6 +159,7 @@ Versión base de preparación para despliegue:
 - Migración SQL Server (`BitalNegocio`) y usuarios seed.
 - Roles de sistema y permisos iniciales.
 
+[1.2.8]: https://github.com/compare/v1.2.7...v1.2.8
 [1.2.7]: https://github.com/compare/v1.2.6...v1.2.7
 [1.2.6]: https://github.com/compare/v1.2.5...v1.2.6
 [1.2.5]: https://github.com/compare/v1.2.4...v1.2.5

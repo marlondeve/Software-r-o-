@@ -2,7 +2,7 @@
 
 Despliegue del **frontend React** y **Bital.ApiNegocio** (API de RioSoft) en Windows Server con IIS.
 
-**Última actualización:** 2026-08-03
+**Última actualización:** 2026-08-27
 
 ---
 
@@ -16,7 +16,8 @@ Internet
 │  IIS — Sitio BitalFrontend              │
 │  C:\inetpub\wwwroot\bital-frontend\     │
 │  • SPA React (archivos estáticos)       │
-│  • web.config: proxy /api/v1 → :8081    │
+│  • web.config: proxy /api/v1, /health,  │
+│    /hubs → :8081 (WebSockets ON)        │
 └──────────────────┬──────────────────────┘
                    │ http://127.0.0.1:8081
                    ▼
@@ -24,6 +25,7 @@ Internet
 │  IIS — Sitio BitalApiNegocio            │
 │  C:\inetpub\wwwroot\bital-api-negocio\  │
 │  • ASP.NET Core 8 (in-process)          │
+│  • Hub SignalR /hubs/dietas-cocina      │
 │  • Solo binding localhost:8081          │
 └──────────────────┬──────────────────────┘
                    │
@@ -45,8 +47,9 @@ Internet
 1. **Windows Server** con IIS habilitado
 2. **[.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0)** — incluye ASP.NET Core Module V2
 3. **URL Rewrite** + **Application Request Routing (ARR)** con proxy habilitado
-4. **Certificado SSL** para el subdominio (puerto 8080)
-5. Conectividad SQL Server a `10.238.97.66` (BitalNegocio) y `10.238.97.69` (Vital)
+4. **Protocolo WebSocket** en IIS (característica de Windows) — obligatorio para SignalR
+5. **Certificado SSL** para el subdominio (puerto 8080)
+6. Conectividad SQL Server a `10.238.97.66` (BitalNegocio) y `10.238.97.69` (Vital)
 
 Verificar runtime:
 
@@ -155,7 +158,26 @@ Invoke-RestMethod http://127.0.0.1:8081/health
 ### ARR / URL Rewrite
 
 1. IIS Manager → servidor → **Application Request Routing Cache** → **Server Proxy Settings** → Enable proxy
-2. Confirmar que `web.config` del frontend incluye reglas de proxy a `127.0.0.1:8081` (viene en el build desde `frontend/public/web.config`)
+2. Confirmar que `web.config` del frontend incluye reglas de proxy a `127.0.0.1:8081` (viene en el build desde `frontend/public/web.config`): `/api/v1`, `/health` y **`/hubs`**
+
+### WebSockets (SignalR 1.2.8+)
+
+Sin esto el hub no conecta; la app sigue funcionando con fallback de censo cada 60 s, pero no habrá push en vivo.
+
+1. **Instalar la característica** (como admin), si no está:
+   ```powershell
+   Enable-WindowsOptionalFeature -Online -FeatureName IIS-WebSockets
+   ```
+2. **IIS Manager** → sitio `BitalApiNegocio` → **Configuración de WebSocket** → **Habilitado** (`web.config` del API ya trae `<webSocket enabled="true" />`).
+3. Mismo check en el sitio `BitalFrontend` (proxy ARR del upgrade WebSocket).
+4. Tras desplegar el frontend 1.2.8+, verificar que existe la regla **SignalR hubs proxy** (`^hubs/` → `http://127.0.0.1:8081/hubs/...`).
+5. **App pool del API** (recomendado para el sync HIS continuo):
+   - *Start Mode* = **AlwaysRunning**
+   - *Idle Time-out* = **0** (o alto)
+   - Sitio → *Preload Enabled* = **true**  
+   Así `CensoHisSyncHostedService` no se detiene cuando no hay usuarios conectados.
+
+Prueba rápida tras login en Dietas y Cocina: en DevTools → Network debe aparecer `hubs/dietas-cocina` (negotiate / websocket) en verde. Si falla, el fallback de 60 s mantiene el censo.
 
 Guía detallada HTTPS: [docs/PASOS-HTTPS-IIS-FRONTEND.md](../docs/PASOS-HTTPS-IIS-FRONTEND.md)
 
@@ -210,6 +232,8 @@ Restart-WebAppPool -Name BitalApiNegocioPool
 | 502 en `/api/v1/*` | API caída o ARR deshabilitado | Verificar `127.0.0.1:8081/health`, habilitar proxy ARR |
 | 405 en PUT/PATCH | WebDAV activo | `web.config` ya lo deshabilita; verificar en IIS |
 | 401 en endpoints | Cookie expirada o CORS | Verificar `Cors:AllowedOrigins` incluye origen HTTPS |
+| SignalR no conecta / 404 en `/hubs/*` | Falta proxy `/hubs` o WebSockets OFF | Desplegar `web.config` del frontend 1.2.8+; habilitar WebSockets en ambos sitios; feature `IIS-WebSockets` |
+| Censo HIS no actualiza solo | App pool en idle | AlwaysRunning + Preload + Idle Time-out 0 en pool del API |
 | SQL error en health | Connection string | Probar conectividad a `.66` y `.69:1433` |
 | Logs | — | `C:\logs\bital-api-negocio\app-*.log` |
 

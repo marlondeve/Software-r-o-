@@ -67,7 +67,10 @@ try
     });
 
     // Controllers
-    builder.Services.AddControllers();
+    builder.Services.AddControllers(options =>
+    {
+        options.Filters.Add<Bital.ApiNegocio.Filters.ConflictoEstadoOperativoFilter>();
+    });
 
     // Swagger/OpenAPI
     builder.Services.AddEndpointsApiExplorer();
@@ -130,10 +133,25 @@ try
                         context.Token = token;
                     }
 
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken)
+                        && path.StartsWithSegments("/hubs/dietas-cocina"))
+                    {
+                        context.Token = accessToken;
+                    }
+
                     return Task.CompletedTask;
                 },
             };
         });
+
+    builder.Services.AddSignalR();
+    builder.Services.AddSingleton<IDietasCocinaRealtime, Bital.ApiNegocio.Hubs.DietasCocinaRealtimePublisher>();
+    if (builder.Configuration.GetValue<int?>("DietasCocina:CensoHisSyncIntervalSeconds") != 0)
+    {
+        builder.Services.AddHostedService<Bital.ApiNegocio.Hosted.CensoHisSyncHostedService>();
+    }
 
     builder.Services.AddAuthorization();
 
@@ -302,13 +320,14 @@ try
     app.UseRequestTimeouts();
 
     app.MapControllers();
+    app.MapHub<Bital.ApiNegocio.Hubs.DietasCocinaHub>("/hubs/dietas-cocina");
 
     app.MapHealthChecks("/health");
 
     var productVersion = Assembly.GetExecutingAssembly()
         .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
         ?? Assembly.GetExecutingAssembly().GetName().Version?.ToString(3)
-        ?? "1.2.6";
+        ?? "1.2.8";
 
     app.MapGet("/", () => new
     {

@@ -1,3 +1,4 @@
+using Bital.Application;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
 using Bital.Application.Options;
@@ -20,6 +21,7 @@ public class EtiquetasService : IEtiquetasService
     private readonly IAuditoriaService _auditoria;
     private readonly IAuditoriaContextoRequest _contextoAuditoria;
     private readonly ILogger<EtiquetasService> _logger;
+    private readonly IDietasCocinaRealtime _realtime;
     private readonly string _frontendPublicUrl;
 
     public EtiquetasService(
@@ -27,13 +29,15 @@ public class EtiquetasService : IEtiquetasService
         IAuditoriaService auditoria,
         IAuditoriaContextoRequest contextoAuditoria,
         ILogger<EtiquetasService> logger,
-        IOptions<DietasCocinaOptions> dietasCocinaOptions)
+        IOptions<DietasCocinaOptions> dietasCocinaOptions,
+        IDietasCocinaRealtime? realtime = null)
     {
         _context = context;
         _auditoria = auditoria;
         _contextoAuditoria = contextoAuditoria;
         _logger = logger;
         _frontendPublicUrl = dietasCocinaOptions.Value.FrontendPublicUrl ?? "";
+        _realtime = realtime ?? NullDietasCocinaRealtime.Instance;
     }
 
     public async Task<List<EtiquetaEnfermeraDto>> ObtenerEtiquetasAsync(
@@ -191,6 +195,12 @@ public class EtiquetasService : IEtiquetasService
             "Generadas {Count} etiquetas por {Usuario}",
             etiquetasIds.Count, usuario);
 
+        var generadas = await _context.EtiquetasEnfermeria
+            .Include(e => e.OrdenCocina)
+            .Include(e => e.FilaDieta)
+            .Where(e => etiquetasIds.Contains(e.Id))
+            .ToListAsync(cancellationToken);
+        await _realtime.NotificarEtiquetasAsync(generadas.Select(MapearADto).ToList(), cancellationToken);
         return etiquetasIds;
     }
 
@@ -207,17 +217,24 @@ public class EtiquetasService : IEtiquetasService
         if (!etiquetas.Any())
             throw new KeyNotFoundException("No se encontraron las etiquetas especificadas");
 
-        // Validar que estén en estado "generada"
-        var etiquetasInvalidas = etiquetas.Where(e => e.EstadoLogistica != "generada").ToList();
-        if (etiquetasInvalidas.Any())
+        var aptas = etiquetas.Where(e => e.EstadoLogistica == "generada").ToList();
+        if (aptas.Count == 0)
         {
+            if (etiquetas.All(e =>
+                    string.Equals(e.EstadoLogistica, "impresa", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new ConflictoEstadoOperativoException(
+                    "Las etiquetas ya están impresas.",
+                    etiquetas.Select(MapearADto).ToList());
+            }
+
             throw new InvalidOperationException(
-                $"Solo se pueden marcar como impresas las etiquetas en estado 'generada'");
+                "Solo se pueden marcar como impresas las etiquetas en estado 'generada'");
         }
 
         var ahora = DateTime.UtcNow;
 
-        foreach (var etiqueta in etiquetas)
+        foreach (var etiqueta in aptas)
         {
             etiqueta.EstadoLogistica = "impresa";
             etiqueta.ImpresaEn = ahora;
@@ -227,11 +244,13 @@ public class EtiquetasService : IEtiquetasService
 
         Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Imprimir, "system",
             AuditoriaCatalogo.Entidades.EtiquetaEnfermera, null, null,
-            new { count = etiquetas.Count, ids = datos.EtiquetaIds });
+            new { count = aptas.Count, ids = aptas.Select(e => e.Id) });
 
-        _logger.LogInformation("Marcadas {Count} etiquetas como impresas", etiquetas.Count);
+        _logger.LogInformation("Marcadas {Count} etiquetas como impresas", aptas.Count);
 
-        return etiquetas.Select(MapearADto).ToList();
+        var impresas = aptas.Select(MapearADto).ToList();
+        await _realtime.NotificarEtiquetasAsync(impresas, cancellationToken);
+        return impresas;
     }
 
     public async Task<List<EtiquetaEnfermeraDto>> ReimprimirEtiquetasAsync(
@@ -254,8 +273,8 @@ public class EtiquetasService : IEtiquetasService
         {
             etiqueta.ImpresaEn = ahora;
             etiqueta.Observaciones = string.IsNullOrEmpty(etiqueta.Observaciones)
-                ? $"Reimpresa: {ahora:yyyy-MM-dd HH:mm}"
-                : $"{etiqueta.Observaciones}\n[{ahora:yyyy-MM-dd HH:mm}] Reimpresa";
+                ? $"Reimpresa: {HorarioOperativoHelper.MarcaTiempoColombia()}"
+                : $"{etiqueta.Observaciones}\n{HorarioOperativoHelper.MarcaTiempoColombia()} Reimpresa";
         }
 
         await _context.SaveChangesAsync(cancellationToken);
@@ -266,7 +285,9 @@ public class EtiquetasService : IEtiquetasService
 
         _logger.LogInformation("Reimpresas {Count} etiquetas", etiquetas.Count);
 
-        return etiquetas.Select(MapearADto).ToList();
+        var reimpresas = etiquetas.Select(MapearADto).ToList();
+        await _realtime.NotificarEtiquetasAsync(reimpresas, cancellationToken);
+        return reimpresas;
     }
 
     public async Task<EtiquetaEnfermeraDto> ConfirmarPreEntregaAsync(
@@ -282,6 +303,12 @@ public class EtiquetasService : IEtiquetasService
             ?? throw new KeyNotFoundException($"Etiqueta {etiquetaId} no encontrada");
 
         // Validar estado
+        if (string.Equals(etiqueta.EstadoLogistica, "pre_entregada", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(etiqueta.EstadoLogistica, "entregada", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictoEstadoOperativoException(
+                "La pre-entrega ya fue confirmada.", MapearADto(etiqueta));
+        }
         if (etiqueta.EstadoLogistica != "impresa")
             throw new InvalidOperationException("Solo se pueden confirmar pre-entregas de etiquetas impresas");
 
@@ -322,6 +349,7 @@ public class EtiquetasService : IEtiquetasService
             "Pre-entrega confirmada para etiqueta {Codigo} por {Usuario}",
             etiqueta.Codigo, usuario);
 
+        await NotificarEtiquetaYFila(etiqueta, cancellationToken);
         return MapearADto(etiqueta);
     }
 
@@ -337,6 +365,11 @@ public class EtiquetasService : IEtiquetasService
             ?? throw new KeyNotFoundException($"Etiqueta {etiquetaId} no encontrada");
 
         // Validar estado
+        if (string.Equals(etiqueta.EstadoLogistica, "entregada", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictoEstadoOperativoException(
+                "La entrega ya fue confirmada.", MapearADto(etiqueta));
+        }
         if (etiqueta.EstadoLogistica != "pre_entregada")
             throw new InvalidOperationException("Solo se pueden confirmar entregas de etiquetas pre-entregadas");
 
@@ -379,6 +412,7 @@ public class EtiquetasService : IEtiquetasService
             "Entrega confirmada para etiqueta {Codigo} por {Usuario}",
             etiqueta.Codigo, usuario);
 
+        await NotificarEtiquetaYFila(etiqueta, cancellationToken);
         return MapearADto(etiqueta);
     }
 
@@ -395,6 +429,11 @@ public class EtiquetasService : IEtiquetasService
             ?? throw new KeyNotFoundException($"Etiqueta {etiquetaId} no encontrada");
 
         // Validar estado - puede devolverse desde pre_entregada o entregada
+        if (string.Equals(etiqueta.EstadoLogistica, "devuelta", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new ConflictoEstadoOperativoException(
+                "La devolución ya fue registrada.", MapearADto(etiqueta));
+        }
         if (etiqueta.EstadoLogistica != "pre_entregada" && etiqueta.EstadoLogistica != "entregada")
             throw new InvalidOperationException("Solo se pueden devolver etiquetas pre-entregadas o entregadas");
 
@@ -447,6 +486,7 @@ public class EtiquetasService : IEtiquetasService
             "Devolución confirmada para etiqueta {Codigo} - Motivo: {Motivo}",
             etiqueta.Codigo, motivoNormalizado);
 
+        await NotificarEtiquetaYFila(etiqueta, cancellationToken);
         return MapearADto(etiqueta);
     }
 
@@ -457,6 +497,8 @@ public class EtiquetasService : IEtiquetasService
         CancellationToken cancellationToken = default)
     {
         var etiqueta = await _context.EtiquetasEnfermeria
+            .Include(e => e.OrdenCocina)
+            .Include(e => e.FilaDieta)
             .FirstOrDefaultAsync(e => e.Id == etiquetaId, cancellationToken)
             ?? throw new KeyNotFoundException($"Etiqueta {etiquetaId} no encontrada");
 
@@ -470,10 +512,15 @@ public class EtiquetasService : IEtiquetasService
         etiqueta.FotoDevolucionUrl = url;
         await _context.SaveChangesAsync(cancellationToken);
 
+        Auditar(AuditoriaCatalogo.Modulos.Etiquetas, AuditoriaCatalogo.Acciones.Devolucion, "system",
+            AuditoriaCatalogo.Entidades.EtiquetaEnfermera, etiquetaId, null,
+            new { fotoDevolucionUrl = url, etiqueta.Codigo });
+
         _logger.LogInformation(
             "Foto de devolución subida para etiqueta {EtiquetaId}: {Url}",
             etiquetaId, url);
 
+        await NotificarEtiquetaYFila(etiqueta, cancellationToken);
         return url;
     }
 
@@ -618,6 +665,13 @@ public class EtiquetasService : IEtiquetasService
             return null;
 
         return string.Join(" · ", partes.Distinct(StringComparer.OrdinalIgnoreCase));
+    }
+
+    private async Task NotificarEtiquetaYFila(EtiquetaEnfermera etiqueta, CancellationToken cancellationToken)
+    {
+        await _realtime.NotificarEtiquetasAsync([MapearADto(etiqueta)], cancellationToken);
+        if (etiqueta.FilaDieta != null)
+            await _realtime.NotificarFilaAsync(DietasService.MapearADto(etiqueta.FilaDieta), cancellationToken);
     }
 
     private void Auditar(

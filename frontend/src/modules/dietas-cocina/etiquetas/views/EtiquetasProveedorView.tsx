@@ -14,6 +14,7 @@ import { EtiquetasToolbar } from "@/modules/dietas-cocina/etiquetas/components/E
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
 import {
   clasificarEtiquetaRespectoCenso,
   etiquetaEnFlujoCenso,
@@ -273,7 +274,7 @@ export function EtiquetasProveedorView() {
 
     setReimprimiendo(true)
     try {
-      const fecha = new Date().toISOString().slice(0, 10)
+      const fecha = fechaOperativaHoy()
       await imprimirEtiquetasPdf({
         etiquetas,
         nombreArchivo: `etiquetas-reimpresion-${comidaActiva}-${fecha}.pdf`,
@@ -303,7 +304,7 @@ export function EtiquetasProveedorView() {
 
     setImprimiendo(true)
     try {
-      const fecha = new Date().toISOString().slice(0, 10)
+      const fecha = fechaOperativaHoy()
       await imprimirEtiquetasPdf({
         etiquetas,
         nombreArchivo: `etiquetas-${comidaActiva}-${fecha}.pdf`,
