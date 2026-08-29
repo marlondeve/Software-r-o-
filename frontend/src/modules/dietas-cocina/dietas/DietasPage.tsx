@@ -48,6 +48,7 @@ import {
   puedeConfirmarEnvioACocina,
   resolverEstadoVentanaComida,
 } from "@/modules/dietas-cocina/dietas/lib/ventanaSolicitudDieta"
+import { useRelojVentanaOperativa } from "@/modules/dietas-cocina/lib/useRelojVentanaOperativa"
 import {
   normalizarConsistenciaParaComida,
   requiereConsistencia,
@@ -118,12 +119,7 @@ export function DietasPage() {
   const [cancelarAbierto, setCancelarAbierto] = useState(false)
   const [filaCancelarId, setFilaCancelarId] = useState<string | null>(null)
   const [consistenciaAbierto, setConsistenciaAbierto] = useState(false)
-  const [ahora, setAhora] = useState(() => new Date())
-
-  useEffect(() => {
-    const intervalo = window.setInterval(() => setAhora(new Date()), 1_000)
-    return () => window.clearInterval(intervalo)
-  }, [])
+  const ahora = useRelojVentanaOperativa()
 
   const estadoVentanaComida = useMemo(
     () => resolverEstadoVentanaComida(comidaActiva, ahora),

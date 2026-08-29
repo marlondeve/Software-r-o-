@@ -3,7 +3,7 @@ import {
   cargarConfigTiempos,
   type ConfigTiempos,
 } from "@/modules/dietas-cocina/parametros/lib/configTiemposStorage"
-import { minutosDelDiaEnColombia } from "@/modules/dietas-cocina/parametros/lib/horasOperativas"
+import { minutosDelDiaEnColombia, minutosHastaHora, estaEnRangoHorario } from "@/modules/dietas-cocina/parametros/lib/horasOperativas"
 import { labelComida } from "@/modules/dietas-cocina/parametros/lib/formatearTurnoOperativo"
 import { formatearHora12 } from "@/modules/dietas-cocina/parametros/lib/formatoHora"
 
@@ -46,7 +46,7 @@ export function resolverComidaOperativaActual(
   const comidaEnCurso = comidas.find((comida) => {
     const inicio = parseHora24(hitoHora(config, comida, "solicitud") ?? "00:00")
     const fin = parseHora24(hitoHora(config, comida, "fin-dist") ?? "23:59")
-    return ahora >= inicio && ahora <= fin
+    return estaEnRangoHorario(ahora, inicio, fin)
   })
   if (comidaEnCurso) return comidaEnCurso
 
@@ -79,50 +79,64 @@ function formatearDuracionRestante(minutosRestantes: number): string {
 
 /**
  * Próximo fin de distribución según parámetros operativos (misma fuente que
- * Pantalla Parámetros / ventana de solicitud). No usa el mock de demo.
+ * Pantalla Parámetros / ventana de solicitud). Recorre el ciclo diario desde
+ * la comida operativa actual; no elige la merienda con fin-dist más temprano.
  */
 export function resolverProximoCierre(
   fecha = new Date(),
   config: ConfigTiempos = cargarConfigTiempos(),
 ) {
   const ahora = minutosDelDiaEnColombia(fecha)
-  const comidas = comidasActivas(config)
+  const activas = comidasActivas(config)
+  const comidaActual = resolverComidaOperativaActual(fecha, config)
+  const idxInicio = Math.max(0, ORDEN_COMIDAS.indexOf(comidaActual))
 
   let proximo:
-    | { comida: TiempoComida; minutosObjetivo: number; hora24: string; diaSiguiente: boolean }
+    | {
+        comida: TiempoComida
+        minutosObjetivo: number
+        hora24: string
+        diaSiguiente: boolean
+        minutosRestantes: number
+      }
     | undefined
 
-  for (const comida of comidas) {
+  for (let offset = 0; offset < ORDEN_COMIDAS.length; offset++) {
+    const comida = ORDEN_COMIDAS[(idxInicio + offset) % ORDEN_COMIDAS.length]
+    if (!activas.includes(comida)) continue
+
     const finDist = hitoHora(config, comida, "fin-dist")
     if (!finDist) continue
 
+    const solicitud = parseHora24(hitoHora(config, comida, "solicitud") ?? "00:00")
     const minutosObjetivo = parseHora24(finDist)
-    if (minutosObjetivo <= ahora) continue
+    const enVentana = estaEnRangoHorario(ahora, solicitud, minutosObjetivo)
 
-    if (!proximo || minutosObjetivo < proximo.minutosObjetivo) {
-      proximo = {
-        comida,
-        minutosObjetivo,
-        hora24: finDist,
-        diaSiguiente: false,
-      }
+    if (offset === 0 && !enVentana) continue
+
+    const minutosRestantes = minutosHastaHora(ahora, minutosObjetivo)
+    proximo = {
+      comida,
+      minutosObjetivo,
+      hora24: finDist,
+      diaSiguiente: minutosObjetivo <= ahora,
+      minutosRestantes,
     }
+    break
   }
 
   if (!proximo) {
-    const comida = comidas[0] ?? "desayuno"
+    const comida = activas[0] ?? "desayuno"
     const finDist = hitoHora(config, comida, "fin-dist") ?? "09:30"
+    const minutosObjetivo = parseHora24(finDist)
     proximo = {
       comida,
-      minutosObjetivo: parseHora24(finDist),
+      minutosObjetivo,
       hora24: finDist,
       diaSiguiente: true,
+      minutosRestantes: minutosHastaHora(ahora, minutosObjetivo),
     }
   }
-
-  const minutosRestantes = proximo.diaSiguiente
-    ? 24 * 60 - ahora + proximo.minutosObjetivo
-    : proximo.minutosObjetivo - ahora
 
   const servicioBase = labelComida(proximo.comida).toUpperCase()
 
@@ -131,7 +145,7 @@ export function resolverProximoCierre(
       ? `${servicioBase} (DÍA SIGUIENTE)`
       : servicioBase,
     hora: formatearHora12(proximo.hora24),
-    tiempoRestante: formatearDuracionRestante(minutosRestantes),
+    tiempoRestante: formatearDuracionRestante(proximo.minutosRestantes),
     comida: proximo.comida,
     diaSiguiente: proximo.diaSiguiente,
   }

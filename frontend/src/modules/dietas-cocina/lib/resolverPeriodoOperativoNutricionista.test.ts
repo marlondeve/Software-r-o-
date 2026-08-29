@@ -122,6 +122,179 @@ describe("resolverPeriodoOperativoNutricionista", () => {
     expect(periodo).toMatch(/04:45\s*p\.\s*m\./i)
   })
 
+  it("con solo desayuno activo cuenta hasta fin-dist del día siguiente (15:10 → 09:00)", () => {
+    const config = configBase(
+      {
+        desayuno: {
+          solicitud: "01:00",
+          novedades: "06:00",
+          llegada: "07:30",
+          "inicio-dist": "07:45",
+          "fin-dist": "09:00",
+        },
+      },
+      {
+        "merienda-manana": false,
+        almuerzo: false,
+        "merienda-tarde": false,
+        cena: false,
+        "merienda-noche": false,
+      },
+    )
+    const cierre = resolverProximoCierre(fechaColombia(15, 10), config)
+
+    expect(cierre.comida).toBe("desayuno")
+    expect(cierre.diaSiguiente).toBe(true)
+    expect(cierre.tiempoRestante).toBe("17h 50min")
+    expect(cierre.hora).toMatch(/09:00\s*a\.\s*m\./i)
+  })
+
+  it("prioriza fin-dist de merienda-noche antes que desayuno del día siguiente", () => {
+    const config = configBase(
+      {
+        desayuno: {
+          solicitud: "01:00",
+          novedades: "06:00",
+          llegada: "07:30",
+          "inicio-dist": "07:45",
+          "fin-dist": "09:00",
+        },
+        "merienda-noche": horasMeriendaNoche,
+      },
+      {
+        "merienda-manana": false,
+        almuerzo: false,
+        "merienda-tarde": false,
+        cena: false,
+      },
+    )
+    const cierre = resolverProximoCierre(fechaColombia(15, 10), config)
+
+    expect(cierre.comida).toBe("merienda-noche")
+    expect(cierre.diaSiguiente).toBe(false)
+    expect(cierre.tiempoRestante).toBe("2h 20min")
+  })
+
+  it("cuenta fin-dist nocturno que aún no ocurre hoy (cruce de medianoche)", () => {
+    const config = configBase(
+      {
+        desayuno: {
+          solicitud: "01:00",
+          novedades: "06:00",
+          llegada: "07:30",
+          "inicio-dist": "07:45",
+          "fin-dist": "09:00",
+        },
+        "merienda-noche": {
+          solicitud: "12:00",
+          novedades: "15:00",
+          llegada: "16:45",
+          "inicio-dist": "17:00",
+          "fin-dist": "03:00",
+        },
+      },
+      {
+        "merienda-manana": false,
+        almuerzo: false,
+        "merienda-tarde": false,
+        cena: false,
+      },
+    )
+    const cierre = resolverProximoCierre(fechaColombia(15, 10), config)
+
+    expect(cierre.comida).toBe("merienda-noche")
+    expect(cierre.diaSiguiente).toBe(true)
+    expect(cierre.tiempoRestante).toBe("11h 50min")
+    expect(cierre.hora).toMatch(/03:00\s*a\.\s*m\./i)
+  })
+
+  it("a la noche prioriza fin-dist nocturno sobre desayuno del día siguiente", () => {
+    const config = configBase(
+      {
+        desayuno: {
+          solicitud: "01:00",
+          novedades: "06:00",
+          llegada: "07:30",
+          "inicio-dist": "07:45",
+          "fin-dist": "09:00",
+        },
+        "merienda-noche": {
+          solicitud: "12:00",
+          novedades: "15:00",
+          llegada: "16:45",
+          "inicio-dist": "17:00",
+          "fin-dist": "03:00",
+        },
+      },
+      {
+        "merienda-manana": false,
+        almuerzo: false,
+        "merienda-tarde": false,
+        cena: false,
+      },
+    )
+    const cierre = resolverProximoCierre(fechaColombia(19, 22), config)
+
+    expect(cierre.comida).toBe("merienda-noche")
+    expect(cierre.tiempoRestante).toBe("7h 38min")
+    expect(cierre.servicio).not.toContain("DESAYUNO")
+  })
+
+  it("con varias comidas activas no salta a merienda-manana si el ciclo sigue en desayuno", () => {
+    const config = configBase({
+      desayuno: {
+        solicitud: "01:00",
+        novedades: "06:00",
+        llegada: "07:30",
+        "inicio-dist": "07:45",
+        "fin-dist": "09:00",
+      },
+      "merienda-manana": {
+        solicitud: "01:00",
+        novedades: "06:00",
+        llegada: "07:30",
+        "inicio-dist": "07:45",
+        "fin-dist": "08:15",
+      },
+      almuerzo: {
+        solicitud: "07:00",
+        novedades: "09:30",
+        llegada: "11:30",
+        "inicio-dist": "12:00",
+        "fin-dist": "13:30",
+      },
+      "merienda-tarde": {
+        solicitud: "07:00",
+        novedades: "09:30",
+        llegada: "11:30",
+        "inicio-dist": "11:45",
+        "fin-dist": "12:15",
+      },
+      cena: {
+        solicitud: "12:00",
+        novedades: "15:00",
+        llegada: "16:45",
+        "inicio-dist": "17:15",
+        "fin-dist": "18:45",
+      },
+      "merienda-noche": {
+        solicitud: "12:00",
+        novedades: "15:00",
+        llegada: "16:45",
+        "inicio-dist": "17:00",
+        "fin-dist": "17:30",
+      },
+    })
+    const cierre = resolverProximoCierre(fechaColombia(19, 36), config)
+
+    expect(cierre.comida).toBe("desayuno")
+    expect(cierre.diaSiguiente).toBe(true)
+    expect(cierre.tiempoRestante).toBe("13h 24min")
+    expect(cierre.hora).toMatch(/09:00\s*a\.\s*m\./i)
+    expect(cierre.servicio).toContain("DESAYUNO")
+    expect(cierre.servicio).not.toMatch(/MERIENDA/i)
+  })
+
   it("resuelve comida en curso por solicitud–fin-dist", () => {
     const config = configBase(
       { "merienda-noche": horasMeriendaNoche },

@@ -1,10 +1,17 @@
 import { ArrowRight } from "lucide-react"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   tendenciaVariantEstilos,
   type TendenciaVariant,
 } from "@/modules/dietas-cocina/reportes/lib/reportesEstilos"
+import { normalizarTiempoHitoAHhMm } from "@/modules/dietas-cocina/reportes/lib/formatearDuracionHhMm"
 import { cn } from "@/lib/utils"
 
 interface HitoLogistico {
@@ -19,6 +26,52 @@ interface LogisticaTimelineProps {
   titulo?: string
 }
 
+function DuracionHitoDisplay({ tiempo }: { tiempo: string }) {
+  const normalizado = normalizarTiempoHitoAHhMm(tiempo)
+  const partes = normalizado.match(/^(\d{1,4}):([0-5]\d)$/)
+
+  if (!partes) {
+    return (
+      <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
+        {tiempo}
+      </p>
+    )
+  }
+
+  const horas = partes[1].padStart(2, "0")
+  const minutos = partes[2]
+
+  return (
+    <div
+      className="mt-1 inline-flex items-end gap-0.5 tabular-nums"
+      aria-label={`${Number(horas)} horas y ${Number(minutos)} minutos`}
+    >
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          h
+        </span>
+        <span className="min-w-[2ch] text-center text-lg font-semibold leading-none text-foreground">
+          {horas}
+        </span>
+      </div>
+      <span
+        className="pb-0.5 text-lg font-semibold leading-none text-muted-foreground"
+        aria-hidden
+      >
+        :
+      </span>
+      <div className="flex flex-col items-center gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          m
+        </span>
+        <span className="min-w-[2ch] text-center text-lg font-semibold leading-none text-foreground">
+          {minutos}
+        </span>
+      </div>
+    </div>
+  )
+}
+
 export function LogisticaTimeline({
   hitos,
   titulo = "Tiempos por hito logístico",
@@ -27,6 +80,11 @@ export function LogisticaTimeline({
     <Card className="gap-0 py-0 shadow-none">
       <CardHeader className="border-b py-3">
         <CardTitle className="text-sm font-semibold">{titulo}</CardTitle>
+        <CardDescription>
+          Duración promedio entre etapas, en{" "}
+          <span className="font-medium text-foreground/80">horas (h)</span> y{" "}
+          <span className="font-medium text-foreground/80">minutos (m)</span>.
+        </CardDescription>
       </CardHeader>
       <CardContent className="px-4 py-4">
         {hitos.length === 0 ? (
@@ -42,9 +100,7 @@ export function LogisticaTimeline({
                 )}
                 <div className="min-w-0 flex-1 rounded-lg bg-muted/40 px-3 py-2.5">
                   <p className="text-xs font-medium text-foreground">{hito.etapa}</p>
-                  <p className="mt-1 text-lg font-semibold tabular-nums text-foreground">
-                    {hito.tiempo}
-                  </p>
+                  <DuracionHitoDisplay tiempo={hito.tiempo} />
                   <p
                     className={cn(
                       "mt-0.5 text-xs font-medium",

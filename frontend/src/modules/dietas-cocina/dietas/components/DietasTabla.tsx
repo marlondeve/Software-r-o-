@@ -1,7 +1,7 @@
 import type { FilaDieta } from "@/modules/dietas-cocina/types/diets"
 import type { EstadoDieta, TiempoComida } from "@/modules/dietas-cocina/types/enums"
 import { useMemo } from "react"
-import { Eye, MoreHorizontal, PencilLine } from "lucide-react"
+import { Eye, PencilLine } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,11 +9,7 @@ import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTable, type ColumnDef } from "@/components/ui/data-table"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { DietasFilaAccionesPopover } from "@/modules/dietas-cocina/dietas/components/DietasFilaAccionesPopover"
 import { EstadoBadge } from "@/modules/dietas-cocina/inicio/components/EstadoBadge"
 import { construirAccionesDietaFila } from "@/modules/dietas-cocina/dietas/lib/dietasAcciones"
 import {
@@ -233,35 +229,10 @@ export function DietasTabla({
                   <Eye className="size-4" />
                 </Button>
               )}
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    className="size-8 border-border bg-background shadow-xs"
-                    aria-label="Más acciones"
-                  >
-                    <MoreHorizontal className="size-4" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent align="end" className="w-48 p-1">
-                  {acciones.map((accion) => (
-                    <button
-                      key={accion.key}
-                      type="button"
-                      className={
-                        accion.destructive
-                          ? "flex w-full rounded-md px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
-                          : "flex w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted"
-                      }
-                      onClick={accion.onClick}
-                    >
-                      {accion.label}
-                    </button>
-                  ))}
-                </PopoverContent>
-              </Popover>
+              <DietasFilaAccionesPopover
+                acciones={acciones}
+                ariaLabel={`Más acciones para ${fila.paciente}`}
+              />
             </div>
           )
         },
