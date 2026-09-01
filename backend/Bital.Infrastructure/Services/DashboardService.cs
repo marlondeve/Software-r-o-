@@ -498,6 +498,317 @@ public class DashboardService : IDashboardService
         return porClave.Values.ToList();
     }
 
+    private async Task<List<Domain.Entities.DietasCocina.TarifaHistorico>> CargarTarifasReporteAsync() =>
+        await _context.TarifasHistorico
+            .Include(t => t.DietaCatalogo)
+            .Where(t => t.Activa)
+            .ToListAsync();
+
+    private sealed record MetricasProduccionPeriodo(
+        int DietasSinEtiqueta,
+        int DietasProducidas,
+        decimal CostoTotalFacturado,
+        decimal CostoDietasProducidas,
+        IReadOnlyList<(FilaDieta Dieta, decimal Monto)> Suministradas,
+        IReadOnlyList<(TiempoComida Comida, DateTime Fecha, decimal Monto)> Huerfanas);
+
+    private static MetricasProduccionPeriodo CalcularMetricasProduccionPeriodo(
+        List<Domain.Entities.DietasCocina.EtiquetaEnfermera> etiquetas,
+        List<FilaDieta> dietas,
+        List<Domain.Entities.DietasCocina.OrdenCocina> ordenes,
+        IReadOnlyList<Domain.Entities.DietasCocina.TarifaHistorico> tarifas,
+        decimal costoProduccion,
+        decimal costoRetrasos)
+    {
+        var filasConEtiqueta = etiquetas.Select(e => e.FilaDietaId).ToHashSet();
+        var ordenPorId = ordenes.ToDictionary(o => o.Id);
+
+        var suministradas = dietas
+            .Where(d =>
+            {
+                var tieneEtiqueta = filasConEtiqueta.Contains(d.Id);
+                var estadoOrden = d.OrdenCocinaId is { } oid && ordenPorId.TryGetValue(oid, out var orden)
+                    ? orden.Estado
+                    : null;
+                return ContratoCocinaHelper.EsSuministrada(d, estadoOrden, tieneEtiqueta);
+            })
+            .Select(d =>
+            {
+                var linea = ContratoCocinaHelper.LineaContrato(d.TipoDieta?.Nombre);
+                var monto = ResolverTarifaLineaContrato(tarifas, linea, d.Comida, d.FechaOperativa);
+                return (Dieta: d, Monto: monto);
+            })
+            .ToList();
+
+        var idsConFila = dietas
+            .Where(d => d.OrdenCocinaId.HasValue)
+            .Select(d => d.OrdenCocinaId!.Value)
+            .ToHashSet();
+
+        var huerfanas = ordenes
+            .Where(o => ContratoCocinaHelper.EsOrdenHuerfanaSuministrada(o) && !idsConFila.Contains(o.Id))
+            .Select(o =>
+            {
+                var monto = ResolverTarifaLineaContrato(
+                    tarifas,
+                    ContratoCocinaHelper.LineaNormalesYDerivadas,
+                    o.Comida,
+                    o.FechaOperativa);
+                return (o.Comida, o.FechaOperativa, Monto: monto);
+            })
+            .ToList();
+
+        var sinEtiqueta = suministradas.Count(x => !filasConEtiqueta.Contains(x.Dieta.Id)) + huerfanas.Count;
+        var dietasProducidas = suministradas.Count + huerfanas.Count;
+        var costoSuministradas = suministradas.Sum(x => x.Monto) + huerfanas.Sum(x => x.Monto);
+
+        return new MetricasProduccionPeriodo(
+            sinEtiqueta,
+            dietasProducidas,
+            costoProduccion + costoRetrasos,
+            costoSuministradas,
+            suministradas,
+            huerfanas);
+    }
+
+    private static decimal ResolverTarifaLineaContrato(
+        IReadOnlyList<Domain.Entities.DietasCocina.TarifaHistorico> tarifas,
+        string linea,
+        TiempoComida comida,
+        DateTime fecha)
+    {
+        var tarifa = tarifas
+            .Where(t =>
+                t.TiempoComida == comida
+                && TarifasCatalogoHelper.EsTarifaVigente(t, fecha.Date)
+                && t.DietaCatalogo != null
+                && ContratoCocinaHelper.LineaContrato(t.DietaCatalogo.Nombre) == linea)
+            .OrderByDescending(t => t.VigenciaDesde)
+            .FirstOrDefault();
+
+        if (tarifa != null)
+            return tarifa.Monto;
+
+        return tarifas
+            .Where(t =>
+                t.TiempoComida == comida
+                && TarifasCatalogoHelper.EsTarifaVigente(t, fecha.Date)
+                && t.DietaCatalogoId == Guid.Parse("aaaaaaaa-0001-4000-8000-000000000001"))
+            .OrderByDescending(t => t.VigenciaDesde)
+            .Select(t => t.Monto)
+            .FirstOrDefault();
+    }
+
+    private static List<(string Categoria, int Cantidad)> AgruparTiposContrato(
+        IReadOnlyList<(FilaDieta Dieta, decimal Monto)> suministradas,
+        IReadOnlyList<(TiempoComida Comida, DateTime Fecha, decimal Monto)> huerfanas)
+    {
+        var grupos = suministradas
+            .GroupBy(x => ContratoCocinaHelper.LineaContrato(x.Dieta.TipoDieta?.Nombre))
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+
+        if (huerfanas.Count > 0)
+        {
+            grupos.TryGetValue(ContratoCocinaHelper.LineaNormalesYDerivadas, out var actuales);
+            grupos[ContratoCocinaHelper.LineaNormalesYDerivadas] = actuales + huerfanas.Count;
+        }
+
+        return grupos
+            .OrderByDescending(kv => kv.Value)
+            .Select(kv => (kv.Key, kv.Value))
+            .ToList();
+    }
+
+    private static List<(string Categoria, int Cantidad)> AgruparContratoPorComida(
+        TiempoComida comida,
+        IReadOnlyList<(FilaDieta Dieta, decimal Monto)> suministradas,
+        IReadOnlyList<(TiempoComida Comida, DateTime Fecha, decimal Monto)> huerfanas)
+    {
+        var grupos = suministradas
+            .Where(x => x.Dieta.Comida == comida)
+            .GroupBy(x => ContratoCocinaHelper.LineaContrato(x.Dieta.TipoDieta?.Nombre))
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+
+        var extraHuerfanas = huerfanas.Count(h => h.Comida == comida);
+        if (extraHuerfanas > 0)
+        {
+            grupos.TryGetValue(ContratoCocinaHelper.LineaNormalesYDerivadas, out var actuales);
+            grupos[ContratoCocinaHelper.LineaNormalesYDerivadas] = actuales + extraHuerfanas;
+        }
+
+        return grupos
+            .OrderByDescending(kv => kv.Value)
+            .Select(kv => (kv.Key, kv.Value))
+            .ToList();
+    }
+
+    private static List<(string Categoria, int Cantidad)> VolumenComidaSuministradas(
+        MetricasProduccionPeriodo metricas)
+    {
+        var map = metricas.Suministradas
+            .GroupBy(x => ContratoCocinaHelper.EtiquetaComidaContrato(x.Dieta.Comida))
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var huerfana in metricas.Huerfanas)
+        {
+            var clave = ContratoCocinaHelper.EtiquetaComidaContrato(huerfana.Comida);
+            map.TryGetValue(clave, out var actual);
+            map[clave] = actual + 1;
+        }
+
+        return map
+            .OrderBy(kv => kv.Key)
+            .Select(kv => (kv.Key, kv.Value))
+            .ToList();
+    }
+
+    private static List<(string Categoria, decimal Monto)> CostoComidaSuministradas(
+        MetricasProduccionPeriodo metricas)
+    {
+        var map = metricas.Suministradas
+            .GroupBy(x => ContratoCocinaHelper.EtiquetaComidaContrato(x.Dieta.Comida))
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Monto), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var huerfana in metricas.Huerfanas)
+        {
+            var clave = ContratoCocinaHelper.EtiquetaComidaContrato(huerfana.Comida);
+            map.TryGetValue(clave, out var actual);
+            map[clave] = actual + huerfana.Monto;
+        }
+
+        return map
+            .OrderByDescending(kv => kv.Value)
+            .Select(kv => (kv.Key, kv.Value))
+            .ToList();
+    }
+
+    private static List<(string Categoria, decimal Monto)> CostoDiaSuministradas(
+        MetricasProduccionPeriodo metricas)
+    {
+        var map = metricas.Suministradas
+            .GroupBy(x => x.Dieta.FechaOperativa.Date)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Monto));
+
+        foreach (var huerfana in metricas.Huerfanas)
+        {
+            map.TryGetValue(huerfana.Fecha.Date, out var actual);
+            map[huerfana.Fecha.Date] = actual + huerfana.Monto;
+        }
+
+        return map
+            .OrderBy(kv => kv.Key)
+            .Select(kv => (kv.Key.ToString("yyyy-MM-dd"), kv.Value))
+            .ToList();
+    }
+
+    private static IEnumerable<GraficoDto> GraficosContrato(MetricasProduccionPeriodo metricas)
+    {
+        foreach (var comida in new[]
+                 {
+                     TiempoComida.Desayuno,
+                     TiempoComida.Almuerzo,
+                     TiempoComida.Cena,
+                     TiempoComida.MediaNueve,
+                     TiempoComida.Onces,
+                     TiempoComida.MediaNoche,
+                 })
+        {
+            var items = AgruparContratoPorComida(comida, metricas.Suministradas, metricas.Huerfanas);
+            if (items.Count == 0)
+                continue;
+
+            var etiqueta = ContratoCocinaHelper.EtiquetaComidaContrato(comida);
+            var total = items.Sum(i => i.Cantidad);
+            yield return CrearGraficoBarra($"Contrato: {etiqueta} (total: {total})", items);
+        }
+    }
+
+    private static IEnumerable<GraficoDto> GraficosPlanillaContrato(
+        MetricasProduccionPeriodo metricas,
+        IReadOnlyList<Domain.Entities.DietasCocina.TarifaHistorico> tarifas,
+        DateTime fecha)
+    {
+        var conteo = new Dictionary<(TiempoComida Comida, string Linea), int>();
+        foreach (var item in metricas.Suministradas)
+        {
+            var clave = (item.Dieta.Comida, ContratoCocinaHelper.LineaContrato(item.Dieta.TipoDieta?.Nombre));
+            conteo.TryGetValue(clave, out var actual);
+            conteo[clave] = actual + 1;
+        }
+
+        foreach (var huerfana in metricas.Huerfanas)
+        {
+            var clave = (huerfana.Comida, ContratoCocinaHelper.LineaNormalesYDerivadas);
+            conteo.TryGetValue(clave, out var actual);
+            conteo[clave] = actual + 1;
+        }
+
+        var secciones = new (string Titulo, TiempoComida[] Comidas)[]
+        {
+            ("Desayuno", [TiempoComida.Desayuno]),
+            ("Almuerzo", [TiempoComida.Almuerzo]),
+            ("Cena", [TiempoComida.Cena]),
+            ("Merienda", [TiempoComida.MediaNueve, TiempoComida.Onces, TiempoComida.MediaNoche]),
+        };
+
+        foreach (var seccion in secciones)
+        {
+            var defs = ContratoCocinaHelper.PlantillaFcr
+                .Where(d => seccion.Comidas.Contains(d.Comida))
+                .ToList();
+            if (defs.Count == 0)
+                continue;
+
+            var cantidades = new List<decimal>();
+            var precios = new List<decimal>();
+            var totales = new List<decimal>();
+            var etiquetas = new List<string>();
+
+            foreach (var def in defs)
+            {
+                conteo.TryGetValue((def.Comida, def.Linea), out var cantidad);
+                var precio = ResolverTarifaLineaContrato(tarifas, def.Linea, def.Comida, fecha);
+                etiquetas.Add(def.Etiqueta);
+                cantidades.Add(cantidad);
+                precios.Add(precio);
+                totales.Add(cantidad * precio);
+            }
+
+            yield return new GraficoDto
+            {
+                Tipo = "tabla-contrato",
+                Titulo = $"Planilla: {seccion.Titulo}",
+                Categorias = etiquetas,
+                Series =
+                [
+                    new() { Etiqueta = "Suministradas", Valores = cantidades },
+                    new() { Etiqueta = "Contrato", Valores = precios },
+                    new() { Etiqueta = "ValorTotal", Valores = totales },
+                ],
+            };
+        }
+    }
+
+    private static void AgregarHallazgoSinEtiqueta(
+        List<HallazgoDto> hallazgos,
+        int dietasSinEtiqueta,
+        DateTime desde,
+        DateTime hasta)
+    {
+        if (dietasSinEtiqueta <= 0)
+            return;
+
+        var contexto = ContextoFiltroReporte(desde, hasta);
+        hallazgos.Add(new HallazgoDto
+        {
+            Tipo = "dietas_sin_etiqueta",
+            Descripcion =
+                $"{dietasSinEtiqueta} bandeja(s) comprometida(s) sin etiqueta impresa en {contexto}",
+            Severidad = dietasSinEtiqueta > 5 ? "alta" : "media",
+            Cantidad = dietasSinEtiqueta,
+        });
+    }
+
     public async Task<DashboardNutricionistaDto> ObtenerDashboardNutricionistaAsync(DateTime? fecha, string? comida)
     {
         var fechaOperativa = (fecha ?? HorarioOperativoHelper.HoyColombia()).Date;
@@ -839,17 +1150,7 @@ public class DashboardService : IDashboardService
 
         var etiquetas = await etiquetasQuery.ToListAsync();
 
-        var catalogIds = dietas
-            .Where(d => d.TipoDietaId.HasValue)
-            .Select(d => d.TipoDietaId!.Value)
-            .Distinct()
-            .ToList();
-
-        var tarifas = catalogIds.Count == 0
-            ? new List<Domain.Entities.DietasCocina.TarifaHistorico>()
-            : await _context.TarifasHistorico
-                .Where(t => t.Activa && catalogIds.Contains(t.DietaCatalogoId))
-                .ToListAsync();
+        var tarifas = await CargarTarifasReporteAsync();
 
         var dietasConCosto = dietas
             .Where(d => DietasReglasNegocio.EstuvoComprometidaConCocina(d)
@@ -868,18 +1169,29 @@ public class DashboardService : IDashboardService
             .Where(x => x.Dieta.CancelacionTardia)
             .Sum(x => x.Monto);
 
+        var metricasProduccion = CalcularMetricasProduccionPeriodo(
+            etiquetas,
+            dietas,
+            ordenes,
+            tarifas,
+            costoTotal,
+            costoCancTardia);
+
         // KPIs
         var kpis = new List<KpiDto>
         {
-            new() { Clave = "total_dietas_periodo", Etiqueta = "Total dietas período", Valor = totalDietas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "dietas_activas_periodo", Etiqueta = "Dietas activas período", Valor = dietasActivas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "ordenes_periodo", Etiqueta = "Órdenes período", Valor = totalOrdenes, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "promedio_diario", Etiqueta = "Promedio diario dietas", Valor = Math.Round((decimal)totalDietas / diasPeriodo, 1), Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "costo_total", Etiqueta = "Costo total", Valor = Math.Round(costoTotal, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
-            new() { Clave = "costo_canc_tardia", Etiqueta = "Costo canc. tardía", Valor = Math.Round(costoCancTardia, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
-            new() { Clave = "salidas_clinicas", Etiqueta = "Salidas clínicas", Valor = salidasClinicasCanceladas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "salidas_asume_clinica", Etiqueta = "Asume clínica", Valor = salidasClinicasSostenidas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "canceladas", Etiqueta = "Canceladas", Valor = canceladasManualesReporte, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "total_dietas_periodo", Etiqueta = "Pacientes en censo", Valor = totalDietas, Formato = "numero", Tendencia = null, Comparacion = "Censo del período; incluye sin solicitud" },
+            new() { Clave = "dietas_producidas_periodo", Etiqueta = "Dietas producidas período", Valor = metricasProduccion.DietasProducidas, Formato = "numero", Tendencia = null, Comparacion = "Bandejas suministradas según contrato FCR" },
+            new() { Clave = "dietas_sin_etiqueta", Etiqueta = "Sin etiqueta", Valor = metricasProduccion.DietasSinEtiqueta, Formato = "numero", Tendencia = null, Comparacion = "Suministradas sin etiqueta impresa" },
+            new() { Clave = "dietas_activas_periodo", Etiqueta = "Dietas activas período", Valor = dietasActivas, Formato = "numero", Tendencia = null, Comparacion = "Solicitudes no canceladas; no es producción de cocina" },
+            new() { Clave = "ordenes_periodo", Etiqueta = "Órdenes período", Valor = totalOrdenes, Formato = "numero", Tendencia = null, Comparacion = "Órdenes de cocina; no equivalen 1:1 a bandejas" },
+            new() { Clave = "promedio_diario", Etiqueta = "Promedio diario dietas", Valor = Math.Round((decimal)totalDietas / diasPeriodo, 1), Formato = "numero", Tendencia = null, Comparacion = "Promedio del censo; no bandejas por día" },
+            new() { Clave = "costo_total", Etiqueta = "Costo total", Valor = Math.Round(costoTotal, 2), Formato = "moneda", Tendencia = null, Comparacion = "Referencia de censo comprometido; no es la planilla de cocina" },
+            new() { Clave = "costo_total_facturado", Etiqueta = "Costo total facturado", Valor = Math.Round(metricasProduccion.CostoDietasProducidas, 2), Formato = "moneda", Tendencia = null, Comparacion = "Tarifa contrato × bandejas suministradas" },
+            new() { Clave = "costo_canc_tardia", Etiqueta = "Costo canc. tardía", Valor = Math.Round(costoCancTardia, 2), Formato = "moneda", Tendencia = null, Comparacion = "Informativo: ya incluido en dietas producidas. No sumar." },
+            new() { Clave = "salidas_clinicas", Etiqueta = "Salidas clínicas", Valor = salidasClinicasCanceladas, Formato = "numero", Tendencia = null, Comparacion = "Egresos en censo; no bandejas facturadas" },
+            new() { Clave = "salidas_asume_clinica", Etiqueta = "Asume clínica", Valor = salidasClinicasSostenidas, Formato = "numero", Tendencia = null, Comparacion = "Salida clínica fuera de horario; cocina ya preparó" },
+            new() { Clave = "canceladas", Etiqueta = "Canceladas", Valor = canceladasManualesReporte, Formato = "numero", Tendencia = null, Comparacion = "Cancelaciones manuales reportadas" },
         };
 
         // Hitos logísticos (promedios en minutos)
@@ -898,14 +1210,9 @@ public class DashboardService : IDashboardService
             .Select(g => new { Categoria = g.Key, Cantidad = g.Count() })
             .ToList();
 
-        // Tipos con solicitud clínica (excluye sin solicitud); no exige cocina.
-        var tiposDieta = dietas
-            .Where(d => d.TipoDieta != null && d.Estado != EstadoDieta.Pendiente)
-            .GroupBy(d => d.TipoDieta!.Nombre)
-            .OrderByDescending(g => g.Count())
-            .Take(5)
-            .Select(g => (g.Key, g.Count()))
-            .ToList();
+        // Tipos facturables según contrato FCR (normales y derivadas agrupadas).
+        var tiposDieta = AgruparTiposContrato(metricasProduccion.Suministradas, metricasProduccion.Huerfanas);
+        var totalTiposDieta = tiposDieta.Sum(t => t.Cantidad);
 
         var motivosRechazo = AgruparMotivosTop3(etiquetas, EsRechazoAntesEntrega);
         var motivosRecogida = AgruparMotivosTop3(etiquetas, EsRecogidaPostEntrega);
@@ -958,22 +1265,27 @@ public class DashboardService : IDashboardService
                 }
             },
             CrearGraficoPie("Estado de dietas", estadosDietas.Select(e => (e.Categoria, e.Cantidad))),
-            CrearGraficoBarra("Tipos de dieta principales", tiposDieta),
+            CrearGraficoBarra($"Tipos de dieta principales (total: {totalTiposDieta})", tiposDieta),
             CrearGraficoBarra("Rechazos antes de entrega (Top 3)", motivosRechazo),
             CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
             CrearGraficoBarra("Distribución por servicios", distribucionServicio),
-            CrearGraficoBarra("Volumen por comida", distribucionTurno),
-            CrearGraficoBarraMoneda("Costo por día", costoPorDia),
+            CrearGraficoBarra("Volumen por comida", VolumenComidaSuministradas(metricasProduccion)),
+            CrearGraficoBarraMoneda("Costo por día", CostoDiaSuministradas(metricasProduccion)),
             CrearGraficoBarraMoneda("Costo por servicio", costoPorServicio),
-            CrearGraficoBarraMoneda("Costo por comida", costoPorComida),
+            CrearGraficoBarraMoneda("Costo por comida", CostoComidaSuministradas(metricasProduccion)),
         };
+        graficos.AddRange(GraficosContrato(metricasProduccion));
+        graficos.AddRange(GraficosPlanillaContrato(metricasProduccion, tarifas, hasta));
+
+        var hallazgosNutricionista = ConstruirHallazgosNutricionista(dietas, etiquetas, desde, hasta);
+        AgregarHallazgoSinEtiqueta(hallazgosNutricionista, metricasProduccion.DietasSinEtiqueta, desde, hasta);
 
         return new ReporteNutricionistaDto
         {
             Kpis = kpis,
             Hitos = hitos,
             Graficos = graficos,
-            Hallazgos = ConstruirHallazgosNutricionista(dietas, etiquetas, desde, hasta),
+            Hallazgos = hallazgosNutricionista,
             Filtros = filtros
         };
     }
@@ -1022,17 +1334,7 @@ public class DashboardService : IDashboardService
                 .ToList();
         }
 
-        var catalogIds = dietas
-            .Where(d => d.TipoDietaId.HasValue)
-            .Select(d => d.TipoDietaId!.Value)
-            .Distinct()
-            .ToList();
-
-        var tarifas = catalogIds.Count == 0
-            ? new List<Domain.Entities.DietasCocina.TarifaHistorico>()
-            : await _context.TarifasHistorico
-                .Where(t => t.Activa && catalogIds.Contains(t.DietaCatalogoId))
-                .ToListAsync();
+        var tarifas = await CargarTarifasReporteAsync();
 
         // Costos de producción: solo dietas ya comprometidas con cocina (o sostenidas).
         var dietasFacturables = dietas
@@ -1055,17 +1357,28 @@ public class DashboardService : IDashboardService
 
         var sostenidasProduccion = dietas.Count(DietasReglasNegocio.EsSalidaClinicaSostenida);
 
+        var metricasProduccion = CalcularMetricasProduccionPeriodo(
+            etiquetas,
+            dietas,
+            ordenes,
+            tarifas,
+            costoProduccion,
+            costoRetrasos);
+
         // KPIs
         var kpis = new List<KpiDto>
         {
-            new() { Clave = "ordenes_periodo", Etiqueta = "Órdenes período", Valor = totalOrdenes, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "dietas_producidas_periodo", Etiqueta = "Dietas producidas período", Valor = metricasProduccion.DietasProducidas, Formato = "numero", Tendencia = null, Comparacion = "Bandejas suministradas según contrato FCR" },
+            new() { Clave = "etiquetas_periodo", Etiqueta = "Etiquetas período", Valor = totalEtiquetas, Formato = "numero", Tendencia = null, Comparacion = "Etiquetas impresas; no es el total facturado" },
+            new() { Clave = "dietas_sin_etiqueta", Etiqueta = "Sin etiqueta", Valor = metricasProduccion.DietasSinEtiqueta, Formato = "numero", Tendencia = null, Comparacion = "Suministradas sin etiqueta impresa" },
+            new() { Clave = "ordenes_periodo", Etiqueta = "Órdenes período", Valor = totalOrdenes, Formato = "numero", Tendencia = null, Comparacion = "Órdenes de cocina; no equivalen 1:1 a bandejas" },
             new() { Clave = "ordenes_completadas_periodo", Etiqueta = "Órdenes completadas período", Valor = ordenesCompletadas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "etiquetas_periodo", Etiqueta = "Etiquetas período", Valor = totalEtiquetas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "etiquetas_entregadas_periodo", Etiqueta = "Etiquetas entregadas período", Valor = etiquetasEntregadas, Formato = "numero", Tendencia = null, Comparacion = null },
-            new() { Clave = "porcentaje_cumplimiento", Etiqueta = "% Cumplimiento entregas", Valor = totalEtiquetas > 0 ? Math.Round((decimal)etiquetasEntregadas / totalEtiquetas * 100, 1) : 0, Formato = "porcentaje", Tendencia = null, Comparacion = null },
-            new() { Clave = "costo_produccion", Etiqueta = "Costo producción", Valor = Math.Round(costoProduccion, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
-            new() { Clave = "costo_retrasos", Etiqueta = "Costo por retrasos", Valor = Math.Round(costoRetrasos, 2), Formato = "moneda", Tendencia = null, Comparacion = null },
-            new() { Clave = "salidas_asume_clinica", Etiqueta = "Asume clínica", Valor = sostenidasProduccion, Formato = "numero", Tendencia = null, Comparacion = null },
+            new() { Clave = "etiquetas_entregadas_periodo", Etiqueta = "Etiquetas entregadas período", Valor = etiquetasEntregadas, Formato = "numero", Tendencia = null, Comparacion = "Marcadas entregadas en piso; no es lo que cocina despachó" },
+            new() { Clave = "porcentaje_cumplimiento", Etiqueta = "% Cumplimiento entregas", Valor = totalEtiquetas > 0 ? Math.Round((decimal)etiquetasEntregadas / totalEtiquetas * 100, 1) : 0, Formato = "porcentaje", Tendencia = null, Comparacion = "Solo si enfermería registra entregas en la app" },
+            new() { Clave = "costo_produccion", Etiqueta = "Costo producción", Valor = Math.Round(costoProduccion, 2), Formato = "moneda", Tendencia = null, Comparacion = "Referencia interna; use «Costo total facturado» para conciliar" },
+            new() { Clave = "costo_total_facturado", Etiqueta = "Costo total facturado", Valor = Math.Round(metricasProduccion.CostoDietasProducidas, 2), Formato = "moneda", Tendencia = null, Comparacion = "Tarifa contrato × bandejas suministradas" },
+            new() { Clave = "costo_retrasos", Etiqueta = "Costo por retrasos", Valor = Math.Round(costoRetrasos, 2), Formato = "moneda", Tendencia = null, Comparacion = "Informativo: ya incluido en dietas producidas. No sumar." },
+            new() { Clave = "salidas_asume_clinica", Etiqueta = "Asume clínica", Valor = sostenidasProduccion, Formato = "numero", Tendencia = null, Comparacion = "Salida clínica fuera de horario; cocina ya preparó" },
         };
 
         // Hallazgos
@@ -1118,6 +1431,8 @@ public class DashboardService : IDashboardService
             });
         }
 
+        AgregarHallazgoSinEtiqueta(hallazgos, metricasProduccion.DietasSinEtiqueta, desde, hasta);
+
         // Gráficos operativos
         var estadosOrdenes = ordenes
             .GroupBy(o => EtiquetaEstadoOrdenReporte(o.Estado))
@@ -1125,16 +1440,9 @@ public class DashboardService : IDashboardService
             .Select(g => (g.Key, g.Count()))
             .ToList();
 
-        // Solo dietas que llegaron a cocina (o sostenidas): cuadra con órdenes/etiquetas.
-        var tiposDieta = dietas
-            .Where(d => d.TipoDieta != null
-                        && (DietasReglasNegocio.EstuvoComprometidaConCocina(d)
-                            || DietasReglasNegocio.EsSalidaClinicaSostenida(d)))
-            .GroupBy(d => d.TipoDieta!.Nombre)
-            .OrderByDescending(g => g.Count())
-            .Take(5)
-            .Select(g => (g.Key, g.Count()))
-            .ToList();
+        // Tipos facturables según contrato FCR (normales y derivadas agrupadas).
+        var tiposDieta = AgruparTiposContrato(metricasProduccion.Suministradas, metricasProduccion.Huerfanas);
+        var totalTiposDieta = tiposDieta.Sum(t => t.Cantidad);
 
         var motivosRechazo = AgruparMotivosTop3(etiquetas, EsRechazoAntesEntrega);
         var motivosRecogida = AgruparMotivosTop3(etiquetas, EsRecogidaPostEntrega);
@@ -1180,10 +1488,10 @@ public class DashboardService : IDashboardService
         var graficos = new List<GraficoDto>
         {
             CrearGraficoPie("Estado de órdenes", estadosOrdenes),
-            CrearGraficoBarra("Tipos de dieta en cocina", tiposDieta),
+            CrearGraficoBarra($"Tipos de dieta en cocina (total: {totalTiposDieta})", tiposDieta),
             CrearGraficoBarra("Rechazos antes de entrega (Top 3)", motivosRechazo),
             CrearGraficoBarra("Recogidas de bandeja (Top 3)", motivosRecogida),
-            CrearGraficoBarra("Volumen por comida", distribucionTurno),
+            CrearGraficoBarra("Volumen por comida", VolumenComidaSuministradas(metricasProduccion)),
             new()
             {
                 Tipo = "barra",
@@ -1194,10 +1502,12 @@ public class DashboardService : IDashboardService
                     new() { Etiqueta = "% Completadas", Valores = cumplimientoDiario.Select(c => c.Porcentaje).ToList() }
                 }
             },
-            CrearGraficoBarraMoneda("Costo por día", costoPorDia),
+            CrearGraficoBarraMoneda("Costo por día", CostoDiaSuministradas(metricasProduccion)),
             CrearGraficoBarraMoneda("Costo por servicio", costoPorServicio),
-            CrearGraficoBarraMoneda("Costo por comida", costoPorComida),
+            CrearGraficoBarraMoneda("Costo por comida", CostoComidaSuministradas(metricasProduccion)),
         };
+        graficos.AddRange(GraficosContrato(metricasProduccion));
+        graficos.AddRange(GraficosPlanillaContrato(metricasProduccion, tarifas, hasta));
 
         var hitos = ConstruirHitosLogisticos(etiquetas, hasta);
 

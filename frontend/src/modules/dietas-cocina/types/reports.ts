@@ -6,10 +6,11 @@ export interface FiltrosReportes {
 }
 
 export interface ReportesKpi {
+  clave?: string
   label: string
   value: string
   detalle?: string
-  detalleVariant: "positive" | "negative" | "neutral"
+  detalleVariant?: "positive" | "negative" | "neutral"
 }
 
 export interface ReportesChartItem {

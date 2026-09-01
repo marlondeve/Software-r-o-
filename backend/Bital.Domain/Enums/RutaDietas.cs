@@ -34,10 +34,14 @@ public enum RutaDietas
     ListarConciliacion = 30,
     AprobarConciliacion = 31,
     RechazarConciliacion = 32,
+    /// <summary>Registrar cantidades de la planilla de cocina (manual o CSV).</summary>
+    CargarPlanillaConciliacion = 33,
 
     // Reportes y dashboards
     VerDashboard = 40,
     ExportarReportes = 41,
+    VerReportesClinicos = 42,
+    VerReportesProduccion = 43,
 
     // Parámetros operativos
     VerParametros = 50,

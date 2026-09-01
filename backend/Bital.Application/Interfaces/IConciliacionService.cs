@@ -6,62 +6,64 @@ using Bital.Application.DTOs.DietasCocina;
 
 namespace Bital.Application.Interfaces;
 
-/// <summary>
-/// Servicio de conciliación de dietas vs facturación
-/// </summary>
 public interface IConciliacionService
 {
-    /// <summary>
-    /// Obtiene líneas de conciliación con filtros opcionales (paginado, máx. 24 por página).
-    /// </summary>
     Task<ListaConciliacionDto> ObtenerConciliacionAsync(
+        DateTime? desde = null,
+        DateTime? hasta = null,
         string? busqueda = null,
         string? numeroFactura = null,
         string? periodo = null,
-        string? proveedor = null,
         string? estado = null,
         int page = 1,
-        int pageSize = 24,
+        int pageSize = 50,
         bool sinPaginar = false,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Obtiene el detalle completo de una línea de conciliación
-    /// </summary>
     Task<DetalleConciliacionDto> ObtenerDetalleConciliacionAsync(
         Guid id,
+        DateTime? desde = null,
+        DateTime? hasta = null,
+        string? periodo = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Marca una línea como conciliada
-    /// </summary>
     Task<FilaConciliacionDto> MarcarConciliadoAsync(
         Guid id,
         MarcarConciliadoDto datos,
         string usuario,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Marca una línea como pendiente de revisión
-    /// </summary>
     Task<FilaConciliacionDto> MarcarPendienteRevisionAsync(
         Guid id,
         MarcarPendienteRevisionDto datos,
         string usuario,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Calcula KPIs agregados de conciliación
-    /// </summary>
     Task<List<KpiConciliacionDto>> ObtenerKpisConciliacionAsync(
+        DateTime? desde = null,
+        DateTime? hasta = null,
         string? periodo = null,
-        string? proveedor = null,
         CancellationToken cancellationToken = default);
 
     Task<FilaConciliacionDto> SubirFacturaAsync(
         Guid id,
         Stream archivo,
         string nombreArchivo,
+        string usuario,
+        CancellationToken cancellationToken = default);
+
+    Task SubirFacturaPeriodoAsync(
+        DateTime desde,
+        DateTime hasta,
+        Stream archivo,
+        string nombreArchivo,
+        string? numeroFactura,
+        string usuario,
+        string? periodo = null,
+        CancellationToken cancellationToken = default);
+
+    Task<ListaConciliacionDto> CargarPlanillaAsync(
+        CargarPlanillaCocinaDto datos,
         string usuario,
         CancellationToken cancellationToken = default);
 }

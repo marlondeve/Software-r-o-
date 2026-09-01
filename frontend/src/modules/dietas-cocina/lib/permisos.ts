@@ -108,3 +108,54 @@ export function tieneAccesoReportes(rol: string | null): boolean {
     tieneAccesoReportesClinicos(rol) || tieneAccesoReportesProduccion(rol)
   )
 }
+
+export const RUTA_LISTAR_CONCILIACION = 30
+export const RUTA_APROBAR_CONCILIACION = 31
+export const RUTA_RECHAZAR_CONCILIACION = 32
+export const RUTA_CARGAR_PLANILLA_CONCILIACION = 33
+
+/** Nutricionista y admin registran cantidades de cocina en conciliación. */
+export function puedeCapturarCocinaConciliacion(rol: string | null): boolean {
+  if (!rol) return false
+  const clave = rol.trim().toLowerCase()
+  if (clave === "administrador" || clave === "nutricionista") {
+    return true
+  }
+  if (clave === "proveedor") return false
+
+  const matriz = obtenerMatrizPermisosApi()
+  if (matriz) {
+    const entry =
+      matriz.find((item) => item.rol?.toLowerCase() === clave) ??
+      matriz.find((item) => item.rolId === rol)
+    const rutas = entry?.rutas ?? []
+    return (
+      rutas.includes(RUTA_CARGAR_PLANILLA_CONCILIACION) ||
+      rutas.includes(RUTA_APROBAR_CONCILIACION)
+    )
+  }
+
+  return false
+}
+
+/** Nutricionista y Admin capturan cantidades y cierran líneas. */
+export function puedeResolverConciliacion(rol: string | null): boolean {
+  if (!rol) return false
+  const clave = rol.trim().toLowerCase()
+  if (clave === "proveedor") return false
+  if (clave === "administrador" || clave === "nutricionista") return true
+
+  const matriz = obtenerMatrizPermisosApi()
+  if (matriz) {
+    const entry =
+      matriz.find((item) => item.rol?.toLowerCase() === clave) ??
+      matriz.find((item) => item.rolId === rol)
+    const rutas = entry?.rutas ?? []
+    return (
+      rutas.includes(RUTA_APROBAR_CONCILIACION) ||
+      rutas.includes(RUTA_RECHAZAR_CONCILIACION)
+    )
+  }
+
+  return false
+}

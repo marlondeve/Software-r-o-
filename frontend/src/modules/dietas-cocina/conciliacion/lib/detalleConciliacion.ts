@@ -1,88 +1,69 @@
-import type { DetalleConciliacion, FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
+import type {
+  DetalleConciliacion,
+  FilaConciliacion,
+} from "@/modules/dietas-cocina/types/reconciliation"
 import type { EstadoConciliacion } from "@/modules/dietas-cocina/types/enums"
-import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
+import { formatearMonedaCOP } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
+
+const BADGE_POR_ESTADO: Record<EstadoConciliacion, string> = {
+  coincide: "Sin diferencias",
+  "dif-cantidad": "Diferencia de cantidad",
+  "dif-tipo": "Tipo distinto al cobrado",
+  "dif-tarifa": "Diferencia de tarifa",
+  pendiente: "Planilla pendiente",
+  "con-alerta": "Con alerta",
+  "conciliado-manual": "Conciliado",
+}
+
 export function construirDetalleDesdeFila(
   fila: FilaConciliacion,
 ): DetalleConciliacion {
-  const badgePorEstado: Record<EstadoConciliacion, string> = {
-    coincide: "Sin diferencias",
-    "dif-cantidad": "Diferencia de cantidad",
-    "dif-tarifa": "Diferencia de tarifa",
-    pendiente: "Revisión pendiente",
-    "conciliado-manual": "Conciliado manualmente",
-  }
+  const cocinaTxt =
+    fila.cantidadCocina === null
+      ? "—"
+      : formatearMonedaCOP(fila.valorCocina ?? 0)
 
-  const tarifaNum = Number.parseFloat(fila.tarifa.replace("$", "")) || 0
-  const valorBital = fila.cantSist * tarifaNum
-  const valorProveedor = fila.cantFact * tarifaNum
-
-  const formatMoney = (n: number) =>
-    `$${n.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-
-  let diferencia = "Sin diferencia registrada"
-  if (fila.difCant !== 0 || fila.difEconomica !== "$0.00") {
+  let diferencia = "Sin planilla de cocina"
+  if (fila.cantidadCocina !== null) {
     const partes: string[] = []
-    if (fila.difCant !== 0) {
+    if (fila.diferenciaCantidad !== 0) {
       partes.push(
-        `${fila.difCant > 0 ? "+" : ""}${fila.difCant} unidades`,
+        `${fila.diferenciaCantidad > 0 ? "+" : ""}${fila.diferenciaCantidad} unidades`,
       )
     }
-    if (fila.difEconomica !== "$0.00") {
-      partes.push(fila.difEconomica)
+    if (fila.diferenciaEconomica != null && fila.diferenciaEconomica !== 0) {
+      partes.push(formatearMonedaCOP(fila.diferenciaEconomica, true))
     }
-    diferencia = partes.join(" / ")
+    diferencia = partes.length > 0 ? partes.join(" / ") : "Sin diferencia"
   }
 
   return {
-    titulo: `${fila.consistencia} - ${fila.tiempo}`,
-    codigo: `Cód. ${fila.id.padStart(3, "0")}`,
-    badge: badgePorEstado[fila.estado],
-    bital: {
-      unidades: fila.cantSist,
-      valor: formatMoney(valorBital),
+    titulo: `${fila.etiquetaPlanilla} · ${fila.comida}`,
+    codigo: `Cód. ${fila.id.slice(0, 8) || "—"}`,
+    badge: BADGE_POR_ESTADO[fila.estado] ?? fila.estado,
+    sistema: {
+      unidades: fila.cantidadSistema,
+      valor: formatearMonedaCOP(fila.valorSistema),
     },
-    proveedor: {
-      unidades: fila.cantFact,
-      valor: formatMoney(valorProveedor),
+    cocina: {
+      unidades: fila.cantidadCocina,
+      valor: cocinaTxt,
     },
     diferencia,
-    totalRegistros: fila.registros?.length ?? fila.cantSist,
-    registros:
-      fila.registros ??
-      (usarApiDietasCocina() || fila.cantSist <= 0
-        ? []
-        : [
-            {
-              fecha: "12 oct, 07:30",
-              paciente: "García, J.",
-              habitacion: "Hab. 304",
-              estado: "Confirmada",
-            },
-            {
-              fecha: "12 oct, 07:32",
-              paciente: "López, M.",
-              habitacion: "Hab. 305",
-              estado: "Confirmada",
-            },
-            {
-              fecha: "12 oct, 07:35",
-              paciente: "Ruiz, P.",
-              habitacion: "Hab. 308",
-              estado: "Confirmada",
-            },
-          ]),
+    totalRegistros: 0,
+    registros: [],
+    alertas: [],
+    recomendaciones: [],
   }
 }
 
 export function obtenerDetalleConciliacion(
   id: string,
   filas: FilaConciliacion[],
-  detalles: Record<string, DetalleConciliacion>,
+  detalles: Record<string, DetalleConciliacion> = {},
 ): DetalleConciliacion | null {
   if (detalles[id]) return detalles[id]
-
   const fila = filas.find((f) => f.id === id)
   if (!fila) return null
-
   return construirDetalleDesdeFila(fila)
 }

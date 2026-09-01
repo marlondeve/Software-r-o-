@@ -237,41 +237,47 @@ export interface BulkEtiquetasRequestDto {
 
 export interface FilaConciliacionDto {
   id?: string
-  tipo?: string
-  tipoDieta?: string
-  consistencia?: string
-  tiempo?: string
   comida?: string
-  tarifa?: string
-  tarifaAlerta?: boolean
-  cantSist?: number
-  cantFact?: number
-  difCant?: number
-  diferencia?: number
-  difEconomica?: string
+  lineaFcr?: string
+  etiquetaPlanilla?: string
+  tarifa?: number
+  cantidadSistema?: number
+  cantidadCocina?: number | null
+  valorSistema?: number
+  valorCocina?: number | null
+  diferenciaCantidad?: number
+  diferenciaEconomica?: number | null
+  sinEtiqueta?: number
+  huerfanas?: number
   estado?: string
-  cantidadSolicitada?: number
-  cantidadFacturada?: number
-  cantidadEntregada?: number
-  valorUnitario?: number
-  valorTotal?: number
+  motivo?: string | null
+  observaciones?: string | null
+  numeroFactura?: string | null
+  periodoDesde?: string
+  periodoHasta?: string
+  facturaDocumentoUrl?: string | null
+}
+
+export interface RegistroBandejaConciliacionDto {
+  fecha?: string
   paciente?: string
+  cedula?: string
+  pabellon?: string
   habitacion?: string
-  fechaOperativa?: string
-  numeroFactura?: string
-  proveedor?: string
-  periodo?: string
+  estadoDieta?: string
+  estadoOrden?: string
+  tipoClinico?: string
+  lineaFcr?: string
+  tieneEtiqueta?: boolean
+  esHuerfana?: boolean
+  alertas?: string[]
 }
 
 export interface DetalleConciliacionDto {
   linea?: FilaConciliacionDto
-  Linea?: FilaConciliacionDto
-  eventosDieta?: EventoTrazabilidadDto[]
-  EventosDieta?: EventoTrazabilidadDto[]
+  registros?: RegistroBandejaConciliacionDto[]
   alertas?: string[]
-  Alertas?: string[]
   recomendaciones?: string[]
-  Recomendaciones?: string[]
 }
 
 export interface ConciliacionKpisDto {

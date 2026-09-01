@@ -19,6 +19,8 @@ interface ReportesFiltrosProps {
   ultimaActualizacion: string
   filtros: FiltrosReportes
   serviciosDisponibles?: string[]
+  exportando?: boolean
+  onExportar?: () => void
   onFiltrosChange: (filtros: FiltrosReportes) => void
 }
 
@@ -29,9 +31,15 @@ export function ReportesFiltros({
   ultimaActualizacion,
   filtros,
   serviciosDisponibles,
+  exportando = false,
+  onExportar,
   onFiltrosChange,
 }: ReportesFiltrosProps) {
   function exportar() {
+    if (onExportar) {
+      onExportar()
+      return
+    }
     descargarArchivoDemo(
       "Reporte — módulo Dietas y Cocina\n",
       "reportes-dietas-cocina.txt",
@@ -112,9 +120,14 @@ export function ReportesFiltros({
             {ultimaActualizacion}
           </span>
         </p>
-        <Button size="sm" className="shrink-0" onClick={exportar}>
+        <Button
+          size="sm"
+          className="shrink-0"
+          onClick={exportar}
+          disabled={exportando}
+        >
           <Download data-icon="inline-start" />
-          Exportar
+          {exportando ? "Exportando…" : "Exportar"}
         </Button>
       </div>
     </div>

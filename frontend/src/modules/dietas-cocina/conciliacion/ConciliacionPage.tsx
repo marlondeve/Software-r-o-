@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { TableSkeleton } from "@/components/shared/skeletons"
-import { usePaginacionTabla } from "@/lib/usePaginacionTabla"
 import { DashboardPageHeader } from "@/modules/dietas-cocina/inicio/components/DashboardPageHeader"
 import { RutaDietasSectionGuard } from "@/modules/dietas-cocina/components/RutaDietasSectionGuard"
 import { ConciliacionDetalleSheet } from "@/modules/dietas-cocina/conciliacion/components/ConciliacionDetalleSheet"
@@ -18,6 +17,11 @@ import {
 } from "@/modules/dietas-cocina/conciliacion/lib/detalleConciliacion"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { obtenerDetalleConciliacionApi } from "@/modules/dietas-cocina/api/services/conciliacion.service"
+import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
+import { useRolVistaEfectivo } from "@/modules/dietas-cocina/context/VistaRolAdminContext"
+import { construirDetallesConciliacionDesdeCiclo } from "@/modules/dietas-cocina/lib/construirConciliacionDesdeCiclo"
+import { puedeCapturarCocinaConciliacion, puedeResolverConciliacion } from "@/modules/dietas-cocina/lib/permisos"
+import { useMatrizPermisosVersion } from "@/modules/dietas-cocina/lib/permisosMatrizCache"
 import type { DetalleConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
 
 export function ConciliacionPage() {
@@ -33,35 +37,30 @@ export function ConciliacionPage() {
     setBusqueda,
     numeroFactura,
     setNumeroFactura,
-    periodo,
-    setPeriodo,
-    proveedor,
-    setProveedor,
+    desde,
+    setDesde,
+    hasta,
+    setHasta,
+    estado,
+    setEstado,
     actualizarEstadoFila,
-    filtros,
-    detalles,
     cargando,
     error,
+    exportar,
+    guardarCantidadCocina,
+    guardandoCocinaId,
   } = apiActiva ? apiData : mockData
+
+  const { ordenes } = useCicloBandejas()
+  const rol = useRolVistaEfectivo()
+  useMatrizPermisosVersion()
+  const puedeResolver = puedeResolverConciliacion(rol)
+  const puedeCapturarCocina = puedeCapturarCocinaConciliacion(rol)
 
   useEffect(() => {
     const q = searchParams.get("q")?.trim()
     if (q) setBusqueda(q)
   }, [searchParams, setBusqueda])
-
-  const paginacionMock = usePaginacionTabla(filasFiltradas, {
-    resetKey: `${busqueda}-${numeroFactura}-${periodo}-${proveedor}`,
-  })
-
-  const filasTabla = apiActiva ? filasFiltradas : paginacionMock.filasPagina
-  const paginaActual = apiActiva ? apiData.paginaActual : paginacionMock.paginaActual
-  const totalPaginas = apiActiva ? apiData.totalPaginas : paginacionMock.totalPaginas
-  const paginaDesde = apiActiva ? apiData.paginaDesde : paginacionMock.paginaDesde
-  const paginaHasta = apiActiva ? apiData.paginaHasta : paginacionMock.paginaHasta
-  const totalRegistros = apiActiva ? apiData.totalFilas : paginacionMock.total
-  const onCambiarPagina = apiActiva
-    ? apiData.setPaginaActual
-    : paginacionMock.setPaginaActual
 
   const [sheetAbierto, setSheetAbierto] = useState(false)
   const [filaSeleccionada, setFilaSeleccionada] = useState<string | null>(null)
@@ -74,7 +73,7 @@ export function ConciliacionPage() {
     }
 
     let cancelado = false
-    void obtenerDetalleConciliacionApi(filaSeleccionada)
+    void obtenerDetalleConciliacionApi(filaSeleccionada, desde, hasta)
       .then((detalle) => {
         if (!cancelado) setDetalleApi(detalle)
       })
@@ -88,12 +87,17 @@ export function ConciliacionPage() {
     return () => {
       cancelado = true
     }
-  }, [apiActiva, filaSeleccionada, filas])
+  }, [apiActiva, filaSeleccionada, filas, desde, hasta])
+
+  const detallesLocal = useMemo(
+    () => (apiActiva ? {} : construirDetallesConciliacionDesdeCiclo(ordenes, filas)),
+    [apiActiva, ordenes, filas],
+  )
 
   const detalle = apiActiva
     ? detalleApi
     : filaSeleccionada
-      ? obtenerDetalleConciliacion(filaSeleccionada, filas, detalles)
+      ? obtenerDetalleConciliacion(filaSeleccionada, filas, detallesLocal)
       : null
 
   function abrirDetalle(id: string) {
@@ -103,59 +107,60 @@ export function ConciliacionPage() {
 
   return (
     <RutaDietasSectionGuard segmento="conciliacion" title="Conciliación">
-    <div className="space-y-5">
-      <DashboardPageHeader title="Conciliación" />
+      <div className="space-y-5">
+        <DashboardPageHeader title="Conciliación" />
 
-      {apiActiva && error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+        {apiActiva && error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
-      <ConciliacionFiltros
-        {...filtros}
-        periodoSeleccionado={periodo}
-        proveedorSeleccionado={proveedor}
-        numeroFactura={numeroFactura}
-        onPeriodoChange={setPeriodo}
-        onProveedorChange={setProveedor}
-        onNumeroFacturaChange={setNumeroFactura}
-      />
-
-      <ConciliacionKpiGrid kpis={kpis} />
-
-      {apiActiva && cargando && filasFiltradas.length === 0 ? (
-        <TableSkeleton rows={8} columns={5} />
-      ) : (
-        <ConciliacionTabla
-          filas={filasTabla}
-          busqueda={busqueda}
-          onBusquedaChange={setBusqueda}
-          onVerDetalle={abrirDetalle}
-          paginaActual={paginaActual}
-          totalPaginas={totalPaginas}
-          paginaDesde={paginaDesde}
-          paginaHasta={paginaHasta}
-          totalRegistros={totalRegistros}
-          onCambiarPagina={onCambiarPagina}
+        <ConciliacionFiltros
+          desde={desde}
+          hasta={hasta}
+          estado={estado}
+          numeroFactura={numeroFactura}
+          apiActiva={apiActiva}
+          onRangoChange={({ desde: d, hasta: h }) => {
+            setDesde(d)
+            setHasta(h)
+          }}
+          onEstadoChange={setEstado}
+          onNumeroFacturaChange={setNumeroFactura}
+          onExportar={exportar}
         />
-      )}
 
-      <ConciliacionDetalleSheet
-        open={sheetAbierto}
-        onOpenChange={setSheetAbierto}
-        detalle={detalle}
-        filaId={filaSeleccionada}
-        onMarcarConciliado={(id) => {
-          actualizarEstadoFila(id, "conciliado-manual")
-          setSheetAbierto(false)
-        }}
-        onPendienteRevision={(id) => {
-          actualizarEstadoFila(id, "pendiente")
-          setSheetAbierto(false)
-        }}
-      />
-    </div>
+        <ConciliacionKpiGrid kpis={kpis} />
+
+        {apiActiva && cargando && filasFiltradas.length === 0 ? (
+          <TableSkeleton rows={8} columns={5} />
+        ) : (
+          <ConciliacionTabla
+            filas={filasFiltradas}
+            busqueda={busqueda}
+            onBusquedaChange={setBusqueda}
+            onVerDetalle={abrirDetalle}
+            puedeEditarCocina={apiActiva && puedeCapturarCocina}
+            guardandoCocinaId={guardandoCocinaId}
+            onGuardarCantidadCocina={guardarCantidadCocina}
+          />
+        )}
+
+        <ConciliacionDetalleSheet
+          open={sheetAbierto}
+          onOpenChange={setSheetAbierto}
+          detalle={detalle}
+          filaId={filaSeleccionada}
+          puedeResolver={puedeResolver}
+          onMarcarConciliado={(id, motivo, observaciones) => {
+            void actualizarEstadoFila(id, "conciliado-manual", motivo, observaciones)
+          }}
+          onPendienteRevision={(id, motivo, observaciones) => {
+            void actualizarEstadoFila(id, "pendiente", motivo, observaciones)
+          }}
+        />
+      </div>
     </RutaDietasSectionGuard>
   )
 }

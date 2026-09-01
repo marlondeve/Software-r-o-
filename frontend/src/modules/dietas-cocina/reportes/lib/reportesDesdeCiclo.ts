@@ -346,6 +346,11 @@ export function construirReportesNutricionistaDesdeCiclo(
       segmentos,
     },
     tiposDieta: tiposDieta.length > 0 ? tiposDieta : soloReal ? [] : base.tiposDieta,
+    contratoPorComida: [] as Array<{ titulo: string; items: { label: string; value: number; color: string }[] }>,
+    planillaContrato: [] as Array<{
+      titulo: string
+      lineas: Array<{ tipo: string; suministradas: number; contrato: number; valorTotal: number }>
+    }>,
     motivosDevolucion:
       motivosDevolucion.length > 0
         ? motivosDevolucion
@@ -424,6 +429,11 @@ export function construirReportesProveedorDesdeCiclo(
       contarTiposDieta(ordenesFiltradas).length > 0
         ? contarTiposDieta(ordenesFiltradas)
         : base.tiposDieta,
+    contratoPorComida: [] as Array<{ titulo: string; items: { label: string; value: number; color: string }[] }>,
+    planillaContrato: [] as Array<{
+      titulo: string
+      lineas: Array<{ tipo: string; suministradas: number; contrato: number; valorTotal: number }>
+    }>,
     motivosDevolucion:
       contarMotivosRechazo(etiquetasFiltradas).length > 0
         ? contarMotivosRechazo(etiquetasFiltradas)

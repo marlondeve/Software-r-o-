@@ -46,3 +46,38 @@ export async function obtenerReporteProveedor(filtros: FiltrosReportes): Promise
   )
   return extraerCuerpoApi(data)
 }
+
+const MIME_XLSX =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+export type TipoReporteDashboard = "clinico" | "produccion"
+
+function rutaReporteDashboard(tipo: TipoReporteDashboard): string {
+  return tipo === "clinico"
+    ? buildDietasCocinaPath("/reportes/nutricionista")
+    : buildDietasCocinaPath("/reportes/proveedor")
+}
+
+export async function descargarReporteDashboardExcel(
+  tipo: TipoReporteDashboard,
+  filtros: FiltrosReportes,
+): Promise<Blob> {
+  const { data } = await apiClient.get<Blob>(rutaReporteDashboard(tipo), {
+    params: { ...paramsReporte(filtros), formato: "xlsx" },
+    responseType: "blob",
+    headers: { Accept: `${MIME_XLSX}, application/json` },
+  })
+  return data
+}
+
+export function nombreArchivoReporteDashboard(
+  tipo: TipoReporteDashboard,
+  filtros: FiltrosReportes,
+): string {
+  const prefijo = tipo === "clinico" ? "reporte-clinico" : "reporte-produccion"
+  const rango =
+    filtros.desde === filtros.hasta
+      ? filtros.desde
+      : `${filtros.desde}_${filtros.hasta}`
+  return `${prefijo}-${rango}.xlsx`
+}

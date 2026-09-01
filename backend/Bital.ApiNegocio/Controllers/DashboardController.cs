@@ -1,6 +1,8 @@
 using Asp.Versioning;
+using Bital.ApiNegocio.Extensions;
 using Bital.Application.DTOs.DietasCocina;
 using Bital.Application.Interfaces;
+using Bital.Domain.Enums;
 using Bital.Infrastructure.DietasCocina;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,10 +16,14 @@ namespace Bital.ApiNegocio.Controllers;
 public class DashboardController : ControllerBase
 {
     private readonly IDashboardService _dashboardService;
+    private readonly IPermisosOperativosService _permisos;
 
-    public DashboardController(IDashboardService dashboardService)
+    public DashboardController(
+        IDashboardService dashboardService,
+        IPermisosOperativosService permisos)
     {
         _dashboardService = dashboardService;
+        _permisos = permisos;
     }
 
     /// <summary>
@@ -85,6 +91,36 @@ public class DashboardController : ControllerBase
             return File(csv, "text/csv", $"reporte-nutricionista-{DateTime.UtcNow:yyyyMMdd}.csv");
         }
 
+        if (string.Equals(formato, "xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await _permisos.VerificarRutaAsync(
+                    User.GetRolModuloId(),
+                    RutaDietas.ExportarReportes,
+                    HttpContext.RequestAborted);
+
+                var bytes = await ReporteDashboardExcelExport.GenerarAsync(
+                    "Reportes clínicos",
+                    reporte.Filtros,
+                    reporte.Kpis,
+                    reporte.Hitos,
+                    reporte.Graficos,
+                    reporte.Hallazgos,
+                    HttpContext.RequestAborted);
+
+                var nombre = $"reporte-clinico-{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                return File(
+                    bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    nombre);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+            }
+        }
+
         return Ok(new { data = reporte });
     }
 
@@ -117,6 +153,36 @@ public class DashboardController : ControllerBase
                 reporte.Kpis.Select(k => (IReadOnlyList<string?>)[k.Etiqueta, k.Valor.ToString(), k.Formato]),
                 ["Indicador", "Valor", "Formato"]);
             return File(csv, "text/csv", $"reporte-proveedor-{DateTime.UtcNow:yyyyMMdd}.csv");
+        }
+
+        if (string.Equals(formato, "xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                await _permisos.VerificarRutaAsync(
+                    User.GetRolModuloId(),
+                    RutaDietas.ExportarReportes,
+                    HttpContext.RequestAborted);
+
+                var bytes = await ReporteDashboardExcelExport.GenerarAsync(
+                    "Reportes de producción",
+                    reporte.Filtros,
+                    reporte.Kpis,
+                    reporte.Hitos,
+                    reporte.Graficos,
+                    reporte.Hallazgos,
+                    HttpContext.RequestAborted);
+
+                var nombre = $"reporte-produccion-{DateTime.UtcNow:yyyyMMdd}.xlsx";
+                return File(
+                    bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    nombre);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return StatusCode(StatusCodes.Status403Forbidden, new { error = ex.Message });
+            }
         }
 
         return Ok(new { data = reporte });

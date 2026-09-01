@@ -142,6 +142,56 @@ public class FilaConciliacion
     public string? FacturaDocumentoUrl { get; set; }
 
     /// <summary>
+    /// Inicio del corte (fecha Colombia, inclusive).
+    /// </summary>
+    public DateTime PeriodoDesde { get; set; }
+
+    /// <summary>
+    /// Fin del corte (fecha Colombia, inclusive).
+    /// </summary>
+    public DateTime PeriodoHasta { get; set; }
+
+    /// <summary>
+    /// Línea del tarifario FCR (p. ej. Normales y derivadas).
+    /// </summary>
+    public string LineaFcr { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Etiqueta de la planilla de cocina.
+    /// </summary>
+    public string EtiquetaPlanilla { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Bandejas suministradas según la regla FCR.
+    /// </summary>
+    public int CantidadSistema { get; set; }
+
+    /// <summary>
+    /// Cantidad declarada en la planilla de cocina. Null = aún no cargada.
+    /// </summary>
+    public int? CantidadCocina { get; set; }
+
+    /// <summary>
+    /// Valor sistema (tarifa FCR × cantidad sistema).
+    /// </summary>
+    public decimal ValorSistema { get; set; }
+
+    /// <summary>
+    /// Valor cocina (tarifa FCR × cantidad cocina).
+    /// </summary>
+    public decimal ValorCocina { get; set; }
+
+    /// <summary>
+    /// Bandejas del grupo sin etiqueta.
+    /// </summary>
+    public int SinEtiqueta { get; set; }
+
+    /// <summary>
+    /// Órdenes huérfanas de almuerzo/cena incluidas en el grupo.
+    /// </summary>
+    public int Huerfanas { get; set; }
+
+    /// <summary>
     /// Fecha de creación del registro
     /// </summary>
     public DateTime CreadoEn { get; set; } = DateTime.UtcNow;

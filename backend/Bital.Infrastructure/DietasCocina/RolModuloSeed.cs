@@ -47,10 +47,14 @@ public static class RolModuloSeed
         RutaDietas.EliminarCatalogoDieta,
         RutaDietas.ListarOrdenes,
         RutaDietas.VerDashboard,
+        RutaDietas.VerReportesClinicos,
         RutaDietas.ExportarReportes,
         RutaDietas.VerParametros,
         RutaDietas.VerAuditoria,
         RutaDietas.ListarConciliacion,
+        RutaDietas.CargarPlanillaConciliacion,
+        RutaDietas.AprobarConciliacion,
+        RutaDietas.RechazarConciliacion,
     ];
 
     public static List<RutaDietas> PermisosProveedor =>
@@ -60,6 +64,7 @@ public static class RolModuloSeed
         RutaDietas.CancelarOrden,
         RutaDietas.ImprimirEtiquetas,
         RutaDietas.VerDashboard,
+        RutaDietas.VerReportesProduccion,
         RutaDietas.ExportarReportes,
         RutaDietas.ListarEtiquetas,
         RutaDietas.ListarConciliacion,

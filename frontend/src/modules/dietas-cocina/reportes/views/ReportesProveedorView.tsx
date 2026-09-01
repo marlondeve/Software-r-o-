@@ -12,8 +12,13 @@ import {
   HorizontalBarChart,
   VerticalBarChart,
 } from "@/modules/dietas-cocina/reportes/components/ReportesCharts"
+import { PlanillaContratoTable } from "@/modules/dietas-cocina/reportes/components/PlanillaContratoTable"
 import { ReportesFiltros } from "@/modules/dietas-cocina/reportes/components/ReportesFiltros"
 import { ReportesKpiGrid } from "@/modules/dietas-cocina/reportes/components/ReportesKpiGrid"
+import {
+  agruparKpisReporte,
+  kpisTienenClavesApi,
+} from "@/modules/dietas-cocina/reportes/lib/reportesKpiSecciones"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
 import { useDietasOperativas } from "@/modules/dietas-cocina/context/DietasOperativasContext"
 import { formatearUltimaActualizacionReporte } from "@/modules/dietas-cocina/lib/formatearFechaOperativa"
@@ -23,7 +28,13 @@ import { crearFiltrosReportesIniciales } from "@/modules/dietas-cocina/reportes/
 import { construirReportesProveedorDesdeCiclo } from "@/modules/dietas-cocina/reportes/lib/reportesDesdeCiclo"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import { mapReporteDto } from "@/modules/dietas-cocina/api/mappers/reporte-view.mapper"
-import { obtenerReporteProveedor } from "@/modules/dietas-cocina/api/services/reportes.service"
+import {
+  descargarReporteDashboardExcel,
+  nombreArchivoReporteDashboard,
+  obtenerReporteProveedor,
+} from "@/modules/dietas-cocina/api/services/reportes.service"
+import { descargarBlob } from "@/modules/dietas-cocina/lib/descargarBlob"
+import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
 import { REPORTES_FILTROS_UI } from "@/modules/dietas-cocina/config/reportes-ui"
 import { useReporteApi } from "@/modules/dietas-cocina/reportes/hooks/useReporteApi"
 
@@ -40,6 +51,7 @@ export function ReportesProveedorView() {
   const apiActiva = usarApiDietasCocina()
   const estaOnline = useConectividadRed()
   const [filtros, setFiltros] = useState(crearFiltrosReportesIniciales)
+  const [exportando, setExportando] = useState(false)
   const serviciosDisponibles = useMemo(
     () => (apiActiva ? listarServiciosDesdeFilas(filas) : undefined),
     [apiActiva, filas],
@@ -86,14 +98,51 @@ export function ReportesProveedorView() {
     return reporteApi ?? dataCiclo
   }, [apiActiva, reporteApi, dataCiclo, estaOnline])
 
+  const totalTiposDieta = useMemo(
+    () => data.tiposDieta.reduce((sum, item) => sum + item.value, 0),
+    [data.tiposDieta],
+  )
+
   const volumenComida =
     "distribucionTurno" in data ? data.distribucionTurno : data.distribucionServicio
+
+  const seccionesKpi = useMemo(() => {
+    if (!kpisTienenClavesApi(data.kpis)) return undefined
+    return agruparKpisReporte(data.kpis, "produccion")
+  }, [data.kpis])
+
+  const exportarExcel = useCallback(() => {
+    if (!apiActiva || !estaOnline) return
+    setExportando(true)
+    void descargarReporteDashboardExcel("produccion", {
+      desde: filtros.desde,
+      hasta: filtros.hasta,
+      servicio: filtros.servicio !== "todos" ? filtros.servicio : undefined,
+      horario: filtros.horario !== "todos" ? filtros.horario : undefined,
+    })
+      .then((blob) => {
+        descargarBlob(
+          blob,
+          nombreArchivoReporteDashboard("produccion", filtros),
+        )
+        demoToast("Reporte Excel generado.")
+      })
+      .catch((error) => {
+        demoToast(
+          error instanceof Error
+            ? error.message
+            : "No se pudo generar el reporte.",
+          "error",
+        )
+      })
+      .finally(() => setExportando(false))
+  }, [apiActiva, estaOnline, filtros])
 
   return (
     <div className="space-y-5">
       <DashboardPageHeader
         title="Reportes de producción"
-        subtitle="Analítica operativa por fecha, servicio y comida. Por defecto usa la comida operativa actual (alineada con cocina)."
+        subtitle="Use la sección «Conciliar con cocina» para cuadrar con la planilla del proveedor. Los demás indicadores son operativos o de referencia."
       />
       <BannerModuloSinConexion datosEnCache={desdeCache || !estaOnline} />
 
@@ -106,6 +155,8 @@ export function ReportesProveedorView() {
             ? textoActualizacion
             : formatearUltimaActualizacionReporte(new Date())
         }
+        exportando={exportando}
+        onExportar={apiActiva && estaOnline ? exportarExcel : undefined}
         onFiltrosChange={setFiltros}
       />
 
@@ -113,7 +164,7 @@ export function ReportesProveedorView() {
         loading={apiActiva && estaOnline && cargando && !reporteApi}
         skeleton={<ReportesPageSkeleton />}
       >
-        <ReportesKpiGrid kpis={data.kpis} />
+        <ReportesKpiGrid kpis={data.kpis} secciones={seccionesKpi} />
 
         <div className="grid gap-4 xl:grid-cols-3">
           <div className="space-y-5 xl:col-span-2">
@@ -144,6 +195,7 @@ export function ReportesProveedorView() {
                   <CardHeader className="border-b py-3">
                     <CardTitle className="text-sm font-semibold">
                       Tipos de dieta producidos
+                      {totalTiposDieta > 0 ? ` (total: ${totalTiposDieta})` : ""}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="py-4">
@@ -152,6 +204,40 @@ export function ReportesProveedorView() {
                 </Card>
               </div>
             </section>
+
+            {"planillaContrato" in data && data.planillaContrato.length > 0 ? (
+              <section className="space-y-3">
+                <SeccionTitulo>Producción según contrato</SeccionTitulo>
+                <Card className="gap-0 py-0 shadow-none">
+                  <CardHeader className="border-b py-3">
+                    <CardTitle className="text-sm font-semibold">
+                      Planilla de cocina (tarifario FCR)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="py-0">
+                    <PlanillaContratoTable bloques={data.planillaContrato} />
+                  </CardContent>
+                </Card>
+              </section>
+            ) : "contratoPorComida" in data && data.contratoPorComida.length > 0 ? (
+              <section className="space-y-3">
+                <SeccionTitulo>Producción según contrato</SeccionTitulo>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {data.contratoPorComida.map((bloque) => (
+                    <Card key={bloque.titulo} className="gap-0 py-0 shadow-none">
+                      <CardHeader className="border-b py-3">
+                        <CardTitle className="text-sm font-semibold">
+                          {bloque.titulo}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="py-4">
+                        <HorizontalBarChart items={bloque.items} />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             <section className="space-y-3">
               <SeccionTitulo>Calidad y volumen</SeccionTitulo>

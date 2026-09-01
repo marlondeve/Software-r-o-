@@ -246,8 +246,8 @@ try
         catch (Exception ex)
         {
             Log.Fatal(ex,
-                "Fallo al aplicar migraciones EF. Ejecute backend\\scripts\\Migrate-BitalNegocio.ps1 " +
-                "o backend\\scripts\\04-TiempoComidaTarifaHistorico.sql en el servidor SQL.");
+                "Fallo al aplicar migraciones EF. Ejecute backend\\scripts\\Migrate-BitalNegocio.ps1, " +
+                "backend\\scripts\\10-AddConciliacionFcr.sql o backend\\scripts\\04-TiempoComidaTarifaHistorico.sql en el servidor SQL.");
             throw;
         }
 

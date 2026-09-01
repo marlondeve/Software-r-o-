@@ -3,30 +3,60 @@ import { useMemo } from "react"
 import { Eye, PencilLine, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { TablaPaginacion } from "@/components/shared/TablaPaginacion"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { DataTable, type ColumnDef } from "@/components/ui/data-table"
 import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { EstadoConciliacionBadge } from "@/modules/dietas-cocina/conciliacion/components/EstadoConciliacionBadge"
+import { CocinaCantidadCelda } from "@/modules/dietas-cocina/conciliacion/components/CocinaCantidadCelda"
 import {
   claseDiferenciaCantidad,
   claseDiferenciaEconomica,
   conciliacionColores,
   filaRequiereAtencion,
+  textoDiferenciaEconomica,
 } from "@/modules/dietas-cocina/conciliacion/lib/conciliacionEstilos"
+import { CONCILIACION_FILTROS_UI } from "@/modules/dietas-cocina/config/conciliacion-ui"
+import { formatearMonedaCOP } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
 import { cn } from "@/lib/utils"
+
+const ORDEN_COMIDAS = [
+  "Desayuno",
+  "Almuerzo",
+  "Cena",
+  "Merienda mañana",
+  "Merienda tarde",
+  "Merienda noche",
+]
 
 interface ConciliacionTablaProps {
   filas: FilaConciliacion[]
   busqueda: string
   onBusquedaChange: (value: string) => void
   onVerDetalle: (id: string) => void
-  paginaActual: number
-  totalPaginas: number
-  paginaDesde: number
-  paginaHasta: number
-  totalRegistros: number
-  onCambiarPagina: (pagina: number) => void
+  puedeEditarCocina?: boolean
+  guardandoCocinaId?: string | null
+  onGuardarCantidadCocina?: (fila: FilaConciliacion, cantidad: number) => Promise<void>
+}
+
+function subtotal(filas: FilaConciliacion[]) {
+  return {
+    sistema: filas.reduce((acc, f) => acc + f.cantidadSistema, 0),
+    cocina: filas.every((f) => f.cantidadCocina === null)
+      ? null
+      : filas.reduce((acc, f) => acc + (f.cantidadCocina ?? 0), 0),
+    valorSistema: filas.reduce((acc, f) => acc + f.valorSistema, 0),
+    valorCocina: filas.every((f) => f.valorCocina === null)
+      ? null
+      : filas.reduce((acc, f) => acc + (f.valorCocina ?? 0), 0),
+  }
 }
 
 export function ConciliacionTabla({
@@ -34,147 +64,42 @@ export function ConciliacionTabla({
   busqueda,
   onBusquedaChange,
   onVerDetalle,
-  paginaActual,
-  totalPaginas,
-  paginaDesde,
-  paginaHasta,
-  totalRegistros,
-  onCambiarPagina,
+  puedeEditarCocina = false,
+  guardandoCocinaId = null,
+  onGuardarCantidadCocina,
 }: ConciliacionTablaProps) {
-  const columnas = useMemo<ColumnDef<FilaConciliacion>[]>(
-    () => [
-      {
-        id: "tipo",
-        header: "Tipo / Consistencia",
-        cell: ({ row }) => (
-          <>
-            <p className="font-medium text-foreground">{row.original.tipo}</p>
-            <p className="text-xs text-muted-foreground">
-              {row.original.consistencia}
-            </p>
-          </>
-        ),
-      },
-      { accessorKey: "tiempo", header: "Tiempo" },
-      {
-        id: "tarifa",
-        header: "Tarifa",
-        cell: ({ row }) => (
-          <span
-            className={cn(
-              "tabular-nums",
-              row.original.tarifaAlerta &&
-                `font-medium ${conciliacionColores.alerta}`,
-            )}
-          >
-            {row.original.tarifa}
-            {row.original.tarifaAlerta && "*"}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "cantSist",
-        header: () => <span className="float-right">Cant. Sist.</span>,
-        cell: ({ row }) => (
-          <span className="block text-right tabular-nums text-foreground">
-            {row.original.cantSist}
-          </span>
-        ),
-      },
-      {
-        accessorKey: "cantFact",
-        header: () => <span className="float-right">Cant. Fact.</span>,
-        cell: ({ row }) => {
-          const claseCant = claseDiferenciaCantidad(row.original)
-          return (
-            <span
-              className={cn(
-                "block text-right tabular-nums",
-                claseCant || "text-foreground",
-              )}
-            >
-              {row.original.cantFact}
-            </span>
-          )
-        },
-      },
-      {
-        id: "difCant",
-        header: () => <span className="float-right">Dif. Cant.</span>,
-        cell: ({ row }) => {
-          const claseCant = claseDiferenciaCantidad(row.original)
-          return (
-            <span
-              className={cn(
-                "block text-right tabular-nums font-medium",
-                claseCant || "text-foreground",
-              )}
-            >
-              {row.original.difCant > 0
-                ? `+${row.original.difCant}`
-                : row.original.difCant}
-            </span>
-          )
-        },
-      },
-      {
-        accessorKey: "difEconomica",
-        header: () => <span className="float-right">Dif. Económica</span>,
-        cell: ({ row }) => {
-          const claseEco = claseDiferenciaEconomica(row.original)
-          return (
-            <span
-              className={cn(
-                "block text-right tabular-nums font-medium",
-                claseEco || "text-foreground",
-              )}
-            >
-              {row.original.difEconomica}
-            </span>
-          )
-        },
-      },
-      {
-        id: "estado",
-        header: "Estado",
-        cell: ({ row }) => (
-          <EstadoConciliacionBadge estado={row.original.estado} />
-        ),
-      },
-      {
-        id: "accion",
-        header: () => <span className="float-right">Acción</span>,
-        cell: ({ row }) => (
-          <div className="text-right">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => onVerDetalle(row.original.id)}
-              aria-label="Ver detalle de conciliación"
-            >
-              {row.original.estado === "conciliado-manual" ? (
-                <PencilLine className="size-4" />
-              ) : (
-                <Eye className="size-4" />
-              )}
-            </Button>
-          </div>
-        ),
-      },
-    ],
-    [onVerDetalle],
-  )
+  const bloques = useMemo(() => {
+    const porComida = new Map<string, FilaConciliacion[]>()
+    for (const fila of filas) {
+      const lista = porComida.get(fila.comida) ?? []
+      lista.push(fila)
+      porComida.set(fila.comida, lista)
+    }
+    const titulos = [
+      ...ORDEN_COMIDAS.filter((c) => porComida.has(c)),
+      ...[...porComida.keys()].filter((c) => !ORDEN_COMIDAS.includes(c)),
+    ]
+    return titulos.map((titulo) => ({ titulo, lineas: porComida.get(titulo) ?? [] }))
+  }, [filas])
+
+  const total = subtotal(filas)
 
   return (
     <Card className="gap-0 py-0 shadow-none">
       <CardHeader className="flex flex-row items-center justify-between border-b py-3">
-        <CardTitle className="text-sm font-semibold">Detalle Consolidado</CardTitle>
+        <div>
+          <CardTitle className="text-sm font-semibold">Planilla FCR</CardTitle>
+          {puedeEditarCocina && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Digite la cantidad de cocina en cada fila y pulse Enter para comparar.
+            </p>
+          )}
+        </div>
         <div className="relative w-full max-w-xs">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Buscar dieta..."
+            placeholder={CONCILIACION_FILTROS_UI.busquedaPlaceholder}
             className="h-8 bg-muted/50 pl-9 shadow-none"
             value={busqueda}
             onChange={(e) => onBusquedaChange(e.target.value)}
@@ -182,27 +107,124 @@ export function ConciliacionTabla({
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <DataTable
-          columns={columnas}
-          data={filas}
-          className="rounded-none border-0"
-          emptyMessage="No hay registros de conciliación para los filtros aplicados."
-          getRowClassName={(fila) =>
-            filaRequiereAtencion(fila) ? conciliacionColores.alertaFila : undefined
-          }
-        />
-        <TablaPaginacion
-          paginaDesde={paginaDesde}
-          paginaHasta={paginaHasta}
-          total={totalRegistros}
-          paginaActual={paginaActual}
-          totalPaginas={totalPaginas}
-          onCambiarPagina={onCambiarPagina}
-        />
-        {filas.some((fila) => fila.tarifaAlerta) && (
-          <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-            * La tarifa facturada por el proveedor difiere de la tarifa vigente
-            en catálogo.
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-52">Tipo dietas</TableHead>
+              <TableHead className="text-right">Tarifa</TableHead>
+              <TableHead className="text-right">Sistema</TableHead>
+              <TableHead className="text-right">Cocina</TableHead>
+              <TableHead className="text-right">Dif. cantidad</TableHead>
+              <TableHead className="text-right">Dif. económica</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acción</TableHead>
+            </TableRow>
+          </TableHeader>
+          {bloques.map((bloque) => {
+            const seccion = subtotal(bloque.lineas)
+            return (
+              <TableBody key={bloque.titulo}>
+                <TableRow className="bg-foreground/90 hover:bg-foreground/90">
+                  <TableCell
+                    colSpan={8}
+                    className="py-2 text-xs font-semibold uppercase tracking-wide text-background"
+                  >
+                    {bloque.titulo}
+                  </TableCell>
+                </TableRow>
+                {bloque.lineas.map((fila) => (
+                  <TableRow
+                    key={fila.id}
+                    className={filaRequiereAtencion(fila) ? conciliacionColores.alertaFila : undefined}
+                  >
+                    <TableCell className="font-medium">{fila.etiquetaPlanilla}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {fila.tarifa > 0 ? formatearMonedaCOP(fila.tarifa) : "—"}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {fila.cantidadSistema}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <CocinaCantidadCelda
+                        fila={fila}
+                        editable={puedeEditarCocina && !!onGuardarCantidadCocina}
+                        guardando={guardandoCocinaId === fila.id}
+                        onGuardar={(cantidad) => onGuardarCantidadCocina!(fila, cantidad)}
+                      />
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right tabular-nums font-medium",
+                        claseDiferenciaCantidad(fila) || "text-foreground",
+                      )}
+                    >
+                      {fila.cantidadCocina === null
+                        ? "—"
+                        : fila.diferenciaCantidad > 0
+                          ? `+${fila.diferenciaCantidad}`
+                          : fila.diferenciaCantidad}
+                    </TableCell>
+                    <TableCell
+                      className={cn(
+                        "text-right tabular-nums font-medium",
+                        claseDiferenciaEconomica(fila) || "text-foreground",
+                      )}
+                    >
+                      {textoDiferenciaEconomica(fila)}
+                    </TableCell>
+                    <TableCell>
+                      <EstadoConciliacionBadge estado={fila.estado} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => onVerDetalle(fila.id)}
+                        aria-label="Ver detalle de conciliación"
+                      >
+                        {fila.estado === "conciliado-manual" ? (
+                          <PencilLine className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow className="bg-muted/70 font-semibold">
+                  <TableCell colSpan={2}>Subtotal {bloque.titulo.toLowerCase()}</TableCell>
+                  <TableCell className="text-right tabular-nums">{seccion.sistema}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {seccion.cocina === null ? "—" : seccion.cocina}
+                  </TableCell>
+                  <TableCell />
+                  <TableCell />
+                  <TableCell colSpan={2} />
+                </TableRow>
+              </TableBody>
+            )
+          })}
+          <TableFooter>
+            <TableRow className="bg-emerald-600/15 font-semibold text-foreground">
+              <TableCell colSpan={2}>Total</TableCell>
+              <TableCell className="text-right tabular-nums">{total.sistema}</TableCell>
+              <TableCell className="text-right tabular-nums">
+                {total.cocina === null ? "—" : total.cocina}
+              </TableCell>
+              <TableCell />
+              <TableCell className="text-right tabular-nums text-emerald-800 dark:text-emerald-300">
+                {total.valorCocina === null
+                  ? formatearMonedaCOP(total.valorSistema)
+                  : formatearMonedaCOP(total.valorCocina)}
+              </TableCell>
+              <TableCell colSpan={2} />
+            </TableRow>
+          </TableFooter>
+        </Table>
+        {filas.length === 0 && (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            No hay líneas de conciliación para los filtros aplicados.
           </p>
         )}
       </CardContent>

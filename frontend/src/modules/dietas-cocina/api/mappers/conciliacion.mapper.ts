@@ -4,7 +4,11 @@ import type {
   FilaConciliacionDto,
 } from "@/modules/dietas-cocina/types/api-dtos"
 import type { EstadoConciliacion } from "@/modules/dietas-cocina/types/enums"
-import type { DetalleConciliacion, FilaConciliacion, RegistroSistema } from "@/modules/dietas-cocina/types/reconciliation"
+import type {
+  DetalleConciliacion,
+  FilaConciliacion,
+  RegistroSistema,
+} from "@/modules/dietas-cocina/types/reconciliation"
 import { formatearMonedaCOP } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
 
 function leerNumero(...valores: unknown[]): number {
@@ -26,78 +30,98 @@ function leerTexto(...valores: unknown[]): string {
   return ""
 }
 
-function normalizarEstado(valor: unknown, difCant: number): EstadoConciliacion {
+function normalizarEstado(valor: unknown): EstadoConciliacion {
   const v = String(valor ?? "pendiente").toLowerCase()
   const mapa: Record<string, EstadoConciliacion> = {
     coincide: "coincide",
     "dif-cantidad": "dif-cantidad",
+    "dif-tipo": "dif-tipo",
     "dif-tarifa": "dif-tarifa",
     pendiente: "pendiente",
+    "con-alerta": "con-alerta",
     "conciliado-manual": "conciliado-manual",
     conciliado: "conciliado-manual",
     en_revision: "pendiente",
+    "en-revision": "pendiente",
   }
-  if (mapa[v]) return mapa[v]!
-  if (difCant !== 0) return "dif-cantidad"
-  return "coincide"
-}
-
-function formatDifEconomica(difCant: number, valorUnitario: number, valor?: unknown): string {
-  if (typeof valor === "string" && valor.trim()) return valor
-  const monto = difCant * valorUnitario
-  return formatearMonedaCOP(monto, true)
+  return mapa[v] ?? "pendiente"
 }
 
 export function mapConciliacionDtoToDomain(dto: FilaConciliacionDto): FilaConciliacion {
-  const cantSist = leerNumero(
-    dto.cantSist,
-    dto.cantidadSolicitada,
-    dto.cantidadEntregada,
-  )
-  const cantFact = leerNumero(dto.cantFact, dto.cantidadFacturada)
-  const difCant = leerNumero(dto.difCant, dto.diferencia, cantFact - cantSist)
-  const valorUnitario = leerNumero(dto.valorUnitario)
-  const tarifa =
-    leerTexto(dto.tarifa) ||
-    (valorUnitario > 0 ? formatearMonedaCOP(valorUnitario) : "")
+  const cantidadSistema = leerNumero(dto.cantidadSistema)
+  const cocinaRaw = dto.cantidadCocina
+  const cantidadCocina =
+    cocinaRaw === undefined || cocinaRaw === null ? null : leerNumero(cocinaRaw)
+  const valorSistema = leerNumero(dto.valorSistema)
+  const valorCocina =
+    dto.valorCocina === undefined || dto.valorCocina === null
+      ? null
+      : leerNumero(dto.valorCocina)
 
   return {
     id: String(dto.id ?? ""),
-    tipo: leerTexto(dto.tipo, dto.tipoDieta),
-    consistencia: leerTexto(dto.consistencia),
-    tiempo: leerTexto(dto.tiempo, dto.comida),
-    tarifa,
-    tarifaAlerta: dto.tarifaAlerta,
-    cantSist,
-    cantFact,
-    difCant,
-    difEconomica: formatDifEconomica(difCant, valorUnitario, dto.difEconomica),
-    estado: normalizarEstado(dto.estado, difCant),
+    comida: leerTexto(dto.comida),
+    lineaFcr: leerTexto(dto.lineaFcr),
+    etiquetaPlanilla: leerTexto(dto.etiquetaPlanilla, dto.lineaFcr),
+    tarifa: leerNumero(dto.tarifa),
+    cantidadSistema,
+    cantidadCocina,
+    valorSistema,
+    valorCocina,
+    diferenciaCantidad: leerNumero(
+      dto.diferenciaCantidad,
+      cantidadCocina === null ? 0 : cantidadCocina - cantidadSistema,
+    ),
+    diferenciaEconomica:
+      dto.diferenciaEconomica === undefined || dto.diferenciaEconomica === null
+        ? valorCocina === null
+          ? null
+          : valorCocina - valorSistema
+        : leerNumero(dto.diferenciaEconomica),
+    sinEtiqueta: leerNumero(dto.sinEtiqueta),
+    huerfanas: leerNumero(dto.huerfanas),
+    estado: normalizarEstado(dto.estado),
+    motivo: dto.motivo,
+    observaciones: dto.observaciones,
+    numeroFactura: dto.numeroFactura,
+    periodoDesde: dto.periodoDesde,
+    periodoHasta: dto.periodoHasta,
   }
 }
 
 export function mapKpisConciliacionApi(kpis: ConciliacionKpisDto[] | unknown) {
   if (!Array.isArray(kpis)) return []
 
+  const sinPlanilla = kpis.some((kpi) =>
+    leerTexto(kpi.comparacion).toLowerCase().includes("cargue"),
+  )
+
   return kpis.map((kpi) => {
     const formato = String(kpi.formato ?? "numero").toLowerCase()
     const valor = leerNumero(kpi.valor, kpi.value)
+    const comparacion = leerTexto(kpi.comparacion)
+    const clave = String(kpi.clave ?? "").toLowerCase()
+    const cocinaSinPlanilla =
+      sinPlanilla &&
+      (clave === "dietas_cocina" ||
+        clave === "valor_cocina" ||
+        clave === "diferencia_cantidad" ||
+        comparacion.toLowerCase().includes("cargue"))
     let value = String(valor)
 
-    if (formato === "moneda") {
+    if (cocinaSinPlanilla) {
+      value = "—"
+    } else if (formato === "moneda") {
       value = formatearMonedaCOP(valor, true).replace(/^\+\$/, "$")
-    } else if (formato === "porcentaje") {
-      value = `${valor.toLocaleString("es-CO", { maximumFractionDigits: 1 })}%`
     } else {
       value = valor.toLocaleString("es-CO")
     }
 
-    const clave = String(kpi.clave ?? "").toLowerCase()
     const variant =
-      clave === "en_revision" || clave === "valor_diferencias" || clave === "total_diferencias"
-        ? ("warning" as const)
-        : clave === "pendientes" && valor > 0
-          ? ("destructive" as const)
+      clave === "inconsistencias" && valor > 0
+        ? ("destructive" as const)
+        : clave === "diferencia_cantidad" && valor !== 0
+          ? ("warning" as const)
           : ("default" as const)
 
     return {
@@ -113,89 +137,72 @@ export function mapConciliacionList(dtos: FilaConciliacionDto[] | unknown): Fila
   return dtos.map(mapConciliacionDtoToDomain)
 }
 
-function formatMoney(n: number): string {
-  return `$${n.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
-
 function badgePorEstado(estado: string): string {
   const mapa: Record<string, string> = {
-    coincide: "Sin diferencias",
+    coincide: "Coincide",
     "dif-cantidad": "Diferencia de cantidad",
+    "dif-tipo": "Tipo distinto al cobrado",
     "dif-tarifa": "Diferencia de tarifa",
-    pendiente: "Revisión pendiente",
-    "conciliado-manual": "Conciliado manualmente",
-    conciliado: "Conciliado manualmente",
-    en_revision: "Revisión pendiente",
+    pendiente: "Planilla pendiente",
+    "con-alerta": "Con alerta",
+    "conciliado-manual": "Conciliado",
+    conciliado: "Conciliado",
   }
   return mapa[estado.toLowerCase()] ?? estado
 }
 
 export function mapDetalleConciliacionDto(dto: DetalleConciliacionDto): DetalleConciliacion {
-  const linea = dto.linea ?? dto.Linea ?? {}
-  const eventos = dto.eventosDieta ?? dto.EventosDieta ?? []
-
-  const cantSist = Number(
-    linea.cantSist ?? linea.cantidadSolicitada ?? linea.cantidadEntregada ?? 0,
-  )
-  const cantFact = Number(linea.cantFact ?? linea.cantidadFacturada ?? 0)
-  const valorUnit = Number(linea.valorUnitario ?? 0)
-  const tarifaNum =
-    valorUnit > 0
-      ? valorUnit
-      : Number.parseFloat(String(linea.tarifa ?? "").replace(/[^\d.,-]/g, "").replace(",", ".")) || 0
-
-  const valorBital = cantSist * tarifaNum
-  const valorProveedor = cantFact * tarifaNum
-  const difCant = Number(linea.difCant ?? linea.diferencia ?? cantFact - cantSist)
-
-  let diferencia = "Sin diferencia registrada"
-  if (difCant !== 0 || linea.difEconomica) {
-    const partes: string[] = []
-    if (difCant !== 0) {
-      partes.push(`${difCant > 0 ? "+" : ""}${difCant} unidades`)
-    }
-    if (linea.difEconomica && linea.difEconomica !== "$0.00") {
-      partes.push(String(linea.difEconomica))
-    } else if (valorBital !== valorProveedor) {
-      partes.push(formatMoney(valorProveedor - valorBital))
-    }
-    diferencia = partes.join(" / ")
-  }
-
-  const registros: RegistroSistema[] = eventos.map((evento) => ({
+  const linea = mapConciliacionDtoToDomain(dto.linea ?? {})
+  const registros: RegistroSistema[] = (dto.registros ?? []).map((evento) => ({
     fecha: String(evento.fecha ?? ""),
-    paciente: String(evento.titulo ?? ""),
-    habitacion: String(evento.descripcion ?? ""),
-    estado: evento.activo ? "Actual" : "Registrado",
+    paciente: String(evento.paciente ?? ""),
+    cedula: evento.cedula,
+    pabellon: evento.pabellon,
+    habitacion: evento.habitacion ? String(evento.habitacion) : "—",
+    estado: String(evento.estadoDieta ?? ""),
+    estadoOrden: evento.estadoOrden,
+    tipoClinico: evento.tipoClinico,
+    lineaFcr: evento.lineaFcr,
+    tieneEtiqueta: evento.tieneEtiqueta,
+    esHuerfana: evento.esHuerfana,
+    alertas: evento.alertas,
   }))
 
-  if (registros.length === 0 && linea.paciente) {
-    registros.push({
-      fecha: String(linea.fechaOperativa ?? "—"),
-      paciente: String(linea.paciente),
-      habitacion: linea.habitacion ? `Hab. ${linea.habitacion}` : "—",
-      estado: String(linea.estado ?? "Confirmada"),
-    })
+  const cocinaTxt =
+    linea.cantidadCocina === null
+      ? "—"
+      : formatearMonedaCOP(linea.valorCocina ?? 0)
+
+  let diferencia = "Sin planilla de cocina"
+  if (linea.cantidadCocina !== null) {
+    const partes: string[] = []
+    if (linea.diferenciaCantidad !== 0) {
+      partes.push(
+        `${linea.diferenciaCantidad > 0 ? "+" : ""}${linea.diferenciaCantidad} unidades`,
+      )
+    }
+    if (linea.diferenciaEconomica != null && linea.diferenciaEconomica !== 0) {
+      partes.push(formatearMonedaCOP(linea.diferenciaEconomica, true))
+    }
+    diferencia = partes.length > 0 ? partes.join(" / ") : "Sin diferencia"
   }
 
-  const consistencia = String(linea.consistencia ?? linea.tipo ?? linea.tipoDieta ?? "")
-  const tiempo = String(linea.tiempo ?? linea.comida ?? "")
-  const estado = String(linea.estado ?? "pendiente")
-
   return {
-    titulo: `${consistencia} - ${tiempo}`.trim(),
-    codigo: `Cód. ${String(linea.id ?? "").slice(0, 8) || "—"}`,
-    badge: badgePorEstado(estado),
-    bital: {
-      unidades: cantSist,
-      valor: formatMoney(valorBital),
+    titulo: `${linea.etiquetaPlanilla} · ${linea.comida}`,
+    codigo: `Cód. ${linea.id.slice(0, 8) || "—"}`,
+    badge: badgePorEstado(linea.estado),
+    sistema: {
+      unidades: linea.cantidadSistema,
+      valor: formatearMonedaCOP(linea.valorSistema),
     },
-    proveedor: {
-      unidades: cantFact,
-      valor: formatMoney(valorProveedor),
+    cocina: {
+      unidades: linea.cantidadCocina,
+      valor: cocinaTxt,
     },
     diferencia,
     totalRegistros: registros.length,
     registros,
+    alertas: dto.alertas ?? [],
+    recomendaciones: dto.recomendaciones ?? [],
   }
 }

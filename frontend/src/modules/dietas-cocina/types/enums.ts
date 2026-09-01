@@ -45,8 +45,10 @@ export type ModoFlujoEtiqueta = "pre-entrega" | "entrega" | "devolucion"
 export type EstadoConciliacion =
   | "coincide"
   | "dif-cantidad"
+  | "dif-tipo"
   | "dif-tarifa"
   | "pendiente"
+  | "con-alerta"
   | "conciliado-manual"
 
 export type EstadoDietaCatalogo = "vigente" | "programada" | "vencida" | "inactiva"

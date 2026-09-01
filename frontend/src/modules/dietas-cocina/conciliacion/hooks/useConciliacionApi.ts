@@ -1,65 +1,63 @@
 import type { FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
-import { TAMANO_PAGINA_TABLA } from "@/lib/tamanoPaginaTabla"
 import { usarApiDietasCocina } from "@/modules/dietas-cocina/api"
 import {
+  cargarPlanillaCsv,
+  exportarConciliacionCsv,
+  guardarCantidadesCocina,
   listarConciliacion,
   marcarConciliado,
   marcarPendienteRevision,
-  obtenerKpisConciliacion,
+  subirFacturaPeriodo,
 } from "@/modules/dietas-cocina/api/services/conciliacion.service"
-import { CONCILIACION_FILTROS_UI } from "@/modules/dietas-cocina/config/conciliacion-ui"
-import {
-  calcularKpisConciliacion,
-} from "@/modules/dietas-cocina/conciliacion/lib/conciliacionFiltros"
 import { EVENTOS_DIETAS_COCINA } from "@/modules/dietas-cocina/realtime/dietasCocinaEventos"
 import { useRefetchOnDietasEvento } from "@/modules/dietas-cocina/realtime/useRefetchOnDietasEvento"
+import { descargarBlob } from "@/modules/dietas-cocina/lib/descargarBlob"
+import { demoToast } from "@/modules/dietas-cocina/lib/demoFeedback"
+import {
+  rangoUltimosDias,
+  type KpiConciliacionUi,
+} from "@/modules/dietas-cocina/conciliacion/lib/conciliacionFiltros"
 
 export function useConciliacionApi() {
   const apiActiva = usarApiDietasCocina()
+  const inicial = rangoUltimosDias(30)
   const [filas, setFilas] = useState<FilaConciliacion[]>([])
-  const [totalFilas, setTotalFilas] = useState(0)
-  const [paginaActual, setPaginaActual] = useState(1)
-  const [kpisApi, setKpisApi] = useState<ReturnType<typeof calcularKpisConciliacion>>([])
+  const [kpis, setKpis] = useState<KpiConciliacionUi[]>([])
   const [cargando, setCargando] = useState(false)
+  const [guardandoCocinaId, setGuardandoCocinaId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const [busqueda, setBusqueda] = useState("")
+  const [estado, setEstado] = useState("todos")
   const [numeroFactura, setNumeroFactura] = useState("")
-  const [periodo, setPeriodo] = useState("periodo")
-  const [proveedor, setProveedor] = useState("proveedor")
+  const [desde, setDesde] = useState(inicial.desde)
+  const [hasta, setHasta] = useState(inicial.hasta)
 
   const recargar = useCallback(async () => {
     if (!apiActiva) return
     setCargando(true)
     setError(null)
     try {
-      const [lista, kpisRaw] = await Promise.all([
-        listarConciliacion({
-          busqueda: busqueda || undefined,
-          periodo: periodo !== "periodo" ? periodo : undefined,
-          proveedor: proveedor !== "proveedor" ? proveedor : undefined,
-          page: paginaActual,
-          pageSize: TAMANO_PAGINA_TABLA,
-        }),
-        obtenerKpisConciliacion(
-          periodo !== "periodo" ? periodo : undefined,
-          proveedor !== "proveedor" ? proveedor : undefined,
-        ),
-      ])
+      const lista = await listarConciliacion({
+        busqueda: busqueda || undefined,
+        desde,
+        hasta,
+        estado: estado !== "todos" ? estado : undefined,
+        numeroFactura: numeroFactura || undefined,
+        pageSize: 100,
+      })
       setFilas(lista.filas)
-      setTotalFilas(lista.meta?.total ?? lista.filas.length)
-      setKpisApi(kpisRaw.length > 0 ? kpisRaw : calcularKpisConciliacion(lista.filas))
+      setKpis(lista.kpis ?? [])
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al cargar conciliación")
       setFilas([])
-      setTotalFilas(0)
-      setKpisApi([])
+      setKpis([])
     } finally {
       setCargando(false)
     }
-  }, [apiActiva, busqueda, periodo, proveedor, paginaActual])
+  }, [apiActiva, busqueda, desde, hasta, estado, numeroFactura])
 
   useEffect(() => {
     if (apiActiva) void recargar()
@@ -79,41 +77,100 @@ export function useConciliacionApi() {
     apiActiva,
   )
 
-  useEffect(() => {
-    setPaginaActual(1)
-  }, [busqueda, periodo, proveedor, numeroFactura])
-
-  const totalPaginas = Math.max(1, Math.ceil(totalFilas / TAMANO_PAGINA_TABLA))
-  const paginaDesde =
-    totalFilas === 0 ? 0 : (paginaActual - 1) * TAMANO_PAGINA_TABLA + 1
-  const paginaHasta = Math.min(paginaActual * TAMANO_PAGINA_TABLA, totalFilas)
-
-  useEffect(() => {
-    if (paginaActual > totalPaginas) {
-      setPaginaActual(totalPaginas)
-    }
-  }, [paginaActual, totalPaginas])
-
-  const kpis = useMemo(
-    () => (apiActiva ? kpisApi : calcularKpisConciliacion(filas)),
-    [apiActiva, kpisApi, filas],
-  )
-
   const actualizarEstadoFila = useCallback(
-    async (id: string, estado: FilaConciliacion["estado"]) => {
+    async (
+      id: string,
+      nuevo: FilaConciliacion["estado"],
+      motivo: string,
+      observaciones: string,
+    ) => {
       if (!apiActiva) return
       try {
-        if (estado === "conciliado-manual") {
-          await marcarConciliado(id)
-        } else if (estado === "pendiente") {
-          await marcarPendienteRevision(id)
+        if (nuevo === "conciliado-manual") {
+          await marcarConciliado(id, motivo, observaciones)
+        } else {
+          await marcarPendienteRevision(id, motivo, observaciones)
         }
         await recargar()
       } catch (err) {
         setError(err instanceof Error ? err.message : "Error al actualizar conciliación")
+        throw err
       }
     },
     [apiActiva, recargar],
+  )
+
+  const exportar = useCallback(async () => {
+    const blob = await exportarConciliacionCsv({
+      busqueda: busqueda || undefined,
+      desde,
+      hasta,
+      estado: estado !== "todos" ? estado : undefined,
+      numeroFactura: numeroFactura || undefined,
+    })
+    descargarBlob(blob, `conciliacion-${desde}-${hasta}.csv`)
+    demoToast("Conciliación exportada.", "success")
+  }, [busqueda, desde, hasta, estado, numeroFactura])
+
+  const cargarPlanilla = useCallback(
+    async (archivo: File) => {
+      await cargarPlanillaCsv({ archivo, desde, hasta, numeroFactura: numeroFactura || undefined })
+      demoToast("Planilla de cocina cargada.", "success")
+      await recargar()
+    },
+    [desde, hasta, numeroFactura, recargar],
+  )
+
+  const cargarFactura = useCallback(
+    async (archivo: File) => {
+      await subirFacturaPeriodo({
+        archivo,
+        desde,
+        hasta,
+        numeroFactura: numeroFactura || undefined,
+      })
+      demoToast("Factura adjunta al periodo.", "success")
+      await recargar()
+    },
+    [desde, hasta, numeroFactura, recargar],
+  )
+
+  const guardarCantidadCocina = useCallback(
+    async (fila: FilaConciliacion, cantidad: number) => {
+      if (!apiActiva) return
+      setGuardandoCocinaId(fila.id)
+      setError(null)
+      try {
+        const resultado = await guardarCantidadesCocina({
+          desde,
+          hasta,
+          numeroFactura: numeroFactura || undefined,
+          lineas: [
+            {
+              comida: fila.comida,
+              lineaFcr: fila.lineaFcr,
+              cantidad,
+            },
+          ],
+        })
+        setFilas(resultado.filas)
+        const lista = await listarConciliacion({
+          desde,
+          hasta,
+          busqueda: busqueda || undefined,
+          estado: estado !== "todos" ? estado : undefined,
+          numeroFactura: numeroFactura || undefined,
+          pageSize: 100,
+        })
+        setKpis(lista.kpis ?? [])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Error al guardar cantidad de cocina")
+        throw err
+      } finally {
+        setGuardandoCocinaId(null)
+      }
+    },
+    [apiActiva, busqueda, desde, hasta, estado, numeroFactura],
   )
 
   return {
@@ -124,22 +181,20 @@ export function useConciliacionApi() {
     setBusqueda,
     numeroFactura,
     setNumeroFactura,
-    periodo,
-    setPeriodo,
-    proveedor,
-    setProveedor,
+    desde,
+    setDesde,
+    hasta,
+    setHasta,
+    estado,
+    setEstado,
     actualizarEstadoFila,
-    filtros: CONCILIACION_FILTROS_UI,
-    detalles: {},
     cargando,
     error,
     recargar,
-    paginaActual,
-    setPaginaActual,
-    totalPaginas,
-    paginaDesde,
-    paginaHasta,
-    totalFilas,
-    paginacionServidor: true,
+    exportar,
+    cargarPlanilla,
+    cargarFactura,
+    guardarCantidadCocina,
+    guardandoCocinaId,
   }
 }

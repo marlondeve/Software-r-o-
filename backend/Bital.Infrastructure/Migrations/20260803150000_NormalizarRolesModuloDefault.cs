@@ -22,7 +22,9 @@ namespace Bital.Infrastructure.Migrations
                 INSERT INTO bital.RolesModulo (Id, Nombre, EsSistema, Activo, CreadoEn, CreadoPor)
                 SELECT '11111111-1111-1111-1111-111111000006', N'Auxiliar de Cocina', 1, 1, GETUTCDATE(), N'migration'
                 WHERE NOT EXISTS (
-                    SELECT 1 FROM bital.RolesModulo WHERE Id = '11111111-1111-1111-1111-111111000006'
+                    SELECT 1 FROM bital.RolesModulo
+                    WHERE Id = '11111111-1111-1111-1111-111111000006'
+                       OR Nombre = N'Auxiliar de Cocina'
                 );
                 """);
         }

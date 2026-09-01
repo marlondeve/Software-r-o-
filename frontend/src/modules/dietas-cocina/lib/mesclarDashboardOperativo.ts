@@ -88,6 +88,8 @@ export function mesclarReporteConCiclo(
       estadoDietas:
         api.estadoDietas.segmentos.length > 0 ? api.estadoDietas : ciclo.estadoDietas,
       tiposDieta: preferirLista(api.tiposDieta, ciclo.tiposDieta),
+      contratoPorComida: preferirLista(api.contratoPorComida, ciclo.contratoPorComida),
+      planillaContrato: preferirLista(api.planillaContrato, ciclo.planillaContrato),
       motivosDevolucion: preferirLista(api.motivosDevolucion, ciclo.motivosDevolucion),
       motivosRecogida: preferirLista(api.motivosRecogida, ciclo.motivosRecogida),
       distribucionServicio: preferirLista(
@@ -111,6 +113,8 @@ export function mesclarReporteConCiclo(
     estadoDietas:
       api.estadoDietas.segmentos.length > 0 ? api.estadoDietas : ciclo.estadoDietas,
     tiposDieta: preferirLista(api.tiposDieta, ciclo.tiposDieta),
+    contratoPorComida: preferirLista(api.contratoPorComida, ciclo.contratoPorComida),
+    planillaContrato: preferirLista(api.planillaContrato, ciclo.planillaContrato),
     motivosDevolucion: preferirLista(api.motivosDevolucion, ciclo.motivosDevolucion),
     motivosRecogida: preferirLista(api.motivosRecogida, ciclo.motivosRecogida),
     distribucionServicio: preferirLista(

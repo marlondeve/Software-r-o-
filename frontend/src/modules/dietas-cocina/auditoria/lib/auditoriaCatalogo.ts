@@ -86,6 +86,7 @@ export const ACCIONES_AUDITORIA: { valor: string; etiqueta: string }[] = [
   { valor: "Devolucion", etiqueta: "Devolución" },
   { valor: "MarcarConciliado", etiqueta: "Marcar conciliado" },
   { valor: "MarcarPendiente", etiqueta: "Marcar pendiente" },
+  { valor: "CargarPlanilla", etiqueta: "Cargar planilla de cocina" },
   { valor: "SubirFactura", etiqueta: "Subir factura" },
   { valor: "ActualizarTiempos", etiqueta: "Actualizar tiempos de comida" },
   { valor: "ActualizarCategoriasEdad", etiqueta: "Actualizar categorías de edad" },

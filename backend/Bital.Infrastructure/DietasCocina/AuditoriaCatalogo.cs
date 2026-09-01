@@ -43,6 +43,7 @@ public static class AuditoriaCatalogo
         public const string MarcarConciliado = "MarcarConciliado";
         public const string MarcarPendiente = "MarcarPendiente";
         public const string SubirFactura = "SubirFactura";
+        public const string CargarPlanilla = "CargarPlanilla";
         public const string ActualizarTiempos = "ActualizarTiempos";
         public const string ActualizarCategoriasEdad = "ActualizarCategoriasEdad";
         public const string Editar = "Editar";

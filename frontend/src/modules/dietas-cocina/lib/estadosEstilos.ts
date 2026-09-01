@@ -73,15 +73,20 @@ export const estadoConciliacionConfig: Record<
 > = {
   coincide: { label: "Coincide", className: estadoBadgeTokens.success },
   "conciliado-manual": {
-    label: "Conciliado manual",
+    label: "Conciliado",
     className: estadoBadgeTokens.neutral,
   },
   "dif-cantidad": {
     label: "Dif. cantidad",
     className: estadoBadgeTokens.warning,
   },
+  "dif-tipo": {
+    label: "Tipo distinto",
+    className: estadoBadgeTokens.warning,
+  },
   "dif-tarifa": { label: "Dif. tarifa", className: estadoBadgeTokens.warning },
-  pendiente: { label: "Pendiente", className: estadoBadgeTokens.warning },
+  pendiente: { label: "Planilla pendiente", className: estadoBadgeTokens.warning },
+  "con-alerta": { label: "Con alerta", className: estadoBadgeTokens.danger },
 }
 
 export const estadoDietaCatalogoConfig: Record<

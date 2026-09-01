@@ -15,6 +15,7 @@ type BarItem = { label: string; value: number; color: string }
 export function reporteViewVacio() {
   return {
     kpis: [] as Array<{
+      clave?: string
       label: string
       value: string
       detalle?: string
@@ -37,6 +38,16 @@ export function reporteViewVacio() {
       segmentos: [] as Segmento[],
     },
     tiposDieta: [] as BarItem[],
+    contratoPorComida: [] as Array<{ titulo: string; items: BarItem[] }>,
+    planillaContrato: [] as Array<{
+      titulo: string
+      lineas: Array<{
+        tipo: string
+        suministradas: number
+        contrato: number
+        valorTotal: number
+      }>
+    }>,
     motivosDevolucion: [] as BarItem[],
     motivosRecogida: [] as BarItem[],
     distribucionServicio: [] as BarItem[],
@@ -289,6 +300,64 @@ export function mapReporteDto(dto: ReporteDto) {
   )
   const costoPorComida = mapGraficosBarraPorTitulo(graficosRaw, "costo por comida")
 
+  const contratoPorComida = Array.isArray(graficosRaw)
+    ? graficosRaw
+        .map((raw) => asRecord(raw))
+        .filter((grafico): grafico is Record<string, unknown> => {
+          if (!grafico) return false
+          return tituloGrafico(grafico).startsWith("contrato:")
+        })
+        .map((grafico) => ({
+          titulo: String(grafico.titulo ?? grafico.Titulo ?? ""),
+          items: mapGraficoABarItems(grafico),
+        }))
+        .filter((bloque) => bloque.items.length > 0)
+    : []
+
+  const planillaContrato = Array.isArray(graficosRaw)
+    ? graficosRaw
+        .map((raw) => asRecord(raw))
+        .filter((grafico): grafico is Record<string, unknown> => {
+          if (!grafico) return false
+          const tipo = String(leerCampo(grafico, "tipo", "Tipo") ?? "").toLowerCase()
+          return tipo === "tabla-contrato" || tituloGrafico(grafico).startsWith("planilla:")
+        })
+        .map((grafico) => {
+          const tituloRaw = String(grafico.titulo ?? grafico.Titulo ?? "")
+          const categorias = leerCampo(grafico, "categorias", "Categorias")
+          const series = leerCampo(grafico, "series", "Series")
+          const valoresDe = (etiqueta: string): number[] => {
+            if (!Array.isArray(series)) return []
+            const serie = series
+              .map((raw) => asRecord(raw))
+              .find((item) => {
+                const nombre = String(
+                  leerCampo(item ?? {}, "etiqueta", "Etiqueta") ?? "",
+                ).toLowerCase()
+                return nombre === etiqueta.toLowerCase()
+              })
+            const valores = leerCampo(serie ?? {}, "valores", "Valores")
+            return Array.isArray(valores) ? valores.map((v) => Number(v ?? 0)) : []
+          }
+          const suministradas = valoresDe("Suministradas")
+          const contrato = valoresDe("Contrato")
+          const valorTotal = valoresDe("ValorTotal")
+          const lineas = Array.isArray(categorias)
+            ? categorias.map((categoria, index) => ({
+                tipo: String(categoria),
+                suministradas: suministradas[index] ?? 0,
+                contrato: contrato[index] ?? 0,
+                valorTotal: valorTotal[index] ?? 0,
+              }))
+            : []
+          return {
+            titulo: tituloRaw.replace(/^planilla:\s*/i, ""),
+            lineas,
+          }
+        })
+        .filter((bloque) => bloque.lineas.length > 0)
+    : []
+
   const totalNumerico = segmentos.reduce((sum, item) => sum + item.value, 0)
 
   const kpisRaw = leerCampo(dtoRecord, "kpis", "Kpis")
@@ -299,9 +368,14 @@ export function mapReporteDto(dto: ReporteDto) {
     kpis: Array.isArray(kpisRaw)
       ? kpisRaw.map((raw) => {
           const item = asRecord(raw) ?? {}
+          const comparacion = String(
+            leerCampo(item, "comparacion", "Comparacion") ?? "",
+          ).trim()
           return {
+            clave: String(leerCampo(item, "clave", "Clave") ?? "").trim() || undefined,
             label: String(leerCampo(item, "label", "etiqueta", "Etiqueta") ?? ""),
             value: formatearValorKpi(item),
+            detalle: comparacion || undefined,
             detalleVariant: "neutral" as const,
           }
         })
@@ -335,6 +409,8 @@ export function mapReporteDto(dto: ReporteDto) {
       segmentos,
     },
     tiposDieta,
+    contratoPorComida,
+    planillaContrato,
     motivosDevolucion,
     motivosRecogida,
     distribucionServicio,

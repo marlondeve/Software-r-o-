@@ -1,168 +1,114 @@
 import type { FilaConciliacion } from "@/modules/dietas-cocina/types/reconciliation"
 import { useMemo, useState } from "react"
 
-import { mockConciliacion } from "@/modules/dietas-cocina/conciliacion/datos/mockConciliacion"
 import { useCicloBandejas } from "@/modules/dietas-cocina/context/CicloBandejasContext"
-import {
-  construirConciliacionDesdeCiclo,
-  construirDetallesConciliacionDesdeFilas,
-} from "@/modules/dietas-cocina/lib/construirConciliacionDesdeCiclo"
-import {
-  formatearMonedaCOP,
-  parseDifEconomica,
-  parseMonedaCOP,
-} from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
+import { fechaOperativaHoy } from "@/modules/dietas-cocina/api/utils"
+import { construirConciliacionDesdeCiclo } from "@/modules/dietas-cocina/lib/construirConciliacionDesdeCiclo"
+import { formatearMonedaCOP } from "@/modules/dietas-cocina/lib/resolverTarifaDieta"
 
-export function filtrarFilasConciliacion(
-  filas: FilaConciliacion[],
-  busqueda: string,
-  numeroFactura: string,
-  periodo?: string,
-  proveedor?: string,
-): FilaConciliacion[] {
-  const termino = busqueda.trim().toLowerCase()
-  const factura = numeroFactura.trim().toLowerCase()
-
-  return filas.filter((fila) => {
-    const coincideBusqueda =
-      !termino ||
-      fila.tipo.toLowerCase().includes(termino) ||
-      fila.consistencia.toLowerCase().includes(termino) ||
-      fila.tiempo.toLowerCase().includes(termino)
-
-    const coincideFactura =
-      !factura ||
-      fila.id.includes(factura.replace(/\D/g, "")) ||
-      fila.tipo.toLowerCase().includes(factura)
-
-    const coincidePeriodo =
-      !periodo ||
-      periodo === "periodo" ||
-      fila.tiempo.toLowerCase().includes(periodo.replace(/-/g, " "))
-
-    const coincideProveedor =
-      !proveedor ||
-      proveedor === "proveedor" ||
-      fila.tipo.toLowerCase().includes(proveedor.split("-")[0] ?? "")
-
-    return coincideBusqueda && coincideFactura && coincidePeriodo && coincideProveedor
-  })
+export type KpiConciliacionUi = {
+  label: string
+  value: string
+  variant: "default" | "warning" | "destructive"
 }
 
-export function calcularKpisConciliacion(filas: FilaConciliacion[]) {
-  const cantSist = filas.reduce((sum, f) => sum + f.cantSist, 0)
-  const cantFact = filas.reduce((sum, f) => sum + f.cantFact, 0)
+export function calcularKpisConciliacion(filas: FilaConciliacion[]): KpiConciliacionUi[] {
+  const sistema = filas.reduce((sum, f) => sum + f.cantidadSistema, 0)
+  const tienePlanilla = filas.some((f) => f.cantidadCocina !== null)
+  const cocina = filas.reduce((sum, f) => sum + (f.cantidadCocina ?? 0), 0)
+  const valorSistema = filas.reduce((sum, f) => sum + f.valorSistema, 0)
+  const valorCocina = filas.reduce((sum, f) => sum + (f.valorCocina ?? 0), 0)
   const inconsistencias = filas.filter(
     (f) => f.estado !== "coincide" && f.estado !== "conciliado-manual",
   ).length
 
-  const valorCalc = filas.reduce(
-    (sum, f) => sum + f.cantSist * parseMonedaCOP(f.tarifa),
-    0,
-  )
-  const diferencia = filas.reduce(
-    (sum, f) => sum + parseDifEconomica(f.difEconomica),
-    0,
-  )
-  const valorFact = valorCalc + diferencia
-
   return [
+    { label: "Dietas sistema", value: sistema.toLocaleString("es-CO"), variant: "default" },
     {
-      label: "Dietas registradas",
-      value: cantSist.toLocaleString("es-CO"),
-      variant: "default" as const,
+      label: "Dietas cocina",
+      value: tienePlanilla ? cocina.toLocaleString("es-CO") : "—",
+      variant: "default",
     },
     {
-      label: "Dietas facturadas",
-      value: cantFact.toLocaleString("es-CO"),
-      variant: "default" as const,
+      label: "Diferencia de cantidad",
+      value: tienePlanilla ? String(cocina - sistema) : "—",
+      variant: tienePlanilla && cocina !== sistema ? "warning" : "default",
+    },
+    { label: "Valor sistema", value: formatearMonedaCOP(valorSistema), variant: "default" },
+    {
+      label: "Valor cocina",
+      value: tienePlanilla ? formatearMonedaCOP(valorCocina) : "—",
+      variant: "default",
     },
     {
-      label: "Valor calculado",
-      value: formatearMonedaCOP(valorCalc),
-      variant: "default" as const,
-    },
-    {
-      label: "Valor facturado",
-      value: formatearMonedaCOP(valorFact),
-      variant: "default" as const,
-    },
-    {
-      label: "Diferencia total",
-      value: formatearMonedaCOP(diferencia, true),
-      variant: diferencia === 0 ? ("default" as const) : ("warning" as const),
-    },
-    {
-      label: "Inconsistencias",
+      label: "Líneas con diferencia",
       value: String(inconsistencias),
-      variant: inconsistencias > 0 ? ("destructive" as const) : ("default" as const),
+      variant: inconsistencias > 0 ? "destructive" : "default",
     },
   ]
 }
 
+export function rangoUltimosDias(dias: number): { desde: string; hasta: string } {
+  const hasta = fechaOperativaHoy()
+  const d = new Date(`${hasta}T12:00:00`)
+  d.setDate(d.getDate() - (dias - 1))
+  return { desde: d.toISOString().slice(0, 10), hasta }
+}
+
+export function rangoMesAnterior(): { desde: string; hasta: string } {
+  const hoy = fechaOperativaHoy()
+  const d = new Date(`${hoy}T12:00:00`)
+  const primeroEsteMes = new Date(d.getFullYear(), d.getMonth(), 1)
+  const ultimoAnterior = new Date(primeroEsteMes)
+  ultimoAnterior.setDate(0)
+  const primeroAnterior = new Date(ultimoAnterior.getFullYear(), ultimoAnterior.getMonth(), 1)
+  return {
+    desde: primeroAnterior.toISOString().slice(0, 10),
+    hasta: ultimoAnterior.toISOString().slice(0, 10),
+  }
+}
+
+export function coincideFiltroEstado(
+  estadoFila: FilaConciliacion["estado"],
+  filtro: string,
+): boolean {
+  if (filtro === "todos") return true
+  if (filtro === "con-diferencia") {
+    return (
+      estadoFila === "dif-cantidad" ||
+      estadoFila === "dif-tipo" ||
+      estadoFila === "con-alerta" ||
+      estadoFila === "dif-tarifa"
+    )
+  }
+  if (filtro === "conciliado") return estadoFila === "conciliado-manual"
+  return estadoFila === filtro
+}
+
 export function useConciliacionFiltrada() {
   const { ordenes } = useCicloBandejas()
-
-  const filasDesdeCiclo = useMemo(
-    () => construirConciliacionDesdeCiclo(ordenes),
-    [ordenes],
-  )
-
-  const detallesDesdeCiclo = useMemo(
-    () => construirDetallesConciliacionDesdeFilas(filasDesdeCiclo),
-    [filasDesdeCiclo],
-  )
-
-  const [estadosManuales, setEstadosManuales] = useState<
-    Record<string, FilaConciliacion["estado"]>
-  >({})
-
-  const filas = useMemo(
-    () =>
-      (filasDesdeCiclo.length > 0
-        ? filasDesdeCiclo
-        : mockConciliacion.filas.map((f) => ({ ...f }))
-      ).map((fila) =>
-        estadosManuales[fila.id]
-          ? { ...fila, estado: estadosManuales[fila.id] }
-          : fila,
-      ),
-    [filasDesdeCiclo, estadosManuales],
-  )
-
-  const detalles = useMemo(
-    () =>
-      filasDesdeCiclo.length > 0
-        ? { ...detallesDesdeCiclo, ...mockConciliacion.detalles }
-        : mockConciliacion.detalles,
-    [filasDesdeCiclo, detallesDesdeCiclo],
-  )
-
+  const inicial = rangoUltimosDias(30)
   const [busqueda, setBusqueda] = useState("")
   const [numeroFactura, setNumeroFactura] = useState("")
-  const [periodo, setPeriodo] = useState("periodo")
-  const [proveedor, setProveedor] = useState("proveedor")
+  const [estado, setEstado] = useState("todos")
+  const [desde, setDesde] = useState(inicial.desde)
+  const [hasta, setHasta] = useState(inicial.hasta)
 
-  const filasFiltradas = useMemo(
-    () =>
-      filtrarFilasConciliacion(
-        filas,
-        busqueda,
-        numeroFactura,
-        periodo,
-        proveedor,
-      ),
-    [filas, busqueda, numeroFactura, periodo, proveedor],
-  )
+  const filas = useMemo(() => construirConciliacionDesdeCiclo(ordenes), [ordenes])
 
-  const kpis = useMemo(
-    () => calcularKpisConciliacion(filasFiltradas),
-    [filasFiltradas],
-  )
+  const filasFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase()
+    return filas.filter((fila) => {
+      const coincideBusqueda =
+        !q ||
+        fila.etiquetaPlanilla.toLowerCase().includes(q) ||
+        fila.lineaFcr.toLowerCase().includes(q) ||
+        fila.comida.toLowerCase().includes(q)
+      return coincideBusqueda && coincideFiltroEstado(fila.estado, estado)
+    })
+  }, [filas, busqueda, estado])
 
-  function actualizarEstadoFila(id: string, estado: FilaConciliacion["estado"]) {
-    setEstadosManuales((prev) => ({ ...prev, [id]: estado }))
-  }
+  const kpis = useMemo(() => calcularKpisConciliacion(filasFiltradas), [filasFiltradas])
 
   return {
     filas,
@@ -172,14 +118,19 @@ export function useConciliacionFiltrada() {
     setBusqueda,
     numeroFactura,
     setNumeroFactura,
-    periodo,
-    setPeriodo,
-    proveedor,
-    setProveedor,
-    actualizarEstadoFila,
-    filtros: mockConciliacion.filtros,
-    detalles,
+    desde,
+    setDesde,
+    hasta,
+    setHasta,
+    estado,
+    setEstado,
+    actualizarEstadoFila: async () => undefined,
     cargando: false,
-    error: null,
+    error: null as string | null,
+    exportar: async () => undefined,
+    cargarPlanilla: async (_archivo: File) => undefined,
+    cargarFactura: async (_archivo: File) => undefined,
+    guardarCantidadCocina: async () => undefined,
+    guardandoCocinaId: null as string | null,
   }
 }

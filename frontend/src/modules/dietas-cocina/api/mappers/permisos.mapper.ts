@@ -18,10 +18,13 @@ export const RUTA_LISTAR_ETIQUETAS = 20
 /** Hub de bandejas en piso sin flujos operativos (23–25). */
 export const RUTA_BANDEJAS_PISO = 26
 export const RUTA_EXPORTAR_REPORTES = 41
+export const RUTA_VER_REPORTES_CLINICOS = 42
+export const RUTA_VER_REPORTES_PRODUCCION = 43
 
-/** Códigos API que sugieren reportes clínicos vs producción (comparten 41). */
-const CODIGOS_REPORTES_CLINICOS = [1, 2, 3, 4, 5, 6, 7, 8, 30, 31, 32]
-const CODIGOS_REPORTES_PRODUCCION = [11, 12, 13, 21]
+/** Códigos clínicos reales (dietas + catálogo). Sin conciliación ni etiquetas. */
+const CODIGOS_LEGACY_REPORTES_CLINICOS = [1, 2, 3, 4, 5, 6, 7, 8]
+/** Códigos de cocina / órdenes. Sin impresión de etiquetas (21). */
+const CODIGOS_LEGACY_REPORTES_PRODUCCION = [10, 11, 12, 13]
 
 /** Permisos granulares API (`RutaDietas`) agrupados por sección del sidebar UI. */
 const RUTA_UI_A_API: Record<RutaDietasConfig, number[]> = {
@@ -32,9 +35,9 @@ const RUTA_UI_A_API: Record<RutaDietasConfig, number[]> = {
   "impresion-etiquetas": [RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.impresion_proveedor],
   "recepcion-proveedor": [RUTA_LISTAR_ETIQUETAS, CAPACIDAD_A_RUTA_API.recepcion_proveedor],
   "bandejas-piso": [RUTA_LISTAR_ETIQUETAS, RUTA_BANDEJAS_PISO],
-  conciliacion: [30, 31, 32],
-  "reportes-clinicos": [RUTA_EXPORTAR_REPORTES],
-  "reportes-produccion": [RUTA_EXPORTAR_REPORTES],
+  conciliacion: [30, 31, 32, 33],
+  "reportes-clinicos": [RUTA_VER_REPORTES_CLINICOS],
+  "reportes-produccion": [RUTA_VER_REPORTES_PRODUCCION],
   parametros: [50, 51],
   auditoria: [60],
   usuarios: [70, 71],
@@ -97,6 +100,16 @@ function inferirRutasLogisticaDesdeApi(setApi: Set<number>): Record<string, bool
 }
 
 function inferirRutasReportesDesdeApi(setApi: Set<number>): Record<string, boolean> {
+  if (
+    setApi.has(RUTA_VER_REPORTES_CLINICOS) ||
+    setApi.has(RUTA_VER_REPORTES_PRODUCCION)
+  ) {
+    return {
+      "reportes-clinicos": setApi.has(RUTA_VER_REPORTES_CLINICOS),
+      "reportes-produccion": setApi.has(RUTA_VER_REPORTES_PRODUCCION),
+    }
+  }
+
   if (!setApi.has(RUTA_EXPORTAR_REPORTES)) {
     return {
       "reportes-clinicos": false,
@@ -106,9 +119,11 @@ function inferirRutasReportesDesdeApi(setApi: Set<number>): Record<string, boole
 
   const esAdmin = setApi.has(70) && setApi.has(71)
   const clinico =
-    esAdmin || CODIGOS_REPORTES_CLINICOS.some((codigo) => setApi.has(codigo))
+    esAdmin ||
+    CODIGOS_LEGACY_REPORTES_CLINICOS.some((codigo) => setApi.has(codigo))
   const produccion =
-    esAdmin || CODIGOS_REPORTES_PRODUCCION.some((codigo) => setApi.has(codigo))
+    esAdmin ||
+    CODIGOS_LEGACY_REPORTES_PRODUCCION.some((codigo) => setApi.has(codigo))
 
   if (!clinico && !produccion) {
     return {
@@ -256,6 +271,12 @@ export function mapPermisosUiToActualizarRequest(
     }
   }
 
+  if (permisos["reportes-clinicos"]) {
+    rutas.push(RUTA_VER_REPORTES_CLINICOS)
+  }
+  if (permisos["reportes-produccion"]) {
+    rutas.push(RUTA_VER_REPORTES_PRODUCCION)
+  }
   if (permisos["reportes-clinicos"] || permisos["reportes-produccion"]) {
     rutas.push(RUTA_EXPORTAR_REPORTES)
   }

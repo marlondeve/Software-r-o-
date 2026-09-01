@@ -346,6 +346,12 @@ namespace Bital.Infrastructure.Migrations
                     b.Property<int>("CantidadFacturada")
                         .HasColumnType("int");
 
+                    b.Property<int?>("CantidadCocina")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CantidadSistema")
+                        .HasColumnType("int");
+
                     b.Property<int>("CantidadSolicitada")
                         .HasColumnType("int");
 
@@ -383,6 +389,17 @@ namespace Bital.Infrastructure.Migrations
 
                     b.Property<DateTime>("FechaOperativa")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("Huerfanas")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EtiquetaPlanilla")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LineaFcr")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid?>("FilaDietaId")
                         .HasColumnType("uniqueidentifier");
@@ -423,6 +440,12 @@ namespace Bital.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime>("PeriodoDesde")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PeriodoHasta")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Proveedor")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -433,11 +456,20 @@ namespace Bital.Infrastructure.Migrations
                     b.Property<string>("ResueltoPor")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("SinEtiqueta")
+                        .HasColumnType("int");
+
                     b.Property<string>("TipoDieta")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("ValorTotal")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ValorSistema")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("ValorCocina")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("ValorUnitario")

@@ -21,7 +21,9 @@ public static class RolModuloDefaultsSeed
         foreach (var (id, nombre) in RolModuloSeed.RolesPorDefecto)
         {
             var rol = await context.RolesModulo
-                .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
+                .FirstOrDefaultAsync(r => r.Id == id, cancellationToken)
+                ?? await context.RolesModulo
+                    .FirstOrDefaultAsync(r => r.Nombre == nombre, cancellationToken);
 
             if (rol is null)
             {
@@ -71,10 +73,19 @@ public static class RolModuloDefaultsSeed
         DateTime ahora,
         CancellationToken cancellationToken)
     {
-        foreach (var (rolId, rutas) in RolModuloSeed.PermisosPorRolSistema)
+        foreach (var (rolIdCanonico, rutas) in RolModuloSeed.PermisosPorRolSistema)
         {
-            if (rolId == RolModuloSeed.Administrador)
+            if (rolIdCanonico == RolModuloSeed.Administrador)
                 continue; // Admin se gestiona aparte; no forzar todo el enum
+
+            var nombreRol = RolModuloSeed.RolesPorDefecto
+                .First(r => r.Id == rolIdCanonico).Nombre;
+            var rolId = await context.RolesModulo
+                .Where(r => r.Id == rolIdCanonico || r.Nombre == nombreRol)
+                .Select(r => r.Id)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (rolId == Guid.Empty)
+                continue;
 
             var existentes = await context.PermisosRol
                 .Where(p => p.RolModuloId == rolId)
