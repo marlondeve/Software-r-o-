@@ -251,13 +251,12 @@ function TituloValorImpresion({
 
 function MetaPaciente({
   etiqueta,
-  ubicacion,
   modo,
 }: {
   etiqueta: EtiquetaDieta
-  ubicacion: string
   modo: "pantalla" | "impresion"
 }) {
+  const ubicacionPantalla = `${etiqueta.pabellon} - Hab ${etiqueta.habitacion}`
   const aislamiento = etiqueta.aislamiento ? "Sí" : "No"
   const ingreso = textoIngresoEtiqueta(etiqueta)
   const documento = textoDocumentoEtiqueta(etiqueta)
@@ -299,10 +298,22 @@ function MetaPaciente({
           style={{
             ...estiloMeta,
             marginTop: pxCapturaImpresion(3),
+            fontSize: TIPOGRAFIA_IMPRESION.ubicacion,
+            lineHeight: 1.25,
             textTransform: "uppercase",
           }}
         >
-          {ubicacion}
+          {etiqueta.pabellon}
+          {" - "}
+          <span
+            style={{
+              fontSize: TIPOGRAFIA_IMPRESION.ubicacionHabitacion,
+              fontWeight: 800,
+              letterSpacing: "0.02em",
+            }}
+          >
+            Hab {etiqueta.habitacion}
+          </span>
           <SeparadorImpresion />
           <TituloValorImpresion titulo="Aislamiento" valor={aislamiento} />
         </p>
@@ -344,9 +355,11 @@ function MetaPaciente({
           columnGap: 2,
           rowGap: 2,
           marginBottom: 2,
+          fontSize: 9.5,
+          fontWeight: 600,
         }}
       >
-        <MetaItem icon={<IconoMapPin />}>{ubicacion}</MetaItem>
+        <MetaItem icon={<IconoMapPin />}>{ubicacionPantalla}</MetaItem>
       </div>
       <div
         style={{
@@ -384,7 +397,6 @@ function EtiquetaLabelContenido({
 }) {
   const esImpresion = modo === "impresion"
   const comida = etiquetaComidaLabel(etiqueta.comida)
-  const ubicacion = `${etiqueta.pabellon} - Hab ${etiqueta.habitacion}`
   const pxI = (valor: number) => pxCapturaImpresion(valor)
   const padContenido = esImpresion
     ? `${pxI(10)}px ${pxI(12)}px ${pxI(10)}px`
@@ -487,7 +499,7 @@ function EtiquetaLabelContenido({
           {etiqueta.paciente}
         </h3>
 
-        <MetaPaciente etiqueta={etiqueta} ubicacion={ubicacion} modo={modo} />
+        <MetaPaciente etiqueta={etiqueta} modo={modo} />
 
         <div
           style={{

@@ -152,7 +152,7 @@ En producción el frontend y el API corren en el **mismo servidor IIS**:
 
 | Componente | Binding | Acceso |
 |---|---|---|
-| Frontend (SPA) | `https://riosoft.clinicadelriomonteria.com:8080` | Público |
+| Frontend (SPA) | HTTPS :443 / :8080 | Público |
 | API (Kestrel + IIS) | `http://127.0.0.1:8081` | Solo localhost |
 
 El `web.config` del frontend hace proxy de `/api/v1/*` y `/health` al API interno.
@@ -178,16 +178,17 @@ Salida: `deploy/frontend/` y `deploy/apinegocio/`
 1. Copiar `deploy/apinegocio/` → `C:\inetpub\wwwroot\bital-api-negocio\`
 2. Copiar `deploy/frontend/` → `C:\inetpub\wwwroot\bital-frontend\`
 3. Sitio API: binding `http://127.0.0.1:8081` (sin acceso externo)
-4. Sitio frontend: binding HTTPS puerto **8080** con certificado SSL
+4. Sitio frontend: bindings HTTPS puertos **443** y **8080** con certificado SSL
 5. Instalar **URL Rewrite** y **ARR**; habilitar proxy
 6. Verificar `web.config` en la raíz del frontend (proxy + SPA fallback)
 
 ### Verificación
 
 ```text
-https://riosoft.clinicadelriomonteria.com:8080/login
-https://riosoft.clinicadelriomonteria.com:8080/health   → Healthy
-https://riosoft.clinicadelriomonteria.com:8080/dietas-cocina/inicio
+https://riosoft.clinicadelrio.org/login
+https://riosoft.clinicadelrio.org/health   → Healthy
+https://riosoft.clinicadelrio.org/dietas-cocina/inicio
+https://riosoft.clinicadelrio.org:8080/health   → Healthy (alternativo)
 ```
 
 Recargar con F5 en rutas profundas para confirmar el fallback SPA.

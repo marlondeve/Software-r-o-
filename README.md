@@ -89,7 +89,7 @@ Bital.ApiNegocio (puerto 8080 en dev, 127.0.0.1:8081 en prod IIS)
 SQL Server BitalNegocio + SQL Server Vital (Hosvital_Pruebas, read-only)
 ```
 
-En producción IIS el frontend es público en **HTTPS :8080** y hace proxy interno al API en **127.0.0.1:8081**. El navegador nunca accede al API directamente.
+En producción IIS el frontend es público en **HTTPS** (puertos **443** y **8080**) y hace proxy interno al API en **127.0.0.1:8081**. El navegador nunca accede al API directamente.
 
 ## Estado del proyecto
 

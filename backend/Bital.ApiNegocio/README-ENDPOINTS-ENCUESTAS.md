@@ -9,7 +9,7 @@ La idea es que esta guía sirva como apoyo directo para el formulario y para las
 | Entorno | URL |
 |---|---|
 | Desarrollo local | `http://localhost:8080` |
-| Producción (vía proxy IIS) | `https://riosoft.clinicadelriomonteria.com:8080` — rutas relativas `/api/v1` |
+| Producción (vía proxy IIS) | `https://riosoft.clinicadelrio.org` o `:8080` — rutas relativas `/api/v1` |
 
 Prefijo de versión: `/api/v1`
 

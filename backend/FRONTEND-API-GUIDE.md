@@ -14,7 +14,7 @@ Setup, arquitectura y ejecución local: [README.md](./README.md)
 | Entorno | Base URL | Swagger |
 |---|---|---|
 | Desarrollo local | `http://localhost:8080` | `http://localhost:8080/swagger` |
-| Producción IIS | `https://riosoft.clinicadelriomonteria.com:8080` (mismo origen) | Solo red interna / diagnóstico |
+| Producción IIS | `https://riosoft.clinicadelrio.org` o `:8080` (mismo origen) | Solo red interna / diagnóstico |
 
 En producción el frontend consume rutas relativas (`/api/v1`, `/health`); IIS hace proxy a `127.0.0.1:8081`.
 
@@ -44,7 +44,7 @@ El API emite el JWT en la cookie de sesión `bital_access_token`. El frontend us
 
 | Entorno | Comportamiento |
 |---|---|
-| **Producción (HTTPS)** | Cookie `Secure` + `HttpOnly` + `SameSite=Strict`. Frontend y API comparten origen (`https://…:8080` → proxy IIS → `127.0.0.1:8081`). |
+| **Producción (HTTPS)** | Cookie `Secure` + `HttpOnly` + `SameSite=Strict`. Frontend y API comparten origen (`https://…` en :443 o :8080 → proxy IIS → `127.0.0.1:8081`). |
 | **Desarrollo** | Proxy Vite (`/api` → `localhost:8080`). Cookie con `SameSite=Lax`; `Secure` si la petición es HTTPS o el ambiente es Production. |
 
 | Endpoint | Auth | Descripción |

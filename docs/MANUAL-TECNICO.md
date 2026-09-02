@@ -45,9 +45,9 @@
 
 | Recurso | URL |
 |---|---|
-| Aplicación | `https://riosoft.clinicadelriomonteria.com:8080` |
-| Health check | `https://riosoft.clinicadelriomonteria.com:8080/health` |
-| API (vía proxy mismo origen) | `https://riosoft.clinicadelriomonteria.com:8080/api/v1/` |
+| Aplicación | `https://riosoft.clinicadelrio.org` (también `:8080`) |
+| Health check | `https://riosoft.clinicadelrio.org/health` |
+| API (vía proxy mismo origen) | `https://riosoft.clinicadelrio.org/api/v1/` |
 
 El API **no** está expuesto públicamente; IIS hace proxy interno a `http://127.0.0.1:8081`.
 
@@ -67,7 +67,7 @@ El API **no** está expuesto públicamente; IIS hace proxy interno a `http://127
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
-│  Navegador (HTTPS :8080)                                    │
+│  Navegador (HTTPS :443 / :8080)                             │
 │  React SPA — RioSoft                                        │
 └───────────────────────────┬─────────────────────────────────┘
                             │ /api/v1/*, /health
@@ -654,7 +654,7 @@ pnpm build:iis
 | 2 | Copiar `deploy/apinegocio/` → `C:\inetpub\wwwroot\bital-api-negocio\` |
 | 3 | Copiar `deploy/frontend/` → `C:\inetpub\wwwroot\bital-frontend\` |
 | 4 | Sitio API: binding `http://127.0.0.1:8081` |
-| 5 | Sitio frontend: HTTPS puerto **8080** + certificado SSL |
+| 5 | Sitio frontend: HTTPS puertos **443** y **8080** + certificado SSL |
 | 6 | Habilitar ARR proxy + URL Rewrite |
 | 7 | Verificar `/health` y login |
 
@@ -673,7 +673,7 @@ Archivo: `backend/Bital.ApiNegocio/appsettings.Production.json`
 | `Kestrel:Endpoints:Http:Url` | `http://127.0.0.1:8081` |
 | `ConnectionStrings:BitalDatabase` | `10.238.97.66` |
 | `ConnectionStrings:VitalDatabase` | `10.238.97.69` |
-| `Cors:AllowedOrigins` | `https://riosoft.clinicadelriomonteria.com:8080` |
+| `Cors:AllowedOrigins` | `https://riosoft.clinicadelrio.org`, `https://riosoft.clinicadelrio.org:8080` |
 | `Jwt:CrossOriginCookies` | `false` |
 
 ---
@@ -701,7 +701,8 @@ Resumen de controles implementados. Detalle: [CIBERSEGURIDAD-PRODUCCION.md](./CI
 ### 13.1 Health check
 
 ```bash
-curl https://riosoft.clinicadelriomonteria.com:8080/health
+curl https://riosoft.clinicadelrio.org/health
+curl https://riosoft.clinicadelrio.org:8080/health
 # Respuesta esperada: Healthy
 ```
 

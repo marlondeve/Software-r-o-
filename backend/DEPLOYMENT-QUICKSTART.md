@@ -8,7 +8,7 @@
 
 | Componente | Detalle |
 |---|---|
-| Frontend público | `https://riosoft.clinicadelriomonteria.com:8080` |
+| Frontend público | `https://riosoft.clinicadelrio.org` (también `:8080`) |
 | API interna | `http://127.0.0.1:8081` (proxy desde frontend) |
 | BD BitalNegocio | `10.238.97.66:1433` |
 | BD Vital | `10.238.97.69:1433` (Hosvital_Pruebas) |
@@ -49,7 +49,7 @@ Verificar `appsettings.Production.json` antes de publicar (JWT, connection strin
 
 - Pool: `BitalFrontendPool` — No Managed Code
 - Sitio: `BitalFrontend` → `C:\inetpub\wwwroot\bital-frontend`
-- Binding: **HTTPS** puerto **8080** + certificado SSL
+- Binding: **HTTPS** puertos **443** y **8080** + certificado SSL
 - Habilitar **ARR proxy** + **URL Rewrite**
 
 Guía HTTPS: [docs/PASOS-HTTPS-IIS-FRONTEND.md](../docs/PASOS-HTTPS-IIS-FRONTEND.md)
@@ -61,7 +61,8 @@ Guía HTTPS: [docs/PASOS-HTTPS-IIS-FRONTEND.md](../docs/PASOS-HTTPS-IIS-FRONTEND
 ```powershell
 # En el servidor
 Invoke-RestMethod http://127.0.0.1:8081/health
-Invoke-RestMethod https://riosoft.clinicadelriomonteria.com:8080/health
+Invoke-RestMethod https://riosoft.clinicadelrio.org/health
+Invoke-RestMethod https://riosoft.clinicadelrio.org:8080/health
 
 # Login de prueba (después de migración SQL)
 # usuario: admin / password: admin

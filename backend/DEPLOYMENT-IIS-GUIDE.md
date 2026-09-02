@@ -11,7 +11,7 @@ Despliegue del **frontend React** y **Bital.ApiNegocio** (API de RioSoft) en Win
 ```text
 Internet
     │
-    ▼ HTTPS :8080
+    ▼ HTTPS :443 / :8080
 ┌─────────────────────────────────────────┐
 │  IIS — Sitio BitalFrontend              │
 │  C:\inetpub\wwwroot\bital-frontend\     │
@@ -37,7 +37,7 @@ Internet
 
 | Componente | URL pública | Binding IIS |
 |---|---|---|
-| Frontend | `https://riosoft.clinicadelriomonteria.com:8080` | HTTPS :8080 |
+| Frontend | `https://riosoft.clinicadelrio.org` (también `:8080`) | HTTPS :443 y :8080 |
 | API | No expuesta — proxy interno | `http://127.0.0.1:8081` |
 
 ---
@@ -48,7 +48,7 @@ Internet
 2. **[.NET 8 Hosting Bundle](https://dotnet.microsoft.com/download/dotnet/8.0)** — incluye ASP.NET Core Module V2
 3. **URL Rewrite** + **Application Request Routing (ARR)** con proxy habilitado
 4. **Protocolo WebSocket** en IIS (característica de Windows) — obligatorio para SignalR
-5. **Certificado SSL** para el subdominio (puerto 8080)
+5. **Certificado SSL** para el subdominio (puertos 443 y 8080)
 6. Conectividad SQL Server a `10.238.97.66` (BitalNegocio) y `10.238.97.69` (Vital)
 
 Verificar runtime:
@@ -153,7 +153,7 @@ Invoke-RestMethod http://127.0.0.1:8081/health
 |---|---|
 | Nombre | `BitalFrontend` |
 | Ruta física | `C:\inetpub\wwwroot\bital-frontend` |
-| Binding HTTPS | puerto **8080**, certificado SSL, host `riosoft.clinicadelriomonteria.com` |
+| Binding HTTPS | puertos **443** y **8080**, certificado SSL, host `riosoft.clinicadelrio.org` |
 
 ### ARR / URL Rewrite
 
@@ -189,14 +189,17 @@ Desde el servidor:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8081/health
-Invoke-RestMethod https://riosoft.clinicadelriomonteria.com:8080/health
+Invoke-RestMethod https://riosoft.clinicadelrio.org/health
+Invoke-RestMethod https://riosoft.clinicadelrio.org:8080/health
 ```
 
 Desde red externa:
 
 ```powershell
-curl -I https://riosoft.clinicadelriomonteria.com:8080
-curl https://riosoft.clinicadelriomonteria.com:8080/health
+curl -I https://riosoft.clinicadelrio.org
+curl https://riosoft.clinicadelrio.org/health
+curl -I https://riosoft.clinicadelrio.org:8080
+curl https://riosoft.clinicadelrio.org:8080/health
 ```
 
 Probar login y rutas SPA:

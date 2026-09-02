@@ -1,6 +1,6 @@
 # Ciberseguridad — producción IIS HTTPS
 
-Checklist y configuración de seguridad para **RioSoft** en `https://riosoft.clinicadelriomonteria.com:8080`.
+Checklist y configuración de seguridad para **RioSoft** en `https://riosoft.clinicadelrio.org` (y `:8080` como alternativo).
 
 **Última actualización:** 2026-08-03
 
@@ -27,7 +27,7 @@ Checklist y configuración de seguridad para **RioSoft** en `https://riosoft.cli
 ## Modelo de autenticación
 
 ```text
-Navegador ──HTTPS :8080──► IIS (BitalFrontend)
+Navegador ──HTTPS :443 o :8080──► IIS (BitalFrontend)
                               ├── /api/v1/*  → proxy → 127.0.0.1:8081 (ApiNegocio)
                               ├── /health    → proxy → 127.0.0.1:8081
                               └── SPA React
@@ -55,16 +55,17 @@ Plantilla: `appsettings.Production.example.json`.
 Origen principal:
 
 ```json
-"https://riosoft.clinicadelriomonteria.com:8080"
+"https://riosoft.clinicadelrio.org",
+"https://riosoft.clinicadelrio.org:8080"
 ```
 
 Reducir orígenes HTTP de diagnóstico cuando ya no se necesiten.
 
-### 3. HTTPS puerto 8080
+### 3. HTTPS (puertos 443 y 8080)
 
-- Binding IIS con certificado SSL + SNI
-- Regla redirect en `frontend/public/web.config`
-- Firewall: solo **8080/TCP** entrante para el frontend
+- Bindings IIS con certificado SSL + SNI en **443** y **8080**
+- Reglas redirect en `frontend/public/web.config` (80→443, 8080→8080)
+- Firewall: **443/TCP**, **80/TCP** y **8080/TCP** entrantes para el frontend
 
 Guía paso a paso: [PASOS-HTTPS-IIS-FRONTEND.md](./PASOS-HTTPS-IIS-FRONTEND.md)
 
@@ -76,7 +77,7 @@ Guía paso a paso: [PASOS-HTTPS-IIS-FRONTEND.md](./PASOS-HTTPS-IIS-FRONTEND.md)
 
 ### 5. IIS / ARR
 
-- [ ] Certificado válido en binding HTTPS puerto **8080**
+- [ ] Certificado válido en bindings HTTPS puertos **443** y **8080**
 - [ ] ARR proxy habilitado a nivel servidor
 - [ ] Application pool con identidad de mínimo privilegio
 - [ ] Permisos: lectura en frontend, lectura+logs en API
@@ -85,9 +86,11 @@ Guía paso a paso: [PASOS-HTTPS-IIS-FRONTEND.md](./PASOS-HTTPS-IIS-FRONTEND.md)
 ### 6. Validación rápida
 
 ```powershell
-curl -I https://riosoft.clinicadelriomonteria.com:8080
-curl -I http://riosoft.clinicadelriomonteria.com:8080
-curl https://riosoft.clinicadelriomonteria.com:8080/health
+curl -I https://riosoft.clinicadelrio.org
+curl -I http://riosoft.clinicadelrio.org
+curl https://riosoft.clinicadelrio.org/health
+curl -I https://riosoft.clinicadelrio.org:8080
+curl https://riosoft.clinicadelrio.org:8080/health
 ```
 
 Tras login (DevTools → Cookies): `bital_access_token` con **Secure** + **HttpOnly** + **SameSite=Strict** (requiere acceso por HTTPS).

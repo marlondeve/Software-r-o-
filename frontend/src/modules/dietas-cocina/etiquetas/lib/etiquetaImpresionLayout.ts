@@ -8,17 +8,20 @@ import {
 
 /** Tipografía legible para PDF 168 × 88 mm (sin iconos). */
 export const TIPOGRAFIA_IMPRESION = {
-  comida: pxCapturaImpresion(20),
-  fechaHora: pxCapturaImpresion(14.5),
-  paciente: pxCapturaImpresion(19),
-  meta: pxCapturaImpresion(14.5),
-  dietaLabel: pxCapturaImpresion(12.5),
-  dietaValor: pxCapturaImpresion(15.5),
-  obsLabel: pxCapturaImpresion(12.5),
-  obsTexto: pxCapturaImpresion(14),
-  codigoCorto: pxCapturaImpresion(13.5),
-  codigoMedio: pxCapturaImpresion(12.5),
-  codigoLargo: pxCapturaImpresion(11.5),
+  comida: pxCapturaImpresion(22),
+  fechaHora: pxCapturaImpresion(16),
+  paciente: pxCapturaImpresion(22),
+  meta: pxCapturaImpresion(16),
+  ubicacion: pxCapturaImpresion(18),
+  /** Habitación — la línea más crítica para lectura en piso. */
+  ubicacionHabitacion: pxCapturaImpresion(22),
+  dietaLabel: pxCapturaImpresion(13.5),
+  dietaValor: pxCapturaImpresion(17),
+  obsLabel: pxCapturaImpresion(13.5),
+  obsTexto: pxCapturaImpresion(15.5),
+  codigoCorto: pxCapturaImpresion(14),
+  codigoMedio: pxCapturaImpresion(13),
+  codigoLargo: pxCapturaImpresion(12),
 } as const
 
 export const ELEMENTOS_IMPRESION = {

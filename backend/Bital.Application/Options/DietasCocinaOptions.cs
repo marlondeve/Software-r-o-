@@ -8,7 +8,7 @@ public class DietasCocinaOptions
     public const string SectionName = "DietasCocina";
 
     /// <summary>
-    /// Origen del frontend (p. ej. https://riosoft.clinicadelrio.com) para el payload del QR.
+    /// Origen del frontend (p. ej. https://riosoft.clinicadelrio.org o :8080) para el payload del QR.
     /// Si está vacío se usa el primer origen CORS.
     /// </summary>
     public string FrontendPublicUrl { get; set; } = string.Empty;
