@@ -35,6 +35,15 @@ public class DietasCocinaCierreTests
     }
 
     [Fact]
+    public void PdfEtiquetasHelper_CapturaDpi_CoincideConFrontend2400()
+    {
+        Assert.Equal(2400, PdfEtiquetasHelper.CapturaDpi);
+        // 168×88 mm @ 2400 dpi ≈ 15 874 × 8 315 (paridad con PDF_CAPTURA_DPI del frontend)
+        Assert.Equal(15874, PdfEtiquetasHelper.AnchoCapturaPx);
+        Assert.Equal(8315, PdfEtiquetasHelper.AltoCapturaPx);
+    }
+
+    [Fact]
     public void PdfEtiquetasHelper_GeneraBytesPdfValidos()
     {
         var pdf = PdfEtiquetasHelper.Generar([PdfEtiquetasHelper.CrearEtiquetaPrueba()]);

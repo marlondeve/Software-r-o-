@@ -591,7 +591,7 @@ public class EtiquetasService : IEtiquetasService
             Edad = fila?.Edad ?? 0,
             DocumentoTitulo = tipoDoc,
             DocumentoValor = docValor,
-            Ubicacion = $"{pabellon} - Hab {habitacion}",
+            Ubicacion = PdfEtiquetasHelper.FormatearUbicacion(pabellon, habitacion),
             Aislamiento = aislado,
             TipoDieta = fila?.DescripcionDieta ?? "",
             Consistencia = fila?.Consistencia ?? "",
