@@ -9,8 +9,7 @@ namespace Bital.Infrastructure.DietasCocina;
 
 /// <summary>
 /// PDF térmico 168 × 88 mm (una etiqueta = una página).
-/// Tamaños alineados con la calibración frontend de etiqueta de prueba
-/// (<c>PDF_CAPTURA_DPI = 2400</c> ≈ 15 870 × 8 315 px sobre 168 × 88 mm).
+/// Layout y tipografía alineados al mock del frontend; imágenes a 2400 dpi.
 /// </summary>
 internal static class PdfEtiquetasHelper
 {
@@ -21,56 +20,19 @@ internal static class PdfEtiquetasHelper
 
     private const float AnchoMm = 168f;
     private const float AltoMm = 88f;
+    private const float QrColRatio = 0.3f;
+    private const float AnchoContenidoMm = AnchoMm * (1f - QrColRatio);
+    private const float AnchoQrMm = AnchoMm * QrColRatio;
+    private const float QrMm = AnchoQrMm * 0.84f;
 
-    /// <summary>168 mm × 2400 dpi ≈ píxeles del raster embebido (paridad con captura frontend).</summary>
+    /// <summary>px de diseño (96 dpi) → pt QuestPDF.</summary>
+    private const float DisenoPxAPt = 72f / 96f;
+
+    /// <summary>168 mm × 2400 dpi ≈ píxeles del raster embebido.</summary>
     public static int AnchoCapturaPx => (int)Math.Round(AnchoMm / 25.4f * CapturaDpi);
 
     /// <summary>88 mm × 2400 dpi ≈ píxeles del raster embebido.</summary>
     public static int AltoCapturaPx => (int)Math.Round(AltoMm / 25.4f * CapturaDpi);
-    private const float QrColRatio = 0.3f;
-    private const float AnchoContenidoMm = AnchoMm * (1f - QrColRatio); // 117.6
-    private const float AnchoQrMm = AnchoMm * QrColRatio; // 50.4
-
-    /// <summary>px de diseño (96 dpi sobre 168 mm) → mm. Igual que frontend <c>PX_POR_MM</c> inverso.</summary>
-    private const float DisenoPxAMm = 25.4f / 96f;
-
-    /// <summary>px de diseño → puntos QuestPDF (72/96).</summary>
-    private const float DisenoPxAPt = 72f / 96f;
-
-    // Tipografía = TIPOGRAFIA_IMPRESION (valores de diseño antes del scale de captura).
-    private static readonly float PtComida = Pt(22);
-    private static readonly float PtFecha = Pt(16);
-    private static readonly float PtPaciente = Pt(22);
-    private static readonly float PtMeta = Pt(16);
-    private static readonly float PtUbicacion = Pt(18);
-    private static readonly float PtDietaLabel = Pt(13.5f);
-    private static readonly float PtDietaValor = Pt(17);
-    private static readonly float PtObsLabel = Pt(13.5f);
-    private static readonly float PtObsTexto = Pt(15.5f);
-    private static readonly float PtCodigoCorto = Pt(14);
-    private static readonly float PtCodigoMedio = Pt(13);
-    private static readonly float PtCodigoLargo = Pt(12);
-    private static readonly float PtBadge = Pt(13);
-
-    // ELEMENTOS_IMPRESION / paddings de EtiquetaLabelFace modo impresión.
-    private static readonly float PadContenidoVMm = Mm(10);
-    private static readonly float PadContenidoHMm = Mm(12);
-    private static readonly float PadDietaVMm = Mm(6);
-    private static readonly float PadDietaHMm = Mm(9);
-    private static readonly float PadObsVMm = Mm(6);
-    private static readonly float PadObsHMm = Mm(9);
-    private static readonly float MtObsMm = Mm(6);
-    private static readonly float MtNombreMm = Mm(4);
-    private static readonly float MbNombreMm = Mm(3);
-    private static readonly float PbHeaderMm = Mm(5);
-    private static readonly float LogoAltoMm = Mm(36);
-    private static readonly float LogoAnchoMaxMm = Mm(120);
-    private static readonly float QrMm = AnchoQrMm * 0.84f; // ~42.3 mm
-    private static readonly float BordeMm = Mm(1);
-    private static readonly float PadQrHMm = Mm(6);
-    private static readonly float PadBadgeTopMm = Mm(8);
-    private static readonly float BadgePadVMm = Mm(4);
-    private static readonly float BadgePadHMm = Mm(10);
 
     private static readonly CultureInfo CulturaEs = CultureInfo.GetCultureInfo("es-CO");
     private static readonly TimeZoneInfo ZonaColombia = ResolverZonaColombia();
@@ -84,14 +46,24 @@ internal static class PdfEtiquetasHelper
         CompressDocument = true,
     };
 
+    // Tipografía alineada a TIPOGRAFIA_IMPRESION (valores de diseño en px @ 96 dpi).
+    private static readonly float PtComida = PtD(22);
+    private static readonly float PtFecha = PtD(16);
+    private static readonly float PtPaciente = PtD(22);
+    private static readonly float PtMeta = PtD(16);
+    private static readonly float PtUbicacion = PtD(18);
+    private static readonly float PtDietaLabel = PtD(13.5f);
+    private static readonly float PtDietaValor = PtD(17);
+    private static readonly float PtObsLabel = PtD(13.5f);
+    private static readonly float PtObsTexto = PtD(15.5f);
+    private static readonly float PtBadge = PtD(13);
+
     static PdfEtiquetasHelper()
     {
         QuestPDF.Settings.License = LicenseType.Community;
     }
 
-    private static float Mm(float disenoPx) => disenoPx * DisenoPxAMm;
-
-    private static float Pt(float disenoPx) => disenoPx * DisenoPxAPt;
+    private static float PtD(float designPx) => designPx * DisenoPxAPt;
 
     private static TimeZoneInfo ResolverZonaColombia()
     {
@@ -129,56 +101,33 @@ internal static class PdfEtiquetasHelper
         if (etiquetas.Count == 0)
             throw new ArgumentException("Se requiere al menos una etiqueta.", nameof(etiquetas));
 
-        // Igual que html2canvas + jsPDF: raster a 2400 dpi (~15 874 × 8 315 px)
-        // embebido como imagen a página física 168 × 88 mm.
-        var paginasRaster = Document.Create(container =>
-            {
-                foreach (var etiqueta in etiquetas)
-                {
-                    container.Page(page =>
-                    {
-                        page.Size(AnchoMm, AltoMm, Unit.Millimetre);
-                        page.Margin(0);
-                        page.PageColor(Colors.White);
-                        page.DefaultTextStyle(x => x
-                            .FontFamily(FontFamily())
-                            .FontColor("#000000")
-                            .FontSize(PtMeta));
-
-                        page.Content().StopPaging().Element(c => ComponerEtiqueta(c, etiqueta));
-                    });
-                }
-            })
-            .WithSettings(AjustesDocumento)
-            .GenerateImages(new ImageGenerationSettings
-            {
-                RasterDpi = CapturaDpi,
-                ImageFormat = ImageFormat.Jpeg,
-                ImageCompressionQuality = ImageCompressionQuality.Best,
-            })
-            .ToList();
-
-        return Document.Create(container =>
-            {
-                foreach (var raster in paginasRaster)
-                {
-                    container.Page(page =>
-                    {
-                        page.Size(AnchoMm, AltoMm, Unit.Millimetre);
-                        page.Margin(0);
-                        page.Content()
-                            .Width(AnchoMm, Unit.Millimetre)
-                            .Height(AltoMm, Unit.Millimetre)
-                            .Image(raster)
-                            .FitArea()
-                            .WithRasterDpi(CapturaDpi)
-                            .UseOriginalImage();
-                    });
-                }
-            })
+        // QuestPDF genera el PDF vectorial y rasteriza las imágenes embebidas
+        // (logo/QR) a CapturaDpi=2400 internamente vía DocumentSettings.ImageRasterDpi.
+        // El texto queda como vector escalable, con la misma tipografía que el mock.
+        return CrearDocumento(etiquetas)
             .WithSettings(AjustesDocumento)
             .GeneratePdf();
     }
+
+    private static Document CrearDocumento(IReadOnlyList<EtiquetaPdfModelo> etiquetas) =>
+        Document.Create(container =>
+        {
+            foreach (var etiqueta in etiquetas)
+            {
+                container.Page(page =>
+                {
+                    page.Size(AnchoMm, AltoMm, Unit.Millimetre);
+                    page.Margin(0);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x
+                        .FontFamily(FontFamily())
+                        .FontColor("#000000")
+                        .FontSize(PtMeta));
+
+                    page.Content().StopPaging().Element(c => ComponerEtiqueta(c, etiqueta));
+                });
+            }
+        });
 
     public static EtiquetaPdfModelo CrearEtiquetaPrueba(string frontendPublicUrl = "")
     {
@@ -208,7 +157,6 @@ internal static class PdfEtiquetasHelper
         return string.IsNullOrWhiteSpace(origen) ? path : $"{origen}{path}";
     }
 
-    /// <summary>Formato de ubicación igual al de la etiqueta de prueba (<c>HAB</c>).</summary>
     public static string FormatearUbicacion(string? pabellon, string? habitacion)
     {
         var p = (pabellon ?? "").Trim();
@@ -243,17 +191,14 @@ internal static class PdfEtiquetasHelper
         container
             .Width(AnchoMm, Unit.Millimetre)
             .Height(AltoMm, Unit.Millimetre)
-            .StopPaging()
             .Row(row =>
             {
                 row.ConstantItem(AnchoContenidoMm, Unit.Millimetre)
                     .Height(AltoMm, Unit.Millimetre)
-                    .StopPaging()
                     .Element(c => ComponerContenido(c, etiqueta));
                 row.ConstantItem(AnchoQrMm, Unit.Millimetre)
                     .Height(AltoMm, Unit.Millimetre)
-                    .StopPaging()
-                    .BorderLeft(BordeMm, Unit.Millimetre)
+                    .BorderLeft(0.5f)
                     .BorderColor("#000000")
                     .Element(c => ComponerColumnaQr(c, etiqueta));
             });
@@ -261,45 +206,37 @@ internal static class PdfEtiquetasHelper
 
     private static void ComponerContenido(IContainer container, EtiquetaPdfModelo etiqueta)
     {
-        // Alturas fijas alineadas al layout de captura (logo 36px + tipografías tipadas).
-        var headerH = LogoAltoMm + PbHeaderMm + Mm(2);
-        var pacienteH = MtNombreMm + Mm(7.5f) + MbNombreMm;
-        var metaH = Mm(14);
-        var dietaH = Mm(18);
-        var obsH = AltoMm
-            - PadContenidoVMm * 2
-            - headerH
-            - pacienteH
-            - metaH
-            - dietaH
-            - MtObsMm;
+        const float padV = 2.4f;
+        const float headerH = 12f;
+        const float pacienteH = 7.5f;
+        const float metaH = 13f;
+        const float dietaH = 16f;
+        const float gapObs = 2f;
+        var obsH = AltoMm - padV * 2 - headerH - pacienteH - metaH - dietaH - gapObs;
 
         container
-            .PaddingVertical(PadContenidoVMm, Unit.Millimetre)
-            .PaddingHorizontal(PadContenidoHMm, Unit.Millimetre)
+            .PaddingVertical(padV, Unit.Millimetre)
+            .PaddingHorizontal(3f, Unit.Millimetre)
             .Column(col =>
             {
-                col.Item().Height(headerH, Unit.Millimetre).StopPaging()
+                col.Item().Height(headerH, Unit.Millimetre)
                     .Element(c => ComponerEncabezado(c, etiqueta));
 
-                col.Item().Height(pacienteH, Unit.Millimetre).StopPaging()
-                    .PaddingTop(MtNombreMm, Unit.Millimetre)
-                    .PaddingBottom(MbNombreMm, Unit.Millimetre)
-                    .AlignMiddle()
+                col.Item().Height(pacienteH, Unit.Millimetre).AlignMiddle()
                     .Text(Mayusculas(etiqueta.Paciente))
                     .FontSize(PtPaciente)
                     .Bold()
                     .LineHeight(1.15f)
                     .ClampLines(1);
 
-                col.Item().Height(metaH, Unit.Millimetre).StopPaging().AlignMiddle()
+                col.Item().Height(metaH, Unit.Millimetre).AlignMiddle()
                     .Element(c => ComponerMeta(c, etiqueta));
 
-                col.Item().Height(dietaH, Unit.Millimetre).StopPaging()
+                col.Item().Height(dietaH, Unit.Millimetre)
                     .Element(c => ComponerDietaConsistencia(c, etiqueta));
 
-                col.Item().PaddingTop(MtObsMm, Unit.Millimetre)
-                    .Height(Math.Max(obsH, 1f), Unit.Millimetre).StopPaging()
+                col.Item().PaddingTop(gapObs, Unit.Millimetre)
+                    .Height(Math.Max(obsH, 8f), Unit.Millimetre)
                     .Element(c => ComponerObservaciones(c, etiqueta));
             });
     }
@@ -307,25 +244,23 @@ internal static class PdfEtiquetasHelper
     private static void ComponerEncabezado(IContainer container, EtiquetaPdfModelo etiqueta)
     {
         container
-            .BorderBottom(BordeMm * 0.4f, Unit.Millimetre)
+            .BorderBottom(0.4f)
             .BorderColor("#d9d9d9")
-            .PaddingBottom(PbHeaderMm, Unit.Millimetre)
+            .PaddingBottom(1f, Unit.Millimetre)
             .Row(row =>
             {
-                row.ConstantItem(LogoAnchoMaxMm, Unit.Millimetre)
-                    .Height(LogoAltoMm, Unit.Millimetre)
+                row.ConstantItem(42f, Unit.Millimetre)
+                    .Height(9f, Unit.Millimetre)
                     .AlignMiddle()
                     .Image(LogoBytes)
-                    .FitArea()
-                    .WithRasterDpi(CapturaDpi)
-                    .UseOriginalImage();
+                    .FitArea();
 
                 row.RelativeItem().AlignRight().AlignMiddle().Column(col =>
                 {
                     col.Item().AlignRight().Text(Mayusculas(etiqueta.Comida))
                         .FontSize(PtComida)
                         .Bold();
-                    col.Item().AlignRight().PaddingTop(Mm(2), Unit.Millimetre)
+                    col.Item().AlignRight().PaddingTop(0.3f, Unit.Millimetre)
                         .Text(Mayusculas(etiqueta.FechaHora))
                         .FontSize(PtFecha)
                         .Bold()
@@ -353,7 +288,7 @@ internal static class PdfEtiquetasHelper
                 TituloValor(t, etiqueta.DocumentoTitulo, etiqueta.DocumentoValor);
             });
 
-            col.Item().PaddingTop(Mm(1.5f), Unit.Millimetre).Text(t =>
+            col.Item().PaddingTop(0.3f, Unit.Millimetre).Text(t =>
             {
                 t.DefaultTextStyle(x => x.FontSize(PtUbicacion).Bold().FontColor("#1a1a1a").LineHeight(1.15f));
                 t.ClampLines(2);
@@ -366,33 +301,33 @@ internal static class PdfEtiquetasHelper
 
     private static void ComponerDietaConsistencia(IContainer container, EtiquetaPdfModelo etiqueta)
     {
-        container.Border(BordeMm, Unit.Millimetre).BorderColor("#000000").Row(row =>
+        container.Border(0.5f).BorderColor("#000000").Row(row =>
         {
-            row.RelativeItem().BorderRight(BordeMm, Unit.Millimetre).BorderColor("#000000")
-                .PaddingVertical(PadDietaVMm, Unit.Millimetre)
-                .PaddingHorizontal(PadDietaHMm, Unit.Millimetre)
+            row.RelativeItem().BorderRight(0.5f).BorderColor("#000000")
+                .PaddingVertical(1.4f, Unit.Millimetre)
+                .PaddingHorizontal(2.2f, Unit.Millimetre)
                 .Column(col =>
                 {
                     col.Item().Text("DIETA:").FontSize(PtDietaLabel).Bold().FontColor("#1a1a1a");
-                    col.Item().PaddingTop(Mm(1), Unit.Millimetre)
+                    col.Item().PaddingTop(0.2f, Unit.Millimetre)
                         .Text(Mayusculas(Vacio(etiqueta.TipoDieta)))
                         .FontSize(PtDietaValor)
                         .Bold()
-                        .LineHeight(1.2f)
+                        .LineHeight(1.1f)
                         .ClampLines(2);
                 });
 
             row.RelativeItem()
-                .PaddingVertical(PadDietaVMm, Unit.Millimetre)
-                .PaddingHorizontal(PadDietaHMm, Unit.Millimetre)
+                .PaddingVertical(1.4f, Unit.Millimetre)
+                .PaddingHorizontal(2.2f, Unit.Millimetre)
                 .Column(col =>
                 {
                     col.Item().Text("CONSISTENCIA:").FontSize(PtDietaLabel).Bold().FontColor("#1a1a1a");
-                    col.Item().PaddingTop(Mm(1), Unit.Millimetre)
+                    col.Item().PaddingTop(0.2f, Unit.Millimetre)
                         .Text(Mayusculas(Vacio(etiqueta.Consistencia)))
                         .FontSize(PtDietaValor)
                         .Bold()
-                        .LineHeight(1.2f)
+                        .LineHeight(1.1f)
                         .ClampLines(2);
                 });
         });
@@ -401,21 +336,20 @@ internal static class PdfEtiquetasHelper
     private static void ComponerObservaciones(IContainer container, EtiquetaPdfModelo etiqueta)
     {
         container
-            .Border(BordeMm, Unit.Millimetre)
+            .Border(0.5f)
             .BorderColor("#000000")
-            .PaddingVertical(PadObsVMm, Unit.Millimetre)
-            .PaddingHorizontal(PadObsHMm, Unit.Millimetre)
+            .Padding(2f, Unit.Millimetre)
             .Column(col =>
             {
                 col.Item().Text("OBSERVACIONES")
                     .FontSize(PtObsLabel)
                     .Bold();
-                col.Item().PaddingTop(Mm(3), Unit.Millimetre)
+                col.Item().PaddingTop(0.6f, Unit.Millimetre)
                     .Text(Mayusculas(Vacio(etiqueta.Observaciones)))
                     .FontSize(PtObsTexto)
                     .Bold()
                     .FontColor("#1a1a1a")
-                    .LineHeight(1.3f)
+                    .LineHeight(1.2f)
                     .ClampLines(5);
             });
     }
@@ -424,32 +358,28 @@ internal static class PdfEtiquetasHelper
     {
         var qrPng = GenerarQrPng(etiqueta.QrPayload);
         var fontCodigo = etiqueta.Codigo.Trim().Length > 28
-            ? PtCodigoLargo
-            : etiqueta.Codigo.Trim().Length > 22 ? PtCodigoMedio : PtCodigoCorto;
+            ? PtD(12)
+            : etiqueta.Codigo.Trim().Length > 22 ? PtD(13) : PtD(14);
 
-        var badgeH = BadgePadVMm * 2 + Mm(6);
-        var codigoH = Mm(12);
-        var padTop = PadBadgeTopMm;
-        var padBottom = Mm(4);
-        var qrAreaH = AltoMm - padTop - padBottom - badgeH - codigoH;
+        const float padV = 2f;
+        const float badgeH = 7f;
+        const float codigoH = 9f;
+        var qrAreaH = AltoMm - padV * 2 - badgeH - codigoH;
 
         container
-            .PaddingTop(padTop, Unit.Millimetre)
-            .PaddingBottom(padBottom, Unit.Millimetre)
-            .PaddingHorizontal(PadQrHMm, Unit.Millimetre)
+            .PaddingVertical(padV, Unit.Millimetre)
+            .PaddingHorizontal(1.6f, Unit.Millimetre)
             .Column(col =>
             {
                 col.Item().Height(badgeH, Unit.Millimetre).AlignCenter().AlignMiddle()
                     .Element(ComponerBadgeEscanear);
 
-                col.Item().Height(Math.Max(qrAreaH, QrMm), Unit.Millimetre).AlignCenter().AlignMiddle()
+                col.Item().Height(qrAreaH, Unit.Millimetre).AlignCenter().AlignMiddle()
                     .Element(e => e
                         .Width(QrMm, Unit.Millimetre)
                         .Height(QrMm, Unit.Millimetre)
                         .Image(qrPng)
-                        .FitArea()
-                        .WithRasterDpi(CapturaDpi)
-                        .UseOriginalImage());
+                        .FitArea());
 
                 col.Item().Height(codigoH, Unit.Millimetre).AlignCenter().AlignMiddle()
                     .Text(etiqueta.Codigo)
@@ -464,8 +394,8 @@ internal static class PdfEtiquetasHelper
     {
         container
             .Background("#000000")
-            .PaddingVertical(BadgePadVMm, Unit.Millimetre)
-            .PaddingHorizontal(BadgePadHMm, Unit.Millimetre)
+            .PaddingVertical(0.8f, Unit.Millimetre)
+            .PaddingHorizontal(2f, Unit.Millimetre)
             .Text("ESCANEAR")
             .FontSize(PtBadge)
             .Bold()
@@ -495,7 +425,6 @@ internal static class PdfEtiquetasHelper
             string.IsNullOrWhiteSpace(payload) ? " " : payload,
             QRCodeGenerator.ECCLevel.M);
         var png = new PngByteQRCode(data);
-        // ~8192 px de lado como ETIQUETA_QR_RESolucion del frontend (cubrir 2400 dpi).
         var modulos = data.ModuleMatrix.Count;
         var pixelsPorModulo = Math.Max(8, (int)Math.Ceiling(8192.0 / Math.Max(modulos, 1)));
         return png.GetGraphic(pixelsPorModulo);

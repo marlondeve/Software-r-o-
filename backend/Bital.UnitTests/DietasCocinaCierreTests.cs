@@ -38,7 +38,6 @@ public class DietasCocinaCierreTests
     public void PdfEtiquetasHelper_CapturaDpi_CoincideConFrontend2400()
     {
         Assert.Equal(2400, PdfEtiquetasHelper.CapturaDpi);
-        // 168×88 mm @ 2400 dpi ≈ 15 874 × 8 315 (paridad con PDF_CAPTURA_DPI del frontend)
         Assert.Equal(15874, PdfEtiquetasHelper.AnchoCapturaPx);
         Assert.Equal(8315, PdfEtiquetasHelper.AltoCapturaPx);
     }
@@ -52,9 +51,8 @@ public class DietasCocinaCierreTests
         Assert.Equal((byte)'P', pdf[1]);
         Assert.Equal((byte)'D', pdf[2]);
         Assert.Equal((byte)'F', pdf[3]);
-        var texto = System.Text.Encoding.ASCII.GetString(pdf);
-        Assert.Contains("%%EOF", texto);
-        Assert.Equal(1, ContarPaginasPdf(texto));
+        Assert.Equal(1, ContarPaginasPdf(pdf));
+        Assert.Contains("%%EOF", System.Text.Encoding.ASCII.GetString(pdf));
     }
 
     [Fact]
@@ -64,8 +62,7 @@ public class DietasCocinaCierreTests
             .Select(_ => PdfEtiquetasHelper.CrearEtiquetaPrueba())
             .ToList();
         var pdf = PdfEtiquetasHelper.Generar(etiquetas);
-        var texto = System.Text.Encoding.ASCII.GetString(pdf);
-        Assert.Equal(3, ContarPaginasPdf(texto));
+        Assert.Equal(3, ContarPaginasPdf(pdf));
     }
 
     [Fact]
@@ -93,22 +90,14 @@ public class DietasCocinaCierreTests
         };
 
         var pdf = PdfEtiquetasHelper.Generar([etiqueta]);
-        var texto = System.Text.Encoding.ASCII.GetString(pdf);
-        Assert.Equal(1, ContarPaginasPdf(texto));
+        Assert.Equal(1, ContarPaginasPdf(pdf));
     }
 
-    /// <summary>Cuenta objetos Page (no el nodo Pages) en el PDF textual.</summary>
-    private static int ContarPaginasPdf(string pdfAscii)
+    /// <summary>Cuenta páginas usando PDFsharp (fiable en PDF raster y vectorial).</summary>
+    private static int ContarPaginasPdf(byte[] pdfBytes)
     {
-        var n = 0;
-        var idx = 0;
-        while ((idx = pdfAscii.IndexOf("/Type /Page", idx, StringComparison.Ordinal)) >= 0)
-        {
-            var siguiente = idx + "/Type /Page".Length;
-            if (siguiente >= pdfAscii.Length || pdfAscii[siguiente] != 's')
-                n++;
-            idx = siguiente;
-        }
-        return n;
+        using var ms = new System.IO.MemoryStream(pdfBytes);
+        var doc = PdfSharp.Pdf.IO.PdfReader.Open(ms, PdfSharp.Pdf.IO.PdfDocumentOpenMode.Import);
+        return doc.PageCount;
     }
 }
